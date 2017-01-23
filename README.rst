@@ -30,6 +30,11 @@ Features
 
 * TODO
 
+Authors
+-------
+
+.. include:: ../AUTHORS.rst
+
 Credits
 ---------
 
