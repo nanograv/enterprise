@@ -16,6 +16,7 @@ env:
 - TOXENV=py27
 - TOXENV=py26
 - TOXENV=pypy
+- TOXENV=flake8
 install: pip install -U tox
 language: python
 python: 3.5
