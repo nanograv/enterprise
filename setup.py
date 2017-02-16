@@ -27,6 +27,7 @@ setup(
     url='https://github.com/nanograv/enterprise',
     packages=[
         'enterprise',
+        'enterprise.signals'
     ],
     package_dir={'enterprise':
                  'enterprise'},
