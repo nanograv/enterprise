@@ -2,7 +2,8 @@
 
 # Class containing pulsar data from timing package [tempo2/PINT].
 
-from __future__ import division
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
 
 import enterprise
 import numpy as np
@@ -60,7 +61,7 @@ class Pulsar(object):
         os.chdir(cwd)
 
         # get pulsar name
-        self.name = self.t2pulsar.name
+        self.name = str(self.t2pulsar.name)
 
         # get some private attributes
         self._toas = np.double(self.t2pulsar.toas()) * 86400
@@ -135,7 +136,7 @@ class Pulsar(object):
                     epoch = '1950'
                 else:
                     epoch = '2000'
-                eq = Equatorial(ec, epoch=epoch)
+                eq = Equatorial(ec, epoch=str(epoch))
                 self._raj = np.double(eq.ra)
                 self._decj = np.double(eq.dec)
 

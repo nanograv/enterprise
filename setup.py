@@ -31,6 +31,7 @@ setup(
     package_dir={'enterprise':
                  'enterprise'},
     include_package_data=True,
+    package_data={'enterprise':['datafiles/*']},
     install_requires=requirements,
     license="MIT license",
     zip_safe=False,

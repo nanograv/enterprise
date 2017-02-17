@@ -30,6 +30,32 @@ class TestPulsar(unittest.TestCase):
         msg = 'Residuals shape incorrect'
         assert self.psr.residuals.shape == (5634,), msg
 
+    def test_toaerrs(self):
+        """Check TOA errors shape."""
+
+        msg = 'TOA errors shape incorrect'
+        assert self.psr.toaerrs.shape == (5634,), msg
+
+    def test_toas(self):
+        """Check TOA shape."""
+
+        msg = 'TOA shape incorrect'
+        assert self.psr.toas.shape == (5634,), msg
+
+    def test_freqs(self):
+        """Check frequencies shape."""
+
+        msg = 'Frequencies shape incorrect'
+        assert self.psr.freqs.shape == (5634,), msg
+
+    def test_sky(self):
+        """Check Sky location."""
+
+        sky = (1.4023094090612354, 4.9533700717180027)
+
+        msg = 'Incorrect sky location'
+        assert (self.psr.theta, self.psr.phi) == sky, msg
+
     def test_design_matrix(self):
         """Check design matrix shape."""
 
@@ -43,3 +69,12 @@ class TestPulsar(unittest.TestCase):
     def test_to_pickle(self):
         """Place holder for to_pickle tests."""
         assert self.psr.to_pickle('./') is None
+
+    def test_wrong_input(self):
+        """Test exception when incorrect par(tim) file given."""
+
+        with self.assertRaises(IOError) as context:
+            Pulsar('wrong.par', 'wrong.tim')
+
+        msg = 'Cannot find parfile wrong.par or timfile wrong.tim!'
+        self.assertTrue(msg in context.exception)
