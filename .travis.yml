@@ -17,7 +17,23 @@ env:
 - TOXENV=py26
 - TOXENV=pypy
 - TOXENV=flake8
-install: pip install -U tox
+install: 
+    - prefix=$HOME/.local/tempo2
+    - export TEMPO2=$prefix/share/tempo2
+    - mkdir -p $TEMPO2
+    - curl -O https://bitbucket.org/psrsoft/tempo2/get/master.tar.gz -z master.tar.gz
+    - tar zxvf master.tar.gz
+    - cd psrsoft-tempo2-*
+    - ./bootstrap
+    - ./configure --prefix=$prefix
+    -  make && make install
+    - cp -Rp T2runtime/* $TEMPO2/.
+    - cd ..
+    - rm -rf psrsoft-tempo2-*
+
+    - pip install -r requirements_dev.txt
+    - pip install -r requirements.txt
+
 language: python
 python: 3.5
 script: tox -e ${TOXENV}

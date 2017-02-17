@@ -1,0 +1,5 @@
+numpy==1.12.0
+scipy==0.18.1
+ephem==3.7.6.0
+Cython==0.25.2
+git+https://github.com/vallis/libstempo.git --install-option="--with-tempo2=$TEMPO2"
