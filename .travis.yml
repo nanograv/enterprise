@@ -11,21 +11,24 @@ deploy:
   user: nanograv
 env:
 - TOXENV=py35
-- TOXENV=py34
-- TOXENV=py33
-- TOXENV=py27
-- TOXENV=py26
-- TOXENV=pypy
-- TOXENV=flake8
+#- TOXENV=py34
+#- TOXENV=py33
+#- TOXENV=py27
+#- TOXENV=py26
+#- TOXENV=pypy
+#- TOXENV=flake8
+before_install:
+    - sudo apt-get install gfortran
+
 install: 
-    - prefix=$HOME/.local/tempo2
-    - export TEMPO2=$prefix/share/tempo2
+    - export TEMPO2=$HOME/.local/tempo2
+    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$TEMPO2/lib
     - mkdir -p $TEMPO2
     - curl -O https://bitbucket.org/psrsoft/tempo2/get/master.tar.gz -z master.tar.gz
     - tar zxvf master.tar.gz
     - cd psrsoft-tempo2-*
     - ./bootstrap
-    - ./configure --prefix=$prefix
+    - ./configure --prefix=$TEMPO2
     -  make && make install
     - cp -Rp T2runtime/* $TEMPO2/.
     - cd ..
@@ -33,7 +36,11 @@ install:
 
     - pip install -r requirements_dev.txt
     - pip install -r requirements.txt
+    - pip install libstempo --install-option="--with-tempo2=$TEMPO2"
 
 language: python
-python: 3.5
-script: tox -e ${TOXENV}
+python: 2.7
+#script: tox -e ${TOXENV}
+script: 
+    - make test
+    - make lint

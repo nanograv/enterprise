@@ -13,9 +13,8 @@ requirements = [
     # TODO: put package requirements here
 ]
 
-test_requirements = [
-    # TODO: put package test requirements here
-]
+test_requirements = []
+
 
 setup(
     name='enterprise',
