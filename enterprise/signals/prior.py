@@ -13,13 +13,13 @@ from scipy.stats import rv_continuous, rv_discrete
 import numpy as np
 
 class Prior(object):
-    r"""Class for evaluation of prior probability densities
-    Any Prior object returns the probability density using
-    the pdf() and logpdf() methods.  For generality, these
-    may take scalars or numpy arrays as arguements.
+    r"""A class for Priors
+    Any Prior object returns the probability density using the
+    pdf() and logpdf() methods.  These may take scalars or numpy
+    arrays as arguements.
     Note that Prior instances contain only the pdf and logpdf
-    methods.  They do not retain all of their rv attributes.
-    attributes
+    methods.  They do not retain all of their original rv methods
+    and attributes.
     """
 
     def __init__(self, rv):
@@ -27,19 +27,19 @@ class Prior(object):
         _rv : rv_frozen
         Private member that holds an instance of rv_frozen used to
         define the prior distribution.  It must be a 'frozen distribution',
-        with all shape parameters set (i.e. a, b, loc, scale). 
+        with all shape parameters (i.e. a, b, loc, scale) set.
         For more info see <http://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.rv_continuous.html#scipy.stats.rv_continuous>
         For a list of functions suitable for use see <https://docs.scipy.org/doc/scipy/reference/stats.html#continuous-distributions>
 
         Examples
         --------
-        # A half-bounded uniform prior on Agw, ensuring Agw > 0.
+        # A half-bounded uniform prior on Agw, ensuring Agw >= 0.
         model.Agw.prior = Prior(UniformUnnormedRV(lower=0.))
 
-        # A normalized uniform prior on Agw between 10^-18 and 10^-12
+        # A normalized uniform prior on Agw in [10^-18, 10^-12]
         model.Agw.prior = Prior(UniformBoundedRV(1.0e-18, 1.0e-12))
 
-        # A bounded gaussian prior to ensure that eccentrity is in [0, 1]
+        # A bounded Gaussian prior to ensure that eccentrity is in [0, 1]
         model.ecc.prior = Prior(scipy.stats.truncnorm(loc=0.9, scale=0.1,
                                                       a=0.0, b=1.0))
         """
@@ -67,7 +67,6 @@ class UniformUnnormedRV_generator(rv_continuous):
     everywhere.  This should be used for unbounded or half-bounded
     intervals.
     """
-
     # The astype() calls prevent unsafe cast messages
     def _pdf(self, x):
         return np.ones_like(x).astype(np.float64, casting='same_kind')
