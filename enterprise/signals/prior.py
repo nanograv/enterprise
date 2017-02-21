@@ -12,6 +12,7 @@ from scipy.stats import rv_continuous, rv_discrete
 
 import numpy as np
 
+
 class Prior(object):
     r"""A class for Priors
     Any Prior object returns the probability density using the
@@ -46,17 +47,17 @@ class Prior(object):
         self._rv = rv
         pass
 
-    def pdf(self,value):
+    def pdf(self, value):
         # The astype() calls prevent unsafe cast messages
         if type(value) == np.ndarray:
-            v = value.astype(np.float64,casting='same_kind')
+            v = value.astype(np.float64, casting='same_kind')
         else:
             v = np.float(value)
         return self._rv.pdf(v)
 
-    def logpdf(self,value):
+    def logpdf(self, value):
         if type(value) == np.ndarray:
-            v = value.astype(np.float64,casting='same_kind')
+            v = value.astype(np.float64, casting='same_kind')
         else:
             v = np.float(value)
         return self._rv.logpdf(v)
@@ -70,8 +71,9 @@ class UniformUnnormedRV_generator(rv_continuous):
     # The astype() calls prevent unsafe cast messages
     def _pdf(self, x):
         return np.ones_like(x).astype(np.float64, casting='same_kind')
+
     def _logpdf(self, x):
-        return np.zeros_like(x).astype(np.float64,casting='same_kind')
+        return np.zeros_like(x).astype(np.float64, casting='same_kind')
 
 
 def UniformUnnormedRV(lower=-np.inf, upper=np.inf):
@@ -87,7 +89,8 @@ def UniformUnnormedRV(lower=-np.inf, upper=np.inf):
     Returns a frozen rv_continuous instance with pdf  equal to unity
     in the allowed interval and 0.0 elsewhere
     """
-    return UniformUnnormedRV_generator(name='unnormed_uniform', a=lower, b=upper)
+    return UniformUnnormedRV_generator(name='unnormed_uniform',
+                                       a=lower, b=upper)
 
 
 def UniformBoundedRV(lower=0., upper=1.):
@@ -104,5 +107,5 @@ def UniformBoundedRV(lower=0., upper=1.):
     This is a convenience function with more natural bound parameters than
     scipy.stats.uniform
     """
-    uu = scipy.stats.uniform(lower, (upper-lower))
+    uu = scipy.stats.uniform(lower, (upper - lower))
     return uu
