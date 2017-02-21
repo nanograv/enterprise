@@ -13,9 +13,8 @@ requirements = [
     # TODO: put package requirements here
 ]
 
-test_requirements = [
-    # TODO: put package test requirements here
-]
+test_requirements = []
+
 
 setup(
     name='enterprise',
@@ -27,10 +26,12 @@ setup(
     url='https://github.com/nanograv/enterprise',
     packages=[
         'enterprise',
+        'enterprise.signals'
     ],
     package_dir={'enterprise':
                  'enterprise'},
     include_package_data=True,
+    package_data={'enterprise':['datafiles/*']},
     install_requires=requirements,
     license="MIT license",
     zip_safe=False,
