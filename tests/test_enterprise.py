@@ -9,11 +9,10 @@ Tests for `enterprise` module.
 """
 
 
-import sys
+#import sys
 import unittest
 
-from enterprise import enterprise
-
+#from enterprise import enterprise
 
 
 class TestEnterprise(unittest.TestCase):
