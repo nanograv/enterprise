@@ -8,7 +8,7 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
 import scipy.stats
-from scipy.stats import rv_continuous, rv_discrete
+from scipy.stats import rv_continuous #TODO consider 'rv_discrete' for empirical prior
 
 import numpy as np
 
@@ -25,12 +25,12 @@ class Prior(object):
 
     def __init__(self, rv):
         """
-        _rv : rv_frozen
-        Private member that holds an instance of rv_frozen used to
-        define the prior distribution.  It must be a 'frozen distribution',
-        with all shape parameters (i.e. a, b, loc, scale) set.
-        For more info see <http://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.rv_continuous.html#scipy.stats.rv_continuous>
-        For a list of functions suitable for use see <https://docs.scipy.org/doc/scipy/reference/stats.html#continuous-distributions>
+        : param _rv : rv_frozen Private member that holds an instance of
+                      rv_frozen used to define the prior distribution.
+                      It must be a 'frozen distribution', with all shape
+                      parameters (i.e. a, b, loc, scale) set.
+                      For more info see <http://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.rv_continuous.html#scipy.stats.rv_continuous>
+                      For a list of functions suitable for use see <https://docs.scipy.org/doc/scipy/reference/stats.html#continuous-distributions>
 
         Examples
         --------
@@ -79,15 +79,12 @@ class UniformUnnormedRV_generator(rv_continuous):
 def UniformUnnormedRV(lower=-np.inf, upper=np.inf):
     r"""An unnormalized uniform prior suitable for unbounded or
     half-bounded intervals.
-    Parameters
-    ----------
-    lower : float
-        Lower bound of parameter range
-    upper : float
-        Upper bound of parameter range
-
-    Returns a frozen rv_continuous instance with pdf  equal to unity
-    in the allowed interval and 0.0 elsewhere
+    : param lower : lower bound of parameter range
+    : type lower: float
+    : param upper : upper bound of parameter range
+    : type upper: float
+    : return : a frozen rv_continuous instance with pdf equal to unity
+               in the allowed interval and 0 elsewhere
     """
     return UniformUnnormedRV_generator(name='unnormed_uniform',
                                        a=lower, b=upper)
@@ -95,17 +92,14 @@ def UniformUnnormedRV(lower=-np.inf, upper=np.inf):
 
 def UniformBoundedRV(lower=0., upper=1.):
     r"""A uniform prior between two finite bounds
-    Parameters
-    ----------
-    lower : float
-        Lower bound of parameter range
-    upper : float
-        Upper bound of parameter range
-
-    Returns a frozen rv_continuous instance with a normalized uniform
-    probability inside the range [lower, upper] and 0.0 outside.
-    This is a convenience function with more natural bound parameters than
-    scipy.stats.uniform
+    This is a convenience function with more natural bound parameters
+    than scipy.stats.uniform
+    : param lower : lower bound of parameter range
+    : type lower: float
+    : param upper : upper bound of parameter range
+    : type upper: float
+    : return : a frozen rv_continuous instance with normalized uniform
+               probability inside the range [lower, upper] and 0 outside
     """
     uu = scipy.stats.uniform(lower, (upper - lower))
     return uu
