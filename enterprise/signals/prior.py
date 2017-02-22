@@ -43,8 +43,10 @@ class Prior(object):
         model.Agw.prior = Prior(UniformBoundedRV(1.0e-18, 1.0e-12))
 
         # A bounded Gaussian prior to ensure that eccentrity is in [0, 1]
-        model.ecc.prior = Prior(scipy.stats.truncnorm(loc=0.9, scale=0.1,
-                                                      a=0.0, b=1.0))
+        mean, std, lower, upper = 0.9, 0.1, 0.0, 1.0
+        a, b = (lower-mean)/std, (upper-mean)/std
+        model.ecc.prior = Prior(scipy.stats.truncnorm(loc=mean, scale=std,
+                                                      a=a, b=b))
         """
         self._rv = rv
         pass

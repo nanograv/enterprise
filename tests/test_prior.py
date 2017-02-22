@@ -8,6 +8,8 @@ test_prior
 Tests for `prior` module.
 """
 
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
 
 import unittest
 
@@ -27,8 +29,10 @@ class TestPrior(unittest.TestCase):
         self.bPrior = Prior(UniformBoundedRV(1.0e-18, 1.0e-12))
 
         # A bounded Gaussian prior to ensure that param is in [0, 1]
-        self.gPrior = Prior(truncnorm(loc=0.9, scale=0.1,
-                                      a=0.0, b=1.0))
+        mean, std, low, up = 0.9, 0.1, 0.0, 1.0
+        a, b = (low-mean)/std, (up-mean)/std
+        self.gPrior = Prior(truncnorm(loc=mean, scale=std,
+                                      a=a, b=b))
 
     def test_unnormed_uniform_prior(self):
         """check UniformUnnormedRV"""
@@ -48,14 +52,10 @@ class TestPrior(unittest.TestCase):
 
     def test_truncnorm_prior(self):
         """check truncnorm RV"""
-        pass
-        #TODO why does this fail?
-
-
-"""
         msg = "truncnorm prior: incorrect test {0}"
         test_vals = [-0.1, 0.0, 0.5, 1.0, 1.1]
-        correct = truncnorm(loc=0.9, scale=0.1, a=0.0, b=1.0)
+        mean, std, low, up = 0.9, 0.1, 0.0, 1.0
+        a, b = (low-mean)/std, (up-mean)/std
+        correct = truncnorm(loc=mean, scale=std, a=a, b=b)
         for ii, xx in enumerate(test_vals):
-            assert self.bPrior.pdf(xx) == correct.pdf(xx), msg.format(ii)
-"""
+            assert self.gPrior.pdf(xx) == correct.pdf(xx), msg.format(ii)
