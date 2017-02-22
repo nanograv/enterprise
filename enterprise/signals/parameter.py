@@ -5,7 +5,7 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
-from enterprise import priors
+from enterprise.signals import priors
 
 
 class Parameter(object):
@@ -59,13 +59,8 @@ class Parameter(object):
         :return: prior probability value
 
         """
-        if value is None:
-            if logpdf:
-                return self.prior.logpdf(self.value)
-            else:
-                return self.prior.pdf(self.value)
+        val = self.value if value is None else value
+        if logpdf:
+            return self.prior.logpdf(val)
         else:
-            if logpdf:
-                return self.prior.logpdf(value)
-            else:
-                return self.prior.pdf(value)
+            return self.prior.pdf(val)
