@@ -31,8 +31,8 @@ class Prior(object):
                       It must be a 'frozen distribution', with all shape
                       parameters (i.e. a, b, loc, scale) set.
 
-        For more info see <http://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.rv_continuous.html#scipy.stats.rv_continuous>
-        For a list of functions suitable for use see <https://docs.scipy.org/doc/scipy/reference/stats.html#continuous-distributions>
+        For more info see <http://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.rv_continuous.html#scipy.stats.rv_continuous>  # noqa: E501
+        For a list of functions suitable for use see <https://docs.scipy.org/doc/scipy/reference/stats.html#continuous-distributions>  # noqa: E501
 
         Examples
         --------
