@@ -30,7 +30,7 @@ class TestPrior(unittest.TestCase):
 
         # A bounded Gaussian prior to ensure that param is in [0, 1]
         mean, std, low, up = 0.9, 0.1, 0.0, 1.0
-        a, b = (low-mean)/std, (up-mean)/std
+        a, b = (low - mean) / std, (up - mean) / std
         self.gPrior = Prior(truncnorm(loc=mean, scale=std,
                                       a=a, b=b))
 
@@ -55,7 +55,7 @@ class TestPrior(unittest.TestCase):
         msg = "truncnorm prior: incorrect test {0}"
         test_vals = [-0.1, 0.0, 0.5, 1.0, 1.1]
         mean, std, low, up = 0.9, 0.1, 0.0, 1.0
-        a, b = (low-mean)/std, (up-mean)/std
+        a, b = (low - mean) / std, (up - mean) / std
         correct = truncnorm(loc=mean, scale=std, a=a, b=b)
         for ii, xx in enumerate(test_vals):
             assert self.gPrior.pdf(xx) == correct.pdf(xx), msg.format(ii)
