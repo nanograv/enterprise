@@ -55,7 +55,7 @@ class TestPrior(unittest.TestCase):
 """
         msg = "truncnorm prior: incorrect test {0}"
         test_vals = [-0.1, 0.0, 0.5, 1.0, 1.1]
-        correct = truncnorm(loc=0.9, scale = 0.1, a=0.0, b=1.0)
+        correct = truncnorm(loc=0.9, scale=0.1, a=0.0, b=1.0)
         for ii, xx in enumerate(test_vals):
             assert self.bPrior.pdf(xx) == correct.pdf(xx), msg.format(ii)
 """
