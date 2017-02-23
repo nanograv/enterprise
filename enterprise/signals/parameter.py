@@ -11,16 +11,17 @@ from enterprise.signals import priors
 class Parameter(object):
     """Class describing a single signal parameter.
 
-    The `Parameter` class will be initalized with several options
+    The ``Parameter`` class will be initalized with several options
+
     :param name: The formal name of the parameter.
     :param value: The initial value of the parameter.
     :param description: A short description of the parameter.
     :param uncertainty: An initial approximate uncertainty.
     :param vary: Boolean flag indicating that the parameter will vary.
-    :param prior: Initalized instance of `Prior` class.
+    :param prior: Initalized instance of ``Prior`` class.
 
     .. note:: This class is still under construction.
-        As `enerprise` develops this class will likely grow and change.
+        As ``enerprise`` develops this class will likely grow and change.
 
     """
 
@@ -51,7 +52,7 @@ class Parameter(object):
         """Return the prior probability.
 
         The prior pdf can be evaluated at the current stored value or the
-        proposed value. If `value` is passed as None then the stored value
+        proposed value. If ``value`` is passed as None then the stored value
         will be used.
 
         :param value: Proposed parameter value [default=None].

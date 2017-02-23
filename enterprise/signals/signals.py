@@ -22,14 +22,14 @@ class StochasticSignal(object):
 
         Must be created by sub-classes.
 
-        :param psr: Instance of `Pulsar` class.
+        :param psr: Instance of ``Pulsar`` class.
         """
         pass
 
     def add_param(self, param):
         """Add parameter to signal model.
 
-        :param param: Instance of `Parameter` class.
+        :param param: Instance of ``Parameter`` class.
         """
         self._param_dict[param.name] = param
 
@@ -49,8 +49,8 @@ class StochasticSignal(object):
 
         This method computes the log-determinant and cholesky factor
         of the rank reduced component of the gaussian kernel matrix
-        :math: `K = TBT^T`, where :math: `B` is the rank-reduced kernel
-        matrix. We compute :math: `logdet(B)` and :math: `B^{-1}`.
+        :math:`K = TBT^T`, where :math:`B` is the rank-reduced kernel
+        matrix. We compute :math:`\mathrm{logdet}(B)` and :math:`B^{-1}`.
 
         This method must be implemented by sub-classes
 

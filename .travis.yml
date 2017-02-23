@@ -44,3 +44,6 @@ python: 2.7
 script: 
     - make test
     - make lint
+    - coverage run --source enterprise setup.py test
+after_success:
+    coveralls
