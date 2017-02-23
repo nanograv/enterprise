@@ -14,7 +14,8 @@ from __future__ import (absolute_import, division,
 import unittest
 
 from enterprise.signals.prior import Prior
-from enterprise.signals.prior import UniformUnnormedRV, UniformBoundedRV
+from enterprise.signals.prior import (UniformUnnormedRV, UniformBoundedRV,
+                                      GaussianBoundedRV)
 from scipy.stats import truncnorm
 
 
@@ -30,9 +31,8 @@ class TestPrior(unittest.TestCase):
 
         # A bounded Gaussian prior to ensure that param is in [0, 1]
         mean, std, low, up = 0.9, 0.1, 0.0, 1.0
-        a, b = (low - mean) / std, (up - mean) / std
-        self.gPrior = Prior(truncnorm(loc=mean, scale=std,
-                                      a=a, b=b))
+        self.gPrior = Prior(GaussianBoundedRV(loc=mean, scale=std,
+                                              lower=low, upper=up))
 
     def test_unnormed_uniform_prior(self):
         """check UniformUnnormedRV"""
