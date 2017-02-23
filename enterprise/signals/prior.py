@@ -43,11 +43,14 @@ class Prior(object):
         # A normalized uniform prior on Agw in [10^-18, 10^-12]
         model.Agw.prior = Prior(UniformBoundedRV(1.0e-18, 1.0e-12))
 
+        # A Gaussian prior for gamma = 13/3 +/- 2/3
+        mean, std = 13./3., 2./3.
+        model.gamma.prior = Prior(scipy.stats.norm(loc=mean, scale=std))
+
         # A bounded Gaussian prior to ensure that eccentrity is in [0, 1]
-        mean, std, lower, upper = 0.9, 0.1, 0.0, 1.0
-        a, b = (lower-mean)/std, (upper-mean)/std
-        model.ecc.prior = Prior(scipy.stats.truncnorm(loc=mean, scale=std,
-                                                      a=a, b=b))
+        mean, std, low, up = 0.9, 0.1, 0.0, 1.0
+        model.ecc.prior = Prior(GaussinaBoundedRV(loc=mean, scale=std,
+                                                  lower=low, upper=up))
         """
         self._rv = rv
         pass
@@ -110,3 +113,24 @@ def UniformBoundedRV(lower=0., upper=1.):
     """
     uu = scipy.stats.uniform(lower, (upper - lower))
     return uu
+
+
+def GaussianBoundedRV(loc=0., scale=1., lower=0., upper=1.):
+    r"""A Gaussian prior between two finite bounds.
+    This is a convenience function with more natural bound parameters
+    than `scipy.stats.truncnorm`.
+
+    : param loc : location parameter, mean of distribution
+    : type loc : float
+    : param scale : standard deviation of distribution
+    : type scale : float
+    : param lower : lower bound of parameter range
+    : type lower : float
+    : param upper : upper bound of parameter range
+    : type upper : float
+    : return : a frozen rv_continuous instance with normalized Gaussian
+               probability truncated to the range [lower, upper] and 0 outside
+    """
+    low, up = (lower - loc) / scale, (upper - loc) / scale
+    nn = scipy.stats.truncnorm(loc=loc, scale=scale, a=low, b=up)
+    return nn
