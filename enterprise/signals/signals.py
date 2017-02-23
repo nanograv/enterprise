@@ -6,7 +6,6 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
 import numpy as np
-from enterprise.signals.parameter import Parameter
 
 
 class StochasticSignal(object):
@@ -68,6 +67,5 @@ class StochasticSignal(object):
 
     @property
     def params(self):
-        """Returns list of parameter names."""
+        """Return list of parameter names."""
         return self._param_dict.keys()
-
