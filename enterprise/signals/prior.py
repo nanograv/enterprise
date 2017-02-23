@@ -34,8 +34,9 @@ class Prior(object):
                       It must be a 'frozen distribution', with all shape
                       parameters (i.e. a, b, loc, scale) set.
 
-        For more info see `here. <http://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.rv_continuous.html#scipy.stats.rv_continuous>`_  # noqa: E501
-        For a list of functions suitable for use see `here. <https://docs.scipy.org/doc/scipy/reference/stats.html#continuous-distributions>`_  # noqa: E501
+        For more info see `rv_continuous`_.
+        For a list of functions suitable for use see
+        `continuous-distributions`_.
 
         :Examples:
 
@@ -56,6 +57,9 @@ class Prior(object):
             model.ecc.prior = Prior(GaussinaBoundedRV(loc=mean, scale=std,
                                                       lower=low, upper=up))
 
+        .. _rv_continuous: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.rv_continuous.html#scipy.stats.rv_continuous
+        .. _continuous-distributions: https://docs.scipy.org/doc/scipy/reference/stats.html#continuous-distributions
+        .. # noqa E501
         """
         self._rv = rv
         pass
