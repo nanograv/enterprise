@@ -1,4 +1,5 @@
-"""prior.py
+# prior.py
+"""
 Defines classes used for evaluation of prior probabilities.
 Currently this is only capable of handling independent 1D priors on
 each parameter.  We may want to include joint ND prior distributions
@@ -15,13 +16,13 @@ import numpy as np
 
 
 class Prior(object):
-    r"""A class for Priors
-    Any Prior object returns the probability density using the
-    pdf() and logpdf() methods.  These may take scalars or numpy
-    arrays as arguements.
-    Note that Prior instances contain only the pdf and logpdf
-    methods.  They do not retain all of their original rv methods
-    and attributes.
+    r"""A class for Priors.
+    A Prior object can return the probability density using the `pdf()` and
+    `logpdf()` methods.  These may take scalars or numpy arrays as arguements.
+
+    Note that Prior instances contain only the `pdf()` and `logpdf()` methods
+    They do not retain all of the original `rv_continuous` methods and
+    attributes.
     """
 
     def __init__(self, rv):
@@ -67,7 +68,7 @@ class Prior(object):
         return self._rv.logpdf(v)
 
 
-class UniformUnnormedRV_generator(rv_continuous):
+class _UniformUnnormedRV_generator(rv_continuous):
     r"""An unnormalized, uniform prior distribution set to unity
     everywhere.  This should be used for unbounded or half-bounded
     intervals.
@@ -83,6 +84,7 @@ class UniformUnnormedRV_generator(rv_continuous):
 def UniformUnnormedRV(lower=-np.inf, upper=np.inf):
     r"""An unnormalized uniform prior suitable for unbounded or
     half-bounded intervals.
+
     : param lower : lower bound of parameter range
     : type lower : float
     : param upper : upper bound of parameter range
@@ -90,14 +92,15 @@ def UniformUnnormedRV(lower=-np.inf, upper=np.inf):
     : return : a frozen rv_continuous instance with pdf equal to unity
                in the allowed interval and 0 elsewhere
     """
-    return UniformUnnormedRV_generator(name='unnormed_uniform',
-                                       a=lower, b=upper)
+    return _UniformUnnormedRV_generator(name='unnormed_uniform',
+                                        a=lower, b=upper)
 
 
 def UniformBoundedRV(lower=0., upper=1.):
-    r"""A uniform prior between two finite bounds
+    r"""A uniform prior between two finite bounds.
     This is a convenience function with more natural bound parameters
-    than scipy.stats.uniform
+    than `scipy.stats.uniform`.
+
     : param lower : lower bound of parameter range
     : type lower : float
     : param upper : upper bound of parameter range
