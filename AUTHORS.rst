@@ -3,7 +3,7 @@ Credits
 =======
 
 Development Leads
-----------------
+-----------------
 
 * Justin A. Ellis <justin.ellis18@gmail.com>
 * Stephen R. Taylor <Stephen.R.Taylor@jpl.nasa.gov>
