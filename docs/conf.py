@@ -33,6 +33,15 @@ sys.path.insert(0, project_root)
 
 import enterprise
 
+# allows us to ignore certain directives like flake8 commands.
+from sphinx.ext.autodoc import between
+
+def setup(app):
+    # Register a sphinx.ext.autodoc.between listener to ignore everything
+    # between lines that contain the word IGNORE
+    app.connect('autodoc-process-docstring', between('^.*IGNORE.*$', exclude=True))
+    return app
+
 # -- General configuration ---------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -41,6 +50,12 @@ import enterprise
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode', 'sphinx.ext.mathjax']
+
+# get doctrings for __init__ method
+autoclass_content = 'both'
+
+# make order or docs 'groupwise'
+autodoc_member_order = 'groupwise'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
