@@ -17,45 +17,57 @@ import numpy as np
 
 class Prior(object):
     r"""A class for Priors.
-    A Prior object can return the probability density using the `pdf()` and
-    `logpdf()` methods.  These may take scalars or numpy arrays as arguements.
+    A Prior object can return the probability density using the ``pdf()`` and
+    ``logpdf()`` methods.  These may take scalars or numpy arrays as
+    arguments.
 
-    Note that Prior instances contain only the `pdf()` and `logpdf()` methods
-    They do not retain all of the original `rv_continuous` methods and
-    attributes.
+    Note that Prior instances contain only the ``pdf()`` and ``logpdf()``
+    methods. They do not retain all of the original ``rv_continuous``
+    methods and attributes.
+
     """
 
     def __init__(self, rv):
         """
-        : param _rv : rv_frozen Private member that holds an instance of
+        :param rv: rv_frozen Private member that holds an instance of
                       rv_frozen used to define the prior distribution.
                       It must be a 'frozen distribution', with all shape
                       parameters (i.e. a, b, loc, scale) set.
 
-        For more info see <http://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.rv_continuous.html#scipy.stats.rv_continuous>  # noqa: E501
-        For a list of functions suitable for use see <https://docs.scipy.org/doc/scipy/reference/stats.html#continuous-distributions>  # noqa: E501
+        For more info see `here. <http://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.rv_continuous.html#scipy.stats.rv_continuous>`_  # noqa: E501
+        For a list of functions suitable for use see `here. <https://docs.scipy.org/doc/scipy/reference/stats.html#continuous-distributions>`_  # noqa: E501
 
-        Examples
-        --------
-        # A half-bounded uniform prior on Agw, ensuring Agw >= 0.
-        model.Agw.prior = Prior(UniformUnnormedRV(lower=0.))
+        :Examples:
 
-        # A normalized uniform prior on Agw in [10^-18, 10^-12]
-        model.Agw.prior = Prior(UniformBoundedRV(1.0e-18, 1.0e-12))
+        .. code-block:: python
 
-        # A Gaussian prior for gamma = 13/3 +/- 2/3
-        mean, std = 13./3., 2./3.
-        model.gamma.prior = Prior(scipy.stats.norm(loc=mean, scale=std))
+            # A half-bounded uniform prior on Agw, ensuring Agw >= 0.
+            model.Agw.prior = Prior(UniformUnnormedRV(lower=0.))
 
-        # A bounded Gaussian prior to ensure that eccentrity is in [0, 1]
-        mean, std, low, up = 0.9, 0.1, 0.0, 1.0
-        model.ecc.prior = Prior(GaussinaBoundedRV(loc=mean, scale=std,
-                                                  lower=low, upper=up))
+            # A normalized uniform prior on Agw in [10^-18, 10^-12]
+            model.Agw.prior = Prior(UniformBoundedRV(1.0e-18, 1.0e-12))
+
+            # A Gaussian prior for gamma = 13/3 +/- 2/3
+            mean, std = 13./3., 2./3.
+            model.gamma.prior = Prior(scipy.stats.norm(loc=mean, scale=std))
+
+            # A bounded Gaussian prior to ensure that eccentrity is in [0, 1]
+            mean, std, low, up = 0.9, 0.1, 0.0, 1.0
+            model.ecc.prior = Prior(GaussinaBoundedRV(loc=mean, scale=std,
+                                                      lower=low, upper=up))
+
         """
         self._rv = rv
         pass
 
     def pdf(self, value):
+        """Return the probability distribution function at a specified value.
+
+        :param value: Input value of parameter.
+        :type value: float
+        :return: pdf at input value.
+
+        """
         # The astype() calls prevent unsafe cast messages
         if type(value) == np.ndarray:
             v = value.astype(np.float64, casting='same_kind')
@@ -64,6 +76,14 @@ class Prior(object):
         return self._rv.pdf(v)
 
     def logpdf(self, value):
+        """Return the logarithm of probability distribution function
+        at a specified value.
+
+        :param value: Input value of parameter.
+        :type value: float
+        :return: log-pdf at input value.
+
+        """
         if type(value) == np.ndarray:
             v = value.astype(np.float64, casting='same_kind')
         else:
@@ -88,11 +108,11 @@ def UniformUnnormedRV(lower=-np.inf, upper=np.inf):
     r"""An unnormalized uniform prior suitable for unbounded or
     half-bounded intervals.
 
-    : param lower : lower bound of parameter range
-    : type lower : float
-    : param upper : upper bound of parameter range
-    : type upper : float
-    : return : a frozen rv_continuous instance with pdf equal to unity
+    :param lower: lower bound of parameter range
+    :type lower: float
+    :param upper: upper bound of parameter range
+    :type upper: float
+    :return: a frozen rv_continuous instance with pdf equal to unity
                in the allowed interval and 0 elsewhere
     """
     return _UniformUnnormedRV_generator(name='unnormed_uniform',
@@ -102,13 +122,13 @@ def UniformUnnormedRV(lower=-np.inf, upper=np.inf):
 def UniformBoundedRV(lower=0., upper=1.):
     r"""A uniform prior between two finite bounds.
     This is a convenience function with more natural bound parameters
-    than `scipy.stats.uniform`.
+    than ``scipy.stats.uniform``.
 
-    : param lower : lower bound of parameter range
-    : type lower : float
-    : param upper : upper bound of parameter range
-    : type upper : float
-    : return : a frozen rv_continuous instance with normalized uniform
+    :param lower: lower bound of parameter range
+    :type lower: float
+    :param upper: upper bound of parameter range
+    :type upper: float
+    :return: a frozen rv_continuous instance with normalized uniform
                probability inside the range [lower, upper] and 0 outside
     """
     uu = scipy.stats.uniform(lower, (upper - lower))
@@ -118,17 +138,17 @@ def UniformBoundedRV(lower=0., upper=1.):
 def GaussianBoundedRV(loc=0., scale=1., lower=0., upper=1.):
     r"""A Gaussian prior between two finite bounds.
     This is a convenience function with more natural bound parameters
-    than `scipy.stats.truncnorm`.
+    than ``scipy.stats.truncnorm``.
 
-    : param loc : location parameter, mean of distribution
-    : type loc : float
-    : param scale : standard deviation of distribution
-    : type scale : float
-    : param lower : lower bound of parameter range
-    : type lower : float
-    : param upper : upper bound of parameter range
-    : type upper : float
-    : return : a frozen rv_continuous instance with normalized Gaussian
+    :param loc: location parameter, mean of distribution
+    :type loc: float
+    :param scale: standard deviation of distribution
+    :type scale: float
+    :param lower: lower bound of parameter range
+    :type lower: float
+    :param upper: upper bound of parameter range
+    :type upper: float
+    :return: a frozen rv_continuous instance with normalized Gaussian
                probability truncated to the range [lower, upper] and 0 outside
     """
     low, up = (lower - loc) / scale, (upper - loc) / scale
