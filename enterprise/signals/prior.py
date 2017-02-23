@@ -79,7 +79,8 @@ class Prior(object):
         """Return the logarithm of probability distribution function
         at a specified value.
 
-        :param value: (float) Input value of parameter.
+        :param value: Input value of parameter.
+        :type value: float
         :return: log-pdf at input value.
 
         """
