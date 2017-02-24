@@ -5,7 +5,7 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
-from enterprise.signals import priors
+from enterprise.signals import prior
 
 
 class Parameter(object):
@@ -26,7 +26,8 @@ class Parameter(object):
     """
 
     def __init__(self, name=None, value=None, description=None,
-                 uncertainty=None, vary=True, prior=None):
+                 uncertainty=None, vary=True,
+                 prior=prior.Prior(prior.UniformUnnormedRV())):
 
         self.name = name
         self.value = value  # TODO: may want to make this private
@@ -43,9 +44,10 @@ class Parameter(object):
     @prior.setter
     def prior(self, p):
         """Set prior instance."""
-        if not isinstance(p, priors.Prior):
+        if not isinstance(p, prior.Prior):
             # TODO: should use error logging
-            print('ERROR: prior must be instance of Prior().')
+            msg = 'ERROR: prior must be instance of Prior().'
+            raise ValueError(msg)
         self._prior = p
 
     def prior_pdf(self, value=None, logpdf=True):

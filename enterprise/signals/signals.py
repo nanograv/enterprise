@@ -1,6 +1,14 @@
 # signals.py
 
-# Defines the basic signal model interace classes.
+"""
+Defines the basic signal model interace classes. We define three base
+classes at the moment to model stochastic (i.e. red noise, ECORR, etc),
+white noise (i.e. EFAC, EQUAD, etc) and deterministic signals
+(i.e. timing model, wavelets, etc).
+
+Since these are base classes any derived signal classes must implement
+signal-specific functions.
+"""
 
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
@@ -32,7 +40,7 @@ class StochasticSignal(object):
         """
         self._param_dict[param.name] = param
 
-    def update_basis_functions(self, params, *args, **kwargs):
+    def update_basis_functions(self, params):
         """Update basis functions with new parameters if necessary.
 
         Must be created by sub-classes.
@@ -43,7 +51,7 @@ class StochasticSignal(object):
         """
         pass
 
-    def get_kernel_inv_det(self, params, *args, **kwargs):
+    def get_kernel_inv_det(self, params):
         """Compute the inverse of the Gaussian kernel.
 
         This method computes the log-determinant and cholesky factor
