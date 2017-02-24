@@ -68,6 +68,8 @@ Ready to contribute? Here's how to set up `enterprise` for local development.
 
     $ mkvirtualenv enterprise
     $ cd enterprise/
+    $ pip install requirements_dev.txt
+    $ pip install requirements.txt
     $ python setup.py develop
 
 4. Create a branch for local development::
@@ -76,11 +78,11 @@ Ready to contribute? Here's how to set up `enterprise` for local development.
 
    Now you can make your changes locally.
 
-5. When you're done making changes, check that your changes pass flake8 and the tests, including testing other Python versions with tox::
+5. When you're done making changes, check that your changes pass flake8 and the tests, including testing other Python versions with tox (tox not implemented yet). Also check that any new docs are formatted correctly::
 
-    $ flake8 enterprise tests
-    $ python setup.py test or py.test
-    $ tox
+    $ make test
+    $ make lint
+    $ make docs
 
    To get flake8 and tox, just pip install them into your virtualenv.
 
