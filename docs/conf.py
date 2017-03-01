@@ -33,14 +33,6 @@ sys.path.insert(0, project_root)
 
 import enterprise
 
-# allows us to ignore certain directives like flake8 commands.
-from sphinx.ext.autodoc import between
-
-def setup(app):
-    # Register a sphinx.ext.autodoc.between listener to ignore everything
-    # between lines that contain the word IGNORE
-    app.connect('autodoc-process-docstring', between('^.*IGNORE.*$', exclude=True))
-    return app
 
 # -- General configuration ---------------------------------------------
 
@@ -288,3 +280,16 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
+
+# allows readthedocs to auto-generate docs
+def run_apidoc(_):
+    from sphinx.apidoc import main
+    import sys
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+    cur_dir = os.path.abspath(os.path.dirname(__file__))
+    module = '.'
+    output_path = os.path.join(cur_dir, 'source')
+    # main(['-e', '-o', output_path, module, '--force'])
+
+def setup(app):
+    app.connect('builder-inited', run_apidoc)
