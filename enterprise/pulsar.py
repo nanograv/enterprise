@@ -17,6 +17,7 @@ from collections import OrderedDict
 try:
     import libstempo as t2
 except ImportError:
+    print('ERROR: Must have libstempo package installed!')
     t2 = None
 
 
