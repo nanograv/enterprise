@@ -68,8 +68,9 @@ Ready to contribute? Here's how to set up `enterprise` for local development.
 
     $ mkvirtualenv enterprise
     $ cd enterprise/
-    $ pip install requirements_dev.txt
-    $ pip install requirements.txt
+    $ pip install -r requirements_dev.txt
+    $ pip install -r requirements.txt
+    $ pip install libstempo --install-option="--with-tempo2=..."
     $ python setup.py develop
 
 4. Create a branch for local development::
