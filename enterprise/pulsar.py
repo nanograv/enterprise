@@ -14,7 +14,11 @@ import json
 from collections import OrderedDict
 
 # NOTE: PINT interface is not yet available so just import libstempo
-import libstempo as t2
+try:
+    import libstempo as t2
+except ImportError:
+    print('ERROR: Must have libstempo package installed!')
+    t2 = None
 
 
 class Pulsar(object):
