@@ -286,15 +286,12 @@ import subprocess
 def run_apidoc(_):
     modules = ['../enterprise']
     for module in modules:
-        cur_dir = os.path.abspath(os.path.dirname(__file__))
-        #output_path = os.path.join(cur_dir, module, 'doc')
-        output_path = cur_dir
+        output_path = os.path.abspath(os.path.dirname(__file__))
         cmd_path = 'sphinx-apidoc'
         if hasattr(sys, 'real_prefix'):  # Check to see if we are in a virtualenv
             # If we are, assemble the path manually
             cmd_path = os.path.abspath(os.path.join(sys.prefix, 'bin', 'sphinx-apidoc'))
-        print module, output_path, cmd_path
-        subprocess.check_call([cmd_path, '-o', output_path, module, '-f', '-M'])
+        subprocess.check_call([cmd_path, '-o', output_path, '-f', '-M', module])
 
 def setup(app):
     app.connect('builder-inited', run_apidoc)
