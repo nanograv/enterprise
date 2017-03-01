@@ -282,14 +282,18 @@ texinfo_documents = [
 #texinfo_no_detailmenu = False
 
 # allows readthedocs to auto-generate docs
+import subprocess
 def run_apidoc(_):
-    from sphinx.apidoc import main
-    import sys
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-    cur_dir = os.path.abspath(os.path.dirname(__file__))
-    module = '.'
-    output_path = os.path.join(cur_dir, 'source')
-    main(['-e', '-o', output_path, module, '--force'])
+    modules = ['../enterprise']
+    for module in modules:
+        cur_dir = os.path.abspath(os.path.dirname(__file__))
+        output_path = os.path.join(cur_dir, module, 'doc')
+        cmd_path = 'sphinx-apidoc'
+        if hasattr(sys, 'real_prefix'):  # Check to see if we are in a virtualenv
+            # If we are, assemble the path manually
+            cmd_path = os.path.abspath(os.path.join(sys.prefix, 'bin', 'sphinx-apidoc'))
+
+        subprocess.check_call([cmd_path, '-o', output_path, module, '-f', '-M'])
 
 def setup(app):
     app.connect('builder-inited', run_apidoc)
