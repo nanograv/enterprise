@@ -283,7 +283,7 @@ texinfo_documents = [
 
 # allows readthedocs to auto-generate docs
 import subprocess
-def run_apidoc(_):
+def run_apidoc(*args):
     modules = ['../enterprise']
     for module in modules:
         cur_dir = os.path.abspath(os.path.dirname(__file__))
