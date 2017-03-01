@@ -289,7 +289,7 @@ def run_apidoc(_):
     cur_dir = os.path.abspath(os.path.dirname(__file__))
     module = '.'
     output_path = os.path.join(cur_dir, 'source')
-    # main(['-e', '-o', output_path, module, '--force'])
+    main(['-e', '-o', output_path, module, '--force'])
 
 def setup(app):
     app.connect('builder-inited', run_apidoc)
