@@ -44,3 +44,6 @@ Tsun = GMsun / (c**3)
 
 # other useful conversions in mks
 erg = sc.erg
+
+# other things
+DM_K = 2.41e-16  # for DM variation design matrix
