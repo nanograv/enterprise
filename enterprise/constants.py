@@ -25,6 +25,7 @@ h = sc.Planck
 
 # astronomical times in sec (and frequencies in Hz)
 yr = sc.Julian_year
+day = sc.day
 fyr = 1. / yr
 
 # astronomical distances in meters
@@ -34,6 +35,12 @@ pc = sc.parsec
 kpc = pc * 1.e3
 Mpc = pc * 1.e6
 Gpc = pc * 1.e9
+
+# solar mass in kg and m,s natural units
+GMsun = 1.327124400e11  # measured more precisely than Msun alone!
+Msun = GMsun / G
+Rsun = GMsun / (c**2)
+Tsun = GMsun / (c**3)
 
 # other useful conversions in mks
 erg = sc.erg
