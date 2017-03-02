@@ -23,7 +23,8 @@ except ImportError:
 
 class Pulsar(object):
 
-    def __init__(self, parfile, timfile, maxobs=30000, ephem=None):
+    def __init__(self, parfile, timfile, maxobs=30000, ephem=None,
+                 planets=True):
         # Check whether the two files exist
         if not os.path.isfile(parfile) or not os.path.isfile(timfile):
             msg = 'Cannot find parfile {0} or timfile {1}!'.format(
@@ -153,9 +154,46 @@ class Pulsar(object):
                 self._raj = 0.0
                 self._decj = 0.0
 
+        # Get the position vectors of the planets
+        self._planetssb = None
+        if planets:
+            for ii in range(1, 10):
+                tag = 'DMASSPLANET' + str(ii)
+                self.t2pulsar[tag].val = 0.0
+            self.t2pulsar.formbats()
+            self._planetssb = np.zeros((len(self._toas), 9, 6))
+            self._planetssb[:, 0, :] = self.t2pulsar.mercury_ssb
+            self._planetssb[:, 1, :] = self.t2pulsar.venus_ssb
+            self._planetssb[:, 2, :] = self.t2pulsar.earth_ssb
+            self._planetssb[:, 3, :] = self.t2pulsar.mars_ssb
+            self._planetssb[:, 4, :] = self.t2pulsar.jupiter_ssb
+            self._planetssb[:, 5, :] = self.t2pulsar.saturn_ssb
+            self._planetssb[:, 6, :] = self.t2pulsar.uranus_ssb
+            self._planetssb[:, 7, :] = self.t2pulsar.neptune_ssb
+            self._planetssb[:, 8, :] = self.t2pulsar.pluto_ssb
+
     def filter_data(self, start_time=None, end_time=None):
         """Filter data to create a time-slice of overall dataset."""
-        pass
+        if start_time is None and end_time is None:
+            mask = np.ones(self._toas.shape, dtype=bool)
+        else:
+            mask = np.logical_and(self._toas >= start_time * 86400,
+                                  self._toas <= end_time * 86400)
+
+        self._toas = self._toas[mask]
+        self._toaerrs = self._toaerrs[mask]
+        self._residuals = self._residuals[mask]
+        self._ssbfreqs = self._ssbfreqs[mask]
+
+        self._designmatrix = self._designmatrix[mask, :]
+        dmx_mask = np.sum(self._designmatrix, axis=0) != 0.0
+        self._designmatrix = self._designmatrix[:, dmx_mask]
+
+        for key in self._flags:
+            self._flags[key] = self._flags[key][mask]
+
+        if self._planetssb is not None:
+            self._planetssb = self.planetssb[mask, :, :]
 
     def to_pickle(self, savedir):
         """Save object to pickle file."""
@@ -208,3 +246,8 @@ class Pulsar(object):
     def phi(self):
         """Return azimuthal angle of pulsar in radians."""
         return self._raj
+
+    @property
+    def planetssb(self):
+        """Return planetary position vectors at all timestamps"""
+        return self._planetssb
