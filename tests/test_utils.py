@@ -22,13 +22,16 @@ class TestUtils(unittest.TestCase):
         # initialize Pulsar class
         self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_11yv0.gls.par',
                           datadir + '/B1855+09_NANOGrav_11yv0.tim')
-        self.F, _ = utils.createfourierdesignmatrix_red(t=self.psr.toas, nmodes=30)
+        self.F, _ = utils.createfourierdesignmatrix_red(t=self.psr.toas,
+                                                        nmodes=30)
         self.Fdm = utils.createfourierdesignmatrix_dm(t=self.psr.toas,
-                                                      ssbfreqs=self.ssbfreqs,
+                                                      ssbfreqs=self.psr.freqs,
                                                       nmodes=30)
-        self.Fx, self.Fy, self.Fz = utils.createfourierdesignmatrix_eph(t=self.psr.toas,
-                                                      phi=self.phi, theta=self.theta,
-                                                      nmodes=30)
+        tmp = utils.createfourierdesignmatrix_eph(t=self.psr.toas,
+                                                  phi=self.psr.phi,
+                                                  theta=self.psr.theta,
+                                                  nmodes=30)
+        self.Fx, self.Fy, self.Fz = tmp
 
     def test_createfourierdesignmatrix_red(self, nf=30):
         """Check Fourier design matrix shape."""
@@ -54,7 +57,7 @@ class TestUtils(unittest.TestCase):
         msg = 'Ephemeris y-axis Fourier design matrix shape incorrect'
         assert self.Fy.shape == (5634, 2 * nf), msg
 
-    def test_createfourierdesignmatrix_ephx(self, nf=30):
+    def test_createfourierdesignmatrix_ephz(self, nf=30):
         """Check z-axis ephemeris Fourier design matrix shape."""
 
         msg = 'Ephemeris z-axis Fourier design matrix shape incorrect'

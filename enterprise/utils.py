@@ -58,10 +58,10 @@ def createfourierdesignmatrix_red(t, nmodes, freq=False, Tspan=None,
 
     # The sine/cosine modes
     if pshift:
-        F[:,::2] = np.sin(2*np.pi*t[:,None]*f[None,:]
-                              + ranphase[None,:])
-        F[:,1::2] = np.cos(2*np.pi*t[:,None]*f[None,:]
-                               + ranphase[None,:])
+        F[:,::2] = np.sin(2*np.pi*t[:,None]*f[None,:] +
+                          ranphase[None,:])
+        F[:,1::2] = np.cos(2*np.pi*t[:,None]*f[None,:] +
+                           ranphase[None,:])
     elif not pshift:
         F[:,::2] = np.sin(2*np.pi*t[:,None]*f[None,:])
         F[:,1::2] = np.cos(2*np.pi*t[:,None]*f[None,:])
@@ -71,9 +71,11 @@ def createfourierdesignmatrix_red(t, nmodes, freq=False, Tspan=None,
     else:
         return F, ranphase
 
+
 def createfourierdesignmatrix_dm(t, nmodes, ssbfreqs, freq=False,
                                  Tspan=None, logf=False, fmin=None,
                                  fmax=None):
+
     """
     Construct DM-variation fourier design matrix.
 
@@ -111,7 +113,7 @@ def createfourierdesignmatrix_dm(t, nmodes, ssbfreqs, freq=False,
     Ffreqs[1::2] = f
 
     # compute the DM-variation vectors
-    Dm = 1.0/(econst.DM_K * ssbfreqs**2.0 * 1e12) 
+    Dm = 1.0/(const.DM_K * ssbfreqs**2.0 * 1e12)
 
     # The sine/cosine modes
     F[:,::2] = np.sin(2*np.pi*t[:,None]*f[None,:]) * Dm[:,None]
@@ -122,9 +124,11 @@ def createfourierdesignmatrix_dm(t, nmodes, ssbfreqs, freq=False,
     else:
         return F
 
+
 def createfourierdesignmatrix_eph(t, nmodes, phi, theta, freq=False,
-                                 Tspan=None, logf=False, fmin=None,
-                                 fmax=None):
+                                  Tspan=None, logf=False, fmin=None,
+                                  fmax=None):
+
     """
     Construct ephemeris fourier design matrix.
 
@@ -148,6 +152,11 @@ def createfourierdesignmatrix_eph(t, nmodes, phi, theta, freq=False,
     Fx = np.zeros((N, 2*nmodes))
     Fy = np.zeros((N, 2*nmodes))
     Fz = np.zeros((N, 2*nmodes))
+
+    if Tspan is not None:
+        T = Tspan
+    else:
+        T = t.max() - t.min()
 
     # define sampling frequencies
     if fmin is not None and fmax is not None:
@@ -177,7 +186,7 @@ def createfourierdesignmatrix_eph(t, nmodes, phi, theta, freq=False,
     Fy *= y
     Fz *= z
 
-    if freqs:
+    if freq:
         return Fx, Fy, Fz, Ffreqs
     else:
         return Fx, Fy, Fz
