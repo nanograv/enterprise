@@ -33,14 +33,7 @@ class TestUtils(unittest.TestCase):
                                                   nmodes=30)
         self.Fx, self.Fy, self.Fz = tmp
 
-        self.Mm = utils.create_stabletimingdesignmatrix(self.psr.Mmat)
-
-    def test_createstabletimingdesignmatrix(self):
-        """Timing model design matrix shape."""
-
-        msg = 'Timing model design matrix shape incorrect'
-        assert self.Mm.shape == self.psr.Mmat.shape, msg
-
+        
     def test_createfourierdesignmatrix_red(self, nf=30):
         """Check Fourier design matrix shape."""
 

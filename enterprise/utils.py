@@ -10,31 +10,6 @@ import numpy as np
 import enterprise.constants as const
 
 
-def create_stabletimingdesignmatrix(designmat, fastDesign=True):
-    """
-    Construct fourier design matrix from eq 11 of Lentati et al, 2013
-
-    :param designmat: Pulsar timing model design matrix
-    :param fastDesign: Stabilize the design matrix the fast way [True]
-
-    :return: Mm: Stabilized timing model design matrix
-    """
-
-    Mm = designmat.copy()
-
-    if fastDesign:
-
-        norm = np.sqrt(np.sum(Mm ** 2, axis=0))
-        Mm /= norm
-
-    else:
-
-        u, s, v = np.linalg.svd(Mm)
-        Mm = u[:,:len(s)]
-
-    return Mm
-
-
 def createfourierdesignmatrix_red(t, nmodes, freq=False, Tspan=None,
                                   logf=False, fmin=None, fmax=None,
                                   pshift=False):
