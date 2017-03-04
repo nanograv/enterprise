@@ -32,8 +32,7 @@ class TestUtils(unittest.TestCase):
                                                   theta=self.psr.theta,
                                                   nmodes=30)
         self.Fx, self.Fy, self.Fz = tmp
-
-        
+      
     def test_createfourierdesignmatrix_red(self, nf=30):
         """Check Fourier design matrix shape."""
 
