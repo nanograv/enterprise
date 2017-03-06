@@ -14,10 +14,6 @@ from scipy import special as ss
 from pkg_resources import resource_filename, Requirement
 import enterprise.constants as const
 
-SOLAR2S = sc.G / sc.c**3 * 1.98855e30
-KPC2S = sc.parsec / sc.c * 1e3
-MPC2S = sc.parsec / sc.c * 1e6
-
 
 def create_stabletimingdesignmatrix(designmat, fastDesign=True):
     """
@@ -271,7 +267,7 @@ def get_edot(F, mc, e):
     """
 
     # chirp mass
-    mc *= SOLAR2S
+    mc *= const.Tsun
 
     dedt = -304/(15*mc) * (2*np.pi*mc*F)**(8/3) * e * \
         (1 + 121/304*e**2) / ((1-e**2)**(5/2))
@@ -291,7 +287,7 @@ def get_Fdot(F, mc, e):
     """
 
     # chirp mass
-    mc *= SOLAR2S
+    mc *= const.Tsun
 
     dFdt = 48 / (5*np.pi*mc**2) * (2*np.pi*mc*F)**(11/3) * \
         (1 + 73/24*e**2 + 37/96*e**4) / ((1-e**2)**(7/2))
@@ -312,9 +308,9 @@ def get_gammadot(F, mc, q, e):
     """
 
     # chirp mass
-    mc *= SOLAR2S
+    mc *= const.Tsun
 
-    #total mass
+    # total mass
     m = (((1+q)**2)/q)**(3/5) * mc
 
     dgdt = 6*np.pi*F * (2*np.pi*F*m)**(2/3) / (1-e**2) * \
@@ -340,7 +336,6 @@ def get_coupled_constecc_eqns(y, t, mc, e0):
     """
 
     F = y[0]
-    #phase = y[1]
 
     dFdt = get_Fdot(F, mc, e0)
     dphasedt = 2*np.pi*F
@@ -369,11 +364,6 @@ def get_coupled_ecc_eqns(y, t, mc, q):
 
     F = y[0]
     e = y[1]
-    #gamma = y[2]
-    #phase = y[3]
-
-    # total mass
-    #m = (((1+q)**2)/q)**(3/5) * mc
 
     dFdt = get_Fdot(F, mc, e)
     dedt = get_edot(F, mc, e)
@@ -452,8 +442,8 @@ def get_an(n, mc, dl, h0, F, e):
     """
 
     # convert to seconds
-    mc *= SOLAR2S
-    dl *= MPC2S
+    mc *= const.Tsun
+    dl *= const.Mpc / const.c
 
     omega = 2 * np.pi * F
 
@@ -483,8 +473,8 @@ def get_bn(n, mc, dl, h0, F, e):
     """
 
     # convert to seconds
-    mc *= SOLAR2S
-    dl *= MPC2S
+    mc *= const.Tsun
+    dl *= const.Mpc / const.c
 
     omega = 2 * np.pi * F
 
@@ -513,8 +503,8 @@ def get_cn(n, mc, dl, h0, F, e):
     """
 
     # convert to seconds
-    mc *= SOLAR2S
-    dl *= MPC2S
+    mc *= const.Tsun
+    dl *= const.Mpc / const.c
 
     omega = 2 * np.pi * F
 
