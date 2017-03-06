@@ -37,7 +37,7 @@ Mpc = pc * 1.e6
 Gpc = pc * 1.e9
 
 # solar mass in kg and m,s natural units
-GMsun = 1.327124400e11  # measured more precisely than Msun alone!
+GMsun = 1.327124400e20  # measured more precisely than Msun alone!
 Msun = GMsun / G
 Rsun = GMsun / (c**2)
 Tsun = GMsun / (c**3)
