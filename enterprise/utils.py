@@ -9,7 +9,6 @@ from __future__ import (absolute_import, division,
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.integrate import odeint
-import scipy.constants as sc
 from scipy import special as ss
 from pkg_resources import resource_filename, Requirement
 import enterprise.constants as const
