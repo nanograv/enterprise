@@ -94,6 +94,23 @@ class Prior(object):
             v = np.float(value)
         return self._rv.logpdf(v)
 
+    def sample(self, size=1, random_state=None):
+        """Return a sample from probability distribution function.
+        This calls the `rvs` method of the underlying
+        `rv_continuous` class.
+
+        :param size: Defining number of random variates (default is 1).
+        :type size: int or tuple of ints
+        :random_state: If int or RandomState, use it for drawing the random
+                    variates. If None, rely on `self.random_state`.
+                    Default is None.
+        :type random_state: None or int or `np.random.RandomState` instance
+
+        :return: random variate of size
+        :rtype: ndarray or float
+        """
+        return self._rv.rvs(size=size, random_state=random_state)
+
 
 class _UniformUnnormedRV_generator(rv_continuous):
     r"""An unnormalized, uniform prior distribution set to unity
@@ -106,6 +123,9 @@ class _UniformUnnormedRV_generator(rv_continuous):
 
     def _logpdf(self, x):
         return np.zeros_like(x).astype(np.float64, casting='same_kind')
+
+    def _rvs(self):
+        raise RuntimeError('cannot sample from unnormed distribution')
 
 
 def UniformUnnormedRV(lower=-np.inf, upper=np.inf):
