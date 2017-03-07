@@ -16,7 +16,7 @@ import unittest
 from enterprise.signals.prior import Prior
 from enterprise.signals.prior import (UniformUnnormedRV, UniformBoundedRV,
                                       GaussianBoundedRV)
-from scipy.stats import truncnorm
+from scipy.stats import truncnorm, norm
 
 
 class TestPrior(unittest.TestCase):
@@ -33,6 +33,9 @@ class TestPrior(unittest.TestCase):
         mean, std, low, up = 0.9, 0.1, 0.0, 1.0
         self.gPrior = Prior(GaussianBoundedRV(loc=mean, scale=std,
                                               lower=low, upper=up))
+
+        # A Gaussian prior
+        self.nPrior = Prior(norm(loc=0, scale=1))
 
     def test_unnormed_uniform_prior(self):
         """check UniformUnnormedRV"""
@@ -59,3 +62,10 @@ class TestPrior(unittest.TestCase):
         correct = truncnorm(loc=mean, scale=std, a=a, b=b)
         for ii, xx in enumerate(test_vals):
             assert self.gPrior.pdf(xx) == correct.pdf(xx), msg.format(ii)
+
+    def test_sample(self):
+        """check sampling from priors"""
+        msg = "normal sample incorrect"
+        samp = self.nPrior.sample(random_state=10)
+        correct = norm(loc=0, scale=1).rvs(random_state=10)
+        assert samp == correct, msg
