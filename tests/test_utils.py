@@ -11,7 +11,7 @@ Tests for `utils` module.
 import unittest
 from enterprise_test_data import datadir
 from enterprise.pulsar import Pulsar
-from enterprise import utils
+from enterprise.signals import utils
 
 
 class TestUtils(unittest.TestCase):
