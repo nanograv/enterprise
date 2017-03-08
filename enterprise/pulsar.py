@@ -6,6 +6,7 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
 import enterprise
+from enterprise.likelihood import utils
 import numpy as np
 import tempfile
 from ephem import Ecliptic, Equatorial
@@ -24,7 +25,7 @@ except ImportError:
 class Pulsar(object):
 
     def __init__(self, parfile, timfile, maxobs=30000, ephem=None,
-                 planets=True):
+                 planets=True, jitterbin=1.0):
         # Check whether the two files exist
         if not os.path.isfile(parfile) or not os.path.isfile(timfile):
             msg = 'Cannot find parfile {0} or timfile {1}!'.format(
@@ -172,6 +173,33 @@ class Pulsar(object):
             self._planetssb[:, 7, :] = self.t2pulsar.neptune_ssb
             self._planetssb[:, 8, :] = self.t2pulsar.pluto_ssb
 
+        # Sorting data based on epochs and systems
+        self._isort, self._iisort = None, None
+        if 'pta' in self._flags:
+            if 'NANOGrav' in list(set(self.t2pulsar.flagvals('pta'))):
+                # now order everything
+                try:
+                    self._isort, self._iisort = \
+                        utils.argsortTOAs(self._toas,
+                                          self.t2pulsar.flagvals('group'),
+                                          which='jitterext',
+                                          dt=jitterbin/86400.)
+                except KeyError:
+                    self._isort, self._iisort = \
+                        utils.argsortTOAs(self._toas,
+                                          self.t2pulsar.flagvals('f'),
+                                          which='jitterext',
+                                          dt=jitterbin/86400.)
+
+                # sort data
+                self._toas = self._toas[self._isort]
+                self._toaerrs = self._toaerrs[self._isort]
+                self._residuals = self._residuals[self._isort]
+                self._ssbfreqs = self._ssbfreqs[self._isort]
+                self._designmatrix = self._designmatrix[self._isort, :]
+                if planets:
+                    self._planetssb = self._planetssb[self._isort, :, :]
+
     def filter_data(self, start_time=None, end_time=None):
         """Filter data to create a time-slice of overall dataset."""
         if start_time is None and end_time is None:
@@ -251,3 +279,13 @@ class Pulsar(object):
     def planetssb(self):
         """Return planetary position vectors at all timestamps"""
         return self._planetssb
+
+    @property
+    def isort(self):
+        """Return data sorting mask"""
+        return self._isort
+
+    @property
+    def iisort(self):
+        """Return inverse data sorting mask"""
+        return self._iisort
