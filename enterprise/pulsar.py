@@ -197,6 +197,8 @@ class Pulsar(object):
                 self._residuals = self._residuals[self._isort]
                 self._ssbfreqs = self._ssbfreqs[self._isort]
                 self._designmatrix = self._designmatrix[self._isort, :]
+                for key in self._flags:
+                    self._flags[key] = self._flags[key][self._isort]
                 if planets:
                     self._planetssb = self._planetssb[self._isort, :, :]
 
