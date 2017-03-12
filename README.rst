@@ -21,8 +21,8 @@ enterprise
    :target: https://landscape.io/github/nanograv/enterprise/master
    :alt: Code Health
    
-.. image:: https://coveralls.io/repos/github/nanograv/enterprise/badge.svg?branch=dev
-    :target: https://coveralls.io/github/nanograv/enterprise?branch=dev
+.. image:: https://coveralls.io/repos/github/nanograv/enterprise/badge.svg?branch=master
+    :target: https://coveralls.io/github/nanograv/enterprise?branch=master
 
 
 
