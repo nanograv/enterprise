@@ -16,6 +16,15 @@ enterprise
 .. image:: https://pyup.io/repos/github/nanograv/enterprise/shield.svg
      :target: https://pyup.io/repos/github/nanograv/enterprise/
      :alt: Updates
+     
+.. image:: https://landscape.io/github/nanograv/enterprise/master/landscape.svg?style=flat
+   :target: https://landscape.io/github/nanograv/enterprise/master
+   :alt: Code Health
+   
+.. image:: https://coveralls.io/repos/github/nanograv/enterprise/badge.svg?branch=master
+    :target: https://coveralls.io/github/nanograv/enterprise?branch=master
+
+
 
 
 ENTERPRISE (Enhanced Numerical Toolbox Enabling a Robust PulsaR Inference SuitE) is a pulsar timing analysis code, aimed at noise analysis, gravitational-wave searches, and timing model analysis.
