@@ -158,3 +158,36 @@ def SignalCollection(metasignals):
             return phi[idx]
 
     return SignalCollection
+
+
+def Function(func, **kwargs):
+    """Class factory for generic function calls."""
+    class Function(object):
+        def __init__(self, prefix):
+            self._params = {kw: arg(prefix + '_' + kw)
+                            for kw,arg in kwargs.items()}
+
+        def get(self, parname, params={}):
+            try:
+                return self._params[parname].value
+            except AttributeError:
+                return params[parname]
+
+        # params could also be a standard argument here,
+        # but by defining it as ** we allow multiple positional arguments
+        def __call__(self, *args, **params):
+            pardict = {}
+            for kw, par in self._params.items():
+                if par.name in params:
+                    pardict[kw] = params[par.name]
+                elif hasattr(par, 'value'):
+                    pardict[kw] = par.value
+
+            return func(*args, **pardict)
+
+        @property
+        def params(self):
+            return [par for par in self._params.values() if not
+                    isinstance(par,ConstantParameter)]
+
+    return Function
