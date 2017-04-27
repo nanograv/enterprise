@@ -34,7 +34,7 @@ def create_stabletimingdesignmatrix(designmat, fastDesign=True):
     else:
 
         u, s, v = np.linalg.svd(Mm)
-        Mm = u[:,:len(s)]
+        Mm = u[:, :len(s)]
 
     return Mm
 
@@ -613,3 +613,25 @@ def fplus_fcross(psr, gwtheta, gwphi):
     fcross = (np.dot(m, phat)*np.dot(n, phat)) / (1 + np.dot(omhat, phat))
 
     return fplus, fcross
+
+
+def get_independent_columns(arr):
+    """
+    Get independent column indices given input array.
+
+    :param arr: Input array
+
+    :returns:
+        dictionary with column index key and redundant column indices as values
+    """
+    mdict = {}
+    ncol = arr.shape[1]
+    for ii in range(ncol):
+        rlist = []
+        for jj in range(ii+1, ncol):
+            if (np.allclose(arr[:,ii], arr[:,jj], rtol=1e-15) and
+                    jj not in sum(mdict.values(), [])):
+                rlist.append(jj)
+        if rlist:
+            mdict[ii] = rlist
+    return mdict
