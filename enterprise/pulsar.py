@@ -238,6 +238,28 @@ class Pulsar(object):
         return self._flags
 
     @property
+    def backend_flags(self):
+        """Return array of backend flags.
+
+        Not all TOAs have the same flags for all data sets. In order to
+        facilitate this we have a ranked ordering system that will look
+        for flags. The order is `group`, `sys`, `i`, `f`, `fe`+`be`.
+
+        """
+
+        nobs = len(self._toas)
+        bflags = ['flag'] * nobs
+        check = lambda i, fl: fl in self._flags and self._flags[fl][i] != ''
+        flags = [['group'], ['sys'], ['i'], ['f'], ['fe', 'be']]
+        for ii in range(nobs):
+            # TODO: make this cleaner
+            for f in flags:
+                if np.all(map(lambda xx: check(ii, xx), f)):
+                    bflags[ii] = '_'.join(self._flags[x][ii] for x in f)
+                    break
+        return np.array(bflags)
+
+    @property
     def theta(self):
         """Return polar angle of pulsar in radians."""
         return np.pi / 2 - self._decj
