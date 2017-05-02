@@ -8,6 +8,9 @@ from __future__ import (absolute_import, division,
 
 import numpy as np
 import six
+import scipy
+from sksparse.cholmod import cholesky
+
 
 import enterprise.signals.utils as util
 from enterprise.signals.parameter import ConstantParameter
@@ -191,3 +194,44 @@ def Function(func, **kwargs):
                     isinstance(par,ConstantParameter)]
 
     return Function
+
+
+class csc_matrix_alt(scipy.sparse.csc_matrix):
+    """Sub-class of ``scipy.sparse.csc_matrix`` with custom ``add`` and
+    ``solve`` methods.
+    """
+
+    def _add_diag(self, other):
+        other_diag = scipy.sparse.dia_matrix(
+            (other, np.array([0])),
+            shape=(other.shape[0], other.shape[0]))
+        return self._binopt(other_diag, '_plus_')
+
+    def __add__(self, other):
+
+        if isinstance(other, np.ndarray) and other.ndim == 1:
+            return self._add_diag(other)
+        else:
+            return super(csc_matrix_alt, self).__add__(other)
+
+    def solve(self, other, logdet=False):
+        cf = cholesky(self)
+        ret = (cf(other), cf.logdet()) if logdet else cf(other)
+        return ret
+
+
+class ndarray_alt(np.ndarray):
+    """Sub-class of ``np.ndarray`` with custom ``solve`` method."""
+
+    def __new__(cls, inputarr):
+        obj = np.asarray(inputarr).view(cls)
+        return obj
+
+    def solve(self, other, logdet=False):
+        if other.ndim == 1:
+            No = np.array(other / self)
+        elif other.ndim == 2:
+            No = np.array(other / self[:,None])
+
+        ret = (No, float(np.sum(np.log(self)))) if logdet else No
+        return ret

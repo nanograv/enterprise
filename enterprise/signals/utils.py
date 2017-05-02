@@ -61,7 +61,6 @@ def createfourierdesignmatrix_red(t, nmodes, freq=False, Tspan=None,
 
     :return: F: fourier design matrix
     :return: f: Sampling frequencies (if freq=True)
-    :return: ranphase: Phase offsets applied to basis functions
     """
 
     N = len(t)
@@ -635,3 +634,66 @@ def get_independent_columns(arr):
         if rlist:
             mdict[ii] = rlist
     return mdict
+
+
+# selection functions
+# TODO could do better with some sort of selection object like Function
+def get_flag_masks(name, flags):
+    """Creates boolean masks corresponding to backend flags.
+
+    :param name: Name of parameter to be masked
+    :param flags: Array of flag values used for masking.
+    :type flags: ndarray
+
+    :return: Dictionary of boolean arrays keyed on unique flag names.
+    :rtype: dictionary
+
+    """
+    return [('_'.join([name, f]), flags == f) for f in np.unique(flags)]
+
+
+def get_masked_array_dict(masks, arr):
+    ret = {}
+    for key, val in masks:
+        ret[key] = arr.copy()
+        ret[key][~val] = 0.0
+
+    return ret
+
+
+def get_masked_data(prefix, parname, parameter, flags, arr):
+    masks = get_flag_masks(parname, flags)
+    params = {}
+    for key, val in masks:
+        params.update({key: parameter('_'.join([prefix, key]))})
+
+    ma = get_masked_array_dict(masks, arr)
+
+    return params, ma
+
+
+def create_quantization_matrix(times, flags, dt=1):
+    """Create quantization matrix mapping TOAs to observing epochs."""
+    isort = np.argsort(times)
+
+    bucket_ref = [[times[isort[0]], flags[isort[0]]]]
+    bucket_ind = [[isort[0]]]
+
+    for i in isort[1:]:
+        if times[i] - bucket_ref[-1][0] < dt and flags[i] == bucket_ref[-1][1]:
+            bucket_ind[-1].append(i)
+        else:
+            bucket_ref.append([times[i], flags[i]])
+            bucket_ind.append([i])
+
+    # find only epochs with more than 1 TOA
+    bucket_ind2 = [ind for ind in bucket_ind if len(ind) > 2]
+
+    avetoas = np.array([np.mean(times[l]) for l in bucket_ind2],'d')
+    aveflags = np.array([flags[l[0]] for l in bucket_ind2])
+
+    U = np.zeros((len(times),len(bucket_ind2)),'d')
+    for i,l in enumerate(bucket_ind2):
+        U[l,i] = 1
+
+    return avetoas, aveflags, U
