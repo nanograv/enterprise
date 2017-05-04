@@ -8,12 +8,11 @@ from __future__ import (absolute_import, division,
 
 import numpy as np
 
-import enterprise.signals.utils as util
 from enterprise.signals import parameter
 import enterprise.signals.signal_base as base
 
 
-def MeasurementNoise(efac=parameter.Uniform(0.5,1.5), by_backend=False):
+def MeasurementNoise(efac=parameter.Uniform(0.5,1.5), selection=None):
     """Class factory for EFAC type measurement noise."""
 
     class MeasurementNoise(base.Signal):
@@ -22,9 +21,9 @@ def MeasurementNoise(efac=parameter.Uniform(0.5,1.5), by_backend=False):
 
         def __init__(self, psr):
 
-            if by_backend:
-                self._params, self._ndiag = util.get_masked_data(
-                    psr.name, 'efac', efac, psr.backend_flags, psr.toaerrs**2)
+            if selection is not None:
+                sel = selection(psr, 'efac', efac)
+                self._params, self._ndiag = sel(psr.toaerrs**2)
             else:
                 self._params = {'efac': efac(psr.name + '_efac')}
                 self._ndiag = {'efac':psr.toaerrs**2}
@@ -38,7 +37,7 @@ def MeasurementNoise(efac=parameter.Uniform(0.5,1.5), by_backend=False):
     return MeasurementNoise
 
 
-def EquadNoise(log10_equad=parameter.Uniform(-10,-5), by_backend=False):
+def EquadNoise(log10_equad=parameter.Uniform(-10,-5), selection=None):
     """Class factory for EQUAD type measurement noise."""
 
     class EquadNoise(base.Signal):
@@ -47,10 +46,9 @@ def EquadNoise(log10_equad=parameter.Uniform(-10,-5), by_backend=False):
 
         def __init__(self,psr):
 
-            if by_backend:
-                self._params, self._ndiag = util.get_masked_data(
-                    psr.name, 'log10_equad', log10_equad, psr.backend_flags,
-                    np.ones_like(psr.toaerrs))
+            if selection is not None:
+                sel = selection(psr, 'log10_equad', log10_equad)
+                self._params, self._ndiag = sel(np.ones_like(psr.toaerrs))
             else:
                 self._params = {'log10_equad':
                                 log10_equad(psr.name + '_log10_equad')}

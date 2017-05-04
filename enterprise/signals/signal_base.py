@@ -9,6 +9,7 @@ from __future__ import (absolute_import, division,
 import numpy as np
 import six
 import scipy
+import inspect
 from sksparse.cholmod import cholesky
 
 
@@ -194,6 +195,39 @@ def Function(func, **kwargs):
                     isinstance(par,ConstantParameter)]
 
     return Function
+
+
+def Selection(func):
+    """Class factory for TOA selection."""
+
+    class Selection(object):
+        def __init__(self, psr, parname, parameter):
+            self._psr = psr
+            self._parname = parname
+            self._parameter = parameter
+
+        def _get_masked_array_dict(self, masks, arr):
+            ret = {}
+            for key, val in masks:
+                ret[key] = arr.copy()
+                ret[key][~val] = 0.0
+            return ret
+
+        def __call__(self, arr):
+            args = inspect.getargspec(func).args[1:]
+            kwargs = {}
+            for arg in args:
+                kwargs[arg] = getattr(self._psr, arg)
+            masks = func(self._parname, **kwargs)
+            params = {}
+            for key, val in masks:
+                params.update({key: self._parameter(
+                    '_'.join([self._psr.name, key]))})
+
+            ma = self._get_masked_array_dict(masks, arr)
+            return params, ma
+
+    return Selection
 
 
 class csc_matrix_alt(scipy.sparse.csc_matrix):

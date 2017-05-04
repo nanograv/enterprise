@@ -638,18 +638,19 @@ def get_independent_columns(arr):
 
 # selection functions
 # TODO could do better with some sort of selection object like Function
-def get_flag_masks(name, flags):
+def get_flag_masks(name, backend_flags):
     """Creates boolean masks corresponding to backend flags.
 
     :param name: Name of parameter to be masked
-    :param flags: Array of flag values used for masking.
+    :param backend_flags: Array of flag values used for masking.
     :type flags: ndarray
 
-    :return: Dictionary of boolean arrays keyed on unique flag names.
-    :rtype: dictionary
+    :return: list of tuples with unique flag names and boolean arrays.
+    :rtype: list
 
     """
-    return [('_'.join([name, f]), flags == f) for f in np.unique(flags)]
+    return [('_'.join([name, f]), backend_flags == f)
+            for f in np.unique(backend_flags)]
 
 
 def get_masked_array_dict(masks, arr):
@@ -697,3 +698,14 @@ def create_quantization_matrix(times, flags, dt=1):
         U[l,i] = 1
 
     return avetoas, aveflags, U
+
+
+def powerlaw(f, log10_A=-16, gamma=5):
+    return ((10**log10_A)**2 / 12.0 / np.pi**2 *
+            const.fyr**(gamma-3) * f**(-gamma))
+
+
+def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10/3, beta=0.5):
+    hcf = (10**log10_A * (f / const.fyr) ** ((3-gamma) / 2) /
+           (1 + (10**lf0 / f) ** kappa) ** beta)
+    return hcf**2/12/np.pi**2/f**3
