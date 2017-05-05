@@ -10,9 +10,12 @@ import numpy as np
 
 from enterprise.signals import parameter
 import enterprise.signals.signal_base as base
+from enterprise.signals import selections
+from enterprise.signals.selections import Selection
 
 
-def MeasurementNoise(efac=parameter.Uniform(0.5,1.5), selection=None):
+def MeasurementNoise(efac=parameter.Uniform(0.5,1.5),
+                     selection=Selection(selections.no_selection)):
     """Class factory for EFAC type measurement noise."""
 
     class MeasurementNoise(base.Signal):
@@ -21,12 +24,14 @@ def MeasurementNoise(efac=parameter.Uniform(0.5,1.5), selection=None):
 
         def __init__(self, psr):
 
-            if selection is not None:
-                sel = selection(psr, 'efac', efac)
-                self._params, self._ndiag = sel(psr.toaerrs**2)
-            else:
-                self._params = {'efac': efac(psr.name + '_efac')}
-                self._ndiag = {'efac':psr.toaerrs**2}
+            #if selection is not None:
+            #    sel = selection(psr, 'efac', efac)
+            #    self._params, self._ndiag = sel(psr.toaerrs**2)
+            #else:
+            #    self._params = {'efac': efac(psr.name + '_efac')}
+            #    self._ndiag = {'efac':psr.toaerrs**2}
+            sel = selection(psr, 'efac', efac)
+            self._params, self._ndiag = sel(psr.toaerrs**2)
 
         def get_ndiag(self, params):
             ret = base.ndarray_alt(np.sum(
@@ -37,7 +42,8 @@ def MeasurementNoise(efac=parameter.Uniform(0.5,1.5), selection=None):
     return MeasurementNoise
 
 
-def EquadNoise(log10_equad=parameter.Uniform(-10,-5), selection=None):
+def EquadNoise(log10_equad=parameter.Uniform(-10,-5),
+               selection=Selection(selections.no_selection)):
     """Class factory for EQUAD type measurement noise."""
 
     class EquadNoise(base.Signal):
@@ -46,13 +52,15 @@ def EquadNoise(log10_equad=parameter.Uniform(-10,-5), selection=None):
 
         def __init__(self,psr):
 
-            if selection is not None:
-                sel = selection(psr, 'log10_equad', log10_equad)
-                self._params, self._ndiag = sel(np.ones_like(psr.toaerrs))
-            else:
-                self._params = {'log10_equad':
-                                log10_equad(psr.name + '_log10_equad')}
-                self._ndiag = {'log10_equad':np.ones_like(psr.toaerrs)}
+            #if selection is not None:
+            #    sel = selection(psr, 'log10_equad', log10_equad)
+            #    self._params, self._ndiag = sel(np.ones_like(psr.toaerrs))
+            #else:
+            #    self._params = {'log10_equad':
+            #                    log10_equad(psr.name + '_log10_equad')}
+            #    self._ndiag = {'log10_equad':np.ones_like(psr.toaerrs)}
+            sel = selection(psr, 'log10_equad', log10_equad)
+            self._params, self._ndiag = sel(np.ones_like(psr.toaerrs))
 
         def get_ndiag(self, params):
             ret = base.ndarray_alt(np.sum(

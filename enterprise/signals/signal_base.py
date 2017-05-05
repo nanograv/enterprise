@@ -9,9 +9,7 @@ from __future__ import (absolute_import, division,
 import numpy as np
 import six
 import scipy
-import inspect
 from sksparse.cholmod import cholesky
-
 
 import enterprise.signals.utils as util
 from enterprise.signals.parameter import ConstantParameter
@@ -32,7 +30,6 @@ class MetaSignal(type):
 class MetaCollection(type):
     """Metaclass for Signal collections. Allows addition of
     ``SignalCollection`` classes.
-
     """
 
     def __add__(self, other):
@@ -57,7 +54,6 @@ class Signal(object):
         return [par for par in self._params.values() if not
                 isinstance(par, ConstantParameter)]
 
-    # note that we override the constant if parameter is given in dictionary?
     def get(self, parname, params={}):
         try:
             return params[self._params[parname].name]
@@ -65,18 +61,26 @@ class Signal(object):
             return self._params[parname].value
 
     def get_ndiag(self, params):
+        """Returns the diagonal of the white noise vector `N`.
+
+        This method also supports block diagaonal sparse matrices.
+        """
         return None
 
     def get_delay(self, params):
+        """Returns the waveform of a deterministic signal."""
         return None
 
     def get_basis(self, params=None):
+        """Returns the basis array of shape N_toa x N_basis."""
         return None
 
     def get_phi(self, params):
+        """Returns a diagonal covaraince matrix of the basis amplitudes."""
         return None
 
     def get_phiinv(self, params):
+        """Returns inverse of the covaraince of basis amplitudes."""
         return None
 
 
@@ -115,13 +119,14 @@ def SignalCollection(metasignals):
         def get_common_basis_mappings(self, params):
             if not self._cbasis_bool:
                 self._cbasis_bool = True
-                self._cbasis = util.get_independent_columns(self.Fmat(params))
+                self._cbasis = util.get_independent_columns(
+                    self.get_basis(params))
             return self._cbasis
 
         # there may be a smarter way to write these...
 
         def get_ndiag(self, params):
-            ndiags = [signal.ndiag(params) for signal in self._signals]
+            ndiags = [signal.get_ndiag(params) for signal in self._signals]
             return sum(ndiag for ndiag in ndiags if ndiag is not None)
 
         def get_delay(self, params):
@@ -195,39 +200,6 @@ def Function(func, **kwargs):
                     isinstance(par,ConstantParameter)]
 
     return Function
-
-
-def Selection(func):
-    """Class factory for TOA selection."""
-
-    class Selection(object):
-        def __init__(self, psr, parname, parameter):
-            self._psr = psr
-            self._parname = parname
-            self._parameter = parameter
-
-        def _get_masked_array_dict(self, masks, arr):
-            ret = {}
-            for key, val in masks:
-                ret[key] = arr.copy()
-                ret[key][~val] = 0.0
-            return ret
-
-        def __call__(self, arr):
-            args = inspect.getargspec(func).args[1:]
-            kwargs = {}
-            for arg in args:
-                kwargs[arg] = getattr(self._psr, arg)
-            masks = func(self._parname, **kwargs)
-            params = {}
-            for key, val in masks:
-                params.update({key: self._parameter(
-                    '_'.join([self._psr.name, key]))})
-
-            ma = self._get_masked_array_dict(masks, arr)
-            return params, ma
-
-    return Selection
 
 
 class csc_matrix_alt(scipy.sparse.csc_matrix):
