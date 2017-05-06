@@ -9,14 +9,15 @@ from __future__ import (absolute_import, division,
 
 import numpy as np
 
-import enterprise.signals.utils as util
+from enterprise.signals import utils
 from enterprise.signals import parameter
 import enterprise.signals.signal_base as base
 from enterprise.signals import selections
 from enterprise.signals.selections import Selection
 
 
-def FourierBasisGP(spectrum, components=20):
+def FourierBasisGP(spectrum, components=20,
+                   selection=Selection(selections.no_selection)):
     """Class factory for fourier basis GPs."""
 
     class FourierBasisGP(base.Signal):
@@ -24,23 +25,44 @@ def FourierBasisGP(spectrum, components=20):
         signal_name = 'red noise'
 
         def __init__(self, psr):
-            self._spectrum = spectrum(psr.name)
-            self._params = self._spectrum._params
 
-            self._toas = psr.toas
-            self._T = np.max(self._toas) - np.min(self._toas)
+            # TODO: this could be cleaned up...
+            sel = selection(psr)
+            self._spectrum = {}
+            self._f2 = {}
+            self._params = {}
+            Fmats = {}
+            for key, mask in sel.masks.items():
+                self._spectrum[key] = spectrum(psr.name, key)
+                Fmats[key], self._f2[key], _ = \
+                    utils.createfourierdesignmatrix_red(
+                        psr.toas[mask], components, freq=True)
+                for param in self._spectrum[key]._params.values():
+                    self._params[param.name] = param
 
-            self._F, self._f2, _ = util.createfourierdesignmatrix_red(
-                self._toas, nmodes=components, freq=True)
+            nf = np.sum(F.shape[1] for F in Fmats.values())
+            self._F = np.zeros((len(psr.toas), nf))
+            self._phi = np.zeros(nf)
+            self._slices = {}
+            nftot = 0
+            for key, mask in sel.masks.items():
+                Fmat = Fmats[key]
+                nn = Fmat.shape[1]
+                self._F[mask, nftot:nn+nftot] = Fmat
+                self._slices.update({key: slice(nftot, nn+nftot)})
+                nftot += nn
 
         def get_basis(self, params=None):
             return self._F
 
         def get_phi(self, params):
-            return self._spectrum(self._f2, **params) / self._T
+            for key, slc in self._slices.items():
+                self._phi[slc] = self._spectrum[key](
+                    self._f2[key], **params) * self._f2[key][0]
+            return self._phi
 
         def get_phiinv(self, params):
-            return self._T / self._spectrum(self._f2, **params)
+            return 1 / self.get_phi(params)
 
         @property
         def basis_shape(self):
@@ -89,28 +111,32 @@ def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
 
         def __init__(self, psr):
 
-            sel = selection(psr, 'log10_ecorr', log10_ecorr)
-            self._params, self._masks = sel()
-            Umats = []
+            # TODO: this could be cleaned up and probably done in one loop...
+            sel = selection(psr)
+            self._params, self._masks = sel('log10_ecorr', log10_ecorr)
+            Umats = {}
             for key, mask in self._masks.items():
-                Umats.append(util.create_quantization_matrix(psr.toas[mask]))
-            nepoch = np.sum(U.shape[1] for U in Umats)
+                Umats.update({key: utils.create_quantization_matrix(
+                    psr.toas[mask])})
+            nepoch = np.sum(U.shape[1] for U in Umats.values())
             self._F = np.zeros((len(psr.toas), nepoch))
             netot = 0
             self._jvec = {}
-            for (key, mask), Umat in zip(self._masks.items(), Umats):
+            self._phi = np.zeros(nepoch)
+            for key, mask in self._masks.items():
+                Umat = Umats[key]
                 nn = Umat.shape[1]
                 self._F[mask, netot:nn+netot] = Umat
-                self._jvec.update({key:np.ones(nn)})
+                self._jvec.update({key: slice(netot, nn+netot)})
                 netot += nn
 
         def get_basis(self, params=None):
             return self._F
 
         def get_phi(self, params):
-            ret = np.hstack([10**(2*self.get(p, params))*self._jvec[p]
-                             for p in self._params])
-            return ret
+            for p in self._params:
+                self._phi[self._jvec[p]] = 10**(2*self.get(p, params))
+            return self._phi
 
         def get_phiinv(self, params):
             return 1 / self.get_phi(params)

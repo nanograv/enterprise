@@ -45,21 +45,22 @@ def Selection(func):
     """Class factory for TOA selection."""
 
     class Selection(object):
-        def __init__(self, psr, parname, parameter):
+        def __init__(self, psr):
             self._psr = psr
-            self._parname = parname
-            self._parameter = parameter
+
+        @property
+        def masks(self):
+            return selection_func(func)(self._psr)
 
         def _get_masked_array_dict(self, masks, arr):
             return {key: val*arr for key, val in masks.items()}
 
-        def __call__(self, arr=None):
-            masks = selection_func(func)(self._psr)
+        def __call__(self, parname, parameter, arr=None):
             params, kmasks = {}, {}
-            for key, val in masks.items():
-                kname = '_'.join([self._parname, key])
+            for key, val in self.masks.items():
+                kname = '_'.join([parname, key])
                 pname = '_'.join([self._psr.name, kname])
-                params.update({kname: self._parameter(pname)})
+                params.update({kname: parameter(pname)})
                 kmasks.update({kname:val})
 
             if arr is not None:

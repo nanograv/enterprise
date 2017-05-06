@@ -172,9 +172,13 @@ def SignalCollection(metasignals):
 def Function(func, **kwargs):
     """Class factory for generic function calls."""
     class Function(object):
-        def __init__(self, prefix):
-            self._params = {kw: arg(prefix + '_' + kw)
-                            for kw,arg in kwargs.items()}
+        def __init__(self, prefix, postfix=None):
+            if postfix is not None:
+                self._params = {kw: arg('_'.join([prefix, kw, postfix]))
+                                for kw,arg in kwargs.items()}
+            else:
+                self._params = {kw: arg('_'.join([prefix, kw]))
+                                for kw,arg in kwargs.items()}
 
         def get(self, parname, params={}):
             try:

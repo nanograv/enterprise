@@ -24,8 +24,8 @@ def MeasurementNoise(efac=parameter.Uniform(0.5,1.5),
 
         def __init__(self, psr):
 
-            sel = selection(psr, 'efac', efac)
-            self._params, self._ndiag = sel(psr.toaerrs**2)
+            sel = selection(psr)
+            self._params, self._ndiag = sel('efac', efac, psr.toaerrs**2)
 
         def get_ndiag(self, params):
             ret = base.ndarray_alt(np.sum(
@@ -46,8 +46,9 @@ def EquadNoise(log10_equad=parameter.Uniform(-10,-5),
 
         def __init__(self,psr):
 
-            sel = selection(psr, 'log10_equad', log10_equad)
-            self._params, self._ndiag = sel(np.ones_like(psr.toaerrs))
+            sel = selection(psr)
+            self._params, self._ndiag = sel('log10_equad', log10_equad,
+                                            np.ones_like(psr.toaerrs))
 
         def get_ndiag(self, params):
             ret = base.ndarray_alt(np.sum(
