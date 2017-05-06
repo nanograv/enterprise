@@ -58,7 +58,7 @@ def Selection(func):
         def __call__(self, parname, parameter, arr=None):
             params, kmasks = {}, {}
             for key, val in self.masks.items():
-                kname = '_'.join([parname, key])
+                kname = '_'.join([parname, key]) if key else parname
                 pname = '_'.join([self._psr.name, kname])
                 params.update({kname: parameter(pname)})
                 kmasks.update({kname:val})
