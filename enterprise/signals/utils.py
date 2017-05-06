@@ -636,68 +636,28 @@ def get_independent_columns(arr):
     return mdict
 
 
-# selection functions
-# TODO could do better with some sort of selection object like Function
-def get_flag_masks(name, backend_flags):
-    """Creates boolean masks corresponding to backend flags.
-
-    :param name: Name of parameter to be masked
-    :param backend_flags: Array of flag values used for masking.
-    :type flags: ndarray
-
-    :return: list of tuples with unique flag names and boolean arrays.
-    :rtype: list
-
-    """
-    return [('_'.join([name, f]), backend_flags == f)
-            for f in np.unique(backend_flags)]
-
-
-def get_masked_array_dict(masks, arr):
-    ret = {}
-    for key, val in masks:
-        ret[key] = arr.copy()
-        ret[key][~val] = 0.0
-
-    return ret
-
-
-def get_masked_data(prefix, parname, parameter, flags, arr):
-    masks = get_flag_masks(parname, flags)
-    params = {}
-    for key, val in masks:
-        params.update({key: parameter('_'.join([prefix, key]))})
-
-    ma = get_masked_array_dict(masks, arr)
-
-    return params, ma
-
-
-def create_quantization_matrix(times, flags, dt=1):
+def create_quantization_matrix(times, dt=1):
     """Create quantization matrix mapping TOAs to observing epochs."""
     isort = np.argsort(times)
 
-    bucket_ref = [[times[isort[0]], flags[isort[0]]]]
+    bucket_ref = [times[isort[0]]]
     bucket_ind = [[isort[0]]]
 
     for i in isort[1:]:
-        if times[i] - bucket_ref[-1][0] < dt and flags[i] == bucket_ref[-1][1]:
+        if times[i] - bucket_ref[-1] < dt:
             bucket_ind[-1].append(i)
         else:
-            bucket_ref.append([times[i], flags[i]])
+            bucket_ref.append(times[i])
             bucket_ind.append([i])
 
     # find only epochs with more than 1 TOA
     bucket_ind2 = [ind for ind in bucket_ind if len(ind) > 2]
 
-    avetoas = np.array([np.mean(times[l]) for l in bucket_ind2],'d')
-    aveflags = np.array([flags[l[0]] for l in bucket_ind2])
-
     U = np.zeros((len(times),len(bucket_ind2)),'d')
     for i,l in enumerate(bucket_ind2):
         U[l,i] = 1
 
-    return avetoas, aveflags, U
+    return U
 
 
 def powerlaw(f, log10_A=-16, gamma=5):

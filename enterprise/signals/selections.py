@@ -53,7 +53,7 @@ def Selection(func):
         def _get_masked_array_dict(self, masks, arr):
             return {key: val*arr for key, val in masks.items()}
 
-        def __call__(self, arr):
+        def __call__(self, arr=None):
             masks = selection_func(func)(self._psr)
             params, kmasks = {}, {}
             for key, val in masks.items():
@@ -62,12 +62,11 @@ def Selection(func):
                 params.update({kname: self._parameter(pname)})
                 kmasks.update({kname:val})
 
-            if arr.ndim == 1:
+            if arr is not None:
                 ma = self._get_masked_array_dict(kmasks, arr)
                 ret = (params, ma)
             else:
                 ret = params, kmasks
-
             return ret
 
     return Selection

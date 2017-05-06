@@ -24,12 +24,6 @@ def MeasurementNoise(efac=parameter.Uniform(0.5,1.5),
 
         def __init__(self, psr):
 
-            #if selection is not None:
-            #    sel = selection(psr, 'efac', efac)
-            #    self._params, self._ndiag = sel(psr.toaerrs**2)
-            #else:
-            #    self._params = {'efac': efac(psr.name + '_efac')}
-            #    self._ndiag = {'efac':psr.toaerrs**2}
             sel = selection(psr, 'efac', efac)
             self._params, self._ndiag = sel(psr.toaerrs**2)
 
@@ -52,13 +46,6 @@ def EquadNoise(log10_equad=parameter.Uniform(-10,-5),
 
         def __init__(self,psr):
 
-            #if selection is not None:
-            #    sel = selection(psr, 'log10_equad', log10_equad)
-            #    self._params, self._ndiag = sel(np.ones_like(psr.toaerrs))
-            #else:
-            #    self._params = {'log10_equad':
-            #                    log10_equad(psr.name + '_log10_equad')}
-            #    self._ndiag = {'log10_equad':np.ones_like(psr.toaerrs)}
             sel = selection(psr, 'log10_equad', log10_equad)
             self._params, self._ndiag = sel(np.ones_like(psr.toaerrs))
 

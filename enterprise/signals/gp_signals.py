@@ -12,6 +12,8 @@ import numpy as np
 import enterprise.signals.utils as util
 from enterprise.signals import parameter
 import enterprise.signals.signal_base as base
+from enterprise.signals import selections
+from enterprise.signals.selections import Selection
 
 
 def FourierBasisGP(spectrum, components=20):
@@ -78,31 +80,36 @@ def TimingModel():
     return TimingModel
 
 
-def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5), by_backend=False):
+def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
+                    selection=Selection(selections.no_selection)):
+
     class EcorrBasisModel(base.Signal):
         signal_type = 'basis'
         signal_name = 'ecorr'
 
         def __init__(self, psr):
 
-            avetoas, aveflags, self._F = util.create_quantization_matrix(
-                psr.toas, psr.backend_flags, dt=1)
-
-            if by_backend:
-                self._params, self._jvec = util.get_masked_data(
-                    psr.name, 'log10_ecorr', log10_ecorr, aveflags,
-                    np.ones_like(avetoas))
-            else:
-                self._params = {'log10_ecorr':
-                                log10_ecorr(psr.name + '_log10_ecorr')}
-                self._jvec = {'log10_ecorr':np.ones_like(avetoas)}
+            sel = selection(psr, 'log10_ecorr', log10_ecorr)
+            self._params, self._masks = sel()
+            Umats = []
+            for key, mask in self._masks.items():
+                Umats.append(util.create_quantization_matrix(psr.toas[mask]))
+            nepoch = np.sum(U.shape[1] for U in Umats)
+            self._F = np.zeros((len(psr.toas), nepoch))
+            netot = 0
+            self._jvec = {}
+            for (key, mask), Umat in zip(self._masks.items(), Umats):
+                nn = Umat.shape[1]
+                self._F[mask, netot:nn+netot] = Umat
+                self._jvec.update({key:np.ones(nn)})
+                netot += nn
 
         def get_basis(self, params=None):
             return self._F
 
         def get_phi(self, params):
-            ret = np.sum([10**(2*self.get(p, params))*self._jvec[p]
-                          for p in self._params], axis=0)
+            ret = np.hstack([10**(2*self.get(p, params))*self._jvec[p]
+                             for p in self._params])
             return ret
 
         def get_phiinv(self, params):
