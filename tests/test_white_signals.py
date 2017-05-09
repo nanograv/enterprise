@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-test_signals
+test_white_signals
 ----------------------------------
 
 Tests for signal modules.
@@ -20,7 +20,7 @@ from enterprise.signals.selections import Selection
 import enterprise.signals.white_signals as ws
 
 
-class TestSignals(unittest.TestCase):
+class TestWhiteSignals(unittest.TestCase):
 
     def setUp(self):
         """Setup the Pulsar object."""
@@ -28,12 +28,6 @@ class TestSignals(unittest.TestCase):
         # initialize Pulsar class
         self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_11yv0.gls.par',
                           datadir + '/B1855+09_NANOGrav_11yv0.tim')
-
-    def get_params(self, sm):
-        """Get parameter dictionary mapping for signal model."""
-        x = np.array([p.sample() for p in sm.params]).flatten()
-        params = {par.name: x for par, x in zip(sm.params, x)}
-        return params
 
     def test_efac(self):
         """Test that efac signal returns correct covariance."""
