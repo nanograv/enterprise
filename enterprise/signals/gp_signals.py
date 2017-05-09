@@ -17,7 +17,8 @@ from enterprise.signals.selections import Selection
 
 
 def FourierBasisGP(spectrum, components=20,
-                   selection=Selection(selections.no_selection)):
+                   selection=Selection(selections.no_selection),
+                   Tspan=None):
     """Class factory for fourier basis GPs."""
 
     class FourierBasisGP(base.Signal):
@@ -36,7 +37,7 @@ def FourierBasisGP(spectrum, components=20,
                 self._spectrum[key] = spectrum(psr.name, key)
                 Fmats[key], self._f2[key], _ = \
                     utils.createfourierdesignmatrix_red(
-                        psr.toas[mask], components, freq=True)
+                        psr.toas[mask], components, freq=True, Tspan=Tspan)
                 for param in self._spectrum[key]._params.values():
                     self._params[param.name] = param
 
