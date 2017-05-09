@@ -19,8 +19,9 @@ env:
 #- TOXENV=flake8
 before_install:
     - sudo apt-get install gfortran
+    - sudo apt-get install libsuitesparse-dev
 
-install: 
+install:
     - export TEMPO2=$HOME/.local/tempo2
     - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$TEMPO2/lib
     - mkdir -p $TEMPO2
@@ -41,7 +42,7 @@ install:
 language: python
 python: 2.7
 #script: tox -e ${TOXENV}
-script: 
+script:
     - make test
     - make lint
 after_success:
