@@ -579,11 +579,12 @@ def calculate_splus_scross(nmax, mc, dl, h0, F, e,
     return np.sum(splus_n, axis=1), np.sum(scross_n, axis=1)
 
 
-def fplus_fcross(psr, gwtheta, gwphi):
+def fplus_fcross(ptheta, pphi, gwtheta, gwphi):
     """
     Compute gravitational-wave quadrupolar antenna pattern.
 
-    :param psr: pulsar object
+    :param ptheta: Polar angle of pulsar in celestial coords [radians]
+    :param pphi: Azimuthal angle of pulsar in celestial coords [radians]
     :param gwtheta: Polar angle of GW source in celestial coords [radians]
     :param gwphi: Azimuthal angle of GW source in celestial coords [radians]
 
@@ -598,10 +599,6 @@ def fplus_fcross(psr, gwtheta, gwphi):
     m = np.array([singwphi, -cosgwphi, 0.0])
     n = np.array([-cosgwtheta*cosgwphi, -cosgwtheta*singwphi, singwtheta])
     omhat = np.array([-singwtheta*cosgwphi, -singwtheta*singwphi, -cosgwtheta])
-
-    # pulsar location
-    ptheta = np.pi/2 - psr.psr_locs[1]
-    pphi = psr.psr_locs[0]
 
     # use definition from Sesana et al 2010 and Ellis et al 2012
     phat = np.array([np.sin(ptheta)*np.cos(pphi), np.sin(ptheta)*np.sin(pphi),
