@@ -5,7 +5,7 @@
 test_white_signals
 ----------------------------------
 
-Tests for signal modules.
+Tests for white signal modules.
 """
 
 

@@ -5,7 +5,7 @@
 test_gp_signals
 ----------------------------------
 
-Tests for signal modules.
+Tests for GP signal modules.
 """
 
 
@@ -245,6 +245,85 @@ class TestGPSignals(unittest.TestCase):
             else:
                 phi = np.concatenate((p1, p2))
                 F = np.hstack((F1, F2))
+
+            msg = 'Combined red noise PSD incorrect '
+            msg += 'for {} {} {} {}'.format(nf1, nf2, T1, T2)
+            assert np.all(rnm.get_phi(params) == phi), msg
+
+            msg = 'Combined red noise PSD inverse incorrect '
+            msg += 'for {} {} {} {}'.format(nf1, nf2, T1, T2)
+            assert np.all(rnm.get_phiinv(params) == 1/phi), msg
+
+            msg = 'Combined red noise Fmat incorrect '
+            msg += 'for {} {} {} {}'.format(nf1, nf2, T1, T2)
+            assert np.allclose(F, rnm.get_basis(params)), msg
+
+    def test_red_noise_add_backend(self):
+        """Test that red noise with backend addition only returns
+        independent columns."""
+        # set up signals
+        pl = Function(utils.powerlaw, log10_A=parameter.Uniform(-18,-12),
+                      gamma=parameter.Uniform(1,7))
+        selection = Selection(selections.by_backend)
+        cpl = Function(utils.powerlaw,
+                       log10_A=parameter.Uniform(-18,-12)('log10_Agw'),
+                       gamma=parameter.Uniform(1,7)('gamma_gw'))
+
+        # parameters
+        log10_As = [-14, -14.4, -15, -14.8]
+        gammas = [2.3, 4.4, 1.8, 5.6]
+        log10_Ac, gammac = -15.5, 1.33
+        params = {'B1855+09_gamma_430_ASP': gammas[0],
+                  'B1855+09_gamma_430_PUPPI': gammas[1],
+                  'B1855+09_gamma_L-wide_ASP': gammas[2],
+                  'B1855+09_gamma_L-wide_PUPPI': gammas[3],
+                  'B1855+09_log10_A_430_ASP': log10_As[0],
+                  'B1855+09_log10_A_430_PUPPI': log10_As[1],
+                  'B1855+09_log10_A_L-wide_ASP': log10_As[2],
+                  'B1855+09_log10_A_L-wide_PUPPI': log10_As[3],
+                  'log10_Agw': log10_Ac,
+                  'gamma_gw': gammac}
+
+        Tmax = self.psr.toas.max() - self.psr.toas.min()
+        tpars = [(30, 20, Tmax, Tmax), (20, 30, Tmax, Tmax),
+                 (30, 30, Tmax, Tmax), (30, 20, Tmax, 1.123*Tmax),
+                 (20, 30, Tmax, 1.123*Tmax), (30, 30, 1.123*Tmax, Tmax),
+                 (30, 20, None, Tmax)]
+
+        for (nf1, nf2, T1, T2) in tpars:
+
+            rn = gs.FourierBasisGP(spectrum=pl, components=nf1, Tspan=T1,
+                                   selection=selection)
+            crn = gs.FourierBasisGP(spectrum=cpl, components=nf2, Tspan=T2)
+            s = rn + crn
+            rnm = s(self.psr)
+
+            # get the basis
+            bflags = self.psr.backend_flags
+            Fmats, fs, phis = [], [], []
+            F2, f2, _ = utils.createfourierdesignmatrix_red(
+                self.psr.toas, nf2, freq=True, Tspan=T2)
+            p2 = utils.powerlaw(f2, log10_Ac, gammac)*f2[0]
+            for ct, flag in enumerate(np.unique(bflags)):
+                mask = bflags == flag
+                F1, f1, _ = utils.createfourierdesignmatrix_red(
+                    self.psr.toas[mask], nf1, freq=True, Tspan=T1)
+                Fmats.append(F1)
+                fs.append(f1)
+                phis.append(utils.powerlaw(f1, log10_As[ct], gammas[ct])*f1[0])
+
+            Fmats.append(F2)
+            phis.append(p2)
+            nf = sum(F.shape[1] for F in Fmats)
+            F = np.zeros((len(self.psr.toas), nf))
+            phi = np.hstack(p for p in phis)
+            nftot = 0
+            for ct, flag in enumerate(np.unique(bflags)):
+                mask = bflags == flag
+                nn = Fmats[ct].shape[1]
+                F[mask, nftot:nn+nftot] = Fmats[ct]
+                nftot += nn
+            F[:, -2*nf2:] = F2
 
             msg = 'Combined red noise PSD incorrect '
             msg += 'for {} {} {} {}'.format(nf1, nf2, T1, T2)
