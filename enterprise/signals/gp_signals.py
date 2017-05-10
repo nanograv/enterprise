@@ -17,7 +17,8 @@ from enterprise.signals.selections import Selection
 
 
 def FourierBasisGP(spectrum, components=20,
-                   selection=Selection(selections.no_selection)):
+                   selection=Selection(selections.no_selection),
+                   Tspan=None):
     """Class factory for fourier basis GPs."""
 
     class FourierBasisGP(base.Signal):
@@ -28,15 +29,17 @@ def FourierBasisGP(spectrum, components=20,
 
             # TODO: this could be cleaned up...
             sel = selection(psr)
+            masks = sel.masks
             self._spectrum = {}
             self._f2 = {}
             self._params = {}
             Fmats = {}
-            for key, mask in sel.masks.items():
+            for key in sorted(masks.keys()):
+                mask = masks[key]
                 self._spectrum[key] = spectrum(psr.name, key)
                 Fmats[key], self._f2[key], _ = \
                     utils.createfourierdesignmatrix_red(
-                        psr.toas[mask], components, freq=True)
+                        psr.toas[mask], components, freq=True, Tspan=Tspan)
                 for param in self._spectrum[key]._params.values():
                     self._params[param.name] = param
 
@@ -45,7 +48,8 @@ def FourierBasisGP(spectrum, components=20,
             self._phi = np.zeros(nf)
             self._slices = {}
             nftot = 0
-            for key, mask in sel.masks.items():
+            for key in sorted(masks.keys()):
+                mask = masks[key]
                 Fmat = Fmats[key]
                 nn = Fmat.shape[1]
                 self._F[mask, nftot:nn+nftot] = Fmat
@@ -115,7 +119,8 @@ def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
             sel = selection(psr)
             self._params, self._masks = sel('log10_ecorr', log10_ecorr)
             Umats = {}
-            for key, mask in self._masks.items():
+            for key in sorted(self._masks.keys()):
+                mask = self._masks[key]
                 Umats.update({key: utils.create_quantization_matrix(
                     psr.toas[mask])})
             nepoch = np.sum(U.shape[1] for U in Umats.values())
@@ -123,7 +128,8 @@ def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
             netot = 0
             self._jvec = {}
             self._phi = np.zeros(nepoch)
-            for key, mask in self._masks.items():
+            for key in sorted(self._masks.keys()):
+                mask = self._masks[key]
                 Umat = Umats[key]
                 nn = Umat.shape[1]
                 self._F[mask, netot:nn+netot] = Umat

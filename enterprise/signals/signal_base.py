@@ -11,7 +11,6 @@ import six
 import scipy
 from sksparse.cholmod import cholesky
 
-import enterprise.signals.utils as util
 from enterprise.signals.parameter import ConstantParameter
 
 
@@ -208,9 +207,10 @@ def SignalCollection(metasignals):
         # this could be put in utils.py if desired
         def _combine_basis_columns(self, signals):
             """Given a set of Signal objects, each of which may return an
-            Fmat (through get_basis()), combine the unique columns into a single Fmat,
-            dropping duplicates, and also return a dict (indexed by signal)
-            of integer arrays that map individual Fmat columns to the combined Fmat.""" 
+            Fmat (through get_basis()), combine the unique columns into a
+            single Fmat, dropping duplicates, and also return a
+            dict (indexed by signal) of integer arrays that map individual
+            Fmat columns to the combined Fmat."""
 
             idx, Fmatlist = {}, []
 
@@ -220,9 +220,9 @@ def SignalCollection(metasignals):
                 if Fmat is not None:
                     idx[signal] = []
 
-                    for i,column in enumerate(Fmat.T):
-                        for j,savedcolumn in enumerate(Fmatlist):
-                            if np.allclose(column,savedcolumn,rtol=1e-15):
+                    for i, column in enumerate(Fmat.T):
+                        for j, savedcolumn in enumerate(Fmatlist):
+                            if np.allclose(column, savedcolumn, rtol=1e-15):
                                 idx[signal].append(j)
                                 break
                         else:
@@ -239,7 +239,7 @@ def SignalCollection(metasignals):
             return self._Fmat
 
         def get_phiinv(self, params):
-            return 1.0/get_phi(params)
+            return 1.0/self.get_phi(params)
 
         def get_phi(self, params):
             phi = np.zeros(self._Fmat.shape[1],'d')
