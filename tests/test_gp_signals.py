@@ -140,6 +140,63 @@ class TestGPSignals(unittest.TestCase):
         msg = 'F matrix shape incorrect'
         assert rnm.basis_shape == F.shape, msg
 
+    def test_fourier_red_noise_backend(self):
+        """Test that red noise-backend signal returns correct values."""
+        # set up signal parameter
+        pl = Function(utils.powerlaw, log10_A=parameter.Uniform(-18,-12),
+                      gamma=parameter.Uniform(1,7))
+        selection = Selection(selections.by_backend)
+        rn = gs.FourierBasisGP(spectrum=pl, components=30, selection=selection)
+        rnm = rn(self.psr)
+
+        # parameters
+        log10_As = [-14, -14.4, -15, -14.8]
+        gammas = [2.3, 4.4, 1.8, 5.6]
+        params = {'B1855+09_gamma_430_ASP': gammas[0],
+                  'B1855+09_gamma_430_PUPPI': gammas[1],
+                  'B1855+09_gamma_L-wide_ASP': gammas[2],
+                  'B1855+09_gamma_L-wide_PUPPI': gammas[3],
+                  'B1855+09_log10_A_430_ASP': log10_As[0],
+                  'B1855+09_log10_A_430_PUPPI': log10_As[1],
+                  'B1855+09_log10_A_L-wide_ASP': log10_As[2],
+                  'B1855+09_log10_A_L-wide_PUPPI': log10_As[3]}
+
+        # get the basis
+        bflags = self.psr.backend_flags
+        Fmats, fs, phis = [], [], []
+        for ct, flag in enumerate(np.unique(bflags)):
+            mask = bflags == flag
+            F, f, _ = utils.createfourierdesignmatrix_red(
+                self.psr.toas[mask], 30, freq=True)
+            Fmats.append(F)
+            fs.append(f)
+            phis.append(utils.powerlaw(f, log10_As[ct], gammas[ct])*f[0])
+
+        nf = sum(F.shape[1] for F in Fmats)
+        F = np.zeros((len(self.psr.toas), nf))
+        phi = np.hstack(p for p in phis)
+        nftot = 0
+        for ct, flag in enumerate(np.unique(bflags)):
+            mask = bflags == flag
+            nn = Fmats[ct].shape[1]
+            F[mask, nftot:nn+nftot] = Fmats[ct]
+            nftot += nn
+
+        msg = 'F matrix incorrect for GP Fourier backend signal.'
+        assert np.allclose(F, rnm.get_basis(params)), msg
+
+        # spectrum test
+        msg = 'Spectrum incorrect for GP Fourier backend signal.'
+        assert np.all(rnm.get_phi(params) == phi), msg
+
+        # inverse spectrum test
+        msg = 'Spectrum inverse incorrect for GP Fourier backend signal.'
+        assert np.all(rnm.get_phiinv(params) == 1/phi), msg
+
+        # test shape
+        msg = 'F matrix shape incorrect'
+        assert rnm.basis_shape == F.shape, msg
+
     def test_red_noise_add(self):
         """Test that red noise addition only returns independent columns."""
         # set up signals
