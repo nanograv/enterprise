@@ -84,8 +84,96 @@ class Signal(object):
         return None
 
 
+class PTA(object):
+    def __init__(self,init):
+        if isinstance(init,SignalCollection):
+            self._signalcollections = [init]
+        elif all(isinstance(elem,SignalCollection) for elem in init):
+            self._signalcollections = init
+        else:
+            raise ValueError
+    
+    def __add__(self,other):
+        if isinstance(other,SignalCollection):
+            return PTA(self._signalcollections + [other])
+        elif isinstance(other,PTA):
+            return PTA(self._signalcollections + other._signalcollections)
+        else:
+            raise ValueError
+    
+    @property
+    def params(self):
+        return sorted({par for signalcollection in self._signalcollections for par in signalcollection.params},
+                      key = lambda par: par.name)
+
+    def get_basis(self, params=None):
+        return [signalcollection.get_basis() for signalcollection in self._signalcollections]
+
+    def get_phiinv(self, params):
+        phi = self.get_phi(params)
+
+        if isinstance(phi,list):
+            return [None if phivec is None else 1/phivec for phivec in phi]
+        else:
+            return np.linalg.inv(phi)
+
+    # to do: could keep pulsar indices somewhere, based on _Fmat
+    #        would be useful to sum FTNinvF and Phiinv in the case of correlations
+
+    # to do: memoize with self._signalcollections as key
+    @property
+    def _commonsignals(self):
+        """Build a dict of dicts of common signals, encountered in all the SignalCollections.
+        The outer dict is indexed by the class of the common signal; the inner dict
+        is indexed by the single-pulsar signals that are instantiations of that class,
+        and has values given by a tuple of the pulsar "Fmat" slice within the PTA, and
+        a list of indices mapping the common signal basis to the SignalCollection Fmat columns."""
+
+        commonsignals, offset = defaultdict(OrderedDict), 0
+
+        for signalcollection in self._signalcollections:
+            if signalcollection._Fmat is not None:
+                newoffset = offset + signalcollection._Fmat.shape[1]
+
+                for signal in signalcollection:
+                    if isinstance(signal,CommonSignal):
+                        commonsignals[signal.__class__][signal] = (slice(offset,newoffset),
+                                                                   signalcollection._idx[signal])
+
+                offset = newoffset
+
+        if any(len(csdict) > 1 for csdict in commonsignals):
+            return commonsignals
+        else:
+            return None
+
+    def get_phi(self, params):
+        phivecs = [signalcollection.get_phi(params) for signalcollection in self._signalcollections]
+
+        # if we found common signals, we'll return a big phivec matrix,
+        # otherwise a list of phivec vectors (some of which possibly None)
+        if self._commonsignals is not None:
+            phidiag = np.concatenate([phivec for phivec in phivecs if phivec is not None])
+            phi = np.diag(phidiag)
+    
+            for csclass, csdict in self._commonsignals.items():
+                for cs1, cs2 in itertools.combinations(csdict,2):
+                    block1, idx1 = csdict[cs1]
+                    block2, idx2 = csdict[cs2]
+
+                    crossdiag = csclass.get_phicross(cs1,cs2,params)
+
+                    phi[block1,block2][idx1,idx2] += crossdiag
+                    phi[block2,block1][idx2,idx1] += crossdiag
+
+            return phi
+        else:
+            return phivecs
+
+# TO DO: special case for no Fmat
 def SignalCollection(metasignals):
     """Class factory for ``SignalCollection`` objects."""
+
     @six.add_metaclass(MetaCollection)
     class SignalCollection(object):
         _metasignals = metasignals
@@ -94,34 +182,18 @@ def SignalCollection(metasignals):
             self._psr = psr
 
             # instantiate all the signals with a pulsar
-            self._signals = [metasignal(psr) for metasignal
-                             in self._metasignals]
+            self._signals = [metasignal(psr) for metasignal in self._metasignals]
 
-            self._cbasis_bool = False
-            self._cbasis = {}
+            self._idx, self._Fmat = self._combine_basis_columns(self._signals)
 
-        #def __add__(self,other):
-        #    return PTA([self,other])
+        def __add__(self,other):
+            return PTA([self,other])
 
+        # a candidate for memoization
         @property
         def params(self):
-
-            # no duplicates, but expensive, so a candidate for memoization
-            ret = []
-            for signal in self._signals:
-                for param in signal.params:
-                    if param not in ret:
-                        ret.append(param)
-
-            return ret
-
-        # TODO: use decorator for this
-        def get_common_basis_mappings(self, params):
-            if not self._cbasis_bool:
-                self._cbasis_bool = True
-                self._cbasis = util.get_independent_columns(
-                    self.get_basis(params))
-            return self._cbasis
+            return sorted({param for signal in self._signals for param in signal.params},
+                          key = lambda par: par.name)
 
         # there may be a smarter way to write these...
 
@@ -133,38 +205,50 @@ def SignalCollection(metasignals):
             delays = [signal.get_delay(params) for signal in self._signals]
             return sum(delay for delay in delays if delay is not None)
 
-        def get_basis(self, params=None):
-            Fmats = [signal.get_basis(params) for signal in self._signals]
+        # this could be put in utils.py if desired
+        def _combine_basis_columns(self, signals):
+            """Given a set of Signal objects, each of which may return an
+            Fmat (through get_basis()), combine the unique columns into a single Fmat,
+            dropping duplicates, and also return a dict (indexed by signal)
+            of integer arrays that map individual Fmat columns to the combined Fmat.""" 
 
-            # TODO: there is probably a cleaner way to do this
-            F = np.hstack(Fmat for Fmat in Fmats if Fmat is not None)
-            imap = self.get_common_basis_mappings(params)
-            idx = np.array([ii for ii in range(F.shape[1]) if ii
-                            not in sum(imap.values(), [])])
-            return F[:, idx]
+            idx, Fmatlist = {}, []
+
+            for signal in signals:
+                Fmat = signal.get_basis()
+
+                if Fmat is not None:
+                    idx[signal] = []
+
+                    for i,column in enumerate(Fmat.T):
+                        for j,savedcolumn in enumerate(Fmatlist):
+                            if np.allclose(column,savedcolumn,rtol=1e-15):
+                                idx[signal].append(j)
+                                break
+                        else:
+                            idx[signal].append(len(Fmatlist))
+                            Fmatlist.append(column)
+
+            return idx, np.array(Fmatlist).T
+
+        # note that currently we don't support a params-dependent basis;
+        # for that, we'll need Signal.get_basis (or an associated function)
+        # to somehow return the set of parameters that matter to the basis,
+        # which could be empty
+        def get_basis(self, params=None):
+            return self._Fmat
 
         def get_phiinv(self, params):
-            Phiinvs = [signal.get_phiinv(params) for signal in self._signals]
-            phiinv = np.hstack(Phiinv for Phiinv in Phiinvs
-                               if Phiinv is not None)
-            imap = self.get_common_basis_mappings(params)
-            idx = np.array([ii for ii in range(phiinv.shape[0]) if ii
-                            not in sum(imap.values(), [])])
-            for key, vals in imap.items():
-                for v in vals:
-                    phiinv[key] += phiinv[v]
-            return phiinv[idx]
+            return 1.0/get_phi(params)
 
         def get_phi(self, params):
-            Phivecs = [signal.get_phi(params) for signal in self._signals]
-            phi = np.hstack(Phivec for Phivec in Phivecs if Phivec is not None)
-            imap = self.get_common_basis_mappings(params)
-            idx = np.array([ii for ii in range(phi.shape[0]) if ii
-                            not in sum(imap.values(), [])])
-            for key, vals in imap.items():
-                for v in vals:
-                    phi[key] += phi[v]
-            return phi[idx]
+            phi = np.zeros(self._Fmat.shape[1],'d')
+
+            for signal in self._signals:
+                if signal in self._idx:
+                    phi[self._idx[signal]] += signal.get_phi(params)
+
+            return phi
 
     return SignalCollection
 
