@@ -164,6 +164,10 @@ def SignalCollection(metasignals):
 
             return phi
 
+        @property
+        def basis_shape(self):
+            return self._Fmat.shape
+
     return SignalCollection
 
 

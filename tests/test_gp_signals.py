@@ -344,8 +344,11 @@ class TestGPSignals(unittest.TestCase):
         tm = ts(self.psr)
 
         # basis matrix test
+        M = self.psr.Mmat.copy()
+        norm = np.sqrt(np.sum(M**2, axis=0))
+        M /= norm
         msg = 'M matrix incorrect for Timing Model signal.'
-        assert np.allclose(self.psr.Mmat, tm.get_basis()), msg
+        assert np.allclose(M, tm.get_basis()), msg
 
         # Jvec test
         phi = np.ones(self.psr.Mmat.shape[1]) * 1e40
@@ -359,3 +362,54 @@ class TestGPSignals(unittest.TestCase):
         # test shape
         msg = 'M matrix shape incorrect'
         assert tm.basis_shape == self.psr.Mmat.shape, msg
+
+    def test_combine_signals(self):
+        """Test for combining different signals."""
+        # set up signal parameter
+        ecorr = parameter.Uniform(-10, -5)
+        ec = gs.EcorrBasisModel(log10_ecorr=ecorr)
+
+        pl = Function(utils.powerlaw, log10_A=parameter.Uniform(-18,-12),
+                      gamma=parameter.Uniform(1,7))
+        rn = gs.FourierBasisGP(spectrum=pl, components=30)
+        ts = gs.TimingModel()
+        s = ec + rn + ts
+        m = s(self.psr)
+
+        # parameters
+        ecorr = -6.4
+        log10_A, gamma = -14.5, 4.33
+        params = {'B1855+09_log10_ecorr': ecorr,
+                  'B1855+09_log10_A': log10_A,
+                  'B1855+09_gamma': gamma}
+
+        # combined basis matrix
+        U = utils.create_quantization_matrix(self.psr.toas)
+        M = self.psr.Mmat.copy()
+        norm = np.sqrt(np.sum(M**2, axis=0))
+        M /= norm
+        F, f2, _ = utils.createfourierdesignmatrix_red(
+            self.psr.toas, nmodes=30, freq=True)
+        T = np.hstack((U, F, M))
+
+        # combined prior vector
+        jvec = 10**(2*ecorr) * np.ones(U.shape[1])
+        phim = np.ones(self.psr.Mmat.shape[1]) * 1e40
+        phi = utils.powerlaw(f2, log10_A=log10_A, gamma=gamma) * f2[0]
+        phivec = np.concatenate((jvec, phi, phim))
+
+        # basis matrix test
+        msg = 'Basis matrix incorrect for combined signal.'
+        assert np.allclose(T, m.get_basis(params)), msg
+
+        # Jvec test
+        msg = 'Prior vector incorrect for combined signal.'
+        assert np.all(m.get_phi(params) == phivec), msg
+
+        # inverse Jvec test
+        msg = 'Prior vector inverse incorrect for combined signal.'
+        assert np.all(m.get_phiinv(params) == 1/phivec), msg
+
+        # test shape
+        msg = 'Basis matrix shape incorrect size for combined signal.'
+        assert m.basis_shape == T.shape, msg

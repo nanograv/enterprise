@@ -85,7 +85,7 @@ def TimingModel():
         def __init__(self, psr):
             self._params = {}
 
-            self._F = psr.Mmat
+            self._F = psr.Mmat.copy()
 
             norm = np.sqrt(np.sum(self._F**2, axis=0))
             self._F /= norm
