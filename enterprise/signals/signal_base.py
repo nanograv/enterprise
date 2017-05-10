@@ -83,6 +83,93 @@ class Signal(object):
         return None
 
 
+class PTA(object):
+    def __init__(self,init):
+        if isinstance(init,SignalCollection):
+            self._signalcollections = [init]
+        elif all(isinstance(elem,SignalCollection) for elem in init):
+            self._signalcollections = init
+        else:
+            raise ValueError
+    
+    def __add__(self,other):
+        if isinstance(other,SignalCollection):
+            return PTA(self._signalcollections + [other])
+        elif isinstance(other,PTA):
+            return PTA(self._signalcollections + other._signalcollections)
+        else:
+            raise ValueError
+    
+    @property
+    def params(self):
+        return sorted({par for signalcollection in self._signalcollections for par in signalcollection.params},
+                      key = lambda par: par.name)
+
+    def get_basis(self, params=None):
+        return [signalcollection.get_basis() for signalcollection in self._signalcollections]
+
+    def get_phiinv(self, params):
+        phi = self.get_phi(params)
+
+        if isinstance(phi,list):
+            return [None if phivec is None else 1/phivec for phivec in phi]
+        else:
+            return np.linalg.inv(phi)
+
+    # to do: could keep pulsar indices somewhere, based on _Fmat
+    #        would be useful to sum FTNinvF and Phiinv in the case of correlations
+
+    # to do: memoize with self._signalcollections as key
+    @property
+    def _commonsignals(self):
+        """Build a dict of dicts of common signals, encountered in all the SignalCollections.
+        The outer dict is indexed by the class of the common signal; the inner dict
+        is indexed by the single-pulsar signals that are instantiations of that class,
+        and has values given by a tuple of the pulsar "Fmat" slice within the PTA, and
+        a list of indices mapping the common signal basis to the SignalCollection Fmat columns."""
+
+        commonsignals, offset = defaultdict(OrderedDict), 0
+
+        for signalcollection in self._signalcollections:
+            if signalcollection._Fmat is not None:
+                newoffset = offset + signalcollection._Fmat.shape[1]
+
+                for signal in signalcollection:
+                    if isinstance(signal,CommonSignal):
+                        commonsignals[signal.__class__][signal] = (slice(offset,newoffset),
+                                                                   signalcollection._idx[signal])
+
+                offset = newoffset
+
+        if any(len(csdict) > 1 for csdict in commonsignals):
+            return commonsignals
+        else:
+            return None
+
+    def get_phi(self, params):
+        phivecs = [signalcollection.get_phi(params) for signalcollection in self._signalcollections]
+
+        # if we found common signals, we'll return a big phivec matrix,
+        # otherwise a list of phivec vectors (some of which possibly None)
+        if self._commonsignals is not None:
+            phidiag = np.concatenate([phivec for phivec in phivecs if phivec is not None])
+            phi = np.diag(phidiag)
+    
+            for csclass, csdict in self._commonsignals.items():
+                for cs1, cs2 in itertools.combinations(csdict,2):
+                    block1, idx1 = csdict[cs1]
+                    block2, idx2 = csdict[cs2]
+
+                    crossdiag = csclass.get_phicross(cs1,cs2,params)
+
+                    phi[block1,block2][idx1,idx2] += crossdiag
+                    phi[block2,block1][idx2,idx1] += crossdiag
+
+            return phi
+        else:
+            return phivecs
+
+# TO DO: special case for no Fmat
 def SignalCollection(metasignals):
     """Class factory for ``SignalCollection`` objects."""
 
@@ -94,19 +181,18 @@ def SignalCollection(metasignals):
             self._psr = psr
 
             # instantiate all the signals with a pulsar
-            self._signals = [metasignal(psr) for metasignal
-                             in self._metasignals]
+            self._signals = [metasignal(psr) for metasignal in self._metasignals]
 
             self._idx, self._Fmat = self._combine_basis_columns(self._signals)
 
-        # def __add__(self,other):
-        #    return PTA([self,other])
+        def __add__(self,other):
+            return PTA([self,other])
 
         # a candidate for memoization
         @property
         def params(self):
-            return sorted({param for signal in self._signals
-                           for param in signal.params})
+            return sorted({param for signal in self._signals for param in signal.params},
+                          key = lambda par: par.name)
 
         # there may be a smarter way to write these...
 
