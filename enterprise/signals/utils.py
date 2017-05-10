@@ -611,28 +611,6 @@ def fplus_fcross(ptheta, pphi, gwtheta, gwphi):
     return fplus, fcross
 
 
-def get_independent_columns(arr):
-    """
-    Get independent column indices given input array.
-
-    :param arr: Input array
-
-    :returns:
-        dictionary with column index key and redundant column indices as values
-    """
-    mdict = {}
-    ncol = arr.shape[1]
-    for ii in range(ncol):
-        rlist = []
-        for jj in range(ii+1, ncol):
-            if (np.allclose(arr[:,ii], arr[:,jj], rtol=1e-15) and
-                    jj not in sum(mdict.values(), [])):
-                rlist.append(jj)
-        if rlist:
-            mdict[ii] = rlist
-    return mdict
-
-
 def create_quantization_matrix(times, dt=1):
     """Create quantization matrix mapping TOAs to observing epochs."""
     isort = np.argsort(times)
