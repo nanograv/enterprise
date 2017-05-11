@@ -206,6 +206,9 @@ def SignalCollection(metasignals):
             self._signals = [metasignal(psr) for metasignal
                              in self._metasignals]
 
+        def __add__(self, other):
+            return PTA([self, other])
+
         # a candidate for memoization
         @property
         def params(self):
