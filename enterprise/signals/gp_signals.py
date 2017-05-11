@@ -152,3 +152,55 @@ def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
             return self._F.shape
 
     return EcorrBasisModel
+
+
+def FourierBasisCommonGP(crossspectrum=None, components=20,
+                         Tspan=None, name='common'):
+
+    class FourierBasisCommonGP(base.CommonSignal):
+        signal_type = 'basis'
+        signal_name = 'red noise'
+
+        _crossspectrum = crossspectrum(name)
+        _Tmin, _Tmax = [], []
+
+        def __init__(self, psr):
+            super(FourierBasisCommonGP, self).__init__(psr)
+
+            self._params = FourierBasisCommonGP._crossspectrum._params
+            self._psr = psr
+
+            if Tspan is None:
+                FourierBasisCommonGP._Tmin.append(psr.toas.min())
+                FourierBasisCommonGP._Tmax.append(psr.toas.max())
+
+        # goofy way to cache the basis, there may be a better way?
+        def __getattr__(self, par):
+            if par in ['_f2', '_F']:
+                span = (Tspan if Tspan else max(FourierBasisCommonGP._Tmax) -
+                        min(FourierBasisCommonGP._Tmin))
+                self._F, self._f2, _ = utils.createfourierdesignmatrix_red(
+                    self._psr.toas, components, freq=True, Tspan=span)
+
+                return getattr(self, par)
+            else:
+                raise AttributeError('{} object has no attribute {}'.format(
+                    self.__class__,par))
+
+        def get_basis(self, params=None):
+            return self._F
+
+        def get_phi(self, params):
+            # note multiplying by f[0] is not general
+            return FourierBasisCommonGP._crossspectrum(
+                self._f2, self._psr, self._psr, **params) * self._f2[0]
+
+        @classmethod
+        def get_phicross(cls, signal1, signal2, params):
+            # currently pass the pulsar objects, what else could we do?
+            # note multiplying by f[0] is not general
+            return FourierBasisCommonGP._crossspectrum(
+                signal1._f2, signal1._psr, signal2._psr,
+                **params) * signal1._f2[0]
+
+    return FourierBasisCommonGP

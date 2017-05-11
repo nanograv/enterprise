@@ -154,6 +154,10 @@ class Pulsar(object):
                 self._raj = 0.0
                 self._decj = 0.0
 
+        self._pos = np.array([np.cos(self._raj) * np.cos(self._decj),
+                              np.sin(self._raj) * np.cos(self._decj),
+                              np.sin(self._decj)])
+
         # Get the position vectors of the planets
         self._planetssb = None
         if planets:
@@ -268,6 +272,11 @@ class Pulsar(object):
     def phi(self):
         """Return azimuthal angle of pulsar in radians."""
         return self._raj
+
+    @property
+    def pos(self):
+        """Return unit vector to pulsar."""
+        return self._pos
 
     @property
     def planetssb(self):

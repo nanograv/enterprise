@@ -7,6 +7,8 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
 import numpy as np
+import collections
+from itertools import combinations
 import six
 import scipy
 from sksparse.cholmod import cholesky
@@ -83,6 +85,113 @@ class Signal(object):
         return None
 
 
+class CommonSignal(Signal):
+    """Base class for CommonSignal objects."""
+
+    def get_phiinv(self, params):
+        msg = "You probably shouldn't be calling get_phiinv() "
+        msg += "on a common red-noise signal."
+        raise RuntimeError(msg)
+
+    @classmethod
+    def get_phicross(cls, signal1, signal2, params):
+        return None
+
+
+class PTA(object):
+    def __init__(self, init):
+        if isinstance(init, collections.Sequence):
+            self._signalcollections = list(init)
+        else:
+            self._signalcollections = [init]
+
+    def __add__(self, other):
+        if hasattr(other, '_signalcollections'):
+            return PTA(self._signalcollections+other._signalcollections)
+        else:
+            return PTA(self._signalcollections+[other])
+
+    @property
+    def params(self):
+        return sorted({par for signalcollection in self._signalcollections for
+                       par in signalcollection.params},
+                      key=lambda par: par.name)
+
+    def get_basis(self, params=None):
+        return [signalcollection.get_basis(params) for
+                signalcollection in self._signalcollections]
+
+    def get_phiinv(self, params):
+        phi = self.get_phi(params)
+
+        if isinstance(phi, list):
+            return [None if phivec is None else 1/phivec for phivec in phi]
+        else:
+            # TODO: replace with suitable sparse matrix definition
+            return np.linalg.inv(phi)
+
+    @property
+    def _commonsignals(self):
+        # cache the computation if we don't have it yet
+        if not hasattr(self, '_cs'):
+            commonsignals = collections.defaultdict(collections.OrderedDict)
+
+            for signalcollection in self._signalcollections:
+                # TODO: need a better signal that a
+                # signalcollection provides a basis
+                if signalcollection._Fmat is not None:
+                    for signal in signalcollection._signals:
+                        if isinstance(signal, CommonSignal):
+                            commonsignals[signal.__class__][signal] = \
+                                signalcollection
+
+            # drop common signals that appear only once
+            self._cs = {csclass: csdict for csclass, csdict in
+                        commonsignals.items() if len(csdict) > 1}
+
+        return self._cs
+
+    def _get_slices(self, phivecs):
+        ret, offset = {}, 0
+        for sc, phivec in zip(self._signalcollections,phivecs):
+            stop = 0 if phivec is None else len(phivec)
+            ret[sc] = slice(offset, offset+stop)
+            offset = ret[sc].stop
+
+        return ret
+
+    def get_phi(self, params):
+        phivecs = [signalcollection.get_phi(params) for
+                   signalcollection in self._signalcollections]
+
+        # if we found common signals, we'll return a big phivec matrix,
+        # otherwise a list of phivec vectors (some of which possibly None)
+        if self._commonsignals:
+            # would be easier if get_phi would return an empty array
+            phidiag = np.concatenate([phivec for phivec in phivecs
+                                      if phivec is not None])
+            slices = self._get_slices(phivecs)
+
+            # TODO: replace with suitable sparse matrix definition
+            phi = np.diag(phidiag)
+
+            # iterate over all common signal classes
+            for csclass, csdict in self._commonsignals.items():
+                # iterate over all pairs of common signal instances
+                for (cs1, csc1), (cs2, csc2) in combinations(csdict.items(),2):
+                    crossdiag = csclass.get_phicross(cs1, cs2, params)
+
+                    block1, idx1 = slices[csc1], csc1._idx[cs1]
+                    block2, idx2 = slices[csc2], csc2._idx[cs2]
+
+                    phi[block1,block2][idx1,idx2] += crossdiag
+                    phi[block2,block1][idx2,idx1] += crossdiag
+
+            return phi
+        else:
+            return phivecs
+
+
 def SignalCollection(metasignals):
     """Class factory for ``SignalCollection`` objects."""
 
@@ -96,8 +205,6 @@ def SignalCollection(metasignals):
             # instantiate all the signals with a pulsar
             self._signals = [metasignal(psr) for metasignal
                              in self._metasignals]
-
-            self._idx, self._Fmat = self._combine_basis_columns(self._signals)
 
         # a candidate for memoization
         @property
@@ -141,6 +248,17 @@ def SignalCollection(metasignals):
                             Fmatlist.append(column)
 
             return idx, np.array(Fmatlist).T
+
+        # goofy way to cache _idx and _Fmat
+        def __getattr__(self, par):
+            if par in ('_idx', '_Fmat'):
+                self._idx, self._Fmat = self._combine_basis_columns(
+                    self._signals)
+
+                return getattr(self,par)
+            else:
+                raise AttributeError("{} object has no attribute {}".format(
+                    self.__class__,par))
 
         # note that currently we don't support a params-dependent basis;
         # for that, we'll need Signal.get_basis (or an associated function)
