@@ -197,7 +197,6 @@ def SignalCollection(metasignals):
         _metasignals = metasignals
 
         def __init__(self, psr):
-            self._psr = psr
 
             # instantiate all the signals with a pulsar
             self._signals = [metasignal(psr) for metasignal

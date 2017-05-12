@@ -165,10 +165,10 @@ def FourierBasisCommonGP(crossspectrum=None, components=20,
         _Tmin, _Tmax = [], []
 
         def __init__(self, psr):
-            super(FourierBasisCommonGP, self).__init__(psr)
 
             self._params = FourierBasisCommonGP._crossspectrum._params
             self._psrpos = psr.pos
+            self._toas = psr.toas
 
             if Tspan is None:
                 FourierBasisCommonGP._Tmin.append(psr.toas.min())
@@ -180,7 +180,7 @@ def FourierBasisCommonGP(crossspectrum=None, components=20,
                 span = (Tspan if Tspan else max(FourierBasisCommonGP._Tmax) -
                         min(FourierBasisCommonGP._Tmin))
                 self._F, self._f2, _ = utils.createfourierdesignmatrix_red(
-                    self._psr.toas, components, freq=True, Tspan=span)
+                    self._toas, components, freq=True, Tspan=span)
 
                 return getattr(self, par)
             else:
