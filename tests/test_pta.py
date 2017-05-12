@@ -41,7 +41,7 @@ def vec_powerlaw(f, pos1, pos2, log10_A=-15, gamma=4.3):
     return utils.powerlaw(f, log10_A, gamma) * vec_orf(pos1, pos2)
 
 
-class TestGPSignals(unittest.TestCase):
+class TestPTASignals(unittest.TestCase):
 
     def setUp(self):
         """Setup the Pulsar object."""
