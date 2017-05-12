@@ -46,9 +46,6 @@ class MetaCollection(type):
 class Signal(object):
     """Base class for Signal objects."""
 
-    def __init__(self, psr):
-        self._psr = psr
-
     @property
     def params(self):
         # return only nonconstant parameters
@@ -153,7 +150,7 @@ class PTA(object):
 
     def _get_slices(self, phivecs):
         ret, offset = {}, 0
-        for sc, phivec in zip(self._signalcollections,phivecs):
+        for sc, phivec in zip(self._signalcollections, phivecs):
             stop = 0 if phivec is None else len(phivec)
             ret[sc] = slice(offset, offset+stop)
             offset = ret[sc].stop

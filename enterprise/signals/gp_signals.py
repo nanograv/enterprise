@@ -168,7 +168,7 @@ def FourierBasisCommonGP(crossspectrum=None, components=20,
             super(FourierBasisCommonGP, self).__init__(psr)
 
             self._params = FourierBasisCommonGP._crossspectrum._params
-            self._psr = psr
+            self._psrpos = psr.pos
 
             if Tspan is None:
                 FourierBasisCommonGP._Tmin.append(psr.toas.min())
@@ -193,14 +193,14 @@ def FourierBasisCommonGP(crossspectrum=None, components=20,
         def get_phi(self, params):
             # note multiplying by f[0] is not general
             return FourierBasisCommonGP._crossspectrum(
-                self._f2, self._psr, self._psr, **params) * self._f2[0]
+                self._f2, self._psrpos, self._psrpos, **params) * self._f2[0]
 
         @classmethod
         def get_phicross(cls, signal1, signal2, params):
             # currently pass the pulsar objects, what else could we do?
             # note multiplying by f[0] is not general
             return FourierBasisCommonGP._crossspectrum(
-                signal1._f2, signal1._psr, signal2._psr,
+                signal1._f2, signal1._psrpos, signal2._psrpos,
                 **params) * signal1._f2[0]
 
     return FourierBasisCommonGP

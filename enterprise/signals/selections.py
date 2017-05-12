@@ -61,7 +61,7 @@ def Selection(func):
                 kname = '_'.join([parname, key]) if key else parname
                 pname = '_'.join([self._psr.name, kname])
                 params.update({kname: parameter(pname)})
-                kmasks.update({kname:val})
+                kmasks.update({kname: val})
 
             if arr is not None:
                 ma = self._get_masked_array_dict(kmasks, arr)
