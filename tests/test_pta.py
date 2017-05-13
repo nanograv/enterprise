@@ -9,9 +9,6 @@ Tests for common signal and PTA class modules.
 """
 
 
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
-
 import unittest
 import numpy as np
 
@@ -114,7 +111,7 @@ class TestPTASignals(unittest.TestCase):
                                             self.psrs[1].pos, lAc,
                                             gammac) * fc[0])
 
-        msg = 'PTA Phi is incorrect.'
+        msg = '{} {}'.format(np.diag(phi), np.diag(phit))
         assert np.allclose(phi, phit, rtol=1e-15, atol=1e-17), msg
         msg = 'PTA Phi inverse is incorrect.'
         assert np.allclose(phiinv, np.linalg.inv(phit),
