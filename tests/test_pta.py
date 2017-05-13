@@ -23,7 +23,7 @@ from tests.enterprise_test_data import datadir
 
 
 def hd_orf(pos1, pos2):
-    xi = 1 - np.dot(pos1, pos2)
+    xi = 1 - np.dot(pos1, pos2) + 1e-7
     omc2 = (1 - np.cos(xi)) / 2
     ret = 1.5 * omc2 * np.log(omc2) - 0.25 * omc2 + 0.5
     return np.where(xi == 0, 1, ret)
