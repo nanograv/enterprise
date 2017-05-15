@@ -293,5 +293,9 @@ def run_apidoc(_):
             cmd_path = os.path.abspath(os.path.join(sys.prefix, 'bin', 'sphinx-apidoc'))
         subprocess.check_call([cmd_path, '-o', output_path, '-f', '-M', module])
 
+    # make docs from notebooks
+    nb = '_static/notebooks/*.ipynb'
+    subprocess.check_call(['jupyter nbconvert --template nb-rst.tpl --to rst', nb, '--output-dir ./'])
+
 def setup(app):
     app.connect('builder-inited', run_apidoc)
