@@ -48,19 +48,19 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr htmlcov/
 
 lint: ## check style with flake8
-	flake8 --ignore=E265,E226,E231 enterprise tests
+	flake8 --ignore=E265,E226,E231,E731 enterprise tests
 
 test: ## run tests quickly with the default Python
-	
-		pytest -v --cov=enterprise tests
+
+		pytest -v --full-trace --cov-config .coveragerc --cov=enterprise tests
 
 test-all: ## run tests on every Python version with tox
 	tox
 
 coverage: ## check code coverage quickly with the default Python
-	
+
 		coverage run --source enterprise setup.py test
-	
+
 		coverage report -m
 		coverage html
 		$(BROWSER) htmlcov/index.html

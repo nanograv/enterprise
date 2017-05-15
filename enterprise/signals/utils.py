@@ -34,7 +34,7 @@ def create_stabletimingdesignmatrix(designmat, fastDesign=True):
     else:
 
         u, s, v = np.linalg.svd(Mm)
-        Mm = u[:,:len(s)]
+        Mm = u[:, :len(s)]
 
     return Mm
 
@@ -61,7 +61,6 @@ def createfourierdesignmatrix_red(t, nmodes, freq=False, Tspan=None,
 
     :return: F: fourier design matrix
     :return: f: Sampling frequencies (if freq=True)
-    :return: ranphase: Phase offsets applied to basis functions
     """
 
     N = len(t)
@@ -580,11 +579,12 @@ def calculate_splus_scross(nmax, mc, dl, h0, F, e,
     return np.sum(splus_n, axis=1), np.sum(scross_n, axis=1)
 
 
-def fplus_fcross(psr, gwtheta, gwphi):
+def fplus_fcross(ptheta, pphi, gwtheta, gwphi):
     """
     Compute gravitational-wave quadrupolar antenna pattern.
 
-    :param psr: pulsar object
+    :param ptheta: Polar angle of pulsar in celestial coords [radians]
+    :param pphi: Azimuthal angle of pulsar in celestial coords [radians]
     :param gwtheta: Polar angle of GW source in celestial coords [radians]
     :param gwphi: Azimuthal angle of GW source in celestial coords [radians]
 
@@ -600,10 +600,6 @@ def fplus_fcross(psr, gwtheta, gwphi):
     n = np.array([-cosgwtheta*cosgwphi, -cosgwtheta*singwphi, singwtheta])
     omhat = np.array([-singwtheta*cosgwphi, -singwtheta*singwphi, -cosgwtheta])
 
-    # pulsar location
-    ptheta = np.pi/2 - psr.psr_locs[1]
-    pphi = psr.psr_locs[0]
-
     # use definition from Sesana et al 2010 and Ellis et al 2012
     phat = np.array([np.sin(ptheta)*np.cos(pphi), np.sin(ptheta)*np.sin(pphi),
                      np.cos(ptheta)])
@@ -613,3 +609,38 @@ def fplus_fcross(psr, gwtheta, gwphi):
     fcross = (np.dot(m, phat)*np.dot(n, phat)) / (1 + np.dot(omhat, phat))
 
     return fplus, fcross
+
+
+def create_quantization_matrix(times, dt=1):
+    """Create quantization matrix mapping TOAs to observing epochs."""
+    isort = np.argsort(times)
+
+    bucket_ref = [times[isort[0]]]
+    bucket_ind = [[isort[0]]]
+
+    for i in isort[1:]:
+        if times[i] - bucket_ref[-1] < dt:
+            bucket_ind[-1].append(i)
+        else:
+            bucket_ref.append(times[i])
+            bucket_ind.append([i])
+
+    # find only epochs with more than 1 TOA
+    bucket_ind2 = [ind for ind in bucket_ind if len(ind) > 2]
+
+    U = np.zeros((len(times),len(bucket_ind2)),'d')
+    for i,l in enumerate(bucket_ind2):
+        U[l,i] = 1
+
+    return U
+
+
+def powerlaw(f, log10_A=-16, gamma=5):
+    return ((10**log10_A)**2 / 12.0 / np.pi**2 *
+            const.fyr**(gamma-3) * f**(-gamma))
+
+
+def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10/3, beta=0.5):
+    hcf = (10**log10_A * (f / const.fyr) ** ((3-gamma) / 2) /
+           (1 + (10**lf0 / f) ** kappa) ** beta)
+    return hcf**2/12/np.pi**2/f**3
