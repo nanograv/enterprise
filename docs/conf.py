@@ -284,6 +284,10 @@ texinfo_documents = [
 # allows readthedocs to auto-generate docs
 import subprocess
 def run_apidoc(_):
+    # make docs from notebooks
+    nb = '_static/notebooks/*.ipynb'
+    subprocess.check_call(['jupyter nbconvert --template nb-rst.tpl --to rst', nb, '--output-dir ./'])
+
     modules = ['../enterprise']
     for module in modules:
         output_path = os.path.abspath(os.path.dirname(__file__))
@@ -292,10 +296,6 @@ def run_apidoc(_):
             # If we are, assemble the path manually
             cmd_path = os.path.abspath(os.path.join(sys.prefix, 'bin', 'sphinx-apidoc'))
         subprocess.check_call([cmd_path, '-o', output_path, '-f', '-M', module])
-
-    # make docs from notebooks
-    nb = '_static/notebooks/*.ipynb'
-    subprocess.check_call(['jupyter nbconvert --template nb-rst.tpl --to rst', nb, '--output-dir ./'])
 
 def setup(app):
     app.connect('builder-inited', run_apidoc)
