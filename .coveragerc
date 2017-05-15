@@ -1,0 +1,5 @@
+[run]
+source = enterprise
+omit =
+    enterprise/__init__*
+    enterprise/signals/__init__*

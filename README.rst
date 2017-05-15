@@ -37,7 +37,7 @@ ENTERPRISE (Enhanced Numerical Toolbox Enabling a Robust PulsaR Inference SuitE)
 Features
 --------
 
-* TODO
+* TODO...
 
 Development Leads
 -----------------
