@@ -10,7 +10,7 @@ Tests for `utils` module.
 
 import unittest
 import numpy as np
-from enterprise_test_data import datadir
+from tests.enterprise_test_data import datadir
 from enterprise.pulsar import Pulsar
 from enterprise.signals import utils
 import enterprise.constants as const
