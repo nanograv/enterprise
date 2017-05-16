@@ -6,13 +6,15 @@ derived from these base classes.
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
-import numpy as np
-import collections
-from itertools import combinations
-import six
-import scipy
+import collections, itertools
 
+import six
+
+import numpy as np
+import scipy
 import scipy.sparse as sps
+import scipy.linalg as sl
+
 from sksparse.cholmod import cholesky
 
 from enterprise.signals.parameter import ConstantParameter
@@ -248,14 +250,17 @@ class PTA(object):
 
         if isinstance(phi, list):
             if logdet:
-                return [None if phivec is None else (np.sum(np.log(phivec)),1/phivec) for phivec in phi]
+                return [None if phivec is None else (1/phivec,np.sum(np.log(phivec))) for phivec in phi]
             else:
                 return [None if phivec is None else 1/phivec for phivec in phi]
         else:
             phisparse = sps.csc_matrix(phi)
             cf = cholesky(phisparse)
 
-            return (cf.inv(), cf.logdet()) if logdet else cf.inv() 
+            if logdet:
+                return (cf.inv(), cf.logdet())
+            else:
+                return cf.inv() 
 
     def get_phi(self, params):
         phivecs = [signalcollection.get_phi(params) for
@@ -274,7 +279,7 @@ class PTA(object):
             # iterate over all common signal classes
             for csclass, csdict in self._commonsignals.items():
                 # iterate over all pairs of common signal instances
-                for (cs1, csc1), (cs2, csc2) in combinations(csdict.items(),2):
+                for (cs1, csc1), (cs2, csc2) in itertools.combinations(csdict.items(),2):
                     crossdiag = csclass.get_phicross(cs1, cs2, params)
 
                     block1, idx1 = slices[csc1], csc1._idx[cs1]
