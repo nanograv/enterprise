@@ -12,7 +12,7 @@ Tests for white signal modules.
 import unittest
 import numpy as np
 
-from enterprise_test_data import datadir
+from tests.enterprise_test_data import datadir
 from enterprise.pulsar import Pulsar
 from enterprise.signals import parameter
 from enterprise.signals import selections
