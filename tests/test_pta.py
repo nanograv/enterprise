@@ -19,7 +19,7 @@ import enterprise.signals.signal_base as signal_base
 import enterprise.signals.gp_signals as gp_signals
 from enterprise.signals import utils
 
-from tests.enterprise_test_data import datadir
+from .enterprise_test_data import datadir
 
 
 def hd_orf(pos1, pos2):
@@ -115,6 +115,6 @@ class TestPTASignals(unittest.TestCase):
 
         msg = '{} {}'.format(np.diag(phi), np.diag(phit))
         assert np.allclose(phi, phit, rtol=1e-15, atol=1e-17), msg
-        msg = 'PTA Phi inverse is incorrect.'
-        assert np.allclose(phiinv, np.linalg.inv(phit),
-                           rtol=1e-15, atol=1e-17), msg
+
+        assert np.allclose(phiinv.toarray(), np.linalg.inv(phit),
+                           rtol=1e-15, atol=1e-15), msg
