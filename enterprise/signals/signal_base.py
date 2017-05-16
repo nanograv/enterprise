@@ -11,6 +11,8 @@ import collections
 from itertools import combinations
 import six
 import scipy
+
+import scipy.sparse as sps
 from sksparse.cholmod import cholesky
 
 from enterprise.signals.parameter import ConstantParameter
@@ -94,19 +96,95 @@ class CommonSignal(Signal):
     def get_phicross(cls, signal1, signal2, params):
         return None
 
+class MarginalizedLogLikelihood(object):
+    def __init__(self,pta):
+        self.pta = pta
+
+    def _make_sigma(self,phiinv,TNTs):
+        # or sparse.block...
+        # phiinv = phiinv.toarray()
+        cnt = 0
+        for TNT in TNTs:
+            sl = slice(cnt,cnt + TNT.shape[0])
+            phiinv[sl,sl] += TNT
+            cnt = sl.stop
+        # phiinv = sps.csc_matrix(phiinv)
+
+        return phiinv
+
+    # this can and should be much cleaner
+    def __call__(self, xs):
+        # map parameter vector if needed
+        params = xs if isinstance(xs,dict) else self.pta.map_params(xs)
+        
+        # these are all lists in pulsar order, except for phiinv which may be a big matrix
+        Nvecs = self.pta.get_ndiag(params)
+        Ts = self.pta.get_basis(params)
+        phiinvs = self.pta.get_phiinv(params,logdet=True)
+        residuals = self.pta.get_residuals()
+
+        loglike = 0.0
+
+        ds, TNTs = [], []
+        for T, Nvec, residual in zip(Ts, Nvecs, residuals):
+            # get auxiliaries
+            d = np.dot(T.T, Nvec.solve(residual))
+            NT, logdet_N = Nvec.solve(T, logdet=True)
+            TNT = np.dot(T.T, NT)
+
+            # triple product in likelihood function
+            rNr = np.dot(residual, Nvec.solve(residual))
+
+            # first component of likelihood function
+            loglike += -0.5 * (logdet_N + rNr)
+
+            # save d and TNT for use below
+            ds.append(d)
+            TNTs.append(TNT)
+
+        # red noise piece
+        if self.pta._commonsignals:
+            phiinv, logdet_phi = phiinvs
+
+            # note: modifies phiinv in place
+            Sigma = self._make_sigma(phiinv,TNTs)
+            d = np.concatenate(ds)
+
+            cf = cholesky(Sigma)
+            expval = cf(d)
+
+            logdet_sigma = cf.logdet() 
+
+            loglike += 0.5 * (np.dot(d, expval) - logdet_sigma - logdet_phi)
+        else:
+            for d, TNT, (phiinv, logdet_phi) in zip(ds, TNTs, phiinvs):
+                Sigma = TNT + np.diag(phiinv)
+        
+                cf = sl.cho_factor(Sigma)
+                expval = sl.cho_solve(cf, d)
+
+                logdet_sigma = np.sum(2 * np.log(np.diag(cf[0])))
+                
+                loglike += 0.5 * (np.dot(d, expval) - logdet_sigma - logdet_phi)
+
+        return loglike
 
 class PTA(object):
-    def __init__(self, init):
+    def __init__(self, init, lnlikelihood=MarginalizedLogLikelihood):
         if isinstance(init, collections.Sequence):
             self._signalcollections = list(init)
         else:
             self._signalcollections = [init]
 
+        self.lnlikelihood = lnlikelihood
+
     def __add__(self, other):
         if hasattr(other, '_signalcollections'):
-            return PTA(self._signalcollections+other._signalcollections)
+            return PTA(self._signalcollections+other._signalcollections,
+                       lnlikelihood=self.lnlikelihood)
         else:
-            return PTA(self._signalcollections+[other])
+            return PTA(self._signalcollections+[other],
+                       lnlikelihood=self.lnlikelihood)
 
     @property
     def params(self):
@@ -114,18 +192,26 @@ class PTA(object):
                        par in signalcollection.params},
                       key=lambda par: par.name)
 
+    def get_residuals(self):
+        return [signalcollection._residuals for signalcollection in self._signalcollections]
+
+    def get_ndiag(self, params):
+        return [signalcollection.get_ndiag(params) for signalcollection in self._signalcollections]
+
     def get_basis(self, params=None):
         return [signalcollection.get_basis(params) for
                 signalcollection in self._signalcollections]
 
-    def get_phiinv(self, params):
-        phi = self.get_phi(params)
+    @property
+    def _lnlikelihood(self):
+        # instantiate on first use
+        if not hasattr(self, '_lnlike'):
+            self._lnlike = self.lnlikelihood(self)
 
-        if isinstance(phi, list):
-            return [None if phivec is None else 1/phivec for phivec in phi]
-        else:
-            # TODO: replace with suitable sparse matrix definition
-            return np.linalg.inv(phi)
+        return self._lnlike
+
+    def get_lnlikelihood(self, params):
+        return self._lnlikelihood(params)
 
     @property
     def _commonsignals(self):
@@ -157,6 +243,20 @@ class PTA(object):
 
         return ret
 
+    def get_phiinv(self, params, logdet=False):
+        phi = self.get_phi(params)
+
+        if isinstance(phi, list):
+            if logdet:
+                return [None if phivec is None else (np.sum(np.log(phivec)),1/phivec) for phivec in phi]
+            else:
+                return [None if phivec is None else 1/phivec for phivec in phi]
+        else:
+            phisparse = sps.csc_matrix(phi)
+            cf = cholesky(phisparse)
+
+            return (cf.inv(), cf.logdet()) if logdet else cf.inv() 
+
     def get_phi(self, params):
         phivecs = [signalcollection.get_phi(params) for
                    signalcollection in self._signalcollections]
@@ -169,7 +269,6 @@ class PTA(object):
                                       if phivec is not None])
             slices = self._get_slices(phivecs)
 
-            # TODO: replace with suitable sparse matrix definition
             phi = np.diag(phidiag)
 
             # iterate over all common signal classes
@@ -187,6 +286,15 @@ class PTA(object):
             return phi
         else:
             return phivecs
+    
+    def map_params(self, xs):
+        return {par.name: x for par, x in zip(self.params, xs)}
+        
+    def get_lnprior(self, xs):
+        # map parameter vector if needed
+        params = xs if isinstance(xs,dict) else self.map_params(xs)
+
+        return np.sum(p.get_logpdf(params[p.name]) for p in self.params)
 
 
 def SignalCollection(metasignals):
@@ -201,6 +309,8 @@ def SignalCollection(metasignals):
             # instantiate all the signals with a pulsar
             self._signals = [metasignal(psr) for metasignal
                              in self._metasignals]
+
+            self._residuals = psr.residuals
 
         def __add__(self, other):
             return PTA([self, other])
