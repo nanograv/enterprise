@@ -88,5 +88,5 @@ class TestPulsar(unittest.TestCase):
         with self.assertRaises(IOError) as context:
             Pulsar('wrong.par', 'wrong.tim')
 
-        msg = 'Cannot find parfile wrong.par or timfile wrong.tim!'
-        self.assertTrue(msg in context.exception)
+            msg = 'Cannot find parfile wrong.par or timfile wrong.tim!'
+            self.assertTrue(msg in context.exception)

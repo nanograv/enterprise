@@ -258,7 +258,7 @@ class Pulsar(object):
         for ii in range(nobs):
             # TODO: make this cleaner
             for f in flags:
-                if np.all(map(lambda xx: check(ii, xx), f)):
+                if np.all(list(map(lambda xx: check(ii, xx), f))):
                     bflags[ii] = '_'.join(self._flags[x][ii] for x in f)
                     break
         return np.array(bflags)
