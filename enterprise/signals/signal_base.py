@@ -6,7 +6,8 @@ derived from these base classes.
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
-import collections, itertools
+import collections
+import itertools
 
 import six
 
@@ -98,6 +99,7 @@ class CommonSignal(Signal):
     def get_phicross(cls, signal1, signal2, params):
         return None
 
+
 class MarginalizedLogLikelihood(object):
     def __init__(self,pta):
         self.pta = pta
@@ -118,8 +120,9 @@ class MarginalizedLogLikelihood(object):
     def __call__(self, xs):
         # map parameter vector if needed
         params = xs if isinstance(xs,dict) else self.pta.map_params(xs)
-        
-        # these are all lists in pulsar order, except for phiinv which may be a big matrix
+
+        # these are all lists in pulsar order
+        # except for phiinv which may be a big matrix
         Nvecs = self.pta.get_ndiag(params)
         Ts = self.pta.get_basis(params)
         phiinvs = self.pta.get_phiinv(params,logdet=True)
@@ -155,21 +158,22 @@ class MarginalizedLogLikelihood(object):
             cf = cholesky(Sigma)
             expval = cf(d)
 
-            logdet_sigma = cf.logdet() 
+            logdet_sigma = cf.logdet()
 
-            loglike += 0.5 * (np.dot(d, expval) - logdet_sigma - logdet_phi)
+            loglike += 0.5*(np.dot(d, expval) - logdet_sigma - logdet_phi)
         else:
             for d, TNT, (phiinv, logdet_phi) in zip(ds, TNTs, phiinvs):
                 Sigma = TNT + np.diag(phiinv)
-        
+
                 cf = sl.cho_factor(Sigma)
                 expval = sl.cho_solve(cf, d)
 
                 logdet_sigma = np.sum(2 * np.log(np.diag(cf[0])))
-                
-                loglike += 0.5 * (np.dot(d, expval) - logdet_sigma - logdet_phi)
+
+                loglike += 0.5*(np.dot(d, expval) - logdet_sigma - logdet_phi)
 
         return loglike
+
 
 class PTA(object):
     def __init__(self, init, lnlikelihood=MarginalizedLogLikelihood):
@@ -195,10 +199,12 @@ class PTA(object):
                       key=lambda par: par.name)
 
     def get_residuals(self):
-        return [signalcollection._residuals for signalcollection in self._signalcollections]
+        return [signalcollection._residuals
+                for signalcollection in self._signalcollections]
 
     def get_ndiag(self, params):
-        return [signalcollection.get_ndiag(params) for signalcollection in self._signalcollections]
+        return [signalcollection.get_ndiag(params)
+                for signalcollection in self._signalcollections]
 
     def get_basis(self, params=None):
         return [signalcollection.get_basis(params) for
@@ -250,7 +256,9 @@ class PTA(object):
 
         if isinstance(phi, list):
             if logdet:
-                return [None if phivec is None else (1/phivec,np.sum(np.log(phivec))) for phivec in phi]
+                return [None if phivec is None
+                        else (1/phivec, np.sum(np.log(phivec)))
+                        for phivec in phi]
             else:
                 return [None if phivec is None else 1/phivec for phivec in phi]
         else:
@@ -260,7 +268,7 @@ class PTA(object):
             if logdet:
                 return (cf.inv(), cf.logdet())
             else:
-                return cf.inv() 
+                return cf.inv()
 
     def get_phi(self, params):
         phivecs = [signalcollection.get_phi(params) for
@@ -279,7 +287,9 @@ class PTA(object):
             # iterate over all common signal classes
             for csclass, csdict in self._commonsignals.items():
                 # iterate over all pairs of common signal instances
-                for (cs1, csc1), (cs2, csc2) in itertools.combinations(csdict.items(),2):
+                pairs = itertools.combinations(csdict.items(),2)
+
+                for (cs1, csc1), (cs2, csc2) in pairs:
                     crossdiag = csclass.get_phicross(cs1, cs2, params)
 
                     block1, idx1 = slices[csc1], csc1._idx[cs1]
@@ -291,10 +301,10 @@ class PTA(object):
             return phi
         else:
             return phivecs
-    
+
     def map_params(self, xs):
         return {par.name: x for par, x in zip(self.params, xs)}
-        
+
     def get_lnprior(self, xs):
         # map parameter vector if needed
         params = xs if isinstance(xs,dict) else self.map_params(xs)
