@@ -337,9 +337,12 @@ class csc_matrix_alt(scipy.sparse.csc_matrix):
         else:
             return super(csc_matrix_alt, self).__add__(other)
 
-    def solve(self, other, logdet=False):
+    def solve(self, other, left_array=None, logdet=False):
         cf = cholesky(self)
-        ret = (cf(other), cf.logdet()) if logdet else cf(other)
+        mult = cf(other)
+        if left_array is not None:
+            mult = np.dot(left_array.T, mult)
+        ret = (mult, cf.logdet()) if logdet else mult
         return ret
 
 
@@ -350,11 +353,122 @@ class ndarray_alt(np.ndarray):
         obj = np.asarray(inputarr).view(cls)
         return obj
 
-    def solve(self, other, logdet=False):
-        if other.ndim == 1:
-            No = np.array(other / self)
-        elif other.ndim == 2:
-            No = np.array(other / self[:,None])
-
-        ret = (No, float(np.sum(np.log(self)))) if logdet else No
+    def __add__(self, other):
+        try:
+            ret = super(ndarray_alt, self).__add__(other)
+        except TypeError:
+            ret = other + self
         return ret
+
+    def solve(self, other, left_array=None, logdet=False):
+        if other.ndim == 1:
+            mult = np.array(other / self)
+        elif other.ndim == 2:
+            mult = np.array(other / self[:,None])
+        if left_array is not None:
+            mult = np.dot(left_array.T, mult)
+
+        ret = (mult, float(np.sum(np.log(self)))) if logdet else mult
+        return ret
+
+
+class ShermanMorrison(object):
+    """Custom container class for Sherman-morrison array inversion."""
+
+    def __init__(self, jvec, slices, nvec=0.0):
+        self._jvec = jvec
+        self._slices = slices
+        self._nvec = nvec
+
+    def __add__(self, other):
+        nvec = self._nvec + other
+        return ShermanMorrison(self._jvec, self._slices, nvec)
+
+    # hacky way to fix adding 0
+    def __radd__(self, other):
+        if other == 0:
+            return self.__add__(other)
+        else:
+            raise TypeError
+
+    def _solve_D1(self, x):
+        """Solves :math:`N^{-1}x` where :math:`x` is a vector."""
+
+        Nx = x / self._nvec
+        for cc, jv in enumerate(self._jvec):
+            if self._slices[cc].stop - self._slices[cc].start > 1:
+                rblock = x[self._slices[cc]]
+                niblock = 1 / self._nvec[self._slices[cc]]
+                beta = 1.0 / (np.einsum('i->', niblock)+1.0/jv)
+                Nx[self._slices[cc]] -= beta*np.dot(niblock, rblock)*niblock
+        return Nx
+
+    def _solve_1D1(self, x, y):
+        """Solves :math:`y^T N^{-1}x`, where :math:`x` and
+        :math:`y` are vectors.
+        """
+
+        Nx = x / self._nvec
+        yNx = y * Nx
+        for cc, jv in enumerate(self._jvec):
+            if self._slices[cc].stop - self._slices[cc].start > 1:
+                xblock = x[self._slices[cc]]
+                yblock = y[self._slices[cc]]
+                niblock = 1 / self._nvec[self._slices[cc]]
+                beta = 1.0 / (np.einsum('i->', niblock)+1.0/jv)
+                yNx -= beta * np.dot(niblock, xblock) * np.dot(niblock, yblock)
+        return yNx
+
+    def _solve_2D2(self, X, Z):
+        """Solves :math:`Z^T N^{-1}X`, where :math:`X`
+        and :math:`Z` are 2-d arrays.
+        """
+
+        ZNX = np.dot(Z.T / self._nvec, X)
+        for cc, jv in enumerate(self._jvec):
+            if self._slices[cc].stop - self._slices[cc].start > 1:
+                Zblock = Z[self._slices[cc], :]
+                Xblock = X[self._slices[cc], :]
+                niblock = 1 / self._nvec[self._slices[cc]]
+                beta = 1.0 / (np.einsum('i->', niblock)+1.0/jv)
+                zn = np.dot(niblock, Zblock)
+                xn = np.dot(niblock, Xblock)
+                ZNX -= beta * np.outer(zn.T, xn)
+        return ZNX
+
+    def _get_logdet(self):
+        """Returns log determinant of :math:`N+UJU^{T}` where :math:`U`
+        is a quantization matrix.
+        """
+        logdet = np.einsum('i->', np.log(self._nvec))
+        for cc, jv in enumerate(self._jvec):
+            if self._slices[cc].stop - self._slices[cc].start > 1:
+                niblock = 1 / self._nvec[self._slices[cc]]
+                beta = 1.0 / (np.einsum('i->', niblock)+1.0/jv)
+                logdet += np.log(jv) - np.log(beta)
+        return logdet
+
+    def solve(self, other, left_array=None, logdet=False):
+
+        if other.ndim == 1:
+            if left_array is None:
+                ret = self._solve_D1(other)
+            elif left_array is not None and left_array.ndim == 1:
+                ret = self._solve_1D1(other, left_array)
+            elif left_array is not None and left_array.ndim == 2:
+                ret = np.dot(left_array.T, self._solve_D1(other))
+            else:
+                raise TypeError
+        elif other.ndim == 2:
+            if left_array is None:
+                raise TypeError
+            elif left_array is not None and left_array.ndim == 2:
+                ret = self._solve_2D2(other, left_array)
+            elif left_array is not None and left_array.ndim == 1:
+                ret = np.dot(other.T, self._solve_D1(left_array))
+            else:
+                raise TypeError
+        else:
+            raise TypeError
+
+        return (ret, self._get_logdet()) if logdet else ret

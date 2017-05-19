@@ -611,7 +611,7 @@ def fplus_fcross(ptheta, pphi, gwtheta, gwphi):
     return fplus, fcross
 
 
-def create_quantization_matrix(times, dt=1):
+def create_quantization_matrix(times, dt=1, nmin=2):
     """Create quantization matrix mapping TOAs to observing epochs."""
     isort = np.argsort(times)
 
@@ -626,13 +626,31 @@ def create_quantization_matrix(times, dt=1):
             bucket_ind.append([i])
 
     # find only epochs with more than 1 TOA
-    bucket_ind2 = [ind for ind in bucket_ind if len(ind) > 2]
+    bucket_ind2 = [ind for ind in bucket_ind if len(ind) >= nmin]
 
     U = np.zeros((len(times),len(bucket_ind2)),'d')
     for i,l in enumerate(bucket_ind2):
         U[l,i] = 1
 
     return U
+
+
+def quant2ind(U):
+    """
+    Use quantization matrix to return slices of non-zero elements.
+
+    :param U: quantization matrix
+
+    :return: list of `slice`s for non-zero elements of U
+
+    .. note:: This function assumes that the pulsar TOAs were sorted by time.
+
+    """
+    inds = []
+    for cc, col in enumerate(U.T):
+        epinds = np.flatnonzero(col)
+        inds.append(slice(epinds[0], epinds[-1]+1))
+    return inds
 
 
 def powerlaw(f, log10_A=-16, gamma=5):
