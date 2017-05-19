@@ -649,6 +649,8 @@ def quant2ind(U):
     inds = []
     for cc, col in enumerate(U.T):
         epinds = np.flatnonzero(col)
+        if epinds[-1] - epinds[0] + 1 != len(epinds):
+            raise ValueError('ERROR: TOAs not sorted properly!')
         inds.append(slice(epinds[0], epinds[-1]+1))
     return inds
 

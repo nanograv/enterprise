@@ -79,7 +79,7 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
             for key in sorted(self._masks.keys()):
                 mask = self._masks[key]
                 Umats.update({key: utils.create_quantization_matrix(
-                    psr.toas[mask], nmin=1)})
+                    psr.toas[mask])})
             nepoch = np.sum(U.shape[1] for U in Umats.values())
             self._F = np.zeros((len(psr.toas), nepoch))
             netot = 0
@@ -100,15 +100,13 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
             Ns = scipy.sparse.csc_matrix((len(psr.toas), len(psr.toas)))
             for key, slices in self._slices.items():
                 for slc in slices:
-                    if slc.stop - slc.start > 1:
-                        Ns[slc, slc] = 1.0
+                    Ns[slc, slc] = 1.0
             self._Ns = base.csc_matrix_alt(Ns)
 
         def get_ndiag(self, params):
             for p in self._params:
                 for slc in self._slices[p]:
-                    if slc.stop - slc.start > 1:
-                        self._Ns[slc, slc] = 10**(2*self.get(p, params))
+                    self._Ns[slc, slc] = 10**(2*self.get(p, params))
             return self._Ns
 
     return EcorrKernelNoise
