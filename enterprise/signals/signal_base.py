@@ -332,10 +332,17 @@ class csc_matrix_alt(scipy.sparse.csc_matrix):
 
     def __add__(self, other):
 
-        if isinstance(other, np.ndarray) and other.ndim == 1:
+        if isinstance(other, (np.ndarray, ndarray_alt)) and other.ndim == 1:
             return self._add_diag(other)
         else:
             return super(csc_matrix_alt, self).__add__(other)
+
+    # hacky way to fix adding ndarray on left
+    def __radd__(self, other):
+        if isinstance(other, (np.ndarray, ndarray_alt)) or other == 0:
+            return self.__add__(other)
+        else:
+            raise TypeError
 
     def solve(self, other, left_array=None, logdet=False):
         cf = cholesky(self)
@@ -409,7 +416,7 @@ class ShermanMorrison(object):
         """
 
         Nx = x / self._nvec
-        yNx = y * Nx
+        yNx = np.dot(y, Nx)
         for cc, jv in enumerate(self._jvec):
             if self._slices[cc].stop - self._slices[cc].start > 1:
                 xblock = x[self._slices[cc]]

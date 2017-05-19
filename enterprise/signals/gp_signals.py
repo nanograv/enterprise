@@ -17,8 +17,7 @@ from enterprise.signals.selections import Selection
 
 
 def FourierBasisGP(spectrum, components=20,
-                   selection=Selection(selections.no_selection),
-                   Tspan=None):
+                   selection=Selection(selections.no_selection), Tspan=None):
     """Class factory for fourier basis GPs."""
 
     class FourierBasisGP(base.Signal):

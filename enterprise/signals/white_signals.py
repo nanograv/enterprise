@@ -71,6 +71,8 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
 
         def __init__(self, psr):
 
+            # TODO: Add check for proper TOA sorting
+
             sel = selection(psr)
             self._params, self._masks = sel('log10_ecorr', log10_ecorr)
             Umats = {}
