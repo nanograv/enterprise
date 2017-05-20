@@ -141,7 +141,7 @@ def EcorrKernelNoiseBlock(log10_ecorr=parameter.Uniform(-10, -5),
                           selection=Selection(selections.no_selection)):
     """Class factory for ECORR type noise using Block method."""
 
-    BaseClass = EcorrKernelNoiseSM(log10_ecorr=log10_ecorr, selection=selection)
+    BaseClass = EcorrKernelNoiseSM(log10_ecorr=log10_ecorr,selection=selection)
 
     class EcorrKernelNoiseBlock(BaseClass):
 
