@@ -79,7 +79,7 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
             for key in sorted(self._masks.keys()):
                 mask = self._masks[key]
                 Umats.update({key: utils.create_quantization_matrix(
-                    psr.toas[mask])})
+                    psr.toas[mask], nmin=1)})
             nepoch = np.sum(U.shape[1] for U in Umats.values())
             self._F = np.zeros((len(psr.toas), nepoch))
             netot = 0
@@ -100,13 +100,15 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
             Ns = scipy.sparse.csc_matrix((len(psr.toas), len(psr.toas)))
             for key, slices in self._slices.items():
                 for slc in slices:
-                    Ns[slc, slc] = 1.0
+                    if slc.stop - slc.start > 1:
+                        Ns[slc, slc] = 1.0
             self._Ns = base.csc_matrix_alt(Ns)
 
         def get_ndiag(self, params):
             for p in self._params:
                 for slc in self._slices[p]:
-                    self._Ns[slc, slc] = 10**(2*self.get(p, params))
+                    if slc.stop - slc.start > 1:
+                        self._Ns[slc, slc] = 10**(2*self.get(p, params))
             return self._Ns
 
     return EcorrKernelNoise
@@ -136,3 +138,34 @@ def EcorrKernelNoiseSM(log10_ecorr=parameter.Uniform(-10, -5),
             return base.ShermanMorrison(jvec, slices)
 
     return EcorrKernelNoiseSM
+
+
+def EcorrKernelNoiseBlock(log10_ecorr=parameter.Uniform(-10, -5),
+                          selection=Selection(selections.no_selection)):
+    """Class factory for ECORR type noise using Block method."""
+
+    BaseClass = EcorrKernelNoise(log10_ecorr=log10_ecorr, selection=selection)
+
+    class EcorrKernelNoiseBlock(BaseClass):
+
+        def __init__(self, psr):
+            super(EcorrKernelNoiseBlock, self).__init__(psr)
+
+        def _setup(self, psr):
+            pass
+
+        def get_ndiag(self, params):
+            slices = sum([self._slices[key] for key in
+                          sorted(self._slices.keys())], [])
+            jvec = np.concatenate(
+                [np.ones(len(self._slices[key]))*10**(2*self.get(key, params))
+                 for key in sorted(self._slices.keys())])
+
+            blocks = []
+            for jv, slc in zip(jvec, slices):
+                nb = slc.stop - slc.start
+                blocks.append(np.ones((nb, nb))*jv)
+
+            return base.BlockMatrix(blocks, slices)
+
+    return EcorrKernelNoiseBlock

@@ -10,7 +10,8 @@ import numpy as np
 import collections
 from itertools import combinations
 import six
-import scipy
+import scipy.sparse as sps
+import scipy.linalg as sl
 from sksparse.cholmod import cholesky
 
 from enterprise.signals.parameter import ConstantParameter
@@ -319,13 +320,13 @@ def Function(func, **kwargs):
     return Function
 
 
-class csc_matrix_alt(scipy.sparse.csc_matrix):
+class csc_matrix_alt(sps.csc_matrix):
     """Sub-class of ``scipy.sparse.csc_matrix`` with custom ``add`` and
     ``solve`` methods.
     """
 
     def _add_diag(self, other):
-        other_diag = scipy.sparse.dia_matrix(
+        other_diag = sps.dia_matrix(
             (other, np.array([0])),
             shape=(other.shape[0], other.shape[0]))
         return self._binopt(other_diag, '_plus_')
@@ -379,6 +380,94 @@ class ndarray_alt(np.ndarray):
         return ret
 
 
+class BlockMatrix(object):
+
+    def __init__(self, blocks, slices, nvec=0):
+        self._blocks = blocks
+        self._slices = slices
+        self._nvec = nvec
+
+    def __add__(self, other):
+        nvec = self._nvec + other
+        return BlockMatrix(self._blocks, self._slices, nvec)
+
+    # hacky way to fix adding 0
+    def __radd__(self, other):
+        if other == 0:
+            return self.__add__(other)
+        else:
+            raise TypeError
+
+    def _solve_ZNX(self, X, Z):
+        """Solves :math:`Z^T N^{-1}X`, where :math:`X`
+        and :math:`Z` are 1-d or 2-d arrays.
+        """
+        if X.ndim == 1:
+            X = X.reshape(X.shape[0], 1)
+        if Z.ndim == 1:
+            Z = Z.reshape(Z.shape[0], 1)
+
+        n, m = Z.shape[1], X.shape[1]
+        ZNX = np.zeros((n, m))
+        for slc, block in zip(self._slices, self._blocks):
+            Zblock = Z[slc, :]
+            Xblock = X[slc, :]
+
+            if slc.stop - slc.start > 1:
+                cf = sl.cho_factor(block+np.diag(self._nvec[slc]))
+                bx = sl.cho_solve(cf, Xblock)
+            else:
+                bx = Xblock / self._nvec[slc][:, None]
+            ZNX += np.dot(Zblock.T, bx)
+        return ZNX.squeeze() if len(ZNX) > 1 else float(ZNX)
+
+    def _solve_NX(self, X):
+        """Solves :math:`N^{-1}X`, where :math:`X`
+        is a 1-d or 2-d array.
+        """
+        if X.ndim == 1:
+            X = X.reshape(X.shape[0], 1)
+
+        m = X.shape[1]
+        NX = np.zeros((len(self._nvec), m))
+        for slc, block in zip(self._slices, self._blocks):
+            Xblock = X[slc, :]
+            if slc.stop - slc.start > 1:
+                cf = sl.cho_factor(block+np.diag(self._nvec[slc]))
+                NX[slc] = sl.cho_solve(cf, Xblock)
+            else:
+                NX[slc] = Xblock / self._nvec[slc][:, None]
+        return NX.squeeze()
+
+    def _get_logdet(self):
+        """Returns log determinant of :math:`N+UJU^{T}` where :math:`U`
+        is a quantization matrix.
+        """
+        logdet = 0
+        for slc, block in zip(self._slices, self._blocks):
+            if slc.stop - slc.start > 1:
+                cf = sl.cho_factor(block+np.diag(self._nvec[slc]))
+                logdet += np.sum(2*np.log(np.diag(cf[0])))
+            else:
+                logdet += np.sum(np.log(self._nvec[slc]))
+        return logdet
+
+    def solve(self, other, left_array=None, logdet=False):
+
+        if other.ndim not in [1, 2]:
+            raise TypeError
+        if left_array is not None:
+            if left_array.ndim not in [1, 2]:
+                raise TypeError
+
+        if left_array is not None:
+            ret = self._solve_ZNX(other, left_array)
+        else:
+            ret = self._solve_NX(other)
+
+        return (ret, self._get_logdet()) if logdet else ret
+
+
 class ShermanMorrison(object):
     """Custom container class for Sherman-morrison array inversion."""
 
@@ -403,10 +492,11 @@ class ShermanMorrison(object):
 
         Nx = x / self._nvec
         for slc, jv in zip(self._slices, self._jvec):
-            rblock = x[slc]
-            niblock = 1 / self._nvec[slc]
-            beta = 1.0 / (np.einsum('i->', niblock) + 1.0/jv)
-            Nx[slc] -= beta * np.dot(niblock, rblock) * niblock
+            if slc.stop - slc.start > 1:
+                rblock = x[slc]
+                niblock = 1 / self._nvec[slc]
+                beta = 1.0 / (np.einsum('i->', niblock) + 1.0/jv)
+                Nx[slc] -= beta * np.dot(niblock, rblock) * niblock
         return Nx
 
     def _solve_1D1(self, x, y):
@@ -417,11 +507,12 @@ class ShermanMorrison(object):
         Nx = x / self._nvec
         yNx = np.dot(y, Nx)
         for slc, jv in zip(self._slices, self._jvec):
-            xblock = x[slc]
-            yblock = y[slc]
-            niblock = 1 / self._nvec[slc]
-            beta = 1.0 / (np.einsum('i->', niblock)+1.0/jv)
-            yNx -= beta * np.dot(niblock, xblock) * np.dot(niblock, yblock)
+            if slc.stop - slc.start > 1:
+                xblock = x[slc]
+                yblock = y[slc]
+                niblock = 1 / self._nvec[slc]
+                beta = 1.0 / (np.einsum('i->', niblock)+1.0/jv)
+                yNx -= beta * np.dot(niblock, xblock) * np.dot(niblock, yblock)
         return yNx
 
     def _solve_2D2(self, X, Z):
@@ -431,13 +522,14 @@ class ShermanMorrison(object):
 
         ZNX = np.dot(Z.T / self._nvec, X)
         for slc, jv in zip(self._slices, self._jvec):
-            Zblock = Z[slc, :]
-            Xblock = X[slc, :]
-            niblock = 1 / self._nvec[slc]
-            beta = 1.0 / (np.einsum('i->', niblock)+1.0/jv)
-            zn = np.dot(niblock, Zblock)
-            xn = np.dot(niblock, Xblock)
-            ZNX -= beta * np.outer(zn.T, xn)
+            if slc.stop - slc.start > 1:
+                Zblock = Z[slc, :]
+                Xblock = X[slc, :]
+                niblock = 1 / self._nvec[slc]
+                beta = 1.0 / (np.einsum('i->', niblock)+1.0/jv)
+                zn = np.dot(niblock, Zblock)
+                xn = np.dot(niblock, Xblock)
+                ZNX -= beta * np.outer(zn.T, xn)
         return ZNX
 
     def _get_logdet(self):
@@ -446,9 +538,10 @@ class ShermanMorrison(object):
         """
         logdet = np.einsum('i->', np.log(self._nvec))
         for slc, jv in zip(self._slices, self._jvec):
-            niblock = 1 / self._nvec[slc]
-            beta = 1.0 / (np.einsum('i->', niblock)+1.0/jv)
-            logdet += np.log(jv) - np.log(beta)
+            if slc.stop - slc.start > 1:
+                niblock = 1 / self._nvec[slc]
+                beta = 1.0 / (np.einsum('i->', niblock)+1.0/jv)
+                logdet += np.log(jv) - np.log(beta)
         return logdet
 
     def solve(self, other, left_array=None, logdet=False):

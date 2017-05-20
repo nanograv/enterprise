@@ -225,6 +225,9 @@ class TestWhiteSignals(unittest.TestCase):
             ec = ws.EcorrKernelNoise(log10_ecorr=ecorr, selection=selection)
         elif method == 'sherman-morrison':
             ec = ws.EcorrKernelNoiseSM(log10_ecorr=ecorr, selection=selection)
+        elif method == 'block':
+            ec = ws.EcorrKernelNoiseBlock(log10_ecorr=ecorr,
+                                          selection=selection)
         tm = gp.TimingModel()
         s = ef + ec + tm
         m = s(self.psr)
@@ -306,4 +309,8 @@ class TestWhiteSignals(unittest.TestCase):
 
     def test_ecorr_sherman_morrison(self):
         """Test of sherman-morrison ecorr signal and solve methods."""
+        self._ecorr_test(method='sherman-morrison')
+
+    def test_ecorr_block(self):
+        """Test of block matrix ecorr signal and solve methods."""
         self._ecorr_test(method='sherman-morrison')
