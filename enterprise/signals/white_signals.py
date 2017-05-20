@@ -122,9 +122,6 @@ def EcorrKernelNoiseSM(log10_ecorr=parameter.Uniform(-10, -5),
 
     class EcorrKernelNoiseSM(BaseClass):
 
-        def __init__(self, psr):
-            super(EcorrKernelNoiseSM, self).__init__(psr)
-
         def _setup(self, psr):
             pass
 
@@ -144,15 +141,9 @@ def EcorrKernelNoiseBlock(log10_ecorr=parameter.Uniform(-10, -5),
                           selection=Selection(selections.no_selection)):
     """Class factory for ECORR type noise using Block method."""
 
-    BaseClass = EcorrKernelNoise(log10_ecorr=log10_ecorr, selection=selection)
+    BaseClass = EcorrKernelNoiseSM(log10_ecorr=log10_ecorr, selection=selection)
 
     class EcorrKernelNoiseBlock(BaseClass):
-
-        def __init__(self, psr):
-            super(EcorrKernelNoiseBlock, self).__init__(psr)
-
-        def _setup(self, psr):
-            pass
 
         def get_ndiag(self, params):
             slices = sum([self._slices[key] for key in
