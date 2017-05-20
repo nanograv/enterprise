@@ -313,4 +313,4 @@ class TestWhiteSignals(unittest.TestCase):
 
     def test_ecorr_block(self):
         """Test of block matrix ecorr signal and solve methods."""
-        self._ecorr_test(method='sherman-morrison')
+        self._ecorr_test(method='block')
