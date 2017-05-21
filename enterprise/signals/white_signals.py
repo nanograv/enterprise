@@ -71,24 +71,23 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
 
         def __init__(self, psr):
 
-            # TODO: Add check for proper TOA sorting
-
             sel = selection(psr)
             self._params, self._masks = sel('log10_ecorr', log10_ecorr)
-            Umats = {}
-            for key in sorted(self._masks.keys()):
-                mask = self._masks[key]
-                Umats.update({key: utils.create_quantization_matrix(
-                    psr.toas[mask], nmin=1)})
-            nepoch = np.sum(U.shape[1] for U in Umats.values())
+            keys = list(sorted(self._masks.keys()))
+            masks = [self._masks[key] for key in keys]
+
+            Umats = []
+            for key, mask in zip(keys, masks):
+                Umats.append(utils.create_quantization_matrix(
+                    psr.toas[mask], nmin=1))
+
+            nepoch = np.sum(U.shape[1] for U in Umats)
             self._F = np.zeros((len(psr.toas), nepoch))
-            netot = 0
             self._slices = {}
-            for key in sorted(self._masks.keys()):
-                mask = self._masks[key]
-                Umat = Umats[key]
-                nn = Umat.shape[1]
-                self._F[mask, netot:nn+netot] = Umat
+            netot = 0
+            for ct, (key, mask) in enumerate(zip(keys, masks)):
+                nn = Umats[ct].shape[1]
+                self._F[mask, netot:nn+netot] = Umats[ct]
                 self._slices.update({key: utils.quant2ind(
                     self._F[:,netot:nn+netot])})
                 netot += nn
@@ -121,6 +120,8 @@ def EcorrKernelNoiseSM(log10_ecorr=parameter.Uniform(-10, -5),
     BaseClass = EcorrKernelNoise(log10_ecorr=log10_ecorr, selection=selection)
 
     class EcorrKernelNoiseSM(BaseClass):
+        signal_type = 'white noise'
+        signal_name = 'ecorr_sherman-morrison'
 
         def _setup(self, psr):
             pass
@@ -144,6 +145,8 @@ def EcorrKernelNoiseBlock(log10_ecorr=parameter.Uniform(-10, -5),
     BaseClass = EcorrKernelNoiseSM(log10_ecorr=log10_ecorr,selection=selection)
 
     class EcorrKernelNoiseBlock(BaseClass):
+        signal_type = 'white noise'
+        signal_name = 'ecorr_block'
 
         def get_ndiag(self, params):
             slices = sum([self._slices[key] for key in
