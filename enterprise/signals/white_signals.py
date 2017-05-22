@@ -61,11 +61,11 @@ def EquadNoise(log10_equad=parameter.Uniform(-10,-5),
     return EquadNoise
 
 
-def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
-                     selection=Selection(selections.no_selection)):
+def EcorrKernelNoiseSparse(log10_ecorr=parameter.Uniform(-10, -5),
+                           selection=Selection(selections.no_selection)):
     """Class factory for ECORR type noise using Sparse method."""
 
-    class EcorrKernelNoise(base.Signal):
+    class EcorrKernelNoiseSparse(base.Signal):
         signal_type = 'white noise'
         signal_name = 'ecorr_sparse'
 
@@ -110,14 +110,15 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
                         self._Ns[slc, slc] = 10**(2*self.get(p, params))
             return self._Ns
 
-    return EcorrKernelNoise
+    return EcorrKernelNoiseSparse
 
 
 def EcorrKernelNoiseSM(log10_ecorr=parameter.Uniform(-10, -5),
                        selection=Selection(selections.no_selection)):
     """Class factory for ECORR type noise using Sherman-Morrison method."""
 
-    BaseClass = EcorrKernelNoise(log10_ecorr=log10_ecorr, selection=selection)
+    BaseClass = EcorrKernelNoiseSparse(log10_ecorr=log10_ecorr,
+                                       selection=selection)
 
     class EcorrKernelNoiseSM(BaseClass):
         signal_type = 'white noise'

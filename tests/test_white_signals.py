@@ -222,9 +222,11 @@ class TestWhiteSignals(unittest.TestCase):
         ecorr = parameter.Uniform(-10, -5)
         ef = ws.MeasurementNoise(efac=efac, selection=selection)
         if method == 'sparse':
-            ec = ws.EcorrKernelNoise(log10_ecorr=ecorr, selection=selection)
+            ec = ws.EcorrKernelNoiseSparse(log10_ecorr=ecorr,
+                                           selection=selection)
         elif method == 'sherman-morrison':
-            ec = ws.EcorrKernelNoiseSM(log10_ecorr=ecorr, selection=selection)
+            ec = ws.EcorrKernelNoiseSM(log10_ecorr=ecorr,
+                                       selection=selection)
         elif method == 'block':
             ec = ws.EcorrKernelNoiseBlock(log10_ecorr=ecorr,
                                           selection=selection)
