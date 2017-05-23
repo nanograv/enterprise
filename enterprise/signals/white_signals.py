@@ -64,7 +64,62 @@ def EquadNoise(log10_equad=parameter.Uniform(-10,-5),
 def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
                      selection=Selection(selections.no_selection),
                      method='sherman-morrison'):
-    """Class factory for ECORR type noise using."""
+    """Class factory for ECORR type noise.
+
+    :param log10_ecorr: ``Parameter`` type for log10 or ecorr parameter.
+    :param selection:
+        ``Selection`` object specifying masks for backends, time segments, etc.
+    :param method: Method for computing noise covariance matrix.
+        Options include `sherman-morrison`, `sparse`, and `block`
+
+    :return: ``EcorrKernelNoise`` class.
+
+    ECORR is a noise signal that is used for data with multi-channel TOAs
+    that are nearly simultaneous in time. It is a white noise signal that
+    is uncorrelated epoch to epoch but completely correlated for TOAs in a
+    given observing epoch.
+
+    Mathematically, ECORR can be described by the covariance matrix
+
+    .. math:: C_{ecorr} = UJU^T,
+
+    where :math:`U` is a quantization matrix that maps TOAs to
+    their respective epochs and :math:`J` is a diagonal matrix of the
+    variance of the epoch to epoch fluctuations.
+
+    For this implementation we use this covariance matrix as part of the
+    white noise covariance matrix :math:`N`. It can be seen from above that
+    this covariance is block diagonal, thus allowing us to exploit special
+    methods to make matrix manipulations easier.
+
+    In this signal implementation we offer three methods of performing these
+    matrix operations:
+
+    sherman-morrison
+        Uses the `Sherman-Morrison`_ forumla to compute the matrix
+        inverse and other matrix operations. **Note:** This method can only
+        be used for covariances that can be constructed by the outer product
+        of two vectors, :math:`uv^T`.
+
+    sparse
+        Uses `Scipy Sparse`_ matrices to construct the block diagonal
+        covariance matrix and perform matrix operations.
+
+    block
+        Uses a custom scheme that uses the individual blocks from the block
+        diagonal matrix to perform fast matrix inverse and other solve
+        operations.
+
+    .. note:: The sherman-morrison method is the fastest, followed by the block
+        and then sparse methods, however; the block and sparse methods are more
+        general and should be used if sub-classing this signal for more complicated
+        blocks.
+
+    .. _Sherman-Morrison: https://en.wikipedia.org/wiki/Sherman-Morrison_formula
+    .. _Scipy Sparse: https://docs.scipy.org/doc/scipy-0.18.1/reference/sparse.html
+    .. # noqa E501
+
+    """
 
     if method not in ['sherman-morrison', 'block', 'sparse']:
         msg = 'EcorrKernelNoise does not support method: {}'.format(method)
