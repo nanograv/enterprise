@@ -11,6 +11,7 @@ import tempfile
 from ephem import Ecliptic, Equatorial
 import os
 import json
+import cPickle as pickle
 from collections import OrderedDict
 
 # NOTE: PINT interface is not yet available so just import libstempo
@@ -24,7 +25,7 @@ except ImportError:
 class Pulsar(object):
 
     def __init__(self, parfile, timfile, maxobs=30000, ephem=None,
-                 planets=True):
+                 planets=True, drop_t2pulsar=True):
         # Check whether the two files exist
         if not os.path.isfile(parfile) or not os.path.isfile(timfile):
             msg = 'Cannot find parfile {0} or timfile {1}!'.format(
@@ -176,6 +177,10 @@ class Pulsar(object):
             self._planetssb[:, 7, :] = self.t2pulsar.neptune_ssb
             self._planetssb[:, 8, :] = self.t2pulsar.pluto_ssb
 
+        # drop pulsar object to save memory
+        if drop_t2pulsar:
+            del self.t2pulsar
+
     def filter_data(self, start_time=None, end_time=None):
         """Filter data to create a time-slice of overall dataset."""
         if start_time is None and end_time is None:
@@ -199,12 +204,21 @@ class Pulsar(object):
         if self._planetssb is not None:
             self._planetssb = self.planetssb[mask, :, :]
 
-    def to_pickle(self, savedir):
+    def to_pickle(self, outdir=None):
         """Save object to pickle file."""
 
-        # may have difficulties with this since tempopulsar objects
-        # are note pickleable.
-        pass
+        # drop t2pulsar object
+        if hasattr(self, 't2pulsar'):
+            del self.t2pulsar
+
+        if outdir is None:
+            outdir = os.getcwd()
+
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
+
+        with open(outdir + '/{0}.pkl'.format(self.name), 'w') as f:
+            pickle.dump(self, f)
 
     @property
     def toas(self):
