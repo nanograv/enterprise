@@ -61,13 +61,18 @@ def EquadNoise(log10_equad=parameter.Uniform(-10,-5),
     return EquadNoise
 
 
-def EcorrKernelNoiseSparse(log10_ecorr=parameter.Uniform(-10, -5),
-                           selection=Selection(selections.no_selection)):
-    """Class factory for ECORR type noise using Sparse method."""
+def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
+                     selection=Selection(selections.no_selection),
+                     method='sherman-morrison'):
+    """Class factory for ECORR type noise using."""
 
-    class EcorrKernelNoiseSparse(base.Signal):
+    if method not in ['sherman-morrison', 'block', 'sparse']:
+        msg = 'EcorrKernelNoise does not support method: {}'.format(method)
+        raise TypeError(msg)
+
+    class EcorrKernelNoise(base.Signal):
         signal_type = 'white noise'
-        signal_name = 'ecorr_sparse'
+        signal_name = 'ecorr_' + method
 
         def __init__(self, psr):
 
@@ -95,7 +100,19 @@ def EcorrKernelNoiseSparse(log10_ecorr=parameter.Uniform(-10, -5),
             # initialize sparse matrix
             self._setup(psr)
 
+        def get_ndiag(self, params):
+            if method == 'sherman-morrison':
+                return self._get_ndiag_sherman_morrison(params)
+            elif method == 'sparse':
+                return self._get_ndiag_sparse(params)
+            elif method == 'block':
+                return self._get_ndiag_block(params)
+
         def _setup(self, psr):
+            if method == 'sparse':
+                self._setup_sparse(psr)
+
+        def _setup_sparse(self, psr):
             Ns = scipy.sparse.csc_matrix((len(psr.toas), len(psr.toas)))
             for key, slices in self._slices.items():
                 for slc in slices:
@@ -103,64 +120,31 @@ def EcorrKernelNoiseSparse(log10_ecorr=parameter.Uniform(-10, -5),
                         Ns[slc, slc] = 1.0
             self._Ns = base.csc_matrix_alt(Ns)
 
-        def get_ndiag(self, params):
+        def _get_ndiag_sparse(self, params):
             for p in self._params:
                 for slc in self._slices[p]:
                     if slc.stop - slc.start > 1:
                         self._Ns[slc, slc] = 10**(2*self.get(p, params))
             return self._Ns
 
-    return EcorrKernelNoiseSparse
-
-
-def EcorrKernelNoiseSM(log10_ecorr=parameter.Uniform(-10, -5),
-                       selection=Selection(selections.no_selection)):
-    """Class factory for ECORR type noise using Sherman-Morrison method."""
-
-    BaseClass = EcorrKernelNoiseSparse(log10_ecorr=log10_ecorr,
-                                       selection=selection)
-
-    class EcorrKernelNoiseSM(BaseClass):
-        signal_type = 'white noise'
-        signal_name = 'ecorr_sherman-morrison'
-
-        def _setup(self, psr):
-            pass
-
-        def get_ndiag(self, params):
-            slices = sum([self._slices[key] for key in
-                          sorted(self._slices.keys())], [])
-            jvec = np.concatenate(
-                [np.ones(len(self._slices[key]))*10**(2*self.get(key, params))
-                 for key in sorted(self._slices.keys())])
-
+        def _get_ndiag_sherman_morrison(self, params):
+            slices, jvec = self._get_jvecs(params)
             return base.ShermanMorrison(jvec, slices)
 
-    return EcorrKernelNoiseSM
-
-
-def EcorrKernelNoiseBlock(log10_ecorr=parameter.Uniform(-10, -5),
-                          selection=Selection(selections.no_selection)):
-    """Class factory for ECORR type noise using Block method."""
-
-    BaseClass = EcorrKernelNoiseSM(log10_ecorr=log10_ecorr,selection=selection)
-
-    class EcorrKernelNoiseBlock(BaseClass):
-        signal_type = 'white noise'
-        signal_name = 'ecorr_block'
-
-        def get_ndiag(self, params):
-            slices = sum([self._slices[key] for key in
-                          sorted(self._slices.keys())], [])
-            jvec = np.concatenate(
-                [np.ones(len(self._slices[key]))*10**(2*self.get(key, params))
-                 for key in sorted(self._slices.keys())])
-
+        def _get_ndiag_block(self, params):
+            slices, jvec = self._get_jvecs(params)
             blocks = []
             for jv, slc in zip(jvec, slices):
                 nb = slc.stop - slc.start
                 blocks.append(np.ones((nb, nb))*jv)
-
             return base.BlockMatrix(blocks, slices)
 
-    return EcorrKernelNoiseBlock
+        def _get_jvecs(self, params):
+            slices = sum([self._slices[key] for key in
+                          sorted(self._slices.keys())], [])
+            jvec = np.concatenate(
+                [np.ones(len(self._slices[key]))*10**(2*self.get(key, params))
+                 for key in sorted(self._slices.keys())])
+            return (slices, jvec)
+
+    return EcorrKernelNoise

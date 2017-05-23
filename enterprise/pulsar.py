@@ -26,7 +26,7 @@ class Pulsar(object):
 
     def __init__(self, parfile, timfile, maxobs=30000, ephem=None,
                  planets=True, sort=True, drop_t2pulsar=True):
-                 
+
         # Check whether the two files exist
         if not os.path.isfile(parfile) or not os.path.isfile(timfile):
             msg = 'Cannot find parfile {0} or timfile {1}!'.format(
