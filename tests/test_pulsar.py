@@ -24,8 +24,7 @@ class TestPulsar(unittest.TestCase):
 
         # initialize Pulsar class
         self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_11yv0.gls.par',
-                          datadir + '/B1855+09_NANOGrav_11yv0.tim',
-                          drop_t2pulsar=False)
+                          datadir + '/B1855+09_NANOGrav_11yv0.tim')
 
     def test_residuals(self):
         """Check Residual shape."""
