@@ -17,7 +17,8 @@ from enterprise.signals.selections import Selection
 
 
 def FourierBasisGP(spectrum, components=20,
-                   selection=Selection(selections.no_selection), Tspan=None):
+                   selection=Selection(selections.no_selection),
+                   Tspan=None):
     """Class factory for fourier basis GPs."""
 
     class FourierBasisGP(base.Signal):
@@ -196,7 +197,6 @@ def FourierBasisCommonGP(crossspectrum=None, components=20,
 
         @classmethod
         def get_phicross(cls, signal1, signal2, params):
-            # currently pass the pulsar objects, what else could we do?
             # note multiplying by f[0] is not general
             return FourierBasisCommonGP._crossspectrum(
                 signal1._f2, signal1._psrpos, signal2._psrpos,
