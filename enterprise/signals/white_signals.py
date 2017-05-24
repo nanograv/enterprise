@@ -79,14 +79,6 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
     is uncorrelated epoch to epoch but completely correlated for TOAs in a
     given observing epoch.
 
-    Mathematically, ECORR can be described by the covariance matrix
-
-    .. math:: C_{ecorr} = UJU^T,
-
-    where :math:`U` is a quantization matrix that maps TOAs to
-    their respective epochs and :math:`J` is a diagonal matrix of the
-    variance of the epoch to epoch fluctuations.
-
     For this implementation we use this covariance matrix as part of the
     white noise covariance matrix :math:`N`. It can be seen from above that
     this covariance is block diagonal, thus allowing us to exploit special
@@ -112,8 +104,8 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
 
     .. note:: The sherman-morrison method is the fastest, followed by the block
         and then sparse methods, however; the block and sparse methods are more
-        general and should be used if sub-classing this signal for more complicated
-        blocks.
+        general and should be used if sub-classing this signal for more
+        complicated blocks.
 
     .. _Sherman-Morrison: https://en.wikipedia.org/wiki/Sherman-Morrison_formula
     .. _Scipy Sparse: https://docs.scipy.org/doc/scipy-0.18.1/reference/sparse.html
