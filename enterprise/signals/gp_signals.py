@@ -115,24 +115,24 @@ def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
 
         def __init__(self, psr):
 
-            # TODO: this could be cleaned up and probably done in one loop...
             sel = selection(psr)
             self._params, self._masks = sel('log10_ecorr', log10_ecorr)
-            Umats = {}
-            for key in sorted(self._masks.keys()):
-                mask = self._masks[key]
-                Umats.update({key: utils.create_quantization_matrix(
-                    psr.toas[mask])})
-            nepoch = np.sum(U.shape[1] for U in Umats.values())
+            keys = list(sorted(self._masks.keys()))
+            masks = [self._masks[key] for key in keys]
+
+            Umats = []
+            for key, mask in zip(keys, masks):
+                Umats.append(utils.create_quantization_matrix(
+                    psr.toas[mask]))
+
+            nepoch = np.sum(U.shape[1] for U in Umats)
             self._F = np.zeros((len(psr.toas), nepoch))
-            netot = 0
             self._jvec = {}
             self._phi = np.zeros(nepoch)
-            for key in sorted(self._masks.keys()):
-                mask = self._masks[key]
-                Umat = Umats[key]
-                nn = Umat.shape[1]
-                self._F[mask, netot:nn+netot] = Umat
+            netot = 0
+            for ct, (key, mask) in enumerate(zip(keys, masks)):
+                nn = Umats[ct].shape[1]
+                self._F[mask, netot:nn+netot] = Umats[ct]
                 self._jvec.update({key: slice(netot, nn+netot)})
                 netot += nn
 
@@ -197,7 +197,6 @@ def FourierBasisCommonGP(crossspectrum=None, components=20,
 
         @classmethod
         def get_phicross(cls, signal1, signal2, params):
-            # currently pass the pulsar objects, what else could we do?
             # note multiplying by f[0] is not general
             return FourierBasisCommonGP._crossspectrum(
                 signal1._f2, signal1._psrpos, signal2._psrpos,

@@ -25,7 +25,8 @@ except ImportError:
 class Pulsar(object):
 
     def __init__(self, parfile, timfile, maxobs=30000, ephem=None,
-                 planets=True, drop_t2pulsar=True):
+                 planets=True, sort=True, drop_t2pulsar=True):
+
         # Check whether the two files exist
         if not os.path.isfile(parfile) or not os.path.isfile(timfile):
             msg = 'Cannot find parfile {0} or timfile {1}!'.format(
@@ -44,6 +45,9 @@ class Pulsar(object):
         # Change directory to the base directory of the tim-file to deal with
         # INCLUDE statements in the tim-file
         os.chdir(dirname)
+
+        # sorting
+        self._sort = sort
 
         # Load pulsar data from the libstempo library
         # TODO: make sure we specify libstempo>=2.3.1
@@ -181,6 +185,20 @@ class Pulsar(object):
         if drop_t2pulsar:
             del self.t2pulsar
 
+        # sorting
+        self.sort_data()
+
+    def sort_data(self):
+        """Sort data by time."""
+        if self._sort:
+            self._isort = np.argsort(self._toas, kind='mergesort')
+            self._iisort = np.zeros(len(self._isort), dtype=np.int)
+            for ii, p in enumerate(self._isort):
+                self._iisort[p] = ii
+        else:
+            self._isort = slice(None, None, None)
+            self._iisort = slice(None, None, None)
+
     def filter_data(self, start_time=None, end_time=None):
         """Filter data to create a time-slice of overall dataset."""
         if start_time is None and end_time is None:
@@ -204,6 +222,8 @@ class Pulsar(object):
         if self._planetssb is not None:
             self._planetssb = self.planetssb[mask, :, :]
 
+        self.sort_data()
+
     def to_pickle(self, outdir=None):
         """Save object to pickle file."""
 
@@ -221,29 +241,39 @@ class Pulsar(object):
             pickle.dump(self, f)
 
     @property
+    def isort(self):
+        """Return sorting indices."""
+        return self._isort
+
+    @property
+    def iisort(self):
+        """Return inverse of sorting indices."""
+        return self._iisort
+
+    @property
     def toas(self):
         """Return array of TOAs in seconds."""
-        return self._toas
+        return self._toas[self._isort]
 
     @property
     def residuals(self):
         """Return array of residuals in seconds."""
-        return self._residuals
+        return self._residuals[self._isort]
 
     @property
     def toaerrs(self):
         """Return array of TOA errors in seconds."""
-        return self._toaerrs
+        return self._toaerrs[self._isort]
 
     @property
     def freqs(self):
         """Return array of radio frequencies in MHz."""
-        return self._ssbfreqs
+        return self._ssbfreqs[self._isort]
 
     @property
     def Mmat(self):
         """Return ntoa x npar design matrix."""
-        return self._designmatrix
+        return self._designmatrix[self._isort, :]
 
     @property
     def pdist(self):
@@ -253,7 +283,8 @@ class Pulsar(object):
     @property
     def flags(self):
         """Return a dictionary of tim-file flags."""
-        return self._flags
+
+        return dict((k, v[self._isort]) for k, v in self._flags.items())
 
     @property
     def backend_flags(self):
@@ -275,7 +306,7 @@ class Pulsar(object):
                 if np.all(map(lambda xx: check(ii, xx), f)):
                     bflags[ii] = '_'.join(self._flags[x][ii] for x in f)
                     break
-        return np.array(bflags)
+        return np.array(bflags)[self._isort]
 
     @property
     def theta(self):
