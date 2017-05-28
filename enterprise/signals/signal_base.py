@@ -8,6 +8,7 @@ from __future__ import (absolute_import, division,
 
 import collections
 import itertools
+import logging
 
 import six
 
@@ -104,18 +105,6 @@ class MarginalizedLogLikelihood(object):
     def __init__(self,pta):
         self.pta = pta
 
-    def _make_sigma(self,phiinv,TNTs):
-        # or sparse.block...
-        # phiinv = phiinv.toarray()
-        cnt = 0
-        for TNT in TNTs:
-            sl = slice(cnt,cnt + TNT.shape[0])
-            phiinv[sl,sl] += TNT
-            cnt = sl.stop
-        # phiinv = sps.csc_matrix(phiinv)
-
-        return phiinv
-
     # this can and should be much cleaner
     def __call__(self, xs):
         # map parameter vector if needed
@@ -152,7 +141,7 @@ class MarginalizedLogLikelihood(object):
             phiinv, logdet_phi = phiinvs
 
             # note: modifies phiinv in place
-            Sigma = self._make_sigma(phiinv,TNTs)
+            Sigma = phiinv + sps.block_diag(TNTs,'csc')
             d = np.concatenate(ds)
 
             cf = cholesky(Sigma)
@@ -251,7 +240,17 @@ class PTA(object):
 
         return ret
 
-    def get_phiinv(self, params, logdet=False):
+    def get_phiinv(self, params, logdet=False, method='cliques'):
+        if method == 'cliques':
+            return self.get_phiinv_byfreq_cliques(params, logdet)
+        elif method == 'partition':
+            return self.get_phiinv_byfreq_partition(params, logdet)
+        elif method == 'sparse':
+            return self.get_phiinv_sparse(params, logdet)
+        else:
+            raise NotImplementedError
+
+    def get_phiinv_sparse(self, params, logdet=False):
         phi = self.get_phi(params)
 
         if isinstance(phi, list):
@@ -270,7 +269,142 @@ class PTA(object):
             else:
                 return cf.inv()
 
-    def get_phi(self, params):
+    def get_phiinv_byfreq_partition(self, params, logdet=False):
+        phivecs = [signalcollection.get_phi(params) for
+                   signalcollection in self._signalcollections]
+
+        # if we found common signals, we'll return a big phivec matrix,
+        # otherwise a list of phivec vectors (some of which possibly None)
+        if self._commonsignals:
+            # would be easier if get_phi would return an empty array
+            phidiag = np.concatenate([phivec for phivec in phivecs
+                                      if phivec is not None])
+            slices = self._get_slices(phivecs)
+
+            if logdet:
+                ld = np.sum(np.log(phidiag))
+
+            phiinv = np.diag(1.0/phidiag)
+
+            # assume no superposition between common signals
+            for csclass, csdict in self._commonsignals.items():
+                invert = None
+
+                for i, (cs1, csc1) in enumerate(csdict.items()):
+                    for j, (cs2, csc2) in enumerate(csdict.items()):
+                        if j <= i: continue
+
+                        # hoping they're all the same...
+                        crossdiag = csclass.get_phicross(cs1, cs2, params)
+
+                        if invert is None:
+                            invert = np.zeros((len(crossdiag),len(csdict),len(csdict)),'d')
+
+                        invert[:,i,j] += crossdiag
+                        invert[:,j,i] += crossdiag
+
+                    invert[:,i,i] += phidiag[slices[csc1]][csc1._idx[cs1]]
+                    
+                    if logdet:
+                        ld -= np.sum(np.log(phidiag[slices[csc1]][csc1._idx[cs1]]))
+
+                for k in range(len(crossdiag)):
+                    if logdet:
+                        ld += np.linalg.slogdet(invert[k,:,:])[1]
+
+                    invert[k,:,:] = np.linalg.inv(invert[k,:,:])    
+
+                for i, (cs1, csc1) in enumerate(csdict.items()):
+                    for j, (cs2, csc2) in enumerate(csdict.items()):
+                        if j < i: continue
+
+                        block1, idx1 = slices[csc1], csc1._idx[cs1]
+                        block2, idx2 = slices[csc2], csc2._idx[cs2]
+
+                        phiinv[block1,block2][idx1,idx2] = invert[:,i,j]
+                        phiinv[block2,block1][idx2,idx1] = invert[:,i,j]
+
+            if logdet:
+                return phiinv, ld
+            else:
+                return phiinv
+        else:
+            raise NotImplementedError
+
+    def get_phiinv_byfreq_cliques(self, params, logdet=False, cholesky=False):
+        phi = self.get_phi(params, cliques=True)
+
+        if isinstance(phi, list):
+            if logdet:
+                return [None if phivec is None
+                        else (1/phivec, np.sum(np.log(phivec)))
+                        for phivec in phi]
+            else:
+                return [None if phivec is None else 1/phivec for phivec in phi]
+        else:
+            ld = 1.0
+
+            # first invert all the cliques
+            for clcount in range(self._clcount):
+                idx = (self._cliques == clcount)
+
+                if np.any(idx):
+                    idx2 = np.ix_(idx,idx)
+
+                    if cholesky:
+                        cf = sl.cho_factor(phi[idx2])
+                        
+                        if logdet:
+                            ld += 2.0*np.sum(np.log(np.diag(cf[0])))
+                        
+                        phi[idx2] = sl.cho_solve(cf,np.identity(cf[0].shape[0]))
+                    else:
+                        phi2 = phi[idx2]
+
+                        if logdet:
+                            ld += np.linalg.slogdet(phi2)[1]
+
+                        phi[idx2] = np.linalg.inv(phi2)
+
+            # then do the pure diagonal terms
+            idx = (self._cliques == -1)
+
+            if logdet:
+                ld += np.sum(np.log(phi[idx,idx]))
+
+            phi[idx,idx] = 1.0/phi[idx,idx]
+
+            return (phi, ld) if logdet else phi
+
+    # sort matrix indices by presence of non-diagonal elements
+    # for each value in self._cliques, the indices with that value form
+    # an independent submatrix that can be inverted separately   
+    def _resetcliques(self,phidiag):
+        self._cliques = -1 * np.ones_like(phidiag)
+        self._clcount = 0
+
+    def _setcliques(self,slices,csdict):
+        idxmatrix = np.array([csc._idx[cs] for cs, csc in csdict.items()]).T
+        idxmatrix = idxmatrix + np.array([slices[csc].start for cs, csc in csdict.items()])
+
+        for idxs in idxmatrix:
+            allidx = set(self._cliques[idxs])
+            maxidx = max(allidx)
+
+            if maxidx == -1:
+                self._cliques[idxs] = self._clcount
+
+                if len(allidx) > 1:
+                    self._cliques[np.in1d(self._cliques,allidx)] = self._clcount
+
+                self._clcount = self._clcount + 1
+            else:
+                self._cliques[idxs] = maxidx
+                
+                if len(allidx) > 1:
+                    self._cliques[np.in1d(self._cliques,allidx)] = maxidx
+
+    def get_phi(self, params, cliques=False):
         phivecs = [signalcollection.get_phi(params) for
                    signalcollection in self._signalcollections]
 
@@ -284,9 +418,16 @@ class PTA(object):
 
             phi = np.diag(phidiag)
 
+            if cliques:
+                self._resetcliques(phidiag)
+
             # iterate over all common signal classes
             for csclass, csdict in self._commonsignals.items():
-                # iterate over all pairs of common signal instances
+                # first figure out which indices are used in this common signal
+                if cliques:
+                    self._setcliques(slices,csdict)
+
+                # now iterate over all pairs of common signal instances
                 pairs = itertools.combinations(csdict.items(),2)
 
                 for (cs1, csc1), (cs2, csc2) in pairs:
