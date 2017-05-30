@@ -44,13 +44,13 @@ def create_stabletimingdesignmatrix(designmat, fastDesign=True):
 ######################################
 
 
-def createfourierdesignmatrix_red(t, nmodes, freq=False, Tspan=None,
+def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
                                   logf=False, fmin=None, fmax=None,
-                                  pshift=False):
+                                  pshift=False, mask=None):
     """
     Construct fourier design matrix from eq 11 of Lentati et al, 2013
 
-    :param t: vector of time series in seconds
+    :param toas: vector of time series in seconds
     :param nmodes: number of fourier coefficients to use
     :param freq: option to output frequencies
     :param Tspan: option to some other Tspan
@@ -58,104 +58,81 @@ def createfourierdesignmatrix_red(t, nmodes, freq=False, Tspan=None,
     :param fmin: lower sampling frequency
     :param fmax: upper sampling frequency
     :param pshift: option to add random phase shift
+    :param mask: option mask certain TOAs
 
     :return: F: fourier design matrix
-    :return: f: Sampling frequencies (if freq=True)
+    :return: f: Sampling frequencies
     """
+    if mask is None:
+        mask = np.ones_like(toas, dtype=bool)
+
+    # masked times
+    t = toas[mask]
 
     N = len(t)
     F = np.zeros((N, 2 * nmodes))
 
-    if Tspan is not None:
-        T = Tspan
-    else:
-        T = t.max() - t.min()
+    T = Tspan if Tspan is not None else t.max() - t.min()
 
     # define sampling frequencies
-    if fmin is not None and fmax is not None:
-        f = np.linspace(fmin, fmax, nmodes)
-    else:
-        f = np.linspace(1 / T, nmodes / T, nmodes)
+    if fmin is None:
+        fmin = 1 / T
+    if fmax is None:
+        fmax = nmodes / T
+
     if logf:
-        f = np.logspace(np.log10(1 / T), np.log10(nmodes / T), nmodes)
+        f = np.logspace(np.log10(fmin), np.log10(fmax), nmodes)
+    else:
+        f = np.linspace(fmin, fmax, nmodes)
 
     # add random phase shift to basis functions
-    if pshift:
-        ranphase = np.random.uniform(0.0, 2 * np.pi, nmodes)
-    elif not pshift:
-        ranphase = np.zeros(nmodes)
+    ranphase = (np.random.uniform(0.0, 2 * np.pi, nmodes)
+                if pshift else np.zeros(nmodes))
 
-    Ffreqs = np.zeros(2 * nmodes)
-    Ffreqs[0::2] = f
-    Ffreqs[1::2] = f
+    Ffreqs = np.repeat(f, 2)
 
     # The sine/cosine modes
-    if pshift:
-        F[:,::2] = np.sin(2*np.pi*t[:,None]*f[None,:] +
-                          ranphase[None,:])
-        F[:,1::2] = np.cos(2*np.pi*t[:,None]*f[None,:] +
-                           ranphase[None,:])
-    elif not pshift:
-        F[:,::2] = np.sin(2*np.pi*t[:,None]*f[None,:])
-        F[:,1::2] = np.cos(2*np.pi*t[:,None]*f[None,:])
+    F[:,::2] = np.sin(2*np.pi*t[:,None]*f[None,:] +
+                      ranphase[None,:])
+    F[:,1::2] = np.cos(2*np.pi*t[:,None]*f[None,:] +
+                       ranphase[None,:])
 
-    if freq:
-        return F, Ffreqs, ranphase
-    else:
-        return F, ranphase
+    return F, Ffreqs
 
 
-def createfourierdesignmatrix_dm(t, nmodes, ssbfreqs, freq=False,
-                                 Tspan=None, logf=False, fmin=None,
-                                 fmax=None):
+def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
+                                 logf=False, fmin=None, fmax=None,
+                                 mask=None):
 
     """
     Construct DM-variation fourier design matrix.
 
-    :param t: vector of time series in seconds
+    :param toas: vector of time series in seconds
     :param nmodes: number of fourier coefficients to use
-    :param ssbfreqs: radio frequencies of observations [MHz]
+    :param freqs: radio frequencies of observations [MHz]
     :param freq: option to output frequencies
     :param Tspan: option to some other Tspan
     :param logf: use log frequency spacing
     :param fmin: lower sampling frequency
     :param fmax: upper sampling frequency
+    :param mask: option mask certain TOAs
 
     :return: F: DM-variation fourier design matrix
-    :return: f: Sampling frequencies (if freq=True)
+    :return: f: Sampling frequencies
     """
+    if mask is None:
+        mask = np.ones_like(toas, dtype=bool)
 
-    N = len(t)
-    F = np.zeros((N, 2 * nmodes))
-
-    if Tspan is not None:
-        T = Tspan
-    else:
-        T = t.max() - t.min()
-
-    # define sampling frequencies
-    if fmin is not None and fmax is not None:
-        f = np.linspace(fmin, fmax, nmodes)
-    else:
-        f = np.linspace(1 / T, nmodes / T, nmodes)
-    if logf:
-        f = np.logspace(np.log10(1 / T), np.log10(nmodes / T), nmodes)
-
-    Ffreqs = np.zeros(2 * nmodes)
-    Ffreqs[0::2] = f
-    Ffreqs[1::2] = f
+    # get base fourier design matrix and frequencies
+    F, Ffreqs = createfourierdesignmatrix_red(
+        toas, nmodes=nmodes, Tspan=Tspan, logf=logf,
+        fmin=fmin, fmax=fmax, mask=mask)
 
     # compute the DM-variation vectors
-    Dm = 1.0/(const.DM_K * ssbfreqs**2.0 * 1e12)
+    # TODO: should we use a different normalization
+    Dm = 1.0/(const.DM_K * freqs[mask]**2 * 1e12)
 
-    # The sine/cosine modes
-    F[:,::2] = np.sin(2*np.pi*t[:,None]*f[None,:]) * Dm[:,None]
-    F[:,1::2] = np.cos(2*np.pi*t[:,None]*f[None,:]) * Dm[:,None]
-
-    if freq:
-        return F, Ffreqs
-    else:
-        return F
+    return F * Dm[:, None], Ffreqs
 
 
 def createfourierdesignmatrix_eph(t, nmodes, phi, theta, freq=False,

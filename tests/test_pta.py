@@ -86,14 +86,14 @@ class TestPTASignals(unittest.TestCase):
         T1, T2, T3 = 3.16e8, 3.16e8, 3.16e8
         nf1, nf2, nf3 = 2, 2, 1
 
-        F1, f1, _ = utils.createfourierdesignmatrix_red(
-            self.psrs[0].toas, nf1, freq=True, Tspan=T1)
-        F2, f2, _ = utils.createfourierdesignmatrix_red(
-            self.psrs[1].toas, nf2, freq=True, Tspan=T2)
-        F1c, fc, _ = utils.createfourierdesignmatrix_red(
-            self.psrs[0].toas, nf3, freq=True, Tspan=T3)
-        F2c, fc, _ = utils.createfourierdesignmatrix_red(
-            self.psrs[1].toas, nf3, freq=True, Tspan=T3)
+        F1, f1 = utils.createfourierdesignmatrix_red(
+            self.psrs[0].toas, nf1, Tspan=T1)
+        F2, f2 = utils.createfourierdesignmatrix_red(
+            self.psrs[1].toas, nf2, Tspan=T2)
+        F1c, fc = utils.createfourierdesignmatrix_red(
+            self.psrs[0].toas, nf3, Tspan=T3)
+        F2c, fc = utils.createfourierdesignmatrix_red(
+            self.psrs[1].toas, nf3, Tspan=T3)
 
         nftot = 2 * 2 * nf1
         phidiag = np.zeros(nftot)

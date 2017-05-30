@@ -122,8 +122,8 @@ class TestGPSignals(unittest.TestCase):
                   'B1855+09_gamma': gamma}
 
         # basis matrix test
-        F, f2, _ = utils.createfourierdesignmatrix_red(
-            self.psr.toas, nmodes=30, freq=True)
+        F, f2 = utils.createfourierdesignmatrix_red(
+            self.psr.toas, nmodes=30)
         msg = 'F matrix incorrect for GP Fourier signal.'
         assert np.allclose(F, rnm.get_basis(params)), msg
 
@@ -166,8 +166,8 @@ class TestGPSignals(unittest.TestCase):
         Fmats, fs, phis = [], [], []
         for ct, flag in enumerate(np.unique(bflags)):
             mask = bflags == flag
-            F, f, _ = utils.createfourierdesignmatrix_red(
-                self.psr.toas[mask], 30, freq=True)
+            F, f = utils.createfourierdesignmatrix_red(
+                self.psr.toas[mask], 30)
             Fmats.append(F)
             fs.append(f)
             phis.append(utils.powerlaw(f, log10_As[ct], gammas[ct])*f[0])
@@ -227,10 +227,10 @@ class TestGPSignals(unittest.TestCase):
             rnm = s(self.psr)
 
             # set up frequencies
-            F1, f1, _ = utils.createfourierdesignmatrix_red(
-                self.psr.toas, nmodes=nf1, freq=True, Tspan=T1)
-            F2, f2, _ = utils.createfourierdesignmatrix_red(
-                self.psr.toas, nmodes=nf2, freq=True, Tspan=T2)
+            F1, f1 = utils.createfourierdesignmatrix_red(
+                self.psr.toas, nmodes=nf1, Tspan=T1)
+            F2, f2 = utils.createfourierdesignmatrix_red(
+                self.psr.toas, nmodes=nf2, Tspan=T2)
 
             # test power spectrum
             p1 = utils.powerlaw(f1, log10_A, gamma) * f1[0]
@@ -301,13 +301,13 @@ class TestGPSignals(unittest.TestCase):
             # get the basis
             bflags = self.psr.backend_flags
             Fmats, fs, phis = [], [], []
-            F2, f2, _ = utils.createfourierdesignmatrix_red(
-                self.psr.toas, nf2, freq=True, Tspan=T2)
+            F2, f2 = utils.createfourierdesignmatrix_red(
+                self.psr.toas, nf2, Tspan=T2)
             p2 = utils.powerlaw(f2, log10_Ac, gammac)*f2[0]
             for ct, flag in enumerate(np.unique(bflags)):
                 mask = bflags == flag
-                F1, f1, _ = utils.createfourierdesignmatrix_red(
-                    self.psr.toas[mask], nf1, freq=True, Tspan=T1)
+                F1, f1 = utils.createfourierdesignmatrix_red(
+                    self.psr.toas[mask], nf1, Tspan=T1)
                 Fmats.append(F1)
                 fs.append(f1)
                 phis.append(utils.powerlaw(f1, log10_As[ct], gammas[ct])*f1[0])
@@ -388,8 +388,8 @@ class TestGPSignals(unittest.TestCase):
         M = self.psr.Mmat.copy()
         norm = np.sqrt(np.sum(M**2, axis=0))
         M /= norm
-        F, f2, _ = utils.createfourierdesignmatrix_red(
-            self.psr.toas, nmodes=30, freq=True)
+        F, f2 = utils.createfourierdesignmatrix_red(
+            self.psr.toas, nmodes=30)
         T = np.hstack((U, F, M))
 
         # combined prior vector

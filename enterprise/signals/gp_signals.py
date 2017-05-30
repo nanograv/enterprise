@@ -37,9 +37,9 @@ def FourierBasisGP(spectrum, components=20,
             for key in sorted(masks.keys()):
                 mask = masks[key]
                 self._spectrum[key] = spectrum(psr.name, key)
-                Fmats[key], self._f2[key], _ = \
+                Fmats[key], self._f2[key] = \
                     utils.createfourierdesignmatrix_red(
-                        psr.toas[mask], components, freq=True, Tspan=Tspan)
+                        psr.toas[mask], components, Tspan=Tspan)
                 for param in self._spectrum[key]._params.values():
                     self._params[param.name] = param
 
@@ -179,8 +179,8 @@ def FourierBasisCommonGP(crossspectrum=None, components=20,
             if par in ['_f2', '_F']:
                 span = (Tspan if Tspan else max(FourierBasisCommonGP._Tmax) -
                         min(FourierBasisCommonGP._Tmin))
-                self._F, self._f2, _ = utils.createfourierdesignmatrix_red(
-                    self._toas, components, freq=True, Tspan=span)
+                self._F, self._f2 = utils.createfourierdesignmatrix_red(
+                    self._toas, components, Tspan=span)
 
                 return getattr(self, par)
             else:

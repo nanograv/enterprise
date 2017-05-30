@@ -24,11 +24,10 @@ class TestUtils(unittest.TestCase):
         # initialize Pulsar class
         self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_11yv0.gls.par',
                           datadir + '/B1855+09_NANOGrav_11yv0.tim')
-        self.F, _ = utils.createfourierdesignmatrix_red(t=self.psr.toas,
-                                                        nmodes=30)
-        self.Fdm = utils.createfourierdesignmatrix_dm(t=self.psr.toas,
-                                                      ssbfreqs=self.psr.freqs,
-                                                      nmodes=30)
+        self.F, _ = utils.createfourierdesignmatrix_red(
+            self.psr.toas, nmodes=30)
+        self.Fdm, _ = utils.createfourierdesignmatrix_dm(
+            self.psr.toas,freqs=self.psr.freqs, nmodes=30)
         tmp = utils.createfourierdesignmatrix_eph(t=self.psr.toas,
                                                   phi=self.psr.phi,
                                                   theta=self.psr.theta,
