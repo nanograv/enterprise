@@ -13,6 +13,8 @@ for time slicing, PINT integration and pickling.
 import unittest
 from tests.enterprise_test_data import datadir
 from enterprise.pulsar import Pulsar
+import numpy as np
+import cPickle as pickle
 
 
 class TestPulsar(unittest.TestCase):
@@ -80,7 +82,17 @@ class TestPulsar(unittest.TestCase):
 
     def test_to_pickle(self):
         """Place holder for to_pickle tests."""
-        assert self.psr.to_pickle('./') is None
+        self.psr.to_pickle()
+        with open('B1855+09.pkl', 'r') as f:
+            pkl_psr = pickle.load(f)
+
+        assert np.allclose(self.psr.residuals, pkl_psr.residuals, rtol=1e-10)
+
+        self.psr.to_pickle('pickle_dir')
+        with open('pickle_dir/B1855+09.pkl', 'r') as f:
+            pkl_psr = pickle.load(f)
+
+        assert np.allclose(self.psr.residuals, pkl_psr.residuals, rtol=1e-10)
 
     def test_wrong_input(self):
         """Test exception when incorrect par(tim) file given."""
