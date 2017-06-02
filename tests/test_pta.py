@@ -115,6 +115,6 @@ class TestPTASignals(unittest.TestCase):
 
         msg = '{} {}'.format(np.diag(phi), np.diag(phit))
         assert np.allclose(phi, phit, rtol=1e-15, atol=1e-17), msg
-        msg = 'PTA Phi inverse is incorrect.'
+        msg = 'PTA Phi inverse is incorrect {}.'.format(params)
         assert np.allclose(phiinv, np.linalg.inv(phit),
                            rtol=1e-15, atol=1e-17), msg

@@ -14,7 +14,8 @@ import scipy.sparse as sps
 import scipy.linalg as sl
 from sksparse.cholmod import cholesky
 
-from enterprise.signals.parameter import ConstantParameter
+from enterprise.signals.parameter import ConstantParameter, Parameter
+from enterprise.signals.selections import selection_func
 
 
 class MetaSignal(type):
@@ -268,14 +269,14 @@ def SignalCollection(metasignals):
             return self._Fmat
 
         def get_phiinv(self, params):
-            return 1.0/self.get_phi(params)
+            return 1.0/self.get_phi(params=params)
 
         def get_phi(self, params):
             phi = np.zeros(self._Fmat.shape[1],'d')
 
             for signal in self._signals:
                 if signal in self._idx:
-                    phi[self._idx[signal]] += signal.get_phi(params)
+                    phi[self._idx[signal]] += signal.get_phi(params=params)
 
             return phi
 
@@ -286,38 +287,90 @@ def SignalCollection(metasignals):
     return SignalCollection
 
 
-def Function(func, **kwargs):
-    """Class factory for generic function calls."""
+def Function(func, name='', **func_kwargs):
+    fname = name
+
     class Function(object):
-        def __init__(self, prefix, postfix=''):
-            self._params = {kw: arg('_'.join([prefix, kw, postfix]))
-                            if postfix else arg('_'.join([prefix, kw]))
-                            for kw, arg in kwargs.items()}
+        def __init__(self, name, psr=None):
+            self._func = selection_func(func)
+            self._psr = psr
 
-        def get(self, parname, params={}):
-            try:
-                return self._params[parname].value
-            except AttributeError:
-                return params[parname]
+            self._params = {}
+            self._defaults = {}
 
-        # params could also be a standard argument here,
-        # but by defining it as ** we allow multiple positional arguments
-        def __call__(self, *args, **params):
-            pardict = {}
-            for kw, par in self._params.items():
-                if par.name in params:
-                    pardict[kw] = params[par.name]
-                elif hasattr(par, 'value'):
-                    pardict[kw] = par.value
+            # divide keyword parameters into those that are Parameter classes,
+            # Parameter instances (useful for global parameters),
+            # and something else (which we will assume is a value)
+            for kw, arg in func_kwargs.items():
+                if isinstance(arg, type) and issubclass(
+                        arg, (Parameter, ConstantParameter)):
+                    # parameter name template
+                    # pname_[signalname_][fname_]parname
+                    pnames = [name, fname, kw]
+                    par = arg('_'.join([n for n in pnames if n]))
+                    self._params[kw] = par
+                elif isinstance(arg, (Parameter, ConstantParameter)):
+                    self._params[kw] = arg
+                else:
+                    self._defaults[kw] = arg
 
-            return func(*args, **pardict)
+        def __call__(self, *args, **kwargs):
+            # order of parameter resolution:
+            # - parameter given in kwargs
+            # - named sampling parameter in self._params, if given in params
+            #   or if it has a value
+            # - parameter given as constant in Function definition
+            # - default value for keyword parameter in func definition
+
+            # trick to get positional arguments before params kwarg
+            params = kwargs.get('params',{})
+            if 'params' in kwargs:
+                del kwargs['params']
+
+            for kw, arg in func_kwargs.items():
+                if kw not in kwargs and kw in self._params:
+                    par = self._params[kw]
+
+                    if par.name in params:
+                        kwargs[kw] = params[par.name]
+                    elif hasattr(par, 'value'):
+                        kwargs[kw] = par.value
+
+            for kw, arg in self._defaults.items():
+                if kw not in kwargs:
+                    kwargs[kw] = arg
+
+            if self._psr is not None and 'psr' not in kwargs:
+                kwargs['psr'] = self._psr
+            return self._func(*args, **kwargs)
 
         @property
         def params(self):
+            # if we extract the ConstantParameter value above, we would not
+            # need a special case here
             return [par for par in self._params.values() if not
-                    isinstance(par,ConstantParameter)]
+                    isinstance(par, ConstantParameter)]
 
     return Function
+
+
+def cache_call(attr, limit=10):
+    """Cache function that allows for subsets of parameters to be keyed."""
+
+    def cache_decorator(func):
+
+        def wrapper(self, params):
+            keys = getattr(self, attr)
+            key = tuple([(key, params[key]) for key in keys if key in params])
+            if key not in self._cache:
+                self._cache_list.append(key)
+                self._cache[key] = func(self, params)
+                if len(self._cache_list) > limit:
+                    del self._cache[self._cache_list.pop(0)]
+                return self._cache[key]
+        return wrapper
+
+    return cache_decorator
 
 
 class csc_matrix_alt(sps.csc_matrix):

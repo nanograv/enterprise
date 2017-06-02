@@ -46,7 +46,7 @@ def create_stabletimingdesignmatrix(designmat, fastDesign=True):
 
 def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
                                   logf=False, fmin=None, fmax=None,
-                                  pshift=False, mask=None):
+                                  pshift=False):
     """
     Construct fourier design matrix from eq 11 of Lentati et al, 2013
 
@@ -58,21 +58,15 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
     :param fmin: lower sampling frequency
     :param fmax: upper sampling frequency
     :param pshift: option to add random phase shift
-    :param mask: option mask certain TOAs
 
     :return: F: fourier design matrix
     :return: f: Sampling frequencies
     """
-    if mask is None:
-        mask = np.ones_like(toas, dtype=bool)
 
-    # masked times
-    t = toas[mask]
-
-    N = len(t)
+    N = len(toas)
     F = np.zeros((N, 2 * nmodes))
 
-    T = Tspan if Tspan is not None else t.max() - t.min()
+    T = Tspan if Tspan is not None else toas.max() - toas.min()
 
     # define sampling frequencies
     if fmin is None:
@@ -92,17 +86,16 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
     Ffreqs = np.repeat(f, 2)
 
     # The sine/cosine modes
-    F[:,::2] = np.sin(2*np.pi*t[:,None]*f[None,:] +
+    F[:,::2] = np.sin(2*np.pi*toas[:,None]*f[None,:] +
                       ranphase[None,:])
-    F[:,1::2] = np.cos(2*np.pi*t[:,None]*f[None,:] +
+    F[:,1::2] = np.cos(2*np.pi*toas[:,None]*f[None,:] +
                        ranphase[None,:])
 
     return F, Ffreqs
 
 
 def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
-                                 logf=False, fmin=None, fmax=None,
-                                 mask=None):
+                                 logf=False, fmin=None, fmax=None):
 
     """
     Construct DM-variation fourier design matrix.
@@ -115,22 +108,19 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
     :param logf: use log frequency spacing
     :param fmin: lower sampling frequency
     :param fmax: upper sampling frequency
-    :param mask: option mask certain TOAs
 
     :return: F: DM-variation fourier design matrix
     :return: f: Sampling frequencies
     """
-    if mask is None:
-        mask = np.ones_like(toas, dtype=bool)
 
     # get base fourier design matrix and frequencies
     F, Ffreqs = createfourierdesignmatrix_red(
         toas, nmodes=nmodes, Tspan=Tspan, logf=logf,
-        fmin=fmin, fmax=fmax, mask=mask)
+        fmin=fmin, fmax=fmax)
 
     # compute the DM-variation vectors
     # TODO: should we use a different normalization
-    Dm = 1.0/(const.DM_K * freqs[mask]**2 * 1e12)
+    Dm = 1.0/(const.DM_K * freqs**2 * 1e12)
 
     return F * Dm[:, None], Ffreqs
 
@@ -588,28 +578,30 @@ def fplus_fcross(ptheta, pphi, gwtheta, gwphi):
     return fplus, fcross
 
 
-def create_quantization_matrix(times, dt=1, nmin=2):
+def create_quantization_matrix(toas, dt=1, nmin=2):
     """Create quantization matrix mapping TOAs to observing epochs."""
-    isort = np.argsort(times)
+    isort = np.argsort(toas)
 
-    bucket_ref = [times[isort[0]]]
+    bucket_ref = [toas[isort[0]]]
     bucket_ind = [[isort[0]]]
 
     for i in isort[1:]:
-        if times[i] - bucket_ref[-1] < dt:
+        if toas[i] - bucket_ref[-1] < dt:
             bucket_ind[-1].append(i)
         else:
-            bucket_ref.append(times[i])
+            bucket_ref.append(toas[i])
             bucket_ind.append([i])
 
     # find only epochs with more than 1 TOA
     bucket_ind2 = [ind for ind in bucket_ind if len(ind) >= nmin]
 
-    U = np.zeros((len(times),len(bucket_ind2)),'d')
+    U = np.zeros((len(toas),len(bucket_ind2)),'d')
     for i,l in enumerate(bucket_ind2):
         U[l,i] = 1
 
-    return U
+    weights = np.ones(U.shape[1])
+
+    return U, weights
 
 
 def quant2ind(U):

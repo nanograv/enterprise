@@ -123,7 +123,7 @@ class TestUtils(unittest.TestCase):
 
     def test_quantization_matrix(self):
         """Test quantization matrix generation."""
-        U = utils.create_quantization_matrix(self.psr.toas, dt=1)
+        U = utils.create_quantization_matrix(self.psr.toas, dt=1)[0]
 
         msg1 = 'Quantization matrix shape incorrect.'
         msg2 = 'Quantization matrix contains single TOA epochs.'

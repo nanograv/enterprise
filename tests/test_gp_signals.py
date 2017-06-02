@@ -43,7 +43,7 @@ class TestGPSignals(unittest.TestCase):
         params = {'B1855+09_log10_ecorr': ecorr}
 
         # basis matrix test
-        U = utils.create_quantization_matrix(self.psr.toas)
+        U = utils.create_quantization_matrix(self.psr.toas)[0]
         msg = 'U matrix incorrect for Basis Ecorr signal.'
         assert np.allclose(U, ecm.get_basis(params)), msg
 
@@ -58,7 +58,7 @@ class TestGPSignals(unittest.TestCase):
 
         # test shape
         msg = 'U matrix shape incorrect'
-        assert ecm.basis_shape == U.shape, msg
+        assert ecm.get_basis(params).shape == U.shape, msg
 
     def test_ecorr_backend(self):
         """Test that ecorr-backend signal returns correct values."""
@@ -70,17 +70,18 @@ class TestGPSignals(unittest.TestCase):
 
         # parameters
         ecorrs = [-6.1, -6.2, -6.3, -6.4]
-        params = {'B1855+09_log10_ecorr_430_ASP': ecorrs[0],
-                  'B1855+09_log10_ecorr_430_PUPPI': ecorrs[1],
-                  'B1855+09_log10_ecorr_L-wide_ASP': ecorrs[2],
-                  'B1855+09_log10_ecorr_L-wide_PUPPI': ecorrs[3]}
+        params = {'B1855+09_430_ASP_log10_ecorr': ecorrs[0],
+                  'B1855+09_430_PUPPI_log10_ecorr': ecorrs[1],
+                  'B1855+09_L-wide_ASP_log10_ecorr': ecorrs[2],
+                  'B1855+09_L-wide_PUPPI_log10_ecorr': ecorrs[3]}
 
         # get the basis
         bflags = self.psr.backend_flags
         Umats = []
         for flag in np.unique(bflags):
             mask = bflags == flag
-            Umats.append(utils.create_quantization_matrix(self.psr.toas[mask]))
+            Umats.append(utils.create_quantization_matrix(
+                self.psr.toas[mask])[0])
         nepoch = sum(U.shape[1] for U in Umats)
         U = np.zeros((len(self.psr.toas), nepoch))
         jvec = np.zeros(nepoch)
@@ -106,7 +107,7 @@ class TestGPSignals(unittest.TestCase):
 
         # test shape
         msg = 'U matrix shape incorrect'
-        assert ecm.basis_shape == U.shape, msg
+        assert ecm.get_basis(params).shape == U.shape, msg
 
     def test_fourier_red_noise(self):
         """Test that red noise signal returns correct values."""
@@ -138,7 +139,7 @@ class TestGPSignals(unittest.TestCase):
 
         # test shape
         msg = 'F matrix shape incorrect'
-        assert rnm.basis_shape == F.shape, msg
+        assert rnm.get_basis(params).shape == F.shape, msg
 
     def test_fourier_red_noise_backend(self):
         """Test that red noise-backend signal returns correct values."""
@@ -152,14 +153,14 @@ class TestGPSignals(unittest.TestCase):
         # parameters
         log10_As = [-14, -14.4, -15, -14.8]
         gammas = [2.3, 4.4, 1.8, 5.6]
-        params = {'B1855+09_gamma_430_ASP': gammas[0],
-                  'B1855+09_gamma_430_PUPPI': gammas[1],
-                  'B1855+09_gamma_L-wide_ASP': gammas[2],
-                  'B1855+09_gamma_L-wide_PUPPI': gammas[3],
-                  'B1855+09_log10_A_430_ASP': log10_As[0],
-                  'B1855+09_log10_A_430_PUPPI': log10_As[1],
-                  'B1855+09_log10_A_L-wide_ASP': log10_As[2],
-                  'B1855+09_log10_A_L-wide_PUPPI': log10_As[3]}
+        params = {'B1855+09_430_ASP_gamma': gammas[0],
+                  'B1855+09_430_PUPPI_gamma': gammas[1],
+                  'B1855+09_L-wide_ASP_gamma': gammas[2],
+                  'B1855+09_L-wide_PUPPI_gamma': gammas[3],
+                  'B1855+09_430_ASP_log10_A': log10_As[0],
+                  'B1855+09_430_PUPPI_log10_A': log10_As[1],
+                  'B1855+09_L-wide_ASP_log10_A': log10_As[2],
+                  'B1855+09_L-wide_PUPPI_log10_A': log10_As[3]}
 
         # get the basis
         bflags = self.psr.backend_flags
@@ -195,7 +196,7 @@ class TestGPSignals(unittest.TestCase):
 
         # test shape
         msg = 'F matrix shape incorrect'
-        assert rnm.basis_shape == F.shape, msg
+        assert rnm.get_basis(params).shape == F.shape, msg
 
     def test_red_noise_add(self):
         """Test that red noise addition only returns independent columns."""
@@ -273,14 +274,14 @@ class TestGPSignals(unittest.TestCase):
         log10_As = [-14, -14.4, -15, -14.8]
         gammas = [2.3, 4.4, 1.8, 5.6]
         log10_Ac, gammac = -15.5, 1.33
-        params = {'B1855+09_gamma_430_ASP': gammas[0],
-                  'B1855+09_gamma_430_PUPPI': gammas[1],
-                  'B1855+09_gamma_L-wide_ASP': gammas[2],
-                  'B1855+09_gamma_L-wide_PUPPI': gammas[3],
-                  'B1855+09_log10_A_430_ASP': log10_As[0],
-                  'B1855+09_log10_A_430_PUPPI': log10_As[1],
-                  'B1855+09_log10_A_L-wide_ASP': log10_As[2],
-                  'B1855+09_log10_A_L-wide_PUPPI': log10_As[3],
+        params = {'B1855+09_430_ASP_gamma': gammas[0],
+                  'B1855+09_430_PUPPI_gamma': gammas[1],
+                  'B1855+09_L-wide_ASP_gamma': gammas[2],
+                  'B1855+09_L-wide_PUPPI_gamma': gammas[3],
+                  'B1855+09_430_ASP_log10_A': log10_As[0],
+                  'B1855+09_430_PUPPI_log10_A': log10_As[1],
+                  'B1855+09_L-wide_ASP_log10_A': log10_As[2],
+                  'B1855+09_L-wide_PUPPI_log10_A': log10_As[3],
                   'log10_Agw': log10_Ac,
                   'gamma_gw': gammac}
 
@@ -361,7 +362,7 @@ class TestGPSignals(unittest.TestCase):
 
         # test shape
         msg = 'M matrix shape incorrect'
-        assert tm.basis_shape == self.psr.Mmat.shape, msg
+        assert tm.get_basis().shape == self.psr.Mmat.shape, msg
 
     def test_combine_signals(self):
         """Test for combining different signals."""
@@ -384,7 +385,7 @@ class TestGPSignals(unittest.TestCase):
                   'B1855+09_gamma': gamma}
 
         # combined basis matrix
-        U = utils.create_quantization_matrix(self.psr.toas)
+        U = utils.create_quantization_matrix(self.psr.toas)[0]
         M = self.psr.Mmat.copy()
         norm = np.sqrt(np.sum(M**2, axis=0))
         M /= norm
@@ -412,4 +413,4 @@ class TestGPSignals(unittest.TestCase):
 
         # test shape
         msg = 'Basis matrix shape incorrect size for combined signal.'
-        assert m.basis_shape == T.shape, msg
+        assert m.get_basis(params).shape == T.shape, msg

@@ -131,7 +131,7 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
             Umats = []
             for key, mask in zip(keys, masks):
                 Umats.append(utils.create_quantization_matrix(
-                    psr.toas[mask], nmin=1))
+                    psr.toas[mask], nmin=1)[0])
 
             nepoch = np.sum(U.shape[1] for U in Umats)
             self._F = np.zeros((len(psr.toas), nepoch))
