@@ -116,7 +116,7 @@ class PTA(object):
                        par in signalcollection.params},
                       key=lambda par: par.name)
 
-    def get_basis(self, params=None):
+    def get_basis(self, params={}):
         return [signalcollection.get_basis(params) for
                 signalcollection in self._signalcollections]
 
@@ -223,61 +223,67 @@ def SignalCollection(metasignals):
             delays = [signal.get_delay(params) for signal in self._signals]
             return sum(delay for delay in delays if delay is not None)
 
-        # this could be put in utils.py if desired
         def _combine_basis_columns(self, signals):
             """Given a set of Signal objects, each of which may return an
-            Fmat (through get_basis()), combine the unique columns into a
-            single Fmat, dropping duplicates, and also return a
-            dict (indexed by signal) of integer arrays that map individual
-            Fmat columns to the combined Fmat."""
+            Fmat (through get_basis()), return a dict (indexed by signal)
+            of integer arrays that map individual Fmat columns to the
+            combined Fmat.
+
+            .. note:: The Fmat returned here is simply meant to initialize the
+            matrix to save computations when calling `get_basis` later.
+            """
 
             idx, Fmatlist = {}, []
-
+            cc = 0
             for signal in signals:
                 Fmat = signal.get_basis()
 
-                if Fmat is not None:
+                if Fmat is not None and not signal.basis_params:
                     idx[signal] = []
 
                     for i, column in enumerate(Fmat.T):
                         for j, savedcolumn in enumerate(Fmatlist):
-                            if np.allclose(column, savedcolumn, rtol=1e-15):
+                            if np.allclose(column,savedcolumn,rtol=1e-15):
                                 idx[signal].append(j)
                                 break
                         else:
-                            idx[signal].append(len(Fmatlist))
+                            idx[signal].append(cc)
                             Fmatlist.append(column)
+                            cc += 1
 
-            return idx, np.array(Fmatlist).T
+                elif Fmat is not None and signal.basis_params:
+                    nf = Fmat.shape[1]
+                    idx[signal] = list(np.arange(cc, cc+nf))
+                    cc += nf
 
-        # goofy way to cache _idx and _Fmat
+            ncol = len(np.unique(sum(idx.values(), [])))
+            nrow = len(Fmatlist[0])
+            return idx, np.zeros((nrow, ncol))
+
+        # goofy way to cache _idx
         def __getattr__(self, par):
             if par in ('_idx', '_Fmat'):
                 self._idx, self._Fmat = self._combine_basis_columns(
                     self._signals)
-
                 return getattr(self,par)
             else:
                 raise AttributeError("{} object has no attribute {}".format(
                     self.__class__,par))
 
-        # note that currently we don't support a params-dependent basis;
-        # for that, we'll need Signal.get_basis (or an associated function)
-        # to somehow return the set of parameters that matter to the basis,
-        # which could be empty
-        def get_basis(self, params=None):
+        def get_basis(self, params={}):
+            for signal in self._signals:
+                if signal in self._idx:
+                    self._Fmat[:, self._idx[signal]] = signal.get_basis(params)
             return self._Fmat
 
         def get_phiinv(self, params):
-            return 1.0/self.get_phi(params=params)
+            return 1.0/self.get_phi(params)
 
         def get_phi(self, params):
             phi = np.zeros(self._Fmat.shape[1],'d')
-
             for signal in self._signals:
                 if signal in self._idx:
-                    phi[self._idx[signal]] += signal.get_phi(params=params)
-
+                    phi[self._idx[signal]] += signal.get_phi(params)
             return phi
 
         @property

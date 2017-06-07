@@ -37,22 +37,25 @@ def BasisGP(priorFunction, basisFunction,
             self._keys = list(sorted(sel.masks.keys()))
             self._masks = [sel.masks[key] for key in self._keys]
             self._prior, self._bases, self._params = {}, {}, {}
-            self._basis_params = []
             for key, mask in zip(self._keys, self._masks):
                 pnames = [psr.name, name, key]
                 pname = '_'.join([n for n in pnames if n])
                 self._prior[key] = priorfn(pname, psr=psr)
                 self._bases[key] = basisfn(pname, psr=psr)
-
-                # get basis parameters for caching
-                self._basis_params.extend([pp.name for pp in
-                                           self._bases[key].params])
                 params = sum([self._prior[key].params,
                               self._bases[key].params],[])
                 for param in params:
                     self._params[param.name] = param
 
-        @base.cache_call('_basis_params')
+        @property
+        def basis_params(self):
+            """Get any varying basis parameters."""
+            ret = []
+            for basis in self._bases.values():
+                ret.extend([pp.name for pp in basis.params])
+            return ret
+
+        @base.cache_call('basis_params')
         def _construct_basis(self, params={}):
             basis, self._labels = {}, {}
             for key, mask in zip(self._keys, self._masks):
@@ -128,6 +131,11 @@ def TimingModel():
         def basis_shape(self):
             return self._F.shape
 
+        #TODO: this is somewhat of a hack until we get this class more general
+        @property
+        def basis_params(self):
+            return []
+
     return TimingModel
 
 
@@ -197,5 +205,10 @@ def FourierBasisCommonGP(crossspectrum=None, components=20,
             return FourierBasisCommonGP._crossspectrum(
                 signal1._f2, signal1._psrpos, signal2._psrpos,
                 params=params) * signal1._f2[0]
+
+        #TODO: this is somewhat of a hack until we get this class more general
+        @property
+        def basis_params(self):
+            return []
 
     return FourierBasisCommonGP
