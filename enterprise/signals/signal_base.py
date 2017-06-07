@@ -229,7 +229,7 @@ def SignalCollection(metasignals):
             of integer arrays that map individual Fmat columns to the
             combined Fmat.
 
-            .. note:: The Fmat returned here is simply meant to initialize the
+            Note: The Fmat returned here is simply meant to initialize the
             matrix to save computations when calling `get_basis` later.
             """
 
