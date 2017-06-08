@@ -125,6 +125,40 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
     return F * Dm[:, None], Ffreqs
 
 
+def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
+                                  t0=53000*86400, nmodes=30, Tspan=None,
+                                  logf=False, fmin=None, fmax=None):
+    """
+    Construct fourier design matrix with gaussian envelope.
+
+    :param toas: vector of time series in seconds
+    :param nmodes: number of fourier coefficients to use
+    :param freqs: radio frequencies of observations [MHz]
+    :param freq: option to output frequencies
+    :param Tspan: option to some other Tspan
+    :param logf: use log frequency spacing
+    :param fmin: lower sampling frequency
+    :param fmax: upper sampling frequency
+    :param log10_Amp: log10 of the Amplitude [s]
+    :param t0: mean of gaussian envelope [s]
+    :param log10_Q: log10 of standard deviation of gaussian envelope [days]
+
+    :return: F: fourier design matrix with gaussian envelope
+    :return: f: Sampling frequencies
+    """
+
+    # get base fourier design matrix and frequencies
+    F, Ffreqs = createfourierdesignmatrix_red(
+        toas, nmodes=nmodes, Tspan=Tspan, logf=logf,
+        fmin=fmin, fmax=fmax)
+
+    # compute gaussian envelope
+    A = 10**log10_Amp
+    Q = 10**log10_Q * 86400
+    env = A * np.exp(-(toas-t0)**2/2/Q**2)
+    return F * env[:, None], Ffreqs
+
+
 def createfourierdesignmatrix_eph(t, nmodes, phi, theta, freq=False,
                                   Tspan=None, logf=False, fmin=None,
                                   fmax=None):

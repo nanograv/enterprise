@@ -364,6 +364,64 @@ class TestGPSignals(unittest.TestCase):
         msg = 'M matrix shape incorrect'
         assert tm.get_basis().shape == self.psr.Mmat.shape, msg
 
+    def test_gp_parameter(self):
+        """Test GP basis model with parameterized basis."""
+
+        pl = Function(utils.powerlaw, log10_A=parameter.Uniform(-18,-12),
+                      gamma=parameter.Uniform(0, 7))
+        basis_env = Function(utils.createfourierdesignmatrix_env,
+                             log10_Amp=parameter.Uniform(-10, -5),
+                             t0=parameter.Uniform(4.3e9, 5e9),
+                             log10_Q=parameter.Uniform(0,4))
+
+        basis_red = Function(utils.createfourierdesignmatrix_red)
+
+        rn_env = gs.BasisGP(pl, basis_env, name='env')
+        rn = gs.BasisGP(pl, basis_red)
+        s = rn_env + rn
+        m = s(self.psr)
+
+        # parameters
+        log10_A, gamma = -14.5, 4.33
+        log10_A_env, gamma_env = -14.0, 2.5
+        log10_Amp, log10_Q, t0 = -7.3, np.log10(345), 55000*86400
+        params = {'B1855+09_log10_A': log10_A,
+                  'B1855+09_gamma': gamma,
+                  'B1855+09_env_log10_A': log10_A_env,
+                  'B1855+09_env_gamma': gamma_env,
+                  'B1855+09_env_log10_Q': log10_Q,
+                  'B1855+09_env_log10_Amp': log10_Amp,
+                  'B1855+09_env_t0': t0}
+
+        # get basis
+        Fred, f2_red = utils.createfourierdesignmatrix_red(
+            self.psr.toas, nmodes=30)
+        Fenv, f2_env = utils.createfourierdesignmatrix_env(
+            self.psr.toas, nmodes=30, log10_Amp=log10_Amp,
+            log10_Q=log10_Q, t0=t0)
+        F = np.hstack((Fenv, Fred))
+        phi_env = utils.powerlaw(f2_env, log10_A=log10_A_env,
+                                 gamma=gamma_env) * f2_env[0]
+        phi_red = utils.powerlaw(f2_red, log10_A=log10_A,
+                                 gamma=gamma) * f2_red[0]
+        phi = np.concatenate((phi_env, phi_red))
+
+        # basis matrix test
+        msg = 'F matrix incorrect for GP Fourier signal.'
+        assert np.allclose(F, m.get_basis(params)), msg
+
+        # spectrum test
+        msg = 'Spectrum incorrect for GP Fourier signal.'
+        assert np.all(m.get_phi(params) == phi), msg
+
+        # inverse spectrum test
+        msg = 'Spectrum inverse incorrect for GP Fourier signal.'
+        assert np.all(m.get_phiinv(params) == 1/phi), msg
+
+        # test shape
+        msg = 'F matrix shape incorrect'
+        assert m.get_basis(params).shape == F.shape, msg
+
     def test_combine_signals(self):
         """Test for combining different signals."""
         # set up signal parameter
