@@ -350,6 +350,9 @@ def Function(func, name='', **func_kwargs):
                 kwargs['psr'] = self._psr
             return self._func(*args, **kwargs)
 
+        def add_kwarg(self, **kwargs):
+            self._defaults.update(kwargs)
+
         @property
         def params(self):
             # if we extract the ConstantParameter value above, we would not

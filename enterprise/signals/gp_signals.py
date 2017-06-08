@@ -157,58 +157,82 @@ def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
     return type(b'EcorrBasisModel', (BaseClass,), {})
 
 
-def FourierBasisCommonGP(crossspectrum=None, components=20,
-                         Tspan=None, name='common'):
+def BasisCommonGP(priorFunction, basisFunction, orfFunction, name='common'):
 
-    class FourierBasisCommonGP(base.CommonSignal):
-        signal_type = 'basis'
-        signal_name = 'red noise'
-
-        _crossspectrum = crossspectrum(name)
-        _Tmin, _Tmax = [], []
+    class BasisCommonGP(base.CommonSignal):
+        signal_type = 'common basis'
+        signal_name = name
+        _orf = orfFunction(name)
+        _prior = priorFunction(name)
 
         def __init__(self, psr):
 
-            self._params = FourierBasisCommonGP._crossspectrum._params
+            self._bases = basisFunction(psr.name+name, psr=psr)
+            params = sum([BasisCommonGP._prior.params,
+                          BasisCommonGP._orf.params,
+                          self._bases.params], [])
+            self._params = {}
+            for param in params:
+                self._params[param.name] = param
+
             self._psrpos = psr.pos
-            self._toas = psr.toas
+            self._cache = {}
+            self._cache_list = []
+
+        @base.cache_call('basis_params')
+        def _construct_basis(self, params={}):
+            self._basis, self._labels = self._bases(params=params)
+
+        def get_basis(self, params={}):
+            self._construct_basis(params)
+            return self._basis
+
+        def get_phi(self, params):
+            self._construct_basis(params)
+            prior = BasisCommonGP._prior(
+                self._labels, params=params) * self._labels[0]
+            orf = BasisCommonGP._orf(self._psrpos, self._psrpos, params=params)
+            return prior * orf
+
+        @classmethod
+        def get_phicross(cls, signal1, signal2, params):
+            prior = BasisCommonGP._prior(signal1._labels,
+                                         params=params) * signal1._labels[0]
+            orf = BasisCommonGP._orf(signal1._psrpos, signal2._psrpos,
+                                     params=params)
+            return prior * orf
+
+        @property
+        def basis_params(self):
+            """Get any varying basis parameters."""
+            return [pp.name for pp in self._bases.params]
+
+    return BasisCommonGP
+
+
+def FourierBasisCommonGP(spectrum, orf, components=20,
+                         Tspan=None, name='common'):
+
+    basis = base.Function(utils.createfourierdesignmatrix_red,
+                          nmodes=components)
+    BaseClass = BasisCommonGP(spectrum, basis, orf, name=name)
+
+    class FourierBasisCommonGP(BaseClass):
+
+        _Tmin, _Tmax = [], []
+
+        def __init__(self, psr):
+            super(FourierBasisCommonGP, self).__init__(psr)
 
             if Tspan is None:
                 FourierBasisCommonGP._Tmin.append(psr.toas.min())
                 FourierBasisCommonGP._Tmax.append(psr.toas.max())
 
-        # goofy way to cache the basis, there may be a better way?
-        def __getattr__(self, par):
-            if par in ['_f2', '_F']:
-                span = (Tspan if Tspan else max(FourierBasisCommonGP._Tmax) -
-                        min(FourierBasisCommonGP._Tmin))
-                self._F, self._f2 = utils.createfourierdesignmatrix_red(
-                    self._toas, components, Tspan=span)
-
-                return getattr(self, par)
-            else:
-                raise AttributeError('{} object has no attribute {}'.format(
-                    self.__class__,par))
-
-        def get_basis(self, params=None):
-            return self._F
-
-        def get_phi(self, params):
-            # note multiplying by f[0] is not general
-            return FourierBasisCommonGP._crossspectrum(
-                self._f2, self._psrpos, self._psrpos,
-                params=params) * self._f2[0]
-
-        @classmethod
-        def get_phicross(cls, signal1, signal2, params):
-            # note multiplying by f[0] is not general
-            return FourierBasisCommonGP._crossspectrum(
-                signal1._f2, signal1._psrpos, signal2._psrpos,
-                params=params) * signal1._f2[0]
-
-        #TODO: this is somewhat of a hack until we get this class more general
-        @property
-        def basis_params(self):
-            return []
+        @base.cache_call('basis_params')
+        def _construct_basis(self, params={}):
+            span = (Tspan if Tspan is not None else
+                    max(FourierBasisCommonGP._Tmax) -
+                    min(FourierBasisCommonGP._Tmin))
+            self._basis, self._labels = self._bases(params=params, Tspan=span)
 
     return FourierBasisCommonGP

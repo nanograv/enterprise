@@ -31,16 +31,8 @@ def hd_orf(pos1, pos2):
         return 1.5 * omc2 * np.log(omc2) - 0.25 * omc2 + 0.5
 
 
-def vec_orf(pos1, pos2):
-    return np.dot(pos1, pos2)
-
-
 def hd_powerlaw(f, pos1, pos2, log10_A=-15, gamma=4.3):
     return utils.powerlaw(f, log10_A, gamma) * hd_orf(pos1, pos2)
-
-
-def vec_powerlaw(f, pos1, pos2, log10_A=-15, gamma=4.3):
-    return utils.powerlaw(f, log10_A, gamma) * vec_orf(pos1, pos2)
 
 
 class TestPTASignals(unittest.TestCase):
@@ -61,13 +53,11 @@ class TestPTASignals(unittest.TestCase):
         pl = signal_base.Function(utils.powerlaw,
                                   log10_A=parameter.Uniform(-18,-12),
                                   gamma=parameter.Uniform(1,7))
+        orf = signal_base.Function(hd_orf)
         rn = gp_signals.FourierBasisGP(spectrum=pl, components=nf1, Tspan=T1)
-
-        hpl = signal_base.Function(hd_powerlaw,
-                                   log10_A=parameter.Uniform(-18,-12),
-                                   gamma=parameter.Uniform(1,7))
-        crn = gp_signals.FourierBasisCommonGP(crossspectrum=hpl, components=1,
-                                              name='gw', Tspan=T3)
+        crn = gp_signals.FourierBasisCommonGP(spectrum=pl, orf=orf,
+                                              components=1, name='gw',
+                                              Tspan=T3)
 
         model = rn + crn
         pta = model(self.psrs[0]) + model(self.psrs[1])
