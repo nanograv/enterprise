@@ -23,49 +23,49 @@ class TestPulsar(unittest.TestCase):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_11yv0.gls.par',
-                          datadir + '/B1855+09_NANOGrav_11yv0.tim')
+        self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                          datadir + '/B1855+09_NANOGrav_9yv1.tim')
 
     def test_residuals(self):
         """Check Residual shape."""
 
         msg = 'Residuals shape incorrect'
-        assert self.psr.residuals.shape == (5634,), msg
+        assert self.psr.residuals.shape == (4005,), msg
 
     def test_toaerrs(self):
         """Check TOA errors shape."""
 
         msg = 'TOA errors shape incorrect'
-        assert self.psr.toaerrs.shape == (5634,), msg
+        assert self.psr.toaerrs.shape == (4005,), msg
 
     def test_toas(self):
         """Check TOA shape."""
 
         msg = 'TOA shape incorrect'
-        assert self.psr.toas.shape == (5634,), msg
+        assert self.psr.toas.shape == (4005,), msg
 
     def test_freqs(self):
         """Check frequencies shape."""
 
         msg = 'Frequencies shape incorrect'
-        assert self.psr.freqs.shape == (5634,), msg
+        assert self.psr.freqs.shape == (4005,), msg
 
     def test_flags(self):
         """Check flags shape."""
 
         msg = 'Flags shape incorrect'
-        assert self.psr.flags['f'].shape == (5634,), msg
+        assert self.psr.flags['f'].shape == (4005,), msg
 
     def test_backend_flags(self):
         """Check backend_flags shape."""
 
         msg = 'Backend Flags shape incorrect'
-        assert self.psr.backend_flags.shape == (5634,), msg
+        assert self.psr.backend_flags.shape == (4005,), msg
 
     def test_sky(self):
         """Check Sky location."""
 
-        sky = (1.4023094090612354, 4.9533700717180027)
+        sky = (1.4023093811712661, 4.9533700839400492)
 
         msg = 'Incorrect sky location'
         assert (self.psr.theta, self.psr.phi) == sky, msg
@@ -74,7 +74,7 @@ class TestPulsar(unittest.TestCase):
         """Check design matrix shape."""
 
         msg = 'Design matrix shape incorrect.'
-        assert self.psr.Mmat.shape == (5634, 120), msg
+        assert self.psr.Mmat.shape == (4005, 91), msg
 
     def test_filter_data(self):
         """Place holder for filter_data tests."""

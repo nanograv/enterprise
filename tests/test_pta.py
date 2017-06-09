@@ -50,10 +50,10 @@ class TestPTASignals(unittest.TestCase):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        self.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_11yv0.gls.par',
-                            datadir + '/B1855+09_NANOGrav_11yv0.tim'),
-                     Pulsar(datadir + '/J1909-3744_NANOGrav_11yv0.gls.par',
-                            datadir + '/J1909-3744_NANOGrav_11yv0.tim')]
+        self.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                            datadir + '/B1855+09_NANOGrav_9yv1.tim'),
+                     Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
+                            datadir + '/J1909-3744_NANOGrav_9yv1.tim')]
 
     def test_parameterized_orf(self):
         T1 = 3.16e8

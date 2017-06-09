@@ -28,8 +28,8 @@ class TestGPSignals(unittest.TestCase):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_11yv0.gls.par',
-                          datadir + '/B1855+09_NANOGrav_11yv0.tim')
+        self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                          datadir + '/B1855+09_NANOGrav_9yv1.tim')
 
     def test_ecorr(self):
         """Test that ecorr signal returns correct values."""

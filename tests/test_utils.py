@@ -22,8 +22,8 @@ class TestUtils(unittest.TestCase):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_11yv0.gls.par',
-                          datadir + '/B1855+09_NANOGrav_11yv0.tim')
+        self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                          datadir + '/B1855+09_NANOGrav_9yv1.tim')
         self.F, _ = utils.createfourierdesignmatrix_red(
             self.psr.toas, nmodes=30)
         self.Fdm, _ = utils.createfourierdesignmatrix_dm(
@@ -46,31 +46,31 @@ class TestUtils(unittest.TestCase):
         """Check Fourier design matrix shape."""
 
         msg = 'Fourier design matrix shape incorrect'
-        assert self.F.shape == (5634, 2 * nf), msg
+        assert self.F.shape == (4005, 2 * nf), msg
 
     def test_createfourierdesignmatrix_dm(self, nf=30):
         """Check DM-variation Fourier design matrix shape."""
 
         msg = 'DM-variation Fourier design matrix shape incorrect'
-        assert self.Fdm.shape == (5634, 2 * nf), msg
+        assert self.Fdm.shape == (4005, 2 * nf), msg
 
     def test_createfourierdesignmatrix_ephx(self, nf=30):
         """Check x-axis ephemeris Fourier design matrix shape."""
 
         msg = 'Ephemeris x-axis Fourier design matrix shape incorrect'
-        assert self.Fx.shape == (5634, 2 * nf), msg
+        assert self.Fx.shape == (4005, 2 * nf), msg
 
     def test_createfourierdesignmatrix_ephy(self, nf=30):
         """Check y-axis ephemeris Fourier design matrix shape."""
 
         msg = 'Ephemeris y-axis Fourier design matrix shape incorrect'
-        assert self.Fy.shape == (5634, 2 * nf), msg
+        assert self.Fy.shape == (4005, 2 * nf), msg
 
     def test_createfourierdesignmatrix_ephz(self, nf=30):
         """Check z-axis ephemeris Fourier design matrix shape."""
 
         msg = 'Ephemeris z-axis Fourier design matrix shape incorrect'
-        assert self.Fz.shape == (5634, 2 * nf), msg
+        assert self.Fz.shape == (4005, 2 * nf), msg
 
     def test_ecc_cw_waveform(self):
         """Check eccentric wafeform generation."""
@@ -89,8 +89,8 @@ class TestUtils(unittest.TestCase):
                                          t, l0, gamma, gammadot, inc)
 
         msg = 'Single source waveform shape incorrect'
-        assert s[0].shape == (5634,), msg
-        assert s[1].shape == (5634,), msg
+        assert s[0].shape == (4005,), msg
+        assert s[1].shape == (4005,), msg
 
     def test_fplus_fcross(self):
         """Check fplus, fcross generation."""
@@ -118,8 +118,8 @@ class TestUtils(unittest.TestCase):
                                              phase0, mc, q, t[ind])
         s2 = utils.solve_coupled_constecc_solution(F0, e0, phase0, mc, t[ind])
         msg = 'Numerical integration failed'
-        assert s.shape == (5634, 4), msg
-        assert s2.shape == (5634, 2), msg
+        assert s.shape == (4005, 4), msg
+        assert s2.shape == (4005, 2), msg
 
     def test_quantization_matrix(self):
         """Test quantization matrix generation."""
@@ -127,7 +127,7 @@ class TestUtils(unittest.TestCase):
 
         msg1 = 'Quantization matrix shape incorrect.'
         msg2 = 'Quantization matrix contains single TOA epochs.'
-        assert U.shape == (5634, 294), msg1
+        assert U.shape == (4005, 235), msg1
         assert all(np.sum(U, axis=0) > 1), msg2
 
     def test_psd(self):
