@@ -114,7 +114,7 @@ class TestPTASignals(unittest.TestCase):
         assert np.allclose(phiinv, np.linalg.inv(phit),
                            rtol=1e-15, atol=1e-17), msg
 
-    #def test_pta_phi(self):
+    def test_pta_phi(self):
         T1, T2, T3 = 3.16e8, 3.16e8, 3.16e8
         nf1, nf2, nf3 = 2, 2, 1
 
