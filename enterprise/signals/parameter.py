@@ -31,6 +31,21 @@ class Parameter(object):
 
 class ConstantParameter(object):
     """Constant Parameter base class."""
+
+    def __init__(self, name):
+        self.name = name
+
+    @property
+    def value(self):
+        return self.value
+
+    @value.setter
+    def value(self, value):
+        self.value = value
+
+    def __call__(self, name):
+        return self
+
     def __repr__(self):
         return '"{}":Constant={}'.format(self.name, self.value)
 
@@ -58,7 +73,6 @@ def Normal(mu=0, sigma=1):
 
 
 def Constant(val):
-    class Constant(Parameter, ConstantParameter):
+    class Constant(ConstantParameter):
         value = val
-
     return Constant

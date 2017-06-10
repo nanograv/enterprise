@@ -59,6 +59,12 @@ class Signal(object):
         except KeyError:
             return self._params[parname].value
 
+    def set_default_params(self, params):
+        """Set default parameters."""
+        for kw, par in self._params.items():
+            if par.name in params and isinstance(par, ConstantParameter):
+                self._params[kw].value = params[par.name]
+
     def get_ndiag(self, params):
         """Returns the diagonal of the white noise vector `N`.
 
@@ -211,6 +217,10 @@ def SignalCollection(metasignals):
         def params(self):
             return sorted({param for signal in self._signals for param
                            in signal.params}, key=lambda par: par.name)
+
+        def set_default_params(self, params):
+            for signal in self._signals:
+                signal.set_default_params(params)
 
         # there may be a smarter way to write these...
 
