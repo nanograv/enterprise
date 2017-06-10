@@ -10,20 +10,10 @@ env:
 #- TOXENV=pypy
 #- TOXENV=flake8
 before_install:
-    - wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
-    - chmod +x miniconda.sh
-    - bash miniconda.sh -b -p $HOME/miniconda
-    - export PATH="$HOME/miniconda/bin:$PATH"
-    - conda update --yes conda
-    - conda info -a
-
     - sudo apt-get install gfortran
     - sudo apt-get install libsuitesparse-dev
 
 install:
-    - conda create --yes -n test python=$TRAVIS_PYTHON_VERSION
-    - source activate test
-
     - export TEMPO2=$HOME/.local/tempo2
     - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$TEMPO2/lib
     - mkdir -p $TEMPO2
@@ -40,13 +30,11 @@ install:
     - pip install -r requirements_dev.txt
     - pip install -r requirements.txt
     - pip install libstempo --install-option="--with-tempo2=$TEMPO2"
-    - python setup.py install
 
 language: python
 python: 2.7
 #script: tox -e ${TOXENV}
 script:
-    - which python
     - make test
     - make lint
 after_success:
