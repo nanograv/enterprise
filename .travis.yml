@@ -1,3 +1,4 @@
+group: deprecated-2017Q1
 dist: trusty
 sudo: required
 
