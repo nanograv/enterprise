@@ -14,7 +14,8 @@ import scipy.sparse as sps
 import scipy.linalg as sl
 from sksparse.cholmod import cholesky
 
-from enterprise.signals.parameter import ConstantParameter
+from enterprise.signals.parameter import ConstantParameter, Parameter
+from enterprise.signals.selections import selection_func
 
 import logging
 logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s',
@@ -134,7 +135,7 @@ class PTA(object):
         for sc in self._signalcollections:
             sc.set_default_params(params)
 
-    def get_basis(self, params=None):
+    def get_basis(self, params={}):
         return [signalcollection.get_basis(params) for
                 signalcollection in self._signalcollections]
 
@@ -245,49 +246,57 @@ def SignalCollection(metasignals):
             delays = [signal.get_delay(params) for signal in self._signals]
             return sum(delay for delay in delays if delay is not None)
 
-        # this could be put in utils.py if desired
         def _combine_basis_columns(self, signals):
             """Given a set of Signal objects, each of which may return an
-            Fmat (through get_basis()), combine the unique columns into a
-            single Fmat, dropping duplicates, and also return a
-            dict (indexed by signal) of integer arrays that map individual
-            Fmat columns to the combined Fmat."""
+            Fmat (through get_basis()), return a dict (indexed by signal)
+            of integer arrays that map individual Fmat columns to the
+            combined Fmat.
+
+            Note: The Fmat returned here is simply meant to initialize the
+            matrix to save computations when calling `get_basis` later.
+            """
 
             idx, Fmatlist = {}, []
-
+            cc = 0
             for signal in signals:
                 Fmat = signal.get_basis()
 
-                if Fmat is not None:
+                if Fmat is not None and not signal.basis_params:
                     idx[signal] = []
 
                     for i, column in enumerate(Fmat.T):
                         for j, savedcolumn in enumerate(Fmatlist):
-                            if np.allclose(column, savedcolumn, rtol=1e-15):
+                            if np.allclose(column,savedcolumn,rtol=1e-15):
                                 idx[signal].append(j)
                                 break
                         else:
-                            idx[signal].append(len(Fmatlist))
+                            idx[signal].append(cc)
                             Fmatlist.append(column)
+                            cc += 1
 
-            return idx, np.array(Fmatlist).T
+                elif Fmat is not None and signal.basis_params:
+                    nf = Fmat.shape[1]
+                    idx[signal] = list(np.arange(cc, cc+nf))
+                    cc += nf
 
-        # goofy way to cache _idx and _Fmat
+            ncol = len(np.unique(sum(idx.values(), [])))
+            nrow = len(Fmatlist[0])
+            return idx, np.zeros((nrow, ncol))
+
+        # goofy way to cache _idx
         def __getattr__(self, par):
             if par in ('_idx', '_Fmat'):
                 self._idx, self._Fmat = self._combine_basis_columns(
                     self._signals)
-
                 return getattr(self,par)
             else:
                 raise AttributeError("{} object has no attribute {}".format(
                     self.__class__,par))
 
-        # note that currently we don't support a params-dependent basis;
-        # for that, we'll need Signal.get_basis (or an associated function)
-        # to somehow return the set of parameters that matter to the basis,
-        # which could be empty
-        def get_basis(self, params=None):
+        def get_basis(self, params={}):
+            for signal in self._signals:
+                if signal in self._idx:
+                    self._Fmat[:, self._idx[signal]] = signal.get_basis(params)
             return self._Fmat
 
         def get_phiinv(self, params):
@@ -295,11 +304,9 @@ def SignalCollection(metasignals):
 
         def get_phi(self, params):
             phi = np.zeros(self._Fmat.shape[1],'d')
-
             for signal in self._signals:
                 if signal in self._idx:
                     phi[self._idx[signal]] += signal.get_phi(params)
-
             return phi
 
         @property
@@ -309,38 +316,93 @@ def SignalCollection(metasignals):
     return SignalCollection
 
 
-def Function(func, **kwargs):
-    """Class factory for generic function calls."""
+def Function(func, name='', **func_kwargs):
+    fname = name
+
     class Function(object):
-        def __init__(self, prefix, postfix=''):
-            self._params = {kw: arg('_'.join([prefix, kw, postfix]))
-                            if postfix else arg('_'.join([prefix, kw]))
-                            for kw, arg in kwargs.items()}
+        def __init__(self, name, psr=None):
+            self._func = selection_func(func)
+            self._psr = psr
 
-        def get(self, parname, params={}):
-            try:
-                return self._params[parname].value
-            except AttributeError:
-                return params[parname]
+            self._params = {}
+            self._defaults = {}
 
-        # params could also be a standard argument here,
-        # but by defining it as ** we allow multiple positional arguments
-        def __call__(self, *args, **params):
-            pardict = {}
-            for kw, par in self._params.items():
-                if par.name in params:
-                    pardict[kw] = params[par.name]
-                elif hasattr(par, 'value'):
-                    pardict[kw] = par.value
+            # divide keyword parameters into those that are Parameter classes,
+            # Parameter instances (useful for global parameters),
+            # and something else (which we will assume is a value)
+            for kw, arg in func_kwargs.items():
+                if isinstance(arg, type) and issubclass(
+                        arg, (Parameter, ConstantParameter)):
+                    # parameter name template
+                    # pname_[signalname_][fname_]parname
+                    pnames = [name, fname, kw]
+                    par = arg('_'.join([n for n in pnames if n]))
+                    self._params[kw] = par
+                elif isinstance(arg, (Parameter, ConstantParameter)):
+                    self._params[kw] = arg
+                else:
+                    self._defaults[kw] = arg
 
-            return func(*args, **pardict)
+        def __call__(self, *args, **kwargs):
+            # order of parameter resolution:
+            # - parameter given in kwargs
+            # - named sampling parameter in self._params, if given in params
+            #   or if it has a value
+            # - parameter given as constant in Function definition
+            # - default value for keyword parameter in func definition
+
+            # trick to get positional arguments before params kwarg
+            params = kwargs.get('params',{})
+            if 'params' in kwargs:
+                del kwargs['params']
+
+            for kw, arg in func_kwargs.items():
+                if kw not in kwargs and kw in self._params:
+                    par = self._params[kw]
+
+                    if par.name in params:
+                        kwargs[kw] = params[par.name]
+                    elif hasattr(par, 'value'):
+                        kwargs[kw] = par.value
+
+            for kw, arg in self._defaults.items():
+                if kw not in kwargs:
+                    kwargs[kw] = arg
+
+            if self._psr is not None and 'psr' not in kwargs:
+                kwargs['psr'] = self._psr
+            return self._func(*args, **kwargs)
+
+        def add_kwarg(self, **kwargs):
+            self._defaults.update(kwargs)
 
         @property
         def params(self):
+            # if we extract the ConstantParameter value above, we would not
+            # need a special case here
             return [par for par in self._params.values() if not
-                    isinstance(par,ConstantParameter)]
+                    isinstance(par, ConstantParameter)]
 
     return Function
+
+
+def cache_call(attr, limit=10):
+    """Cache function that allows for subsets of parameters to be keyed."""
+
+    def cache_decorator(func):
+
+        def wrapper(self, params):
+            keys = getattr(self, attr)
+            key = tuple([(key, params[key]) for key in keys if key in params])
+            if key not in self._cache:
+                self._cache_list.append(key)
+                self._cache[key] = func(self, params)
+                if len(self._cache_list) > limit:
+                    del self._cache[self._cache_list.pop(0)]
+                return self._cache[key]
+        return wrapper
+
+    return cache_decorator
 
 
 class csc_matrix_alt(sps.csc_matrix):
