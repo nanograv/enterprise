@@ -9,8 +9,6 @@ import numpy as np
 import inspect
 import functools
 
-from enterprise.pulsar import Pulsar
-
 
 def call_me_maybe(obj):
     """See `here`_ for description.
@@ -25,18 +23,24 @@ def selection_func(func):
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        if len(args) == 1 and isinstance(args[0],Pulsar):
-            # extract function arguments from Pulsar object
-            # (calling methods as needed)
-            # but allow overriding them with keyword arguments
+        targs = list(args)
 
-            pulsarargs = {funcarg: call_me_maybe(getattr(args[0],funcarg))
-                          for funcarg in funcargs if hasattr(args[0],funcarg)}
-            pulsarargs.update(**kwargs)
+        # check for mask
+        mask = kwargs.get('mask', Ellipsis)
+        if 'mask' in kwargs:
+            del kwargs['mask']
 
-            return func(**pulsarargs)
-        else:
-            return func(*args,**kwargs)
+        if len(targs) < len(funcargs) and 'psr' in kwargs:
+            psr = kwargs['psr']
+
+            for funcarg in funcargs[len(args):]:
+                if funcarg not in kwargs and hasattr(psr, funcarg):
+                    targs.append(call_me_maybe(getattr(psr, funcarg))[mask])
+
+        if 'psr' in kwargs and 'psr' not in funcargs:
+            del kwargs['psr']
+
+        return func(*targs, **kwargs)
 
     return wrapper
 
@@ -50,7 +54,7 @@ def Selection(func):
 
         @property
         def masks(self):
-            return selection_func(func)(self._psr)
+            return selection_func(func)(psr=self._psr)
 
         def _get_masked_array_dict(self, masks, arr):
             return {key: val*arr for key, val in masks.items()}
