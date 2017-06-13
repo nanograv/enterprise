@@ -286,10 +286,11 @@ class PTA(object):
 
             phiinv = np.diag(1.0/phidiag)
 
-            # assume no superposition between common signals
+            # this will only work if all common signals are shared among all the pulsars
+            # and share the same basis
+            invert = None
+            
             for csclass, csdict in self._commonsignals.items():
-                invert = None
-
                 for i, (cs1, csc1) in enumerate(csdict.items()):
                     for j, (cs2, csc2) in enumerate(csdict.items()):
                         if j <= i: continue
@@ -308,21 +309,22 @@ class PTA(object):
                     if logdet:
                         ld -= np.sum(np.log(phidiag[slices[csc1]][csc1._idx[cs1]]))
 
-                for k in range(len(crossdiag)):
-                    if logdet:
-                        ld += np.linalg.slogdet(invert[k,:,:])[1]
+            for k in range(len(crossdiag)):
+                if logdet:
+                    ld += np.linalg.slogdet(invert[k,:,:])[1]
 
-                    invert[k,:,:] = np.linalg.inv(invert[k,:,:])    
+                invert[k,:,:] = np.linalg.inv(invert[k,:,:])
 
-                for i, (cs1, csc1) in enumerate(csdict.items()):
-                    for j, (cs2, csc2) in enumerate(csdict.items()):
-                        if j < i: continue
+            csdict = list(self._commonsignals.values())[0]
+            for i, (cs1, csc1) in enumerate(csdict.items()):
+                for j, (cs2, csc2) in enumerate(csdict.items()):
+                    if j < i: continue
 
-                        block1, idx1 = slices[csc1], csc1._idx[cs1]
-                        block2, idx2 = slices[csc2], csc2._idx[cs2]
+                    block1, idx1 = slices[csc1], csc1._idx[cs1]
+                    block2, idx2 = slices[csc2], csc2._idx[cs2]
 
-                        phiinv[block1,block2][idx1,idx2] = invert[:,i,j]
-                        phiinv[block2,block1][idx2,idx1] = invert[:,i,j]
+                    phiinv[block1,block2][idx1,idx2] = invert[:,i,j]
+                    phiinv[block2,block1][idx2,idx1] = invert[:,i,j]
 
             if logdet:
                 return phiinv, ld

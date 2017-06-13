@@ -11,7 +11,14 @@ import tempfile
 from ephem import Ecliptic, Equatorial
 import os
 import json
-import cPickle as pickle
+
+import six
+
+if six.PY2:
+    import cPickle as pickle
+else:
+    import pickle
+
 from collections import OrderedDict
 
 # NOTE: PINT interface is not yet available so just import libstempo
