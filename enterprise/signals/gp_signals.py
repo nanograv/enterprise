@@ -42,8 +42,8 @@ def BasisGP(priorFunction, basisFunction,
                 pname = '_'.join([n for n in pnames if n])
                 self._prior[key] = priorfn(pname, psr=psr)
                 self._bases[key] = basisfn(pname, psr=psr)
-                params = sum([self._prior[key].params,
-                              self._bases[key].params],[])
+                params = sum([self._prior[key]._params.values(),
+                              self._bases[key]._params.values()],[])
                 for param in params:
                     self._params[param.name] = param
 

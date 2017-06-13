@@ -69,6 +69,8 @@ class Signal(object):
         """Set default parameters."""
         for kw, par in self._params.items():
             if par.name in params and isinstance(par, ConstantParameter):
+                msg = 'Setting {} to {}'.format(kw, params[par.name])
+                logger.info(msg)
                 self._params[kw].value = params[par.name]
             elif par.name not in params and isinstance(par, ConstantParameter):
                 msg = 'Parameter {} not set! Check input parameters.'.format(
