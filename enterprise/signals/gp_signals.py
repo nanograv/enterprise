@@ -16,63 +16,91 @@ from enterprise.signals import selections
 from enterprise.signals.selections import Selection
 
 
-def FourierBasisGP(spectrum, components=20,
-                   selection=Selection(selections.no_selection),
-                   Tspan=None):
-    """Class factory for fourier basis GPs."""
+def BasisGP(priorFunction, basisFunction,
+            selection=Selection(selections.no_selection),
+            name=''):
+    """Class factory for generic GPs with a basis matrix."""
 
-    class FourierBasisGP(base.Signal):
+    class BasisGP(base.Signal):
         signal_type = 'basis'
-        signal_name = 'red noise'
+        signal_name = name
 
         def __init__(self, psr):
 
-            # TODO: this could be cleaned up...
+            self._do_selection(psr, priorFunction, basisFunction, selection)
+            self._cache = {}
+            self._cache_list = []
+
+        def _do_selection(self, psr, priorfn, basisfn, selection):
+
             sel = selection(psr)
-            masks = sel.masks
-            self._spectrum = {}
-            self._f2 = {}
-            self._params = {}
-            Fmats = {}
-            for key in sorted(masks.keys()):
-                mask = masks[key]
-                self._spectrum[key] = spectrum(psr.name, key)
-                Fmats[key], self._f2[key], _ = \
-                    utils.createfourierdesignmatrix_red(
-                        psr.toas[mask], components, freq=True, Tspan=Tspan)
-                for param in self._spectrum[key]._params.values():
+            self._keys = list(sorted(sel.masks.keys()))
+            self._masks = [sel.masks[key] for key in self._keys]
+            self._prior, self._bases, self._params = {}, {}, {}
+            for key, mask in zip(self._keys, self._masks):
+                pnames = [psr.name, name, key]
+                pname = '_'.join([n for n in pnames if n])
+                self._prior[key] = priorfn(pname, psr=psr)
+                self._bases[key] = basisfn(pname, psr=psr)
+                params = sum([self._prior[key].params,
+                              self._bases[key].params],[])
+                for param in params:
                     self._params[param.name] = param
 
-            nf = np.sum(F.shape[1] for F in Fmats.values())
-            self._F = np.zeros((len(psr.toas), nf))
-            self._phi = np.zeros(nf)
-            self._slices = {}
-            nftot = 0
-            for key in sorted(masks.keys()):
-                mask = masks[key]
-                Fmat = Fmats[key]
-                nn = Fmat.shape[1]
-                self._F[mask, nftot:nn+nftot] = Fmat
-                self._slices.update({key: slice(nftot, nn+nftot)})
-                nftot += nn
+        @property
+        def basis_params(self):
+            """Get any varying basis parameters."""
+            ret = []
+            for basis in self._bases.values():
+                ret.extend([pp.name for pp in basis.params])
+            return ret
 
-        def get_basis(self, params=None):
-            return self._F
+        @base.cache_call('basis_params')
+        def _construct_basis(self, params={}):
+            basis, self._labels = {}, {}
+            for key, mask in zip(self._keys, self._masks):
+                basis[key], self._labels[key] = self._bases[key](
+                    params=params, mask=mask)
+
+            nc = np.sum(F.shape[1] for F in basis.values())
+            self._basis = np.zeros((len(self._masks[0]), nc))
+            self._phi = np.zeros(nc)
+            self._slices = {}
+            nctot = 0
+            for key, mask in zip(self._keys, self._masks):
+                Fmat = basis[key]
+                nn = Fmat.shape[1]
+                self._basis[mask, nctot:nn+nctot] = Fmat
+                self._slices.update({key: slice(nctot, nn+nctot)})
+                nctot += nn
+
+        def get_basis(self, params={}):
+            self._construct_basis(params)
+            return self._basis
 
         def get_phi(self, params):
+            self._construct_basis(params)
             for key, slc in self._slices.items():
-                self._phi[slc] = self._spectrum[key](
-                    self._f2[key], **params) * self._f2[key][0]
+                self._phi[slc] = self._prior[key](
+                    self._labels[key], params=params) * self._labels[key][0]
             return self._phi
 
         def get_phiinv(self, params):
             return 1 / self.get_phi(params)
 
-        @property
-        def basis_shape(self):
-            return self._F.shape
+    return BasisGP
 
-    return FourierBasisGP
+
+def FourierBasisGP(spectrum, components=20,
+                   selection=Selection(selections.no_selection),
+                   Tspan=None):
+    """Convienience function to return a BasisGP class with a
+    fourier basis."""
+
+    basis = base.Function(utils.createfourierdesignmatrix_red,
+                          nmodes=components, Tspan=Tspan)
+    BaseClass = BasisGP(spectrum, basis, selection=selection)
+    return type(b'FourierBasisGP', (BaseClass,), {})
 
 
 def TimingModel():
@@ -103,103 +131,108 @@ def TimingModel():
         def basis_shape(self):
             return self._F.shape
 
+        #TODO: this is somewhat of a hack until we get this class more general
+        @property
+        def basis_params(self):
+            return []
+
     return TimingModel
+
+
+def ecorr_basis_prior(weights, log10_ecorr=-8):
+    """Returns the ecorr prior.
+    :param weights: A vector or weights for the ecorr prior.
+    """
+    return weights * 10**(2*log10_ecorr)
 
 
 def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
                     selection=Selection(selections.no_selection)):
+    """Convienience function to return a BasisGP class with a
+    quantized ECORR basis."""
 
-    class EcorrBasisModel(base.Signal):
-        signal_type = 'basis'
-        signal_name = 'ecorr'
+    basis = base.Function(utils.create_quantization_matrix)
+    prior = base.Function(ecorr_basis_prior, log10_ecorr=log10_ecorr)
+    BaseClass = BasisGP(prior, basis, selection=selection)
+    return type(b'EcorrBasisModel', (BaseClass,), {})
+
+
+def BasisCommonGP(priorFunction, basisFunction, orfFunction, name='common'):
+
+    class BasisCommonGP(base.CommonSignal):
+        signal_type = 'common basis'
+        signal_name = name
+        _orf = orfFunction(name)
+        _prior = priorFunction(name)
 
         def __init__(self, psr):
 
-            sel = selection(psr)
-            self._params, self._masks = sel('log10_ecorr', log10_ecorr)
-            keys = list(sorted(self._masks.keys()))
-            masks = [self._masks[key] for key in keys]
+            self._bases = basisFunction(psr.name+name, psr=psr)
+            params = sum([BasisCommonGP._prior.params,
+                          BasisCommonGP._orf.params,
+                          self._bases.params], [])
+            self._params = {}
+            for param in params:
+                self._params[param.name] = param
 
-            Umats = []
-            for key, mask in zip(keys, masks):
-                Umats.append(utils.create_quantization_matrix(
-                    psr.toas[mask]))
+            self._psrpos = psr.pos
+            self._cache = {}
+            self._cache_list = []
 
-            nepoch = np.sum(U.shape[1] for U in Umats)
-            self._F = np.zeros((len(psr.toas), nepoch))
-            self._jvec = {}
-            self._phi = np.zeros(nepoch)
-            netot = 0
-            for ct, (key, mask) in enumerate(zip(keys, masks)):
-                nn = Umats[ct].shape[1]
-                self._F[mask, netot:nn+netot] = Umats[ct]
-                self._jvec.update({key: slice(netot, nn+netot)})
-                netot += nn
+        @base.cache_call('basis_params')
+        def _construct_basis(self, params={}):
+            self._basis, self._labels = self._bases(params=params)
 
-        def get_basis(self, params=None):
-            return self._F
+        def get_basis(self, params={}):
+            self._construct_basis(params)
+            return self._basis
 
         def get_phi(self, params):
-            for p in self._params:
-                self._phi[self._jvec[p]] = 10**(2*self.get(p, params))
-            return self._phi
+            self._construct_basis(params)
+            prior = BasisCommonGP._prior(
+                self._labels, params=params) * self._labels[0]
+            orf = BasisCommonGP._orf(self._psrpos, self._psrpos, params=params)
+            return prior * orf
 
-        def get_phiinv(self, params):
-            return 1 / self.get_phi(params)
+        @classmethod
+        def get_phicross(cls, signal1, signal2, params):
+            prior = BasisCommonGP._prior(signal1._labels,
+                                         params=params) * signal1._labels[0]
+            orf = BasisCommonGP._orf(signal1._psrpos, signal2._psrpos,
+                                     params=params)
+            return prior * orf
 
         @property
-        def basis_shape(self):
-            return self._F.shape
+        def basis_params(self):
+            """Get any varying basis parameters."""
+            return [pp.name for pp in self._bases.params]
 
-    return EcorrBasisModel
+    return BasisCommonGP
 
 
-def FourierBasisCommonGP(crossspectrum=None, components=20,
+def FourierBasisCommonGP(spectrum, orf, components=20,
                          Tspan=None, name='common'):
 
-    class FourierBasisCommonGP(base.CommonSignal):
-        signal_type = 'basis'
-        signal_name = 'red noise'
+    basis = base.Function(utils.createfourierdesignmatrix_red,
+                          nmodes=components)
+    BaseClass = BasisCommonGP(spectrum, basis, orf, name=name)
 
-        _crossspectrum = crossspectrum(name)
+    class FourierBasisCommonGP(BaseClass):
+
         _Tmin, _Tmax = [], []
 
         def __init__(self, psr):
-
-            self._params = FourierBasisCommonGP._crossspectrum._params
-            self._psrpos = psr.pos
-            self._toas = psr.toas
+            super(FourierBasisCommonGP, self).__init__(psr)
 
             if Tspan is None:
                 FourierBasisCommonGP._Tmin.append(psr.toas.min())
                 FourierBasisCommonGP._Tmax.append(psr.toas.max())
 
-        # goofy way to cache the basis, there may be a better way?
-        def __getattr__(self, par):
-            if par in ['_f2', '_F']:
-                span = (Tspan if Tspan else max(FourierBasisCommonGP._Tmax) -
-                        min(FourierBasisCommonGP._Tmin))
-                self._F, self._f2, _ = utils.createfourierdesignmatrix_red(
-                    self._toas, components, freq=True, Tspan=span)
-
-                return getattr(self, par)
-            else:
-                raise AttributeError('{} object has no attribute {}'.format(
-                    self.__class__,par))
-
-        def get_basis(self, params=None):
-            return self._F
-
-        def get_phi(self, params):
-            # note multiplying by f[0] is not general
-            return FourierBasisCommonGP._crossspectrum(
-                self._f2, self._psrpos, self._psrpos, **params) * self._f2[0]
-
-        @classmethod
-        def get_phicross(cls, signal1, signal2, params):
-            # note multiplying by f[0] is not general
-            return FourierBasisCommonGP._crossspectrum(
-                signal1._f2, signal1._psrpos, signal2._psrpos,
-                **params) * signal1._f2[0]
+        @base.cache_call('basis_params')
+        def _construct_basis(self, params={}):
+            span = (Tspan if Tspan is not None else
+                    max(FourierBasisCommonGP._Tmax) -
+                    min(FourierBasisCommonGP._Tmin))
+            self._basis, self._labels = self._bases(params=params, Tspan=span)
 
     return FourierBasisCommonGP
