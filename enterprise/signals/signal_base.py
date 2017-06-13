@@ -16,6 +16,11 @@ from sksparse.cholmod import cholesky
 
 from enterprise.signals.parameter import ConstantParameter
 
+import logging
+logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s',
+                    level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 
 class MetaSignal(type):
     """Metaclass for Signals. Allows addition of ``Signal`` classes."""
@@ -64,6 +69,10 @@ class Signal(object):
         for kw, par in self._params.items():
             if par.name in params and isinstance(par, ConstantParameter):
                 self._params[kw].value = params[par.name]
+            elif par.name not in params and isinstance(par, ConstantParameter):
+                msg = 'Parameter {} not set! Check input parameters.'.format(
+                    par.name)
+                logger.warning(msg)
 
     def get_ndiag(self, params):
         """Returns the diagonal of the white noise vector `N`.
@@ -120,6 +129,10 @@ class PTA(object):
         return sorted({par for signalcollection in self._signalcollections for
                        par in signalcollection.params},
                       key=lambda par: par.name)
+
+    def set_default_params(self, params):
+        for sc in self._signalcollections:
+            sc.set_default_params(params)
 
     def get_basis(self, params=None):
         return [signalcollection.get_basis(params) for

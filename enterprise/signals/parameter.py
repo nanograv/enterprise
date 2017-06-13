@@ -72,7 +72,7 @@ def Normal(mu=0, sigma=1):
     return Normal
 
 
-def Constant(val):
+def Constant(val=None):
     class Constant(ConstantParameter):
         value = val
     return Constant
