@@ -9,13 +9,18 @@ Tests for common signal and PTA class modules.
 """
 
 
+import os
+import pickle
+import itertools
 import unittest
+
 import numpy as np
 
 from enterprise.pulsar import Pulsar
 
 import enterprise.signals.parameter as parameter
 import enterprise.signals.signal_base as signal_base
+import enterprise.signals.white_signals as white_signals
 import enterprise.signals.gp_signals as gp_signals
 from enterprise.signals import utils
 
@@ -29,6 +34,13 @@ def hd_orf(pos1, pos2):
         xi = 1 - np.dot(pos1, pos2)
         omc2 = (1 - np.cos(xi)) / 2
         return 1.5 * omc2 * np.log(omc2) - 0.25 * omc2 + 0.5
+
+
+def vec_orf(pos1, pos2):
+    if np.all(pos1 == pos2):
+        return 1
+    else:
+        return 0.5 * np.dot(pos1, pos2)
 
 
 def hd_orf_generic(pos1, pos2, a=1.5, b=0.25, c=0.25):
@@ -49,11 +61,18 @@ class TestPTASignals(unittest.TestCase):
     def setUp(self):
         """Setup the Pulsar object."""
 
-        # initialize Pulsar class
-        self.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
-                            datadir + '/B1855+09_NANOGrav_9yv1.tim'),
-                     Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
-                            datadir + '/J1909-3744_NANOGrav_9yv1.tim')]
+        if os.path.isfile(datadir + '/B1855+09.pkl') and \
+                os.path.isfile(datadir + '/J1909-3744.pkl'):
+            self.psrs = [pickle.load(open(datadir + '/B1855+09.pkl','r')),
+                         pickle.load(open(datadir + '/J1909-3744.pkl','r'))]
+        else:
+            self.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                                datadir + '/B1855+09_NANOGrav_9yv1.tim'),
+                         Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
+                                datadir + '/J1909-3744_NANOGrav_9yv1.tim')]
+
+            for psr in self.psrs:
+                psr.to_pickle(datadir)
 
     def test_parameterized_orf(self):
         T1 = 3.16e8
@@ -113,6 +132,71 @@ class TestPTASignals(unittest.TestCase):
         msg = 'PTA Phi inverse is incorrect {}.'.format(params)
         assert np.allclose(phiinv, np.linalg.inv(phit),
                            rtol=1e-15, atol=1e-17), msg
+
+    def test_pta_phiinv_methods(self):
+        ef = white_signals.MeasurementNoise(efac=parameter.Uniform(0.1, 5))
+
+        span = np.max(self.psrs[0].toas) - np.min(self.psrs[0].toas)
+
+        pl = signal_base.Function(utils.powerlaw,
+                                  log10_A=parameter.Uniform(-16,-13),
+                                  gamma=parameter.Uniform(1,7))
+
+        orf = signal_base.Function(hd_orf)
+        vrf = signal_base.Function(vec_orf)
+
+        rn = gp_signals.FourierBasisGP(spectrum=pl,
+                                       components=30, Tspan=span)
+
+        hdrn = gp_signals.FourierBasisCommonGP(spectrum=pl, orf=orf,
+                                               components=20, Tspan=span,
+                                               name='gw')
+
+        vrn = gp_signals.FourierBasisCommonGP(spectrum=pl, orf=vrf,
+                                              components=20, Tspan=span,
+                                              name='vec')
+
+        # two common processes, sharing basis partially
+
+        model = ef + rn + hdrn  # + vrn
+
+        pta = signal_base.PTA([model(psr) for psr in self.psrs])
+
+        ps = {p.name: float(p.sample()) for p in pta.params}
+
+        phi = pta.get_phi(ps)
+
+        inv1 = pta.get_phiinv(ps,method='cliques')
+        inv2 = pta.get_phiinv(ps,method='partition')
+        inv3 = pta.get_phiinv(ps,method='sparse').toarray()
+
+        for inv in [inv1,inv2,inv3]:
+            assert np.sum(np.dot(phi,inv)) == len(phi), \
+                "Wrong phi inverse for two common processes"
+
+        for inva, invb in itertools.combinations([inv1,inv2,inv3],2):
+            assert np.allclose(inva,invb)
+
+        # three common processes, sharing basis partially
+
+        model = ef + rn + hdrn + vrn
+
+        pta = signal_base.PTA([model(psr) for psr in self.psrs])
+
+        ps = {p.name: float(p.sample()) for p in pta.params}
+
+        phi = pta.get_phi(ps)
+
+        inv1 = pta.get_phiinv(ps,method='cliques')
+        inv2 = pta.get_phiinv(ps,method='partition')
+        inv3 = pta.get_phiinv(ps,method='sparse').toarray()
+
+        for inv in [inv1,inv3]:
+            assert np.sum(np.dot(phi,inv)) == 120.0, \
+                "Wrong phi inverse for three common processes"
+
+        for inva, invb in itertools.combinations([inv1,inv3],2):
+            assert np.allclose(inva,invb)
 
     def test_pta_phi(self):
         T1, T2, T3 = 3.16e8, 3.16e8, 3.16e8
@@ -175,5 +259,5 @@ class TestPTASignals(unittest.TestCase):
         assert np.allclose(phi, phit, rtol=1e-15, atol=1e-17), msg
 
         msg = 'PTA Phi inverse is incorrect {}.'.format(params)
-        assert np.allclose(phiinv.toarray(), np.linalg.inv(phit),
+        assert np.allclose(phiinv, np.linalg.inv(phit),
                            rtol=1e-15, atol=1e-17), msg

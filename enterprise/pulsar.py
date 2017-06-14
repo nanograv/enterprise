@@ -12,11 +12,9 @@ from ephem import Ecliptic, Equatorial
 import os
 import json
 
-import six
-
-if six.PY2:
+try:
     import cPickle as pickle
-else:
+except:
     import pickle
 
 from collections import OrderedDict

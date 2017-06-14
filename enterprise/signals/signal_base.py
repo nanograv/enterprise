@@ -8,12 +8,12 @@ from __future__ import (absolute_import, division,
 
 import collections
 import itertools
-import logging
+# import logging
 
 import six
 
 import numpy as np
-import scipy
+# import scipy
 import scipy.sparse as sps
 import scipy.linalg as sl
 
@@ -287,28 +287,32 @@ class PTA(object):
 
             phiinv = np.diag(1.0/phidiag)
 
-            # this will only work if all common signals are shared among all the pulsars
-            # and share the same basis
+            # this will only work if all common signals are shared among all
+            # the pulsars and share the same basis
             invert = None
-            
+
             for csclass, csdict in self._commonsignals.items():
                 for i, (cs1, csc1) in enumerate(csdict.items()):
                     for j, (cs2, csc2) in enumerate(csdict.items()):
-                        if j <= i: continue
+                        if j <= i:
+                            continue
 
                         # hoping they're all the same...
                         crossdiag = csclass.get_phicross(cs1, cs2, params)
 
                         if invert is None:
-                            invert = np.zeros((len(crossdiag),len(csdict),len(csdict)),'d')
+                            invert = np.zeros((len(crossdiag),
+                                               len(csdict),
+                                               len(csdict)),'d')
 
                         invert[:,i,j] += crossdiag
                         invert[:,j,i] += crossdiag
 
                     invert[:,i,i] += phidiag[slices[csc1]][csc1._idx[cs1]]
-                    
+
                     if logdet:
-                        ld -= np.sum(np.log(phidiag[slices[csc1]][csc1._idx[cs1]]))
+                        ld -= np.sum(np.log(
+                            phidiag[slices[csc1]][csc1._idx[cs1]]))
 
             for k in range(len(crossdiag)):
                 if logdet:
@@ -319,7 +323,8 @@ class PTA(object):
             csdict = list(self._commonsignals.values())[0]
             for i, (cs1, csc1) in enumerate(csdict.items()):
                 for j, (cs2, csc2) in enumerate(csdict.items()):
-                    if j < i: continue
+                    if j < i:
+                        continue
 
                     block1, idx1 = slices[csc1], csc1._idx[cs1]
                     block2, idx2 = slices[csc2], csc2._idx[cs2]
@@ -356,11 +361,12 @@ class PTA(object):
 
                     if cholesky:
                         cf = sl.cho_factor(phi[idx2])
-                        
+
                         if logdet:
                             ld += 2.0*np.sum(np.log(np.diag(cf[0])))
-                        
-                        phi[idx2] = sl.cho_solve(cf,np.identity(cf[0].shape[0]))
+
+                        phi[idx2] = sl.cho_solve(cf,
+                                                 np.identity(cf[0].shape[0]))
                     else:
                         phi2 = phi[idx2]
 
@@ -381,14 +387,15 @@ class PTA(object):
 
     # sort matrix indices by presence of non-diagonal elements
     # for each value in self._cliques, the indices with that value form
-    # an independent submatrix that can be inverted separately   
+    # an independent submatrix that can be inverted separately
     def _resetcliques(self,phidiag):
         self._cliques = -1 * np.ones_like(phidiag)
         self._clcount = 0
 
     def _setcliques(self,slices,csdict):
         idxmatrix = np.array([csc._idx[cs] for cs, csc in csdict.items()]).T
-        idxmatrix = idxmatrix + np.array([slices[csc].start for cs, csc in csdict.items()])
+        idxmatrix = idxmatrix + np.array([slices[csc].start
+                                          for cs, csc in csdict.items()])
 
         for idxs in idxmatrix:
             allidx = set(self._cliques[idxs])
@@ -398,12 +405,13 @@ class PTA(object):
                 self._cliques[idxs] = self._clcount
 
                 if len(allidx) > 1:
-                    self._cliques[np.in1d(self._cliques,allidx)] = self._clcount
+                    self._cliques[np.in1d(self._cliques,allidx)] = \
+                        self._clcount
 
                 self._clcount = self._clcount + 1
             else:
                 self._cliques[idxs] = maxidx
-                
+
                 if len(allidx) > 1:
                     self._cliques[np.in1d(self._cliques,allidx)] = maxidx
 
