@@ -8,17 +8,19 @@ from __future__ import (absolute_import, division,
 
 import collections
 import itertools
+# import logging
 
 import six
 
 import numpy as np
-import scipy
+# import scipy
 import scipy.sparse as sps
 import scipy.linalg as sl
 
 from sksparse.cholmod import cholesky
 
-from enterprise.signals.parameter import ConstantParameter
+from enterprise.signals.parameter import ConstantParameter, Parameter
+from enterprise.signals.selections import selection_func
 
 
 class MetaSignal(type):
@@ -104,18 +106,6 @@ class MarginalizedLogLikelihood(object):
     def __init__(self,pta):
         self.pta = pta
 
-    def _make_sigma(self,phiinv,TNTs):
-        # or sparse.block...
-        # phiinv = phiinv.toarray()
-        cnt = 0
-        for TNT in TNTs:
-            sl = slice(cnt,cnt + TNT.shape[0])
-            phiinv[sl,sl] += TNT
-            cnt = sl.stop
-        # phiinv = sps.csc_matrix(phiinv)
-
-        return phiinv
-
     # this can and should be much cleaner
     def __call__(self, xs):
         # map parameter vector if needed
@@ -152,7 +142,7 @@ class MarginalizedLogLikelihood(object):
             phiinv, logdet_phi = phiinvs
 
             # note: modifies phiinv in place
-            Sigma = self._make_sigma(phiinv,TNTs)
+            Sigma = phiinv + sps.block_diag(TNTs,'csc')
             d = np.concatenate(ds)
 
             cf = cholesky(Sigma)
@@ -202,11 +192,11 @@ class PTA(object):
         return [signalcollection._residuals
                 for signalcollection in self._signalcollections]
 
-    def get_ndiag(self, params):
+    def get_ndiag(self, params={}):
         return [signalcollection.get_ndiag(params)
                 for signalcollection in self._signalcollections]
 
-    def get_basis(self, params=None):
+    def get_basis(self, params={}):
         return [signalcollection.get_basis(params) for
                 signalcollection in self._signalcollections]
 
@@ -251,7 +241,17 @@ class PTA(object):
 
         return ret
 
-    def get_phiinv(self, params, logdet=False):
+    def get_phiinv(self, params, logdet=False, method='cliques'):
+        if method == 'cliques':
+            return self.get_phiinv_byfreq_cliques(params, logdet)
+        elif method == 'partition':
+            return self.get_phiinv_byfreq_partition(params, logdet)
+        elif method == 'sparse':
+            return self.get_phiinv_sparse(params, logdet)
+        else:
+            raise NotImplementedError
+
+    def get_phiinv_sparse(self, params, logdet=False):
         phi = self.get_phi(params)
 
         if isinstance(phi, list):
@@ -270,7 +270,152 @@ class PTA(object):
             else:
                 return cf.inv()
 
-    def get_phi(self, params):
+    def get_phiinv_byfreq_partition(self, params, logdet=False):
+        phivecs = [signalcollection.get_phi(params) for
+                   signalcollection in self._signalcollections]
+
+        # if we found common signals, we'll return a big phivec matrix,
+        # otherwise a list of phivec vectors (some of which possibly None)
+        if self._commonsignals:
+            # would be easier if get_phi would return an empty array
+            phidiag = np.concatenate([phivec for phivec in phivecs
+                                      if phivec is not None])
+            slices = self._get_slices(phivecs)
+
+            if logdet:
+                ld = np.sum(np.log(phidiag))
+
+            phiinv = np.diag(1.0/phidiag)
+
+            # this will only work if all common signals are shared among all
+            # the pulsars and share the same basis
+            invert = None
+
+            for csclass, csdict in self._commonsignals.items():
+                for i, (cs1, csc1) in enumerate(csdict.items()):
+                    for j, (cs2, csc2) in enumerate(csdict.items()):
+                        if j <= i:
+                            continue
+
+                        # hoping they're all the same...
+                        crossdiag = csclass.get_phicross(cs1, cs2, params)
+
+                        if invert is None:
+                            invert = np.zeros((len(crossdiag),
+                                               len(csdict),
+                                               len(csdict)),'d')
+
+                        invert[:,i,j] += crossdiag
+                        invert[:,j,i] += crossdiag
+
+                    invert[:,i,i] += phidiag[slices[csc1]][csc1._idx[cs1]]
+
+                    if logdet:
+                        ld -= np.sum(np.log(
+                            phidiag[slices[csc1]][csc1._idx[cs1]]))
+
+            for k in range(len(crossdiag)):
+                if logdet:
+                    ld += np.linalg.slogdet(invert[k,:,:])[1]
+
+                invert[k,:,:] = np.linalg.inv(invert[k,:,:])
+
+            csdict = list(self._commonsignals.values())[0]
+            for i, (cs1, csc1) in enumerate(csdict.items()):
+                for j, (cs2, csc2) in enumerate(csdict.items()):
+                    if j < i:
+                        continue
+
+                    block1, idx1 = slices[csc1], csc1._idx[cs1]
+                    block2, idx2 = slices[csc2], csc2._idx[cs2]
+
+                    phiinv[block1,block2][idx1,idx2] = invert[:,i,j]
+                    phiinv[block2,block1][idx2,idx1] = invert[:,i,j]
+
+            if logdet:
+                return phiinv, ld
+            else:
+                return phiinv
+        else:
+            raise NotImplementedError
+
+    def get_phiinv_byfreq_cliques(self, params, logdet=False, cholesky=False):
+        phi = self.get_phi(params, cliques=True)
+
+        if isinstance(phi, list):
+            if logdet:
+                return [None if phivec is None
+                        else (1/phivec, np.sum(np.log(phivec)))
+                        for phivec in phi]
+            else:
+                return [None if phivec is None else 1/phivec for phivec in phi]
+        else:
+            ld = 1.0
+
+            # first invert all the cliques
+            for clcount in range(self._clcount):
+                idx = (self._cliques == clcount)
+
+                if np.any(idx):
+                    idx2 = np.ix_(idx,idx)
+
+                    if cholesky:
+                        cf = sl.cho_factor(phi[idx2])
+
+                        if logdet:
+                            ld += 2.0*np.sum(np.log(np.diag(cf[0])))
+
+                        phi[idx2] = sl.cho_solve(cf,
+                                                 np.identity(cf[0].shape[0]))
+                    else:
+                        phi2 = phi[idx2]
+
+                        if logdet:
+                            ld += np.linalg.slogdet(phi2)[1]
+
+                        phi[idx2] = np.linalg.inv(phi2)
+
+            # then do the pure diagonal terms
+            idx = (self._cliques == -1)
+
+            if logdet:
+                ld += np.sum(np.log(phi[idx,idx]))
+
+            phi[idx,idx] = 1.0/phi[idx,idx]
+
+            return (phi, ld) if logdet else phi
+
+    # sort matrix indices by presence of non-diagonal elements
+    # for each value in self._cliques, the indices with that value form
+    # an independent submatrix that can be inverted separately
+    def _resetcliques(self,phidiag):
+        self._cliques = -1 * np.ones_like(phidiag)
+        self._clcount = 0
+
+    def _setcliques(self,slices,csdict):
+        idxmatrix = np.array([csc._idx[cs] for cs, csc in csdict.items()]).T
+        idxmatrix = idxmatrix + np.array([slices[csc].start
+                                          for cs, csc in csdict.items()])
+
+        for idxs in idxmatrix:
+            allidx = set(self._cliques[idxs])
+            maxidx = max(allidx)
+
+            if maxidx == -1:
+                self._cliques[idxs] = self._clcount
+
+                if len(allidx) > 1:
+                    self._cliques[np.in1d(self._cliques,allidx)] = \
+                        self._clcount
+
+                self._clcount = self._clcount + 1
+            else:
+                self._cliques[idxs] = maxidx
+
+                if len(allidx) > 1:
+                    self._cliques[np.in1d(self._cliques,allidx)] = maxidx
+
+    def get_phi(self, params, cliques=False):
         phivecs = [signalcollection.get_phi(params) for
                    signalcollection in self._signalcollections]
 
@@ -284,9 +429,16 @@ class PTA(object):
 
             phi = np.diag(phidiag)
 
+            if cliques:
+                self._resetcliques(phidiag)
+
             # iterate over all common signal classes
             for csclass, csdict in self._commonsignals.items():
-                # iterate over all pairs of common signal instances
+                # first figure out which indices are used in this common signal
+                if cliques:
+                    self._setcliques(slices,csdict)
+
+                # now iterate over all pairs of common signal instances
                 pairs = itertools.combinations(csdict.items(),2)
 
                 for (cs1, csc1), (cs2, csc2) in pairs:
@@ -345,49 +497,57 @@ def SignalCollection(metasignals):
             delays = [signal.get_delay(params) for signal in self._signals]
             return sum(delay for delay in delays if delay is not None)
 
-        # this could be put in utils.py if desired
         def _combine_basis_columns(self, signals):
             """Given a set of Signal objects, each of which may return an
-            Fmat (through get_basis()), combine the unique columns into a
-            single Fmat, dropping duplicates, and also return a
-            dict (indexed by signal) of integer arrays that map individual
-            Fmat columns to the combined Fmat."""
+            Fmat (through get_basis()), return a dict (indexed by signal)
+            of integer arrays that map individual Fmat columns to the
+            combined Fmat.
+
+            Note: The Fmat returned here is simply meant to initialize the
+            matrix to save computations when calling `get_basis` later.
+            """
 
             idx, Fmatlist = {}, []
-
+            cc = 0
             for signal in signals:
                 Fmat = signal.get_basis()
 
-                if Fmat is not None:
+                if Fmat is not None and not signal.basis_params:
                     idx[signal] = []
 
                     for i, column in enumerate(Fmat.T):
                         for j, savedcolumn in enumerate(Fmatlist):
-                            if np.allclose(column, savedcolumn, rtol=1e-15):
+                            if np.allclose(column,savedcolumn,rtol=1e-15):
                                 idx[signal].append(j)
                                 break
                         else:
-                            idx[signal].append(len(Fmatlist))
+                            idx[signal].append(cc)
                             Fmatlist.append(column)
+                            cc += 1
 
-            return idx, np.array(Fmatlist).T
+                elif Fmat is not None and signal.basis_params:
+                    nf = Fmat.shape[1]
+                    idx[signal] = list(np.arange(cc, cc+nf))
+                    cc += nf
 
-        # goofy way to cache _idx and _Fmat
+            ncol = len(np.unique(sum(idx.values(), [])))
+            nrow = len(Fmatlist[0])
+            return idx, np.zeros((nrow, ncol))
+
+        # goofy way to cache _idx
         def __getattr__(self, par):
             if par in ('_idx', '_Fmat'):
                 self._idx, self._Fmat = self._combine_basis_columns(
                     self._signals)
-
                 return getattr(self,par)
             else:
                 raise AttributeError("{} object has no attribute {}".format(
                     self.__class__,par))
 
-        # note that currently we don't support a params-dependent basis;
-        # for that, we'll need Signal.get_basis (or an associated function)
-        # to somehow return the set of parameters that matter to the basis,
-        # which could be empty
-        def get_basis(self, params=None):
+        def get_basis(self, params={}):
+            for signal in self._signals:
+                if signal in self._idx:
+                    self._Fmat[:, self._idx[signal]] = signal.get_basis(params)
             return self._Fmat
 
         def get_phiinv(self, params):
@@ -395,11 +555,9 @@ def SignalCollection(metasignals):
 
         def get_phi(self, params):
             phi = np.zeros(self._Fmat.shape[1],'d')
-
             for signal in self._signals:
                 if signal in self._idx:
                     phi[self._idx[signal]] += signal.get_phi(params)
-
             return phi
 
         @property
@@ -409,61 +567,126 @@ def SignalCollection(metasignals):
     return SignalCollection
 
 
-def Function(func, **kwargs):
-    """Class factory for generic function calls."""
+def Function(func, name='', **func_kwargs):
+    fname = name
+
     class Function(object):
-        def __init__(self, prefix, postfix=''):
-            self._params = {kw: arg('_'.join([prefix, kw, postfix]))
-                            if postfix else arg('_'.join([prefix, kw]))
-                            for kw, arg in kwargs.items()}
+        def __init__(self, name, psr=None):
+            self._func = selection_func(func)
+            self._psr = psr
 
-        def get(self, parname, params={}):
-            try:
-                return self._params[parname].value
-            except AttributeError:
-                return params[parname]
+            self._params = {}
+            self._defaults = {}
 
-        # params could also be a standard argument here,
-        # but by defining it as ** we allow multiple positional arguments
-        def __call__(self, *args, **params):
-            pardict = {}
-            for kw, par in self._params.items():
-                if par.name in params:
-                    pardict[kw] = params[par.name]
-                elif hasattr(par, 'value'):
-                    pardict[kw] = par.value
+            # divide keyword parameters into those that are Parameter classes,
+            # Parameter instances (useful for global parameters),
+            # and something else (which we will assume is a value)
+            for kw, arg in func_kwargs.items():
+                if isinstance(arg, type) and issubclass(
+                        arg, (Parameter, ConstantParameter)):
+                    # parameter name template
+                    # pname_[signalname_][fname_]parname
+                    pnames = [name, fname, kw]
+                    par = arg('_'.join([n for n in pnames if n]))
+                    self._params[kw] = par
+                elif isinstance(arg, (Parameter, ConstantParameter)):
+                    self._params[kw] = arg
+                else:
+                    self._defaults[kw] = arg
 
-            return func(*args, **pardict)
+        def __call__(self, *args, **kwargs):
+            # order of parameter resolution:
+            # - parameter given in kwargs
+            # - named sampling parameter in self._params, if given in params
+            #   or if it has a value
+            # - parameter given as constant in Function definition
+            # - default value for keyword parameter in func definition
+
+            # trick to get positional arguments before params kwarg
+            params = kwargs.get('params',{})
+            if 'params' in kwargs:
+                del kwargs['params']
+
+            for kw, arg in func_kwargs.items():
+                if kw not in kwargs and kw in self._params:
+                    par = self._params[kw]
+
+                    if par.name in params:
+                        kwargs[kw] = params[par.name]
+                    elif hasattr(par, 'value'):
+                        kwargs[kw] = par.value
+
+            for kw, arg in self._defaults.items():
+                if kw not in kwargs:
+                    kwargs[kw] = arg
+
+            if self._psr is not None and 'psr' not in kwargs:
+                kwargs['psr'] = self._psr
+            return self._func(*args, **kwargs)
+
+        def add_kwarg(self, **kwargs):
+            self._defaults.update(kwargs)
 
         @property
         def params(self):
+            # if we extract the ConstantParameter value above, we would not
+            # need a special case here
             return [par for par in self._params.values() if not
-                    isinstance(par,ConstantParameter)]
+                    isinstance(par, ConstantParameter)]
 
     return Function
 
 
-class csc_matrix_alt(scipy.sparse.csc_matrix):
+def cache_call(attr, limit=10):
+    """Cache function that allows for subsets of parameters to be keyed."""
+
+    def cache_decorator(func):
+
+        def wrapper(self, params):
+            keys = getattr(self, attr)
+            key = tuple([(key, params[key]) for key in keys if key in params])
+            if key not in self._cache:
+                self._cache_list.append(key)
+                self._cache[key] = func(self, params)
+                if len(self._cache_list) > limit:
+                    del self._cache[self._cache_list.pop(0)]
+                return self._cache[key]
+        return wrapper
+
+    return cache_decorator
+
+
+class csc_matrix_alt(sps.csc_matrix):
     """Sub-class of ``scipy.sparse.csc_matrix`` with custom ``add`` and
     ``solve`` methods.
     """
 
     def _add_diag(self, other):
-        other_diag = scipy.sparse.dia_matrix(
+        other_diag = sps.dia_matrix(
             (other, np.array([0])),
             shape=(other.shape[0], other.shape[0]))
         return self._binopt(other_diag, '_plus_')
 
     def __add__(self, other):
 
-        if isinstance(other, np.ndarray) and other.ndim == 1:
+        if isinstance(other, (np.ndarray, ndarray_alt)) and other.ndim == 1:
             return self._add_diag(other)
         else:
             return super(csc_matrix_alt, self).__add__(other)
 
-    def solve(self, other, logdet=False):
+    # hacky way to fix adding ndarray on left
+    def __radd__(self, other):
+        if isinstance(other, (np.ndarray, ndarray_alt)) or other == 0:
+            return self.__add__(other)
+        else:
+            raise TypeError
+
+    def solve(self, other, left_array=None, logdet=False):
         cf = cholesky(self)
-        ret = (cf(other), cf.logdet()) if logdet else cf(other)
+        mult = cf(other)
+        if left_array is not None:
+            mult = np.dot(left_array.T, mult)
+        ret = (mult, cf.logdet()) if logdet else mult
         return ret
 
 
@@ -474,11 +697,210 @@ class ndarray_alt(np.ndarray):
         obj = np.asarray(inputarr).view(cls)
         return obj
 
-    def solve(self, other, logdet=False):
-        if other.ndim == 1:
-            No = np.array(other / self)
-        elif other.ndim == 2:
-            No = np.array(other / self[:,None])
-
-        ret = (No, float(np.sum(np.log(self)))) if logdet else No
+    def __add__(self, other):
+        try:
+            ret = super(ndarray_alt, self).__add__(other)
+        except TypeError:
+            ret = other + self
         return ret
+
+    def solve(self, other, left_array=None, logdet=False):
+        if other.ndim == 1:
+            mult = np.array(other / self)
+        elif other.ndim == 2:
+            mult = np.array(other / self[:,None])
+        if left_array is not None:
+            mult = np.dot(left_array.T, mult)
+
+        ret = (mult, float(np.sum(np.log(self)))) if logdet else mult
+        return ret
+
+
+class BlockMatrix(object):
+
+    def __init__(self, blocks, slices, nvec=0):
+        self._blocks = blocks
+        self._slices = slices
+        self._nvec = nvec
+
+    def __add__(self, other):
+        nvec = self._nvec + other
+        return BlockMatrix(self._blocks, self._slices, nvec)
+
+    # hacky way to fix adding 0
+    def __radd__(self, other):
+        if other == 0:
+            return self.__add__(other)
+        else:
+            raise TypeError
+
+    def _solve_ZNX(self, X, Z):
+        """Solves :math:`Z^T N^{-1}X`, where :math:`X`
+        and :math:`Z` are 1-d or 2-d arrays.
+        """
+        if X.ndim == 1:
+            X = X.reshape(X.shape[0], 1)
+        if Z.ndim == 1:
+            Z = Z.reshape(Z.shape[0], 1)
+
+        n, m = Z.shape[1], X.shape[1]
+        ZNX = np.zeros((n, m))
+        for slc, block in zip(self._slices, self._blocks):
+            Zblock = Z[slc, :]
+            Xblock = X[slc, :]
+
+            if slc.stop - slc.start > 1:
+                cf = sl.cho_factor(block+np.diag(self._nvec[slc]))
+                bx = sl.cho_solve(cf, Xblock)
+            else:
+                bx = Xblock / self._nvec[slc][:, None]
+            ZNX += np.dot(Zblock.T, bx)
+        return ZNX.squeeze() if len(ZNX) > 1 else float(ZNX)
+
+    def _solve_NX(self, X):
+        """Solves :math:`N^{-1}X`, where :math:`X`
+        is a 1-d or 2-d array.
+        """
+        if X.ndim == 1:
+            X = X.reshape(X.shape[0], 1)
+
+        m = X.shape[1]
+        NX = np.zeros((len(self._nvec), m))
+        for slc, block in zip(self._slices, self._blocks):
+            Xblock = X[slc, :]
+            if slc.stop - slc.start > 1:
+                cf = sl.cho_factor(block+np.diag(self._nvec[slc]))
+                NX[slc] = sl.cho_solve(cf, Xblock)
+            else:
+                NX[slc] = Xblock / self._nvec[slc][:, None]
+        return NX.squeeze()
+
+    def _get_logdet(self):
+        """Returns log determinant of :math:`N+UJU^{T}` where :math:`U`
+        is a quantization matrix.
+        """
+        logdet = 0
+        for slc, block in zip(self._slices, self._blocks):
+            if slc.stop - slc.start > 1:
+                cf = sl.cho_factor(block+np.diag(self._nvec[slc]))
+                logdet += np.sum(2*np.log(np.diag(cf[0])))
+            else:
+                logdet += np.sum(np.log(self._nvec[slc]))
+        return logdet
+
+    def solve(self, other, left_array=None, logdet=False):
+
+        if other.ndim not in [1, 2]:
+            raise TypeError
+        if left_array is not None:
+            if left_array.ndim not in [1, 2]:
+                raise TypeError
+
+        if left_array is not None:
+            ret = self._solve_ZNX(other, left_array)
+        else:
+            ret = self._solve_NX(other)
+
+        return (ret, self._get_logdet()) if logdet else ret
+
+
+class ShermanMorrison(object):
+    """Custom container class for Sherman-morrison array inversion."""
+
+    def __init__(self, jvec, slices, nvec=0.0):
+        self._jvec = jvec
+        self._slices = slices
+        self._nvec = nvec
+
+    def __add__(self, other):
+        nvec = self._nvec + other
+        return ShermanMorrison(self._jvec, self._slices, nvec)
+
+    # hacky way to fix adding 0
+    def __radd__(self, other):
+        if other == 0:
+            return self.__add__(other)
+        else:
+            raise TypeError
+
+    def _solve_D1(self, x):
+        """Solves :math:`N^{-1}x` where :math:`x` is a vector."""
+
+        Nx = x / self._nvec
+        for slc, jv in zip(self._slices, self._jvec):
+            if slc.stop - slc.start > 1:
+                rblock = x[slc]
+                niblock = 1 / self._nvec[slc]
+                beta = 1.0 / (np.einsum('i->', niblock) + 1.0/jv)
+                Nx[slc] -= beta * np.dot(niblock, rblock) * niblock
+        return Nx
+
+    def _solve_1D1(self, x, y):
+        """Solves :math:`y^T N^{-1}x`, where :math:`x` and
+        :math:`y` are vectors.
+        """
+
+        Nx = x / self._nvec
+        yNx = np.dot(y, Nx)
+        for slc, jv in zip(self._slices, self._jvec):
+            if slc.stop - slc.start > 1:
+                xblock = x[slc]
+                yblock = y[slc]
+                niblock = 1 / self._nvec[slc]
+                beta = 1.0 / (np.einsum('i->', niblock)+1.0/jv)
+                yNx -= beta * np.dot(niblock, xblock) * np.dot(niblock, yblock)
+        return yNx
+
+    def _solve_2D2(self, X, Z):
+        """Solves :math:`Z^T N^{-1}X`, where :math:`X`
+        and :math:`Z` are 2-d arrays.
+        """
+
+        ZNX = np.dot(Z.T / self._nvec, X)
+        for slc, jv in zip(self._slices, self._jvec):
+            if slc.stop - slc.start > 1:
+                Zblock = Z[slc, :]
+                Xblock = X[slc, :]
+                niblock = 1 / self._nvec[slc]
+                beta = 1.0 / (np.einsum('i->', niblock)+1.0/jv)
+                zn = np.dot(niblock, Zblock)
+                xn = np.dot(niblock, Xblock)
+                ZNX -= beta * np.outer(zn.T, xn)
+        return ZNX
+
+    def _get_logdet(self):
+        """Returns log determinant of :math:`N+UJU^{T}` where :math:`U`
+        is a quantization matrix.
+        """
+        logdet = np.einsum('i->', np.log(self._nvec))
+        for slc, jv in zip(self._slices, self._jvec):
+            if slc.stop - slc.start > 1:
+                niblock = 1 / self._nvec[slc]
+                beta = 1.0 / (np.einsum('i->', niblock)+1.0/jv)
+                logdet += np.log(jv) - np.log(beta)
+        return logdet
+
+    def solve(self, other, left_array=None, logdet=False):
+
+        if other.ndim == 1:
+            if left_array is None:
+                ret = self._solve_D1(other)
+            elif left_array is not None and left_array.ndim == 1:
+                ret = self._solve_1D1(other, left_array)
+            elif left_array is not None and left_array.ndim == 2:
+                ret = np.dot(left_array.T, self._solve_D1(other))
+            else:
+                raise TypeError
+        elif other.ndim == 2:
+            if left_array is None:
+                raise TypeError
+            elif left_array is not None and left_array.ndim == 2:
+                ret = self._solve_2D2(other, left_array)
+            elif left_array is not None and left_array.ndim == 1:
+                ret = np.dot(other.T, self._solve_D1(left_array))
+            else:
+                raise TypeError
+        else:
+            raise TypeError
+
+        return (ret, self._get_logdet()) if logdet else ret
