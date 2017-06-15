@@ -1,0 +1,14 @@
+efac-430_PUPPI 1.08304
+efac-L-wide_PUPPI 1.13832
+efac-430_ASP 1.41609
+efac-L-wide_ASP 1.17221
+jitter_q-430_ASP -7.29294
+jitter_q-430_PUPPI -6.38509
+jitter_q-L-wide_ASP -7.3789
+jitter_q-L-wide_PUPPI -7.83727
+equad-430_PUPPI -6.64609
+equad-L-wide_PUPPI -8.63939
+equad-430_ASP -8.15645
+equad-L-wide_ASP -8.192
+RN-Amplitude -16.6752
+RN-spectral-index 3.50096
