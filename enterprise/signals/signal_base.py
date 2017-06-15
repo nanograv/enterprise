@@ -69,7 +69,7 @@ class Signal(object):
         """Set default parameters."""
         for kw, par in self._params.items():
             if par.name in params and isinstance(par, ConstantParameter):
-                msg = 'Setting {} to {}'.format(kw, params[par.name])
+                msg = 'Setting {} to {}'.format(par.name, params[par.name])
                 logger.info(msg)
                 self._params[kw].value = params[par.name]
             elif par.name not in params and isinstance(par, ConstantParameter):
@@ -132,6 +132,10 @@ class PTA(object):
         return sorted({par for signalcollection in self._signalcollections for
                        par in signalcollection.params},
                       key=lambda par: par.name)
+
+    def get_ndiag(self, params={}):
+        return [signalcollection.get_ndiag(params)
+                for signalcollection in self._signalcollections]
 
     def set_default_params(self, params):
         for sc in self._signalcollections:
