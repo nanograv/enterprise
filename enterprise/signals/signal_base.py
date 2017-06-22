@@ -120,64 +120,52 @@ class CommonSignal(Signal):
 
 
 class MarginalizedLogLikelihood(object):
-    def __init__(self,pta):
+    def __init__(self, pta, phiinv_method='partition'):
         self.pta = pta
+        self.phiinv_method = phiinv_method
+
+    def _make_sigma(self, TNTs, phiinv):
+        return sps.block_diag(TNTs,'csc') + sps.csc_matrix(phiinv)
 
     # this can and should be much cleaner
     def __call__(self, xs):
         # map parameter vector if needed
         params = xs if isinstance(xs,dict) else self.pta.map_params(xs)
 
-        # these are all lists in pulsar order
-        # except for phiinv which may be a big matrix
-        Nvecs = self.pta.get_ndiag(params)
-        Ts = self.pta.get_basis(params)
-        phiinvs = self.pta.get_phiinv(params,logdet=True)
-        residuals = self.pta.get_residuals()
+        # phiinvs will be a list or may be a big matrix if spatially
+        # correlated signals
+        TNrs = self.pta.get_TNr(params)
+        TNTs = self.pta.get_TNT(params)
+        phiinvs = self.pta.get_phiinv(params, logdet=True,
+                                      method=self.phiinv_method)
 
-        loglike = 0.0
-
-        ds, TNTs = [], []
-        for T, Nvec, residual in zip(Ts, Nvecs, residuals):
-            # get auxiliaries
-            d = np.dot(T.T, Nvec.solve(residual))
-            NT, logdet_N = Nvec.solve(T, logdet=True)
-            TNT = np.dot(T.T, NT)
-
-            # triple product in likelihood function
-            rNr = np.dot(residual, Nvec.solve(residual))
-
-            # first component of likelihood function
-            loglike += -0.5 * (logdet_N + rNr)
-
-            # save d and TNT for use below
-            ds.append(d)
-            TNTs.append(TNT)
+        # get -0.5 * (rNr + logdet_N) piece of likelihood
+        loglike = -0.5 * np.sum([l for l in self.pta.get_rNr_logdet(params)])
 
         # red noise piece
         if self.pta._commonsignals:
             phiinv, logdet_phi = phiinvs
 
-            # note: modifies phiinv in place
-            Sigma = phiinv + sps.block_diag(TNTs,'csc')
-            d = np.concatenate(ds)
+            Sigma = self._make_sigma(TNTs, phiinv)
+            TNr = np.concatenate(TNrs)
 
             cf = cholesky(Sigma)
-            expval = cf(d)
+            expval = cf(TNr)
 
             logdet_sigma = cf.logdet()
 
-            loglike += 0.5*(np.dot(d, expval) - logdet_sigma - logdet_phi)
+            loglike += 0.5*(np.dot(TNr, expval) - logdet_sigma - logdet_phi)
         else:
-            for d, TNT, (phiinv, logdet_phi) in zip(ds, TNTs, phiinvs):
+            for TNr, TNT, (phiinv, logdet_phi) in zip(TNrs, TNTs, phiinvs):
                 Sigma = TNT + np.diag(phiinv)
 
                 cf = sl.cho_factor(Sigma)
-                expval = sl.cho_solve(cf, d)
+                expval = sl.cho_solve(cf, TNr)
 
                 logdet_sigma = np.sum(2 * np.log(np.diag(cf[0])))
 
-                loglike += 0.5*(np.dot(d, expval) - logdet_sigma - logdet_phi)
+                loglike += 0.5*(np.dot(TNr, expval) -
+                                logdet_sigma - logdet_phi)
 
         return loglike
 
@@ -352,18 +340,19 @@ class PTA(object):
                             phidiag[slices[csc1]][csc1._idx[cs1]]))
 
             for k in range(len(crossdiag)):
+                cf = sl.cho_factor(invert[k,:,:])
+                invert[k,:,:] = sl.cho_solve(
+                    cf, np.eye(invert[k,:,:].shape[0]))
                 if logdet:
-                    ld += np.linalg.slogdet(invert[k,:,:])[1]
-
-                invert[k,:,:] = np.linalg.inv(invert[k,:,:])
+                    ld += np.sum(2 * np.log(np.diag(cf[0])))
 
             csdict = list(self._commonsignals.values())[0]
             for i, (cs1, csc1) in enumerate(csdict.items()):
+                block1, idx1 = slices[csc1], csc1._idx[cs1]
                 for j, (cs2, csc2) in enumerate(csdict.items()):
                     if j < i:
                         continue
 
-                    block1, idx1 = slices[csc1], csc1._idx[cs1]
                     block2, idx2 = slices[csc2], csc2._idx[cs2]
 
                     phiinv[block1,block2][idx1,idx2] = invert[:,i,j]
