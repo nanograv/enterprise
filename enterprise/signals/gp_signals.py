@@ -53,6 +53,7 @@ def BasisGP(priorFunction, basisFunction,
                 ret.extend([pp.name for pp in basis.params])
             return ret
 
+        @base.cache_call('basis_params')
         def _construct_basis(self, params={}):
             basis, self._labels = {}, {}
             for key, mask in zip(self._keys, self._masks):
@@ -71,7 +72,6 @@ def BasisGP(priorFunction, basisFunction,
                 self._slices.update({key: slice(nctot, nn+nctot)})
                 nctot += nn
 
-        @base.cache_call('basis_params')
         def get_basis(self, params={}):
             self._construct_basis(params)
             return self._basis

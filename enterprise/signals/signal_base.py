@@ -363,7 +363,13 @@ class PTA(object):
             else:
                 return phiinv
         else:
-            raise NotImplementedError
+            if logdet:
+                return [None if phivec is None
+                        else (1/phivec, np.sum(np.log(phivec)))
+                        for phivec in phivecs]
+            else:
+                return [None if phivec is None else 1/phivec for
+                        phivec in phivecs]
 
     def get_phiinv_byfreq_cliques(self, params, logdet=False, cholesky=False):
         phi = self.get_phi(params, cliques=True)
