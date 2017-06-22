@@ -301,14 +301,14 @@ class Pulsar(object):
 
         Not all TOAs have the same flags for all data sets. In order to
         facilitate this we have a ranked ordering system that will look
-        for flags. The order is `group`, `sys`, `i`, `f`, `fe`+`be`.
+        for flags. The order is `group`, `g`, `sys`, `i`, `f`, `fe`+`be`.
 
         """
 
         nobs = len(self._toas)
         bflags = ['flag'] * nobs
         check = lambda i, fl: fl in self._flags and self._flags[fl][i] != ''
-        flags = [['group'], ['sys'], ['i'], ['f'], ['fe', 'be']]
+        flags = [['group'], ['g'], ['sys'], ['i'], ['f'], ['fe', 'be']]
         for ii in range(nobs):
             # TODO: make this cleaner
             for f in flags:
