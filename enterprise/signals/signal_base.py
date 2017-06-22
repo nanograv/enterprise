@@ -376,7 +376,7 @@ class PTA(object):
             else:
                 return [None if phivec is None else 1/phivec for phivec in phi]
         else:
-            ld = 1.0
+            ld = 0
 
             # first invert all the cliques
             for clcount in range(self._clcount):

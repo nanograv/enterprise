@@ -169,10 +169,16 @@ class TestPTASignals(unittest.TestCase):
         ps = {p.name: float(p.sample()) for p in pta.params}
 
         phi = pta.get_phi(ps)
+        ldp = np.linalg.slogdet(phi)[1]
 
-        inv1 = pta.get_phiinv(ps,method='cliques')
-        inv2 = pta.get_phiinv(ps,method='partition')
-        inv3 = pta.get_phiinv(ps,method='sparse').toarray()
+        inv1, ld1 = pta.get_phiinv(ps,method='cliques', logdet=True)
+        inv2, ld2 = pta.get_phiinv(ps,method='partition', logdet=True)
+        inv3, ld3 = pta.get_phiinv(ps,method='sparse', logdet=True)
+        inv3 = inv3.toarray()
+
+        for ld in [ld1, ld2, ld3]:
+            msg = "Wrong phi log determinant for two common processes"
+            assert np.allclose(ldp, ld, rtol=1e-15, atol=1e-6), msg
 
         for inv in [inv1,inv2,inv3]:
             msg = "Wrong phi inverse for two common processes"
@@ -191,10 +197,16 @@ class TestPTASignals(unittest.TestCase):
         ps = {p.name: float(p.sample()) for p in pta.params}
 
         phi = pta.get_phi(ps)
+        ldp = np.linalg.slogdet(phi)[1]
 
-        inv1 = pta.get_phiinv(ps,method='cliques')
-        inv2 = pta.get_phiinv(ps,method='partition')
-        inv3 = pta.get_phiinv(ps,method='sparse').toarray()
+        inv1, ld1 = pta.get_phiinv(ps,method='cliques', logdet=True)
+        inv2, ld2 = pta.get_phiinv(ps,method='partition', logdet=True)
+        inv3, ld3 = pta.get_phiinv(ps,method='sparse', logdet=True)
+        inv3 = inv3.toarray()
+
+        for ld in [ld1, ld2, ld3]:
+            msg = "Wrong phi log determinant for two common processes"
+            assert np.allclose(ldp, ld, rtol=1e-15, atol=1e-6), msg
 
         for inv in [inv1,inv2,inv3]:
             msg = "Wrong phi inverse for two processes"
@@ -213,10 +225,16 @@ class TestPTASignals(unittest.TestCase):
         ps = {p.name: float(p.sample()) for p in pta.params}
 
         phi = pta.get_phi(ps)
+        ldp = np.linalg.slogdet(phi)[1]
 
-        inv1 = pta.get_phiinv(ps,method='cliques')
-        inv2 = pta.get_phiinv(ps,method='partition')
-        inv3 = pta.get_phiinv(ps,method='sparse').toarray()
+        inv1, ld1 = pta.get_phiinv(ps,method='cliques', logdet=True)
+        inv2, ld2 = pta.get_phiinv(ps,method='partition', logdet=True)
+        inv3, ld3 = pta.get_phiinv(ps,method='sparse', logdet=True)
+        inv3 = inv3.toarray()
+
+        for ld in [ld1, ld3]:
+            msg = "Wrong phi log determinant for two common processes"
+            assert np.allclose(ldp, ld, rtol=1e-15, atol=1e-6), msg
 
         for inv in [inv1,inv3]:
             msg = "Wrong phi inverse for three common processes"
@@ -235,10 +253,16 @@ class TestPTASignals(unittest.TestCase):
         ps = {p.name: float(p.sample()) for p in pta.params}
 
         phi = pta.get_phi(ps)
+        ldp = np.linalg.slogdet(phi)[1]
 
-        inv1 = pta.get_phiinv(ps,method='cliques')
-        inv2 = pta.get_phiinv(ps,method='partition')
-        inv3 = pta.get_phiinv(ps,method='sparse').toarray()
+        inv1, ld1 = pta.get_phiinv(ps,method='cliques', logdet=True)
+        inv2, ld2 = pta.get_phiinv(ps,method='partition', logdet=True)
+        inv3, ld3 = pta.get_phiinv(ps,method='sparse', logdet=True)
+        inv3 = inv3.toarray()
+
+        for ld in [ld1, ld3]:
+            msg = "Wrong phi log determinant for two common processes"
+            assert np.allclose(ldp, ld, rtol=1e-15, atol=1e-6), msg
 
         for inv in [inv1, inv3]:
             msg = "Wrong phi inverse for four processes"
