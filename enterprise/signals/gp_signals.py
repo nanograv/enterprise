@@ -28,8 +28,6 @@ def BasisGP(priorFunction, basisFunction,
         def __init__(self, psr):
 
             self._do_selection(psr, priorFunction, basisFunction, selection)
-            self._cache = {}
-            self._cache_list = []
 
         def _do_selection(self, psr, priorfn, basisfn, selection):
 
@@ -55,7 +53,6 @@ def BasisGP(priorFunction, basisFunction,
                 ret.extend([pp.name for pp in basis.params])
             return ret
 
-        @base.cache_call('basis_params')
         def _construct_basis(self, params={}):
             basis, self._labels = {}, {}
             for key, mask in zip(self._keys, self._masks):
@@ -74,6 +71,7 @@ def BasisGP(priorFunction, basisFunction,
                 self._slices.update({key: slice(nctot, nn+nctot)})
                 nctot += nn
 
+        @base.cache_call('basis_params')
         def get_basis(self, params={}):
             self._construct_basis(params)
             return self._basis
@@ -100,7 +98,12 @@ def FourierBasisGP(spectrum, components=20,
     basis = base.Function(utils.createfourierdesignmatrix_red,
                           nmodes=components, Tspan=Tspan)
     BaseClass = BasisGP(spectrum, basis, selection=selection)
-    return type(b'FourierBasisGP', (BaseClass,), {})
+
+    class FourierBasisGP(BaseClass):
+        signal_type = 'basis'
+        signal_name = 'red noise'
+
+    return FourierBasisGP
 
 
 def TimingModel():
@@ -154,7 +157,12 @@ def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
     basis = base.Function(utils.create_quantization_matrix)
     prior = base.Function(ecorr_basis_prior, log10_ecorr=log10_ecorr)
     BaseClass = BasisGP(prior, basis, selection=selection)
-    return type(b'EcorrBasisModel', (BaseClass,), {})
+
+    class EcorrBasisModel(BaseClass):
+        signal_type = 'basis'
+        signal_name = 'basis ecorr'
+
+    return EcorrBasisModel
 
 
 def BasisCommonGP(priorFunction, basisFunction, orfFunction, name='common'):
@@ -176,8 +184,6 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, name='common'):
                 self._params[param.name] = param
 
             self._psrpos = psr.pos
-            self._cache = {}
-            self._cache_list = []
 
         @base.cache_call('basis_params')
         def _construct_basis(self, params={}):

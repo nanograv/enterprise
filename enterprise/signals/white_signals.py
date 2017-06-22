@@ -29,6 +29,12 @@ def MeasurementNoise(efac=parameter.Uniform(0.5,1.5),
             sel = selection(psr)
             self._params, self._ndiag = sel('efac', efac, psr.toaerrs**2)
 
+        @property
+        def ndiag_params(self):
+            """Get any varying ndiag parameters."""
+            return [pp.name for pp in self.params]
+
+        @base.cache_call('ndiag_params')
         def get_ndiag(self, params):
             ret = base.ndarray_alt(np.sum(
                 [self.get(p, params)**2*self._ndiag[p]
@@ -52,6 +58,12 @@ def EquadNoise(log10_equad=parameter.Uniform(-10,-5),
             self._params, self._ndiag = sel('log10_equad', log10_equad,
                                             np.ones_like(psr.toaerrs))
 
+        @property
+        def ndiag_params(self):
+            """Get any varying ndiag parameters."""
+            return [pp.name for pp in self.params]
+
+        @base.cache_call('ndiag_params')
         def get_ndiag(self, params):
             ret = base.ndarray_alt(np.sum(
                 [10**(2*self.get(p, params))*self._ndiag[p]
@@ -147,6 +159,12 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
             # initialize sparse matrix
             self._setup(psr)
 
+        @property
+        def ndiag_params(self):
+            """Get any varying ndiag parameters."""
+            return [pp.name for pp in self.params]
+
+        @base.cache_call('ndiag_params')
         def get_ndiag(self, params):
             if method == 'sherman-morrison':
                 return self._get_ndiag_sherman_morrison(params)

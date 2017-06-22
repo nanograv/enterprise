@@ -91,7 +91,7 @@ class Signal(object):
 
     def get_delay(self, params):
         """Returns the waveform of a deterministic signal."""
-        return None
+        return 0
 
     def get_basis(self, params=None):
         """Returns the basis array of shape N_toa x N_basis."""
@@ -205,12 +205,28 @@ class PTA(object):
                        par in signalcollection.params},
                       key=lambda par: par.name)
 
+    def get_TNr(self, params):
+        return [signalcollection.get_TNr(params) for signalcollection
+                in self._signalcollections]
+
+    def get_TNT(self, params):
+        return [signalcollection.get_TNT(params) for signalcollection
+                in self._signalcollections]
+
+    def get_rNr_logdet(self, params):
+        return [signalcollection.get_rNr_logdet(params) for signalcollection
+                in self._signalcollections]
+
     def get_residuals(self):
         return [signalcollection._residuals
                 for signalcollection in self._signalcollections]
 
     def get_ndiag(self, params={}):
         return [signalcollection.get_ndiag(params)
+                for signalcollection in self._signalcollections]
+
+    def get_delay(self, params={}):
+        return [signalcollection.get_delay(params)
                 for signalcollection in self._signalcollections]
 
     def set_default_params(self, params):
@@ -499,8 +515,25 @@ def SignalCollection(metasignals):
 
             self._residuals = psr.residuals
 
+            self._set_cache_parameters()
+
         def __add__(self, other):
             return PTA([self, other])
+
+        #TODO: this could be implemented more cleanly
+        def _set_cache_parameters(self):
+            """ Sets the cache for various signal types."""
+
+            self.white_params = []
+            self.basis_params = []
+            self.delay_params = []
+            for signal in self._signals:
+                if signal.signal_type == 'white noise':
+                    self.white_params.extend(signal.ndiag_params)
+                elif signal.signal_type in ['basis', 'common basis']:
+                    self.basis_params.extend(signal.basis_params)
+                elif signal.signal_type == 'delay':
+                    self.delay_params.extend(signal.delay_params)
 
         # a candidate for memoization
         @property
@@ -511,16 +544,6 @@ def SignalCollection(metasignals):
         def set_default_params(self, params):
             for signal in self._signals:
                 signal.set_default_params(params)
-
-        # there may be a smarter way to write these...
-
-        def get_ndiag(self, params):
-            ndiags = [signal.get_ndiag(params) for signal in self._signals]
-            return sum(ndiag for ndiag in ndiags if ndiag is not None)
-
-        def get_delay(self, params):
-            delays = [signal.get_delay(params) for signal in self._signals]
-            return sum(delay for delay in delays if delay is not None)
 
         def _combine_basis_columns(self, signals):
             """Given a set of Signal objects, each of which may return an
@@ -569,6 +592,21 @@ def SignalCollection(metasignals):
                 raise AttributeError("{} object has no attribute {}".format(
                     self.__class__,par))
 
+        @cache_call('white_params')
+        def get_ndiag(self, params):
+            ndiags = [signal.get_ndiag(params) for signal in self._signals]
+            return sum(ndiag for ndiag in ndiags if ndiag is not None)
+
+        @cache_call('delay_params')
+        def get_delay(self, params):
+            delays = [signal.get_delay(params) for signal in self._signals]
+            return sum(delay for delay in delays if delay is not None)
+
+        @cache_call('delay_params')
+        def get_detres(self, params):
+            return self._residuals - self.get_delay(params)
+
+        @cache_call('basis_params')
         def get_basis(self, params={}):
             for signal in self._signals:
                 if signal in self._idx:
@@ -585,9 +623,24 @@ def SignalCollection(metasignals):
                     phi[self._idx[signal]] += signal.get_phi(params)
             return phi
 
-        @property
-        def basis_shape(self):
-            return self._Fmat.shape
+        @cache_call(['basis_params', 'white_params', 'delay_params'])
+        def get_TNr(self, params):
+            Nvec = self.get_ndiag(params)
+            T = self.get_basis(params)
+            res = self.get_detres(params)
+            return Nvec.solve(res, left_array=T)
+
+        @cache_call(['basis_params', 'white_params'])
+        def get_TNT(self, params):
+            Nvec = self.get_ndiag(params)
+            T = self.get_basis(params)
+            return Nvec.solve(T, left_array=T)
+
+        @cache_call(['white_params', 'delay_params'])
+        def get_rNr_logdet(self, params):
+            Nvec = self.get_ndiag(params)
+            res = self.get_detres(params)
+            return Nvec.solve(res, left_array=res, logdet=True)
 
     return SignalCollection
 
@@ -662,20 +715,40 @@ def Function(func, name='', **func_kwargs):
     return Function
 
 
-def cache_call(attr, limit=10):
+def cache_call(attrs, limit=10):
     """Cache function that allows for subsets of parameters to be keyed."""
+
+    # convert to list of lists if only one attribute used
+    if not isinstance(attrs, list):
+        attrs = [attrs]
 
     def cache_decorator(func):
 
-        def wrapper(self, params):
-            keys = getattr(self, attr)
+        def wrapper(self, params={}):
+
+            # get the relevant parameters to be cached
+            keys = sum([getattr(self, attr) for attr in attrs], [])
             key = tuple([(key, params[key]) for key in keys if key in params])
-            if key not in self._cache:
-                self._cache_list.append(key)
-                self._cache[key] = func(self, params)
-                if len(self._cache_list) > limit:
-                    del self._cache[self._cache_list.pop(0)]
-                return self._cache[key]
+
+            # make sure the cache is part of the object
+            if not hasattr(self, '_cache_'+func.__name__):
+                msg = 'Create cache {} for signal {}'.format(
+                    func.__name__, self.__class__)
+                logger.debug(msg)
+                setattr(self, '_cache_'+func.__name__, {})
+                setattr(self, '_cache_list_'+func.__name__, [])
+            cache = getattr(self, '_cache_'+func.__name__)
+            cache_list = getattr(self, '_cache_list_'+func.__name__)
+
+            if key not in cache:
+                msg = 'Setting cache for {} in {}: {}'.format(
+                    attrs, self.__class__, key)
+                logger.debug(msg)
+                cache_list.append(key)
+                cache[key] = func(self, params)
+                if len(cache_list) > limit:
+                    del cache[cache_list.pop(0)]
+            return cache[key]
         return wrapper
 
     return cache_decorator
