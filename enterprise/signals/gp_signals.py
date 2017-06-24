@@ -176,9 +176,9 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, name='common'):
         def __init__(self, psr):
 
             self._bases = basisFunction(psr.name+name, psr=psr)
-            params = sum([BasisCommonGP._prior.params,
-                          BasisCommonGP._orf.params,
-                          self._bases.params], [])
+            params = sum([BasisCommonGP._prior._params.values(),
+                          BasisCommonGP._orf._params.values(),
+                          self._bases._params.values()], [])
             self._params = {}
             for param in params:
                 self._params[param.name] = param

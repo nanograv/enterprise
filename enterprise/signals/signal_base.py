@@ -78,9 +78,9 @@ class Signal(object):
                 logger.info(msg)
                 self._params[kw].value = params[par.name]
             elif par.name not in params and isinstance(par, ConstantParameter):
-                msg = 'Parameter {} not set! Check input parameters.'.format(
-                    par.name)
-                logger.warning(msg)
+                if par.value is not None:
+                    msg = '{} not set! Check parameter dict.'.format(par.name)
+                    logger.warning(msg)
 
     def get_ndiag(self, params):
         """Returns the diagonal of the white noise vector `N`.
