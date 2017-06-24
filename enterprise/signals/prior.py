@@ -112,6 +112,22 @@ class Prior(object):
         return self._rv.rvs(size=size, random_state=random_state)
 
 
+class _linear_exp_gen(rv_continuous):
+    """A distribution with pdf(x) ~ 10^x."""
+
+    def _rvs(self):
+        return np.log10(np.random.uniform(10**self.a, 10**self.b, self._size))
+
+    def _pdf(self, x):
+        return np.log(10) * 10**x / (10**self.b-10**self.a)
+
+    def _logpdf(self, x):
+        return np.log(self._pdf(x))
+
+    def _cdf(self, x):
+        return np.log(10) * (10**self.a - 10**x) / (10**self.a - 10**self.b)
+
+
 class _UniformUnnormedRV_generator(rv_continuous):
     r"""An unnormalized, uniform prior distribution set to unity
     everywhere.  This should be used for unbounded or half-bounded
@@ -126,6 +142,11 @@ class _UniformUnnormedRV_generator(rv_continuous):
 
     def _rvs(self):
         raise RuntimeError('cannot sample from unnormed distribution')
+
+
+def LinearExpRV(lower=0, upper=1):
+    r""" A prior proportional to 10^x with lower and upper bounds."""
+    return _linear_exp_gen(a=lower, b=upper)
 
 
 def UniformUnnormedRV(lower=-np.inf, upper=np.inf):
