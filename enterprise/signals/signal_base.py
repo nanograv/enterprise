@@ -13,7 +13,6 @@ import itertools
 import six
 
 import numpy as np
-# import scipy
 import scipy.sparse as sps
 import scipy.linalg as sl
 
@@ -24,7 +23,7 @@ from enterprise.signals.selections import selection_func
 
 import logging
 logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s',
-                    level=logging.INFO)
+                    level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
@@ -708,7 +707,21 @@ def Function(func, name='', **func_kwargs):
     return Function
 
 
-def cache_call(attrs, limit=10):
+def function(func):
+    """Decorator for Function."""
+
+    def wrapper(*args, **kwargs):
+        for kw, arg in kwargs.items():
+            if ((isinstance(arg, type) and issubclass(
+                arg, (Parameter, ConstantParameter))) or isinstance(
+                    arg, (Parameter, ConstantParameter))):
+                return Function(func, **kwargs)
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+def cache_call(attrs, limit=2):
     """Cache function that allows for subsets of parameters to be keyed."""
 
     # convert to list of lists if only one attribute used
