@@ -8,7 +8,6 @@ from __future__ import (absolute_import, division,
 
 import collections
 import itertools
-# import logging
 
 import six
 
@@ -23,7 +22,7 @@ from enterprise.signals.selections import selection_func
 
 import logging
 logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s',
-                    level=logging.DEBUG)
+                    level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
