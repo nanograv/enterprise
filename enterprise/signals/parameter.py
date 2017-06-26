@@ -61,6 +61,17 @@ def Uniform(pmin, pmax):
     return Uniform
 
 
+def LinearExp(pmin, pmax):
+    """Class factory for LinearExp parameters."""
+    class LinearExp(Parameter):
+        _prior = prior.Prior(prior.LinearExpRV(pmin, pmax))
+
+        def __repr__(self):
+            return '"{}":LinearExp({},{})'.format(self.name, pmin, pmax)
+
+    return LinearExp
+
+
 def Normal(mu=0, sigma=1):
     """Class factory for Normal parameters."""
     class Normal(Parameter):

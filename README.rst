@@ -16,11 +16,11 @@ enterprise
 .. image:: https://pyup.io/repos/github/nanograv/enterprise/shield.svg
      :target: https://pyup.io/repos/github/nanograv/enterprise/
      :alt: Updates
-     
+
 .. image:: https://landscape.io/github/nanograv/enterprise/master/landscape.svg?style=flat
    :target: https://landscape.io/github/nanograv/enterprise/master
    :alt: Code Health
-   
+
 .. image:: https://coveralls.io/repos/github/nanograv/enterprise/badge.svg?branch=master
     :target: https://coveralls.io/github/nanograv/enterprise?branch=master
 
@@ -37,7 +37,7 @@ ENTERPRISE (Enhanced Numerical Toolbox Enabling a Robust PulsaR Inference SuitE)
 Features
 --------
 
-* TODO...
+* TODO..
 
 Development Leads
 -----------------
@@ -54,4 +54,3 @@ This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypack
 
 .. _Cookiecutter: https://github.com/audreyr/cookiecutter
 .. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
-

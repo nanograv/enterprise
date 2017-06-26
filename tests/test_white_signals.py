@@ -252,7 +252,7 @@ class TestWhiteSignals(unittest.TestCase):
         for flag in np.unique(bflags):
             mask = bflags == flag
             Umats.append(utils.create_quantization_matrix(
-                self.psr.toas[mask])[0])
+                self.psr.toas[mask], nmin=2)[0])
         nepoch = sum(U.shape[1] for U in Umats)
         U = np.zeros((len(self.psr.toas), nepoch))
         jvec = np.zeros(nepoch)

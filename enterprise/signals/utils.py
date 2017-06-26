@@ -667,3 +667,12 @@ def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10/3, beta=0.5):
     hcf = (10**log10_A * (f / const.fyr) ** ((3-gamma) / 2) /
            (1 + (10**lf0 / f) ** kappa) ** beta)
     return hcf**2/12/np.pi**2/f**3
+
+
+def hd_orf(pos1, pos2):
+    if np.all(pos1 == pos2):
+        return 1
+    else:
+        xi = 1 - np.dot(pos1, pos2)
+        omc2 = (1 - np.cos(xi)) / 2
+        return 1.5 * omc2 * np.log(omc2) - 0.25 * omc2 + 0.5

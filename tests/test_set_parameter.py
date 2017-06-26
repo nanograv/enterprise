@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-test_white_signals
+test_set_parameter
 ----------------------------------
 
-Tests for white signal modules.
+Tests of setting constant parameters
 """
 
 
@@ -57,7 +57,7 @@ def get_noise_from_pal2(noisefile):
     return params
 
 
-class TestWhiteSignals(unittest.TestCase):
+class TestSetParameters(unittest.TestCase):
 
     def setUp(self):
         """Setup the Pulsar object."""

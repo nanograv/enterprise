@@ -11,7 +11,12 @@ import tempfile
 from ephem import Ecliptic, Equatorial
 import os
 import json
-import cPickle as pickle
+
+try:
+    import cPickle as pickle
+except:
+    import pickle
+
 from collections import OrderedDict
 
 # NOTE: PINT interface is not yet available so just import libstempo
@@ -24,8 +29,8 @@ except ImportError:
 
 class Pulsar(object):
 
-    def __init__(self, parfile, timfile, maxobs=30000, ephem=None,
-                 planets=True, sort=True, drop_t2pulsar=True):
+    def __init__(self, parfile, timfile, ephem=None,planets=True,
+                 sort=True, drop_t2pulsar=True):
 
         # Check whether the two files exist
         if not os.path.isfile(parfile) or not os.path.isfile(timfile):
@@ -48,6 +53,10 @@ class Pulsar(object):
 
         # sorting
         self._sort = sort
+
+        # hack to set maxobs
+        with open(reltimfile) as tfile:
+            maxobs = sum(1 for line in tfile if line.rstrip('\n'))
 
         # Load pulsar data from the libstempo library
         # TODO: make sure we specify libstempo>=2.3.1
@@ -303,7 +312,7 @@ class Pulsar(object):
         for ii in range(nobs):
             # TODO: make this cleaner
             for f in flags:
-                if np.all(map(lambda xx: check(ii, xx), f)):
+                if np.all(list(map(lambda xx: check(ii, xx), f))):
                     bflags[ii] = '_'.join(self._flags[x][ii] for x in f)
                     break
         return np.array(bflags)[self._isort]

@@ -56,11 +56,11 @@ class TestPulsar(unittest.TestCase):
         msg = 'Flags shape incorrect'
         assert self.psr.flags['f'].shape == (4005,), msg
 
-    #def test_backend_flags(self):
-    #    """Check backend_flags shape."""
-#
-    #    msg = 'Backend Flags shape incorrect'
-    #    assert self.psr.backend_flags.shape == (4005,), msg
+    def test_backend_flags(self):
+        """Check backend_flags shape."""
+
+        msg = 'Backend Flags shape incorrect'
+        assert self.psr.backend_flags.shape == (4005,), msg
 
     def test_sky(self):
         """Check Sky location."""
@@ -100,5 +100,5 @@ class TestPulsar(unittest.TestCase):
         with self.assertRaises(IOError) as context:
             Pulsar('wrong.par', 'wrong.tim')
 
-        msg = 'Cannot find parfile wrong.par or timfile wrong.tim!'
-        self.assertTrue(msg in context.exception)
+            msg = 'Cannot find parfile wrong.par or timfile wrong.tim!'
+            self.assertTrue(msg in context.exception)
