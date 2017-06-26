@@ -29,8 +29,8 @@ except ImportError:
 
 class Pulsar(object):
 
-    def __init__(self, parfile, timfile, maxobs=30000, ephem=None,
-                 planets=True, sort=True, drop_t2pulsar=True):
+    def __init__(self, parfile, timfile, ephem=None,planets=True,
+                 sort=True, drop_t2pulsar=True):
 
         # Check whether the two files exist
         if not os.path.isfile(parfile) or not os.path.isfile(timfile):
@@ -53,6 +53,10 @@ class Pulsar(object):
 
         # sorting
         self._sort = sort
+
+        # hack to set maxobs
+        with open(reltimfile) as tfile:
+            maxobs = sum(1 for line in tfile if line.rstrip('\n'))
 
         # Load pulsar data from the libstempo library
         # TODO: make sure we specify libstempo>=2.3.1
@@ -297,14 +301,14 @@ class Pulsar(object):
 
         Not all TOAs have the same flags for all data sets. In order to
         facilitate this we have a ranked ordering system that will look
-        for flags. The order is `group`, `sys`, `i`, `f`, `fe`+`be`.
+        for flags. The order is `group`, `g`, `sys`, `i`, `f`, `fe`+`be`.
 
         """
 
         nobs = len(self._toas)
         bflags = ['flag'] * nobs
         check = lambda i, fl: fl in self._flags and self._flags[fl][i] != ''
-        flags = [['group'], ['sys'], ['i'], ['f'], ['fe', 'be']]
+        flags = [['group'], ['g'], ['sys'], ['i'], ['f'], ['fe', 'be']]
         for ii in range(nobs):
             # TODO: make this cleaner
             for f in flags:

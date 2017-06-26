@@ -56,11 +56,11 @@ class TestPulsar(unittest.TestCase):
         msg = 'Flags shape incorrect'
         assert self.psr.flags['f'].shape == (4005,), msg
 
-    #def test_backend_flags(self):
-    #    """Check backend_flags shape."""
-#
-    #    msg = 'Backend Flags shape incorrect'
-    #    assert self.psr.backend_flags.shape == (4005,), msg
+    def test_backend_flags(self):
+        """Check backend_flags shape."""
+
+        msg = 'Backend Flags shape incorrect'
+        assert self.psr.backend_flags.shape == (4005,), msg
 
     def test_sky(self):
         """Check Sky location."""

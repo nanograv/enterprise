@@ -156,6 +156,10 @@ class TestPTASignals(unittest.TestCase):
                                               components=20, Tspan=span,
                                               name='vec')
 
+        vrn2 = gp_signals.FourierBasisCommonGP(spectrum=pl, orf=vrf,
+                                               components=20, Tspan=span*1.234,
+                                               name='vec2')
+
         # two common processes, sharing basis partially
 
         model = ef + rn + hdrn  # + vrn
@@ -165,14 +169,49 @@ class TestPTASignals(unittest.TestCase):
         ps = {p.name: float(p.sample()) for p in pta.params}
 
         phi = pta.get_phi(ps)
+        ldp = np.linalg.slogdet(phi)[1]
 
-        inv1 = pta.get_phiinv(ps,method='cliques')
-        inv2 = pta.get_phiinv(ps,method='partition')
-        inv3 = pta.get_phiinv(ps,method='sparse').toarray()
+        inv1, ld1 = pta.get_phiinv(ps,method='cliques', logdet=True)
+        inv2, ld2 = pta.get_phiinv(ps,method='partition', logdet=True)
+        inv3, ld3 = pta.get_phiinv(ps,method='sparse', logdet=True)
+        inv3 = inv3.toarray()
+
+        for ld in [ld1, ld2, ld3]:
+            msg = "Wrong phi log determinant for two common processes"
+            assert np.allclose(ldp, ld, rtol=1e-15, atol=1e-6), msg
 
         for inv in [inv1,inv2,inv3]:
-            assert np.sum(np.dot(phi,inv)) == len(phi), \
-                "Wrong phi inverse for two common processes"
+            msg = "Wrong phi inverse for two common processes"
+            assert np.allclose(np.dot(phi, inv), np.eye(phi.shape[0]),
+                               rtol=1e-15, atol=1e-6), msg
+
+        for inva, invb in itertools.combinations([inv1,inv2,inv3],2):
+            assert np.allclose(inva,invb)
+
+        # two common processes, no sharing basis
+
+        model = ef + rn + vrn2
+
+        pta = signal_base.PTA([model(psr) for psr in self.psrs])
+
+        ps = {p.name: float(p.sample()) for p in pta.params}
+
+        phi = pta.get_phi(ps)
+        ldp = np.linalg.slogdet(phi)[1]
+
+        inv1, ld1 = pta.get_phiinv(ps,method='cliques', logdet=True)
+        inv2, ld2 = pta.get_phiinv(ps,method='partition', logdet=True)
+        inv3, ld3 = pta.get_phiinv(ps,method='sparse', logdet=True)
+        inv3 = inv3.toarray()
+
+        for ld in [ld1, ld2, ld3]:
+            msg = "Wrong phi log determinant for two common processes"
+            assert np.allclose(ldp, ld, rtol=1e-15, atol=1e-6), msg
+
+        for inv in [inv1,inv2,inv3]:
+            msg = "Wrong phi inverse for two processes"
+            assert np.allclose(np.dot(phi, inv), np.eye(phi.shape[0]),
+                               rtol=1e-15, atol=1e-6), msg
 
         for inva, invb in itertools.combinations([inv1,inv2,inv3],2):
             assert np.allclose(inva,invb)
@@ -186,17 +225,52 @@ class TestPTASignals(unittest.TestCase):
         ps = {p.name: float(p.sample()) for p in pta.params}
 
         phi = pta.get_phi(ps)
+        ldp = np.linalg.slogdet(phi)[1]
 
-        inv1 = pta.get_phiinv(ps,method='cliques')
-        inv2 = pta.get_phiinv(ps,method='partition')
-        inv3 = pta.get_phiinv(ps,method='sparse').toarray()
+        inv1, ld1 = pta.get_phiinv(ps,method='cliques', logdet=True)
+        inv2, ld2 = pta.get_phiinv(ps,method='partition', logdet=True)
+        inv3, ld3 = pta.get_phiinv(ps,method='sparse', logdet=True)
+        inv3 = inv3.toarray()
+
+        for ld in [ld1, ld3]:
+            msg = "Wrong phi log determinant for two common processes"
+            assert np.allclose(ldp, ld, rtol=1e-15, atol=1e-6), msg
 
         for inv in [inv1,inv3]:
-            assert np.sum(np.dot(phi,inv)) == 120.0, \
-                "Wrong phi inverse for three common processes"
+            msg = "Wrong phi inverse for three common processes"
+            assert np.allclose(np.dot(phi, inv), np.eye(phi.shape[0]),
+                               rtol=1e-15, atol=1e-6), msg
 
         for inva, invb in itertools.combinations([inv1,inv3],2):
             assert np.allclose(inva,invb)
+
+        # four common processes, three sharing basis partially
+
+        model = ef + rn + hdrn + vrn + vrn2
+
+        pta = signal_base.PTA([model(psr) for psr in self.psrs])
+
+        ps = {p.name: float(p.sample()) for p in pta.params}
+
+        phi = pta.get_phi(ps)
+        ldp = np.linalg.slogdet(phi)[1]
+
+        inv1, ld1 = pta.get_phiinv(ps,method='cliques', logdet=True)
+        inv2, ld2 = pta.get_phiinv(ps,method='partition', logdet=True)
+        inv3, ld3 = pta.get_phiinv(ps,method='sparse', logdet=True)
+        inv3 = inv3.toarray()
+
+        for ld in [ld1, ld3]:
+            msg = "Wrong phi log determinant for two common processes"
+            assert np.allclose(ldp, ld, rtol=1e-15, atol=1e-6), msg
+
+        for inv in [inv1, inv3]:
+            msg = "Wrong phi inverse for four processes"
+            assert np.allclose(np.dot(phi, inv), np.eye(phi.shape[0]),
+                               rtol=1e-15, atol=1e-6), msg
+
+        for inva, invb in itertools.combinations([inv1, inv3],2):
+            assert np.allclose(inva, invb)
 
     def test_pta_phi(self):
         T1, T2, T3 = 3.16e8, 3.16e8, 3.16e8

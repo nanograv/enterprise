@@ -31,6 +31,21 @@ class Parameter(object):
 
 class ConstantParameter(object):
     """Constant Parameter base class."""
+
+    def __init__(self, name):
+        self.name = name
+
+    @property
+    def value(self):
+        return self.value
+
+    @value.setter
+    def value(self, value):
+        self.value = value
+
+    def __call__(self, name):
+        return self
+
     def __repr__(self):
         return '"{}":Constant={}'.format(self.name, self.value)
 
@@ -46,6 +61,17 @@ def Uniform(pmin, pmax):
     return Uniform
 
 
+def LinearExp(pmin, pmax):
+    """Class factory for LinearExp parameters."""
+    class LinearExp(Parameter):
+        _prior = prior.Prior(prior.LinearExpRV(pmin, pmax))
+
+        def __repr__(self):
+            return '"{}":LinearExp({},{})'.format(self.name, pmin, pmax)
+
+    return LinearExp
+
+
 def Normal(mu=0, sigma=1):
     """Class factory for Normal parameters."""
     class Normal(Parameter):
@@ -57,8 +83,7 @@ def Normal(mu=0, sigma=1):
     return Normal
 
 
-def Constant(val):
-    class Constant(Parameter, ConstantParameter):
+def Constant(val=None):
+    class Constant(ConstantParameter):
         value = val
-
     return Constant
