@@ -21,7 +21,13 @@ from enterprise.signals.selections import Selection
 from enterprise.signals import signal_base
 from enterprise.signals import white_signals
 from enterprise.signals import gp_signals
+from enterprise.signals import deterministic_signals
 from enterprise.signals import utils
+
+
+@signal_base.function
+def sine_wave(toas, log10_A=-7, log10_f=-8, phase=0.0):
+    return 10**log10_A * np.sin(2*np.pi*toas*10**log10_f + phase)
 
 
 def get_noise_from_pal2(noisefile):
@@ -68,7 +74,7 @@ class TestLikelihood(unittest.TestCase):
                      Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
                             datadir + '/J1909-3744_NANOGrav_9yv1.tim')]
 
-    def compute_like(self, npsrs=1, inc_corr=False):
+    def compute_like(self, npsrs=1, inc_corr=False, inc_det=False):
 
         # get parameters from PAL2 style noise files
         params = get_noise_from_pal2(datadir+'/B1855+09_noise.txt')
@@ -79,6 +85,14 @@ class TestLikelihood(unittest.TestCase):
 
         if inc_corr:
             params.update({'GW_gamma': 4.33, 'GW_log10_A':-15.0})
+
+        if inc_det:
+            dAs = [-7.3, -7.1]
+            dfs = [-8, -7.6]
+            params.update({'B1855+09_sine_log10_A': dAs[0],
+                           'B1855+09_sine_log10_f': dfs[0],
+                           'J1909-3744_sine_log10_A': dAs[1],
+                           'J1909-3744_sine_log10_f': dfs[1]})
 
         # find the maximum time span to set GW frequency sampling
         tmin = [p.toas.min() for p in psrs]
@@ -91,6 +105,8 @@ class TestLikelihood(unittest.TestCase):
         ecorr = parameter.Constant()
         log10_A = parameter.Constant()
         gamma = parameter.Constant()
+        log10_Ad = parameter.Uniform(-10, -5)
+        log10_fd = parameter.Uniform(-9, -7)
 
         selection = Selection(selections.by_backend)
 
@@ -110,8 +126,15 @@ class TestLikelihood(unittest.TestCase):
 
         tm = gp_signals.TimingModel()
 
-        if inc_corr:
+        waveform = sine_wave(log10_A=log10_Ad, log10_f=log10_fd, name='sine')
+        dt = deterministic_signals.Deterministic(waveform)
+
+        if inc_corr and not inc_det:
             s = ef + eq + ec + rn + crn + tm
+        elif inc_corr and inc_det:
+            s = ef + eq + ec + rn + crn + tm + dt
+        elif inc_det and not inc_corr:
+            s = ef + eq + ec + rn + tm + dt
         else:
             s = ef + eq + ec + rn + tm
 
@@ -191,10 +214,15 @@ class TestLikelihood(unittest.TestCase):
         loglike = 0
         TNrs, TNTs = [], []
         for ct, psr in enumerate(psrs):
-            TNrs.append(np.dot(Ts[ct].T, sl.cho_solve(cfs[ct], psr.residuals)))
+            if inc_det:
+                delay = sine_wave(psr.toas, log10_A=dAs[ct], log10_f=dfs[ct])
+                res = psr.residuals - delay
+            else:
+                res = psr.residuals
+            TNrs.append(np.dot(Ts[ct].T, sl.cho_solve(cfs[ct], res)))
             TNTs.append(np.dot(Ts[ct].T, sl.cho_solve(cfs[ct], Ts[ct])))
-            loglike += -0.5 * (np.dot(psr.residuals, sl.cho_solve(
-                cfs[ct], psr.residuals)) + logdets[ct])
+            loglike += -0.5 * (np.dot(res, sl.cho_solve(
+                cfs[ct], res)) + logdets[ct])
 
         TNr = np.concatenate(TNrs)
         phi = np.diag(np.concatenate(phis))
@@ -226,7 +254,10 @@ class TestLikelihood(unittest.TestCase):
         """Test likelihood with no spatial correlations."""
         self.compute_like(npsrs=1)
         self.compute_like(npsrs=2)
+        self.compute_like(npsrs=1, inc_det=True)
+        self.compute_like(npsrs=2, inc_det=True)
 
     def test_like_corr(self):
         """Test likelihood with spatial correlations."""
         self.compute_like(npsrs=2, inc_corr=True)
+        self.compute_like(npsrs=2, inc_corr=True, inc_det=True)
