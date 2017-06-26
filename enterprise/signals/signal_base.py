@@ -120,15 +120,13 @@ class CommonSignal(Signal):
 
 
 class MarginalizedLogLikelihood(object):
-    def __init__(self, pta, phiinv_method='partition'):
+    def __init__(self, pta):
         self.pta = pta
-        self.phiinv_method = phiinv_method
 
     def _make_sigma(self, TNTs, phiinv):
         return sps.block_diag(TNTs,'csc') + sps.csc_matrix(phiinv)
 
-    # this can and should be much cleaner
-    def __call__(self, xs):
+    def __call__(self, xs, phiinv_method='partition'):
         # map parameter vector if needed
         params = xs if isinstance(xs,dict) else self.pta.map_params(xs)
 
@@ -137,7 +135,7 @@ class MarginalizedLogLikelihood(object):
         TNrs = self.pta.get_TNr(params)
         TNTs = self.pta.get_TNT(params)
         phiinvs = self.pta.get_phiinv(params, logdet=True,
-                                      method=self.phiinv_method)
+                                      method=phiinv_method)
 
         # get -0.5 * (rNr + logdet_N) piece of likelihood
         loglike = -0.5 * np.sum([l for l in self.pta.get_rNr_logdet(params)])
@@ -233,8 +231,8 @@ class PTA(object):
 
         return self._lnlike
 
-    def get_lnlikelihood(self, params):
-        return self._lnlikelihood(params)
+    def get_lnlikelihood(self, params, **kwargs):
+        return self._lnlikelihood(params, **kwargs)
 
     @property
     def _commonsignals(self):

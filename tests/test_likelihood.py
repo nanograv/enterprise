@@ -216,9 +216,11 @@ class TestLikelihood(unittest.TestCase):
         loglike -= 0.5 * (logdetphi + logdetsigma)
         loglike += 0.5 * np.dot(TNr, expval)
 
-        eloglike = pta.get_lnlikelihood(params)
-        msg = 'Likelihoods do not match for npsr = {}'.format(npsrs)
-        assert np.allclose(eloglike, loglike), msg
+        method = ['partition', 'sparse', 'cliques']
+        for mth in method:
+            eloglike = pta.get_lnlikelihood(params, phiinv_method=mth)
+            msg = 'Incorrect like for npsr={}, phiinv={}'.format(npsrs, mth)
+            assert np.allclose(eloglike, loglike), msg
 
     def test_like_nocorr(self):
         """Test likelihood with no spatial correlations."""
