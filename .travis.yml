@@ -1,11 +1,9 @@
-env:
-- TOXENV=py35
-#- TOXENV=py34
-#- TOXENV=py33
-#- TOXENV=py27
-#- TOXENV=py26
-#- TOXENV=pypy
-#- TOXENV=flake8
+language: python
+cache: pip
+
+python:
+    - "2.7"
+
 before_install:
     - sudo apt-get install gfortran
     - sudo apt-get install libsuitesparse-dev
@@ -28,11 +26,9 @@ install:
     - pip install -r requirements.txt
     - pip install libstempo --install-option="--with-tempo2=$TEMPO2"
 
-language: python
-python: 2.7
-#script: tox -e ${TOXENV}
 script:
     - make test
     - make lint
+
 after_success:
     coveralls
