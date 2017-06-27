@@ -68,7 +68,8 @@ class TestPulsar(unittest.TestCase):
         sky = (1.4023093811712661, 4.9533700839400492)
 
         msg = 'Incorrect sky location'
-        assert (self.psr.theta, self.psr.phi) == sky, msg
+        assert np.allclose(self.psr.theta, sky[0]), msg
+        assert np.allclose(self.psr.phi, sky[1]), msg
 
     def test_design_matrix(self):
         """Check design matrix shape."""
