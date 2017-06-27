@@ -1,7 +1,3 @@
-cache: false
-dist: trusty
-sudo: required
-
 env:
 - TOXENV=py35
 #- TOXENV=py34
