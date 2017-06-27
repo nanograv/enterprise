@@ -37,7 +37,7 @@ def selection_func(func):
                 if funcarg not in kwargs and hasattr(psr, funcarg):
                     attr = call_me_maybe(getattr(psr, funcarg))
                     if (isinstance(attr, np.ndarray) and
-                        getattr(mask, 'shape', [0])[0] == len(attr)):
+                            getattr(mask, 'shape', [0])[0] == len(attr)):
                         targs.append(attr[mask])
                     else:
                         targs.append(attr)
