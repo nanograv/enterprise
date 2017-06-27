@@ -146,18 +146,25 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
                     psr.toas[mask], nmin=1)[0])
 
             nepoch = np.sum(U.shape[1] for U in Umats)
-            self._F = np.zeros((len(psr.toas), nepoch))
+            U = np.zeros((len(psr.toas), nepoch))
             self._slices = {}
             netot = 0
             for ct, (key, mask) in enumerate(zip(keys, masks)):
                 nn = Umats[ct].shape[1]
-                self._F[mask, netot:nn+netot] = Umats[ct]
+                U[mask, netot:nn+netot] = Umats[ct]
+                self._check_epoch(key, Umats[ct])
                 self._slices.update({key: utils.quant2ind(
-                    self._F[:,netot:nn+netot])})
+                    U[:,netot:nn+netot])})
                 netot += nn
 
             # initialize sparse matrix
             self._setup(psr)
+
+        def _check_epoch(self, key, Umat):
+            """Check that there are at least 2 epochs."""
+            if Umat.shape[0] - Umat.shape[1] <= 2:
+                self._params[key] = parameter.Constant(-20)(
+                    self._params[key].name)
 
         @property
         def ndiag_params(self):

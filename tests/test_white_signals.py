@@ -32,6 +32,10 @@ class TestWhiteSignals(unittest.TestCase):
         self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
                           datadir + '/B1855+09_NANOGrav_9yv1.tim')
 
+        # IPTA-like pulsar
+        self.ipsr = Pulsar(datadir + '/1713.Sep.T2.par',
+                           datadir + '/1713.Sep.T2.tim')
+
     def test_efac(self):
         """Test that efac signal returns correct covariance."""
         # set up signal and parameters
@@ -299,6 +303,93 @@ class TestWhiteSignals(unittest.TestCase):
             np.dot(T.T, sl.cho_solve(cf, T)),
             rtol=1e-10), msg
 
+    def _ecorr_test_ipta(self, method='sparse'):
+        """Test of sparse/sherman-morrison ecorr signal and solve methods."""
+        selection = Selection(selections.by_backend)
+
+        efac = parameter.Uniform(0.1, 5)
+        ecorr = parameter.Uniform(-10, -5)
+        ef = ws.MeasurementNoise(efac=efac)
+        ec = ws.EcorrKernelNoise(log10_ecorr=ecorr, selection=selection,
+                                 method=method)
+        tm = gp.TimingModel()
+        s = ef + ec + tm
+        m = s(self.ipsr)
+
+        # set parameters
+        efacs = [1.3]
+        ecorrs = [-6.1, -6.2, -6.3, -6.4, -7.2, -8.4, -7.1, -7.9]
+        params = {'J1713+0747_efac': efacs[0],
+                  'J1713+0747_log10_ecorr_ASP-L': ecorrs[0],
+                  'J1713+0747_log10_ecorr_ASP-S': ecorrs[1],
+                  'J1713+0747_log10_ecorr_GASP-8': ecorrs[2],
+                  'J1713+0747_log10_ecorr_GASP-L': ecorrs[3],
+                  'J1713+0747_log10_ecorr_GUPPI-8': ecorrs[4],
+                  'J1713+0747_log10_ecorr_GUPPI-L': ecorrs[5],
+                  'J1713+0747_log10_ecorr_PUPPI-L': ecorrs[6],
+                  'J1713+0747_log10_ecorr_PUPPI-S': ecorrs[7]}
+
+        # get EFAC Nvec
+        nvec0 = efacs[0]**2 * self.ipsr.toaerrs**2
+
+        # get the basis
+        flags = ['ASP-L', 'ASP-S', 'GASP-8', 'GASP-L',
+                 'GUPPI-8', 'GUPPI-L', 'PUPPI-L', 'PUPPI-S']
+        bflags = self.ipsr.backend_flags
+        Umats = []
+        for flag in np.unique(bflags):
+            if flag in flags:
+                mask = bflags == flag
+                Umats.append(utils.create_quantization_matrix(
+                    self.ipsr.toas[mask], nmin=2)[0])
+        nepoch = sum(U.shape[1] for U in Umats)
+        U = np.zeros((len(self.ipsr.toas), nepoch))
+        jvec = np.zeros(nepoch)
+        netot, ct = 0, 0
+        for flag in np.unique(bflags):
+            if flag in flags:
+                mask = bflags == flag
+                nn = Umats[ct].shape[1]
+                U[mask, netot:nn+netot] = Umats[ct]
+                jvec[netot:nn+netot] = 10**(2*ecorrs[ct])
+                netot += nn
+                ct += 1
+
+        # get covariance matrix
+        cov = np.diag(nvec0) + np.dot(U*jvec[None, :], U.T)
+        cf = sl.cho_factor(cov)
+        logdet = np.sum(2*np.log(np.diag(cf[0])))
+
+        # test
+        msg = 'EFAC/ECORR {} logdet incorrect.'.format(method)
+        N = m.get_ndiag(params)
+        assert np.allclose(N.solve(self.ipsr.residuals, logdet=True)[1],
+                           logdet, rtol=1e-10), msg
+
+        msg = 'EFAC/ECORR {} D1 solve incorrect.'.format(method)
+        assert np.allclose(N.solve(self.ipsr.residuals),
+                           sl.cho_solve(cf, self.ipsr.residuals),
+                           rtol=1e-10), msg
+
+        msg = 'EFAC/ECORR {} 1D1 solve incorrect.'.format(method)
+        assert np.allclose(
+            N.solve(self.ipsr.residuals, left_array=self.ipsr.residuals),
+            np.dot(self.ipsr.residuals, sl.cho_solve(cf, self.ipsr.residuals)),
+            rtol=1e-10), msg
+
+        msg = 'EFAC/ECORR {} 2D1 solve incorrect.'.format(method)
+        T = m.get_basis()
+        assert np.allclose(
+            N.solve(self.ipsr.residuals, left_array=T),
+            np.dot(T.T, sl.cho_solve(cf, self.ipsr.residuals)),
+            rtol=1e-10), msg
+
+        msg = 'EFAC/ECORR {} 2D2 solve incorrect.'.format(method)
+        assert np.allclose(
+            N.solve(T, left_array=T),
+            np.dot(T.T, sl.cho_solve(cf, T)),
+            rtol=1e-10), msg
+
     def test_ecorr_sparse(self):
         """Test of sparse ecorr signal and solve methods."""
         self._ecorr_test(method='sparse')
@@ -310,3 +401,15 @@ class TestWhiteSignals(unittest.TestCase):
     def test_ecorr_block(self):
         """Test of block matrix ecorr signal and solve methods."""
         self._ecorr_test(method='block')
+
+    def test_ecorr_sparse_ipta(self):
+        """Test of sparse ecorr signal and solve methods."""
+        self._ecorr_test_ipta(method='sparse')
+
+    def test_ecorr_sherman_morrison_ipta(self):
+        """Test of sherman-morrison ecorr signal and solve methods."""
+        self._ecorr_test_ipta(method='sherman-morrison')
+
+    def test_ecorr_block_ipta(self):
+        """Test of block matrix ecorr signal and solve methods."""
+        self._ecorr_test_ipta(method='block')
