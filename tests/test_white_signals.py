@@ -23,6 +23,36 @@ import enterprise.signals.gp_signals as gp
 from enterprise.signals import utils
 
 
+class Woodbury(object):
+
+    def __init__(self, N, U, J):
+        self.N = N
+        self.U = U
+        self.J = J
+
+    def solve(self, other):
+        if other.ndim == 1:
+            Nx = np.array(other / self.N)
+        elif other.ndim == 2:
+            Nx = np.array(other / self.N[:,None])
+        UNx = np.dot(self.U.T, Nx)
+
+        Sigma = np.diag(1/self.J) + np.dot(self.U.T, self.U/self.N[:,None])
+        cf = sl.cho_factor(Sigma)
+        if UNx.ndim == 1:
+            tmp = np.dot(self.U, sl.cho_solve(cf, UNx)) / self.N
+        else:
+            tmp = np.dot(self.U, sl.cho_solve(cf, UNx)) / self.N[:,None]
+        return Nx - tmp
+
+    def logdet(self):
+        Sigma = np.diag(1/self.J) + np.dot(self.U.T, self.U/self.N[:,None])
+        cf = sl.cho_factor(Sigma)
+        ld = np.sum(np.log(self.N)) + np.sum(np.log(self.J))
+        ld += np.sum(2*np.log(np.diag(cf[0])))
+        return ld
+
+
 class TestWhiteSignals(unittest.TestCase):
 
     def setUp(self):
@@ -269,38 +299,36 @@ class TestWhiteSignals(unittest.TestCase):
             netot += nn
 
         # get covariance matrix
-        cov = np.diag(nvec0) + np.dot(U*jvec[None, :], U.T)
-        cf = sl.cho_factor(cov)
-        logdet = np.sum(2*np.log(np.diag(cf[0])))
+        wd = Woodbury(nvec0, U, jvec)
 
         # test
         msg = 'EFAC/ECORR {} logdet incorrect.'.format(method)
         N = m.get_ndiag(params)
         assert np.allclose(N.solve(self.psr.residuals, logdet=True)[1],
-                           logdet, rtol=1e-10), msg
+                           wd.logdet(), rtol=1e-10), msg
 
         msg = 'EFAC/ECORR {} D1 solve incorrect.'.format(method)
         assert np.allclose(N.solve(self.psr.residuals),
-                           sl.cho_solve(cf, self.psr.residuals),
+                           wd.solve(self.psr.residuals),
                            rtol=1e-10), msg
 
         msg = 'EFAC/ECORR {} 1D1 solve incorrect.'.format(method)
         assert np.allclose(
             N.solve(self.psr.residuals, left_array=self.psr.residuals),
-            np.dot(self.psr.residuals, sl.cho_solve(cf, self.psr.residuals)),
+            np.dot(self.psr.residuals, wd.solve(self.psr.residuals)),
             rtol=1e-10), msg
 
         msg = 'EFAC/ECORR {} 2D1 solve incorrect.'.format(method)
         T = m.get_basis()
         assert np.allclose(
             N.solve(self.psr.residuals, left_array=T),
-            np.dot(T.T, sl.cho_solve(cf, self.psr.residuals)),
+            np.dot(T.T, wd.solve(self.psr.residuals)),
             rtol=1e-10), msg
 
         msg = 'EFAC/ECORR {} 2D2 solve incorrect.'.format(method)
         assert np.allclose(
             N.solve(T, left_array=T),
-            np.dot(T.T, sl.cho_solve(cf, T)),
+            np.dot(T.T, wd.solve(T)),
             rtol=1e-10), msg
 
     def _ecorr_test_ipta(self, method='sparse'):
@@ -356,38 +384,35 @@ class TestWhiteSignals(unittest.TestCase):
                 ct += 1
 
         # get covariance matrix
-        cov = np.diag(nvec0) + np.dot(U*jvec[None, :], U.T)
-        cf = sl.cho_factor(cov)
-        logdet = np.sum(2*np.log(np.diag(cf[0])))
+        wd = Woodbury(nvec0, U, jvec)
 
         # test
         msg = 'EFAC/ECORR {} logdet incorrect.'.format(method)
         N = m.get_ndiag(params)
         assert np.allclose(N.solve(self.ipsr.residuals, logdet=True)[1],
-                           logdet, rtol=1e-10), msg
+                           wd.logdet(), rtol=1e-10), msg
 
         msg = 'EFAC/ECORR {} D1 solve incorrect.'.format(method)
         assert np.allclose(N.solve(self.ipsr.residuals),
-                           sl.cho_solve(cf, self.ipsr.residuals),
-                           rtol=1e-10), msg
+                           wd.solve(self.ipsr.residuals), rtol=1e-10), msg
 
         msg = 'EFAC/ECORR {} 1D1 solve incorrect.'.format(method)
         assert np.allclose(
             N.solve(self.ipsr.residuals, left_array=self.ipsr.residuals),
-            np.dot(self.ipsr.residuals, sl.cho_solve(cf, self.ipsr.residuals)),
+            np.dot(self.ipsr.residuals, wd.solve(self.ipsr.residuals)),
             rtol=1e-10), msg
 
         msg = 'EFAC/ECORR {} 2D1 solve incorrect.'.format(method)
         T = m.get_basis()
         assert np.allclose(
             N.solve(self.ipsr.residuals, left_array=T),
-            np.dot(T.T, sl.cho_solve(cf, self.ipsr.residuals)),
+            np.dot(T.T, wd.solve(self.ipsr.residuals)),
             rtol=1e-10), msg
 
         msg = 'EFAC/ECORR {} 2D2 solve incorrect.'.format(method)
         assert np.allclose(
             N.solve(T, left_array=T),
-            np.dot(T.T, sl.cho_solve(cf, T)),
+            np.dot(T.T, wd.solve(T)),
             rtol=1e-10), msg
 
     def test_ecorr_sparse(self):
