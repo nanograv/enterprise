@@ -333,7 +333,7 @@ class TestWhiteSignals(unittest.TestCase):
 
     def _ecorr_test_ipta(self, method='sparse'):
         """Test of sparse/sherman-morrison ecorr signal and solve methods."""
-        selection = Selection(selections.by_backend)
+        selection = Selection(selections.nanograv_backends)
 
         efac = parameter.Uniform(0.1, 5)
         ecorr = parameter.Uniform(-10, -5)

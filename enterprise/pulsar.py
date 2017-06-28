@@ -27,6 +27,20 @@ except ImportError:
     t2 = None
 
 
+def get_maxobs(timfile):
+
+    maxobs = 0
+    with open(timfile) as tfile:
+        flines = tfile.readlines()
+        lines = [ln for ln in flines if not ln.startswith('C')]
+        if any(map(lambda x: 'INCLUDE' in x, lines)):
+            for line in filter(lambda x: 'INCLUDE' in x, lines):
+                maxobs += get_maxobs(line.split()[-1])
+        else:
+            maxobs = sum(1 for line in lines if line.rstrip('\n'))
+    return maxobs
+
+
 class Pulsar(object):
 
     def __init__(self, parfile, timfile, ephem=None,planets=True,
@@ -55,8 +69,7 @@ class Pulsar(object):
         self._sort = sort
 
         # hack to set maxobs
-        with open(reltimfile) as tfile:
-            maxobs = sum(1 for line in tfile if line.rstrip('\n'))
+        maxobs = get_maxobs(reltimfile)
 
         # Load pulsar data from the libstempo library
         # TODO: make sure we specify libstempo>=2.3.1

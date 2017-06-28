@@ -89,5 +89,12 @@ def by_backend(backend_flags):
     return {flagval: backend_flags == flagval for flagval in flagvals}
 
 
+def nanograv_backends(backend_flags):
+    flagvals = np.unique(backend_flags)
+    ngb = ['ASP', 'GASP', 'GUPPI', 'PUPPI']
+    flagvals = filter(lambda x: any(map(lambda y: y in x, ngb)), flagvals)
+    return {flagval: backend_flags == flagval for flagval in flagvals}
+
+
 def no_selection(toas):
     return {'': np.ones_like(toas, dtype=bool)}
