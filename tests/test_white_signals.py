@@ -94,10 +94,10 @@ class TestWhiteSignals(unittest.TestCase):
 
         # parameters
         efacs = [1.3, 1.4, 1.5, 1.6]
-        params = {'B1855+09_efac_430_ASP': efacs[0],
-                  'B1855+09_efac_430_PUPPI': efacs[1],
-                  'B1855+09_efac_L-wide_ASP': efacs[2],
-                  'B1855+09_efac_L-wide_PUPPI': efacs[3]}
+        params = {'B1855+09_430_ASP_efac': efacs[0],
+                  'B1855+09_430_PUPPI_efac': efacs[1],
+                  'B1855+09_L-wide_ASP_efac': efacs[2],
+                  'B1855+09_L-wide_PUPPI_efac': efacs[3]}
 
         # correct value
         flags = ['430_ASP', '430_PUPPI', 'L-wide_ASP', 'L-wide_PUPPI']
@@ -138,10 +138,10 @@ class TestWhiteSignals(unittest.TestCase):
 
         # parameters
         equads = [-6.1, -6.2, -6.3, -6.4]
-        params = {'B1855+09_log10_equad_430_ASP': equads[0],
-                  'B1855+09_log10_equad_430_PUPPI': equads[1],
-                  'B1855+09_log10_equad_L-wide_ASP': equads[2],
-                  'B1855+09_log10_equad_L-wide_PUPPI': equads[3]}
+        params = {'B1855+09_430_ASP_log10_equad': equads[0],
+                  'B1855+09_430_PUPPI_log10_equad': equads[1],
+                  'B1855+09_L-wide_ASP_log10_equad': equads[2],
+                  'B1855+09_L-wide_PUPPI_log10_equad': equads[3]}
 
         # correct value
         flags = ['430_ASP', '430_PUPPI', 'L-wide_ASP', 'L-wide_PUPPI']
@@ -196,14 +196,14 @@ class TestWhiteSignals(unittest.TestCase):
         # set parameters
         efacs = [1.3, 1.4, 1.5, 1.6]
         equads = [-6.1, -6.2, -6.3, -6.4]
-        params = {'B1855+09_efac_430_ASP': efacs[0],
-                  'B1855+09_efac_430_PUPPI': efacs[1],
-                  'B1855+09_efac_L-wide_ASP': efacs[2],
-                  'B1855+09_efac_L-wide_PUPPI': efacs[3],
-                  'B1855+09_log10_equad_430_ASP': equads[0],
-                  'B1855+09_log10_equad_430_PUPPI': equads[1],
-                  'B1855+09_log10_equad_L-wide_ASP': equads[2],
-                  'B1855+09_log10_equad_L-wide_PUPPI': equads[3]}
+        params = {'B1855+09_430_ASP_efac': efacs[0],
+                  'B1855+09_430_PUPPI_efac': efacs[1],
+                  'B1855+09_L-wide_ASP_efac': efacs[2],
+                  'B1855+09_L-wide_PUPPI_efac': efacs[3],
+                  'B1855+09_430_ASP_log10_equad': equads[0],
+                  'B1855+09_430_PUPPI_log10_equad': equads[1],
+                  'B1855+09_L-wide_ASP_log10_equad': equads[2],
+                  'B1855+09_L-wide_PUPPI_log10_equad': equads[3]}
 
         # correct value
         flags = ['430_ASP', '430_PUPPI', 'L-wide_ASP', 'L-wide_PUPPI']
@@ -264,14 +264,14 @@ class TestWhiteSignals(unittest.TestCase):
         # set parameters
         efacs = [1.3, 1.4, 1.5, 1.6]
         ecorrs = [-6.1, -6.2, -6.3, -6.4]
-        params = {'B1855+09_efac_430_ASP': efacs[0],
-                  'B1855+09_efac_430_PUPPI': efacs[1],
-                  'B1855+09_efac_L-wide_ASP': efacs[2],
-                  'B1855+09_efac_L-wide_PUPPI': efacs[3],
-                  'B1855+09_log10_ecorr_430_ASP': ecorrs[0],
-                  'B1855+09_log10_ecorr_430_PUPPI': ecorrs[1],
-                  'B1855+09_log10_ecorr_L-wide_ASP': ecorrs[2],
-                  'B1855+09_log10_ecorr_L-wide_PUPPI': ecorrs[3]}
+        params = {'B1855+09_430_ASP_efac': efacs[0],
+                  'B1855+09_430_PUPPI_efac': efacs[1],
+                  'B1855+09_L-wide_ASP_efac': efacs[2],
+                  'B1855+09_L-wide_PUPPI_efac': efacs[3],
+                  'B1855+09_430_ASP_log10_ecorr': ecorrs[0],
+                  'B1855+09_430_PUPPI_log10_ecorr': ecorrs[1],
+                  'B1855+09_L-wide_ASP_log10_ecorr': ecorrs[2],
+                  'B1855+09_L-wide_PUPPI_log10_ecorr': ecorrs[3]}
 
         # get EFAC Nvec
         flags = ['430_ASP', '430_PUPPI', 'L-wide_ASP', 'L-wide_PUPPI']
@@ -348,14 +348,14 @@ class TestWhiteSignals(unittest.TestCase):
         efacs = [1.3]
         ecorrs = [-6.1, -6.2, -6.3, -6.4, -7.2, -8.4, -7.1, -7.9]
         params = {'J1713+0747_efac': efacs[0],
-                  'J1713+0747_log10_ecorr_ASP-L': ecorrs[0],
-                  'J1713+0747_log10_ecorr_ASP-S': ecorrs[1],
-                  'J1713+0747_log10_ecorr_GASP-8': ecorrs[2],
-                  'J1713+0747_log10_ecorr_GASP-L': ecorrs[3],
-                  'J1713+0747_log10_ecorr_GUPPI-8': ecorrs[4],
-                  'J1713+0747_log10_ecorr_GUPPI-L': ecorrs[5],
-                  'J1713+0747_log10_ecorr_PUPPI-L': ecorrs[6],
-                  'J1713+0747_log10_ecorr_PUPPI-S': ecorrs[7]}
+                  'J1713+0747_ASP-L_log10_ecorr': ecorrs[0],
+                  'J1713+0747_ASP-S_log10_ecorr': ecorrs[1],
+                  'J1713+0747_GASP-8_log10_ecorr': ecorrs[2],
+                  'J1713+0747_GASP-L_log10_ecorr': ecorrs[3],
+                  'J1713+0747_GUPPI-8_log10_ecorr': ecorrs[4],
+                  'J1713+0747_GUPPI-L_log10_ecorr': ecorrs[5],
+                  'J1713+0747_PUPPI-L_log10_ecorr': ecorrs[6],
+                  'J1713+0747_PUPPI-S_log10_ecorr': ecorrs[7]}
 
         # get EFAC Nvec
         nvec0 = efacs[0]**2 * self.ipsr.toaerrs**2
