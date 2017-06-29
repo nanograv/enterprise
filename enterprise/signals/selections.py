@@ -67,7 +67,7 @@ def Selection(func):
         def __call__(self, parname, parameter, arr=None):
             params, kmasks = {}, {}
             for key, val in self.masks.items():
-                kname = '_'.join([parname, key]) if key else parname
+                kname = '_'.join([key, parname]) if key else parname
                 pname = '_'.join([self._psr.name, kname])
                 params.update({kname: parameter(pname)})
                 kmasks.update({kname: val})
@@ -91,6 +91,13 @@ def cut_half(toas):
 
 def by_backend(backend_flags):
     flagvals = np.unique(backend_flags)
+    return {flagval: backend_flags == flagval for flagval in flagvals}
+
+
+def nanograv_backends(backend_flags):
+    flagvals = np.unique(backend_flags)
+    ngb = ['ASP', 'GASP', 'GUPPI', 'PUPPI']
+    flagvals = filter(lambda x: any(map(lambda y: y in x, ngb)), flagvals)
     return {flagval: backend_flags == flagval for flagval in flagvals}
 
 
