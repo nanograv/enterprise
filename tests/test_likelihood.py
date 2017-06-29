@@ -49,7 +49,7 @@ def get_noise_from_pal2(noisefile):
         else:
             break
         if flag:
-            name = [psrname, par, flag]
+            name = [psrname, flag, par]
         else:
             name = [psrname, par]
         pname = '_'.join(name)
@@ -230,3 +230,24 @@ class TestLikelihood(unittest.TestCase):
     def test_like_corr(self):
         """Test likelihood with spatial correlations."""
         self.compute_like(npsrs=2, inc_corr=True)
+
+    def test_compare_ecorr_likelihood(self):
+        """Compare basis and kernel ecorr methods."""
+
+        selection = Selection(selections.nanograv_backends)
+        ef = white_signals.MeasurementNoise()
+        ec = white_signals.EcorrKernelNoise(selection=selection)
+        ec2 = gp_signals.EcorrBasisModel(selection=selection)
+        tm = gp_signals.TimingModel()
+        m = ef + ec + tm
+        m2 = ef + ec2 + tm
+
+        pta1 = signal_base.PTA([m(p) for p in self.psrs])
+        pta2 = signal_base.PTA([m2(p) for p in self.psrs])
+
+        params = {p.name: p.sample()[0] for p in pta1.params}
+
+        msg = 'Likelihood mismatch between ECORR methods'
+        l1 = pta1.get_lnlikelihood(params)
+        l2 = pta2.get_lnlikelihood(params)
+        assert np.allclose(l1, l2), msg

@@ -49,7 +49,7 @@ def get_noise_from_pal2(noisefile):
         else:
             break
         if flag:
-            name = [psrname, par, flag]
+            name = [psrname, flag, par]
         else:
             name = [psrname, par]
         pname = '_'.join(name)
