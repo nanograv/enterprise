@@ -15,8 +15,9 @@ import unittest
 
 from enterprise.signals.prior import Prior
 from enterprise.signals.prior import (UniformUnnormedRV, UniformBoundedRV,
-                                      GaussianBoundedRV)
+                                      GaussianBoundedRV, LinearExpRV)
 from scipy.stats import truncnorm, norm
+import numpy as np
 
 
 class TestPrior(unittest.TestCase):
@@ -36,6 +37,17 @@ class TestPrior(unittest.TestCase):
 
         # A Gaussian prior
         self.nPrior = Prior(norm(loc=0, scale=1))
+
+        # Linear exponent prior p(x) ~ 10**x
+        self.lePrior = Prior(LinearExpRV(lower=-18, upper=-12))
+
+    def test_linear_exp_prior(self):
+        """check LinearExpRV"""
+        msg = "LinearExp prior: incorrect test {0}"
+        test_vals = [-15, -14.5, -13.4]
+        correct = [np.log(10) * 10**tv / (1e-12 - 1e-18) for tv in test_vals]
+        for ii, xx in enumerate(test_vals):
+            assert self.lePrior.pdf(xx) == correct[ii], msg.format(ii)
 
     def test_unnormed_uniform_prior(self):
         """check UniformUnnormedRV"""

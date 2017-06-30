@@ -12,7 +12,7 @@ Tests for GP signal modules.
 import unittest
 import numpy as np
 
-from enterprise_test_data import datadir
+from tests.enterprise_test_data import datadir
 from enterprise.pulsar import Pulsar
 from enterprise.signals import parameter
 from enterprise.signals import selections
@@ -28,8 +28,8 @@ class TestGPSignals(unittest.TestCase):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_11yv0.gls.par',
-                          datadir + '/B1855+09_NANOGrav_11yv0.tim')
+        self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                          datadir + '/B1855+09_NANOGrav_9yv1.tim')
 
     def test_ecorr(self):
         """Test that ecorr signal returns correct values."""
@@ -43,7 +43,7 @@ class TestGPSignals(unittest.TestCase):
         params = {'B1855+09_log10_ecorr': ecorr}
 
         # basis matrix test
-        U = utils.create_quantization_matrix(self.psr.toas)
+        U = utils.create_quantization_matrix(self.psr.toas)[0]
         msg = 'U matrix incorrect for Basis Ecorr signal.'
         assert np.allclose(U, ecm.get_basis(params)), msg
 
@@ -58,7 +58,7 @@ class TestGPSignals(unittest.TestCase):
 
         # test shape
         msg = 'U matrix shape incorrect'
-        assert ecm.basis_shape == U.shape, msg
+        assert ecm.get_basis(params).shape == U.shape, msg
 
     def test_ecorr_backend(self):
         """Test that ecorr-backend signal returns correct values."""
@@ -70,17 +70,18 @@ class TestGPSignals(unittest.TestCase):
 
         # parameters
         ecorrs = [-6.1, -6.2, -6.3, -6.4]
-        params = {'B1855+09_log10_ecorr_430_ASP': ecorrs[0],
-                  'B1855+09_log10_ecorr_430_PUPPI': ecorrs[1],
-                  'B1855+09_log10_ecorr_L-wide_ASP': ecorrs[2],
-                  'B1855+09_log10_ecorr_L-wide_PUPPI': ecorrs[3]}
+        params = {'B1855+09_430_ASP_log10_ecorr': ecorrs[0],
+                  'B1855+09_430_PUPPI_log10_ecorr': ecorrs[1],
+                  'B1855+09_L-wide_ASP_log10_ecorr': ecorrs[2],
+                  'B1855+09_L-wide_PUPPI_log10_ecorr': ecorrs[3]}
 
         # get the basis
         bflags = self.psr.backend_flags
         Umats = []
         for flag in np.unique(bflags):
             mask = bflags == flag
-            Umats.append(utils.create_quantization_matrix(self.psr.toas[mask]))
+            Umats.append(utils.create_quantization_matrix(
+                self.psr.toas[mask])[0])
         nepoch = sum(U.shape[1] for U in Umats)
         U = np.zeros((len(self.psr.toas), nepoch))
         jvec = np.zeros(nepoch)
@@ -106,7 +107,7 @@ class TestGPSignals(unittest.TestCase):
 
         # test shape
         msg = 'U matrix shape incorrect'
-        assert ecm.basis_shape == U.shape, msg
+        assert ecm.get_basis(params).shape == U.shape, msg
 
     def test_fourier_red_noise(self):
         """Test that red noise signal returns correct values."""
@@ -122,8 +123,8 @@ class TestGPSignals(unittest.TestCase):
                   'B1855+09_gamma': gamma}
 
         # basis matrix test
-        F, f2, _ = utils.createfourierdesignmatrix_red(
-            self.psr.toas, nmodes=30, freq=True)
+        F, f2 = utils.createfourierdesignmatrix_red(
+            self.psr.toas, nmodes=30)
         msg = 'F matrix incorrect for GP Fourier signal.'
         assert np.allclose(F, rnm.get_basis(params)), msg
 
@@ -138,7 +139,7 @@ class TestGPSignals(unittest.TestCase):
 
         # test shape
         msg = 'F matrix shape incorrect'
-        assert rnm.basis_shape == F.shape, msg
+        assert rnm.get_basis(params).shape == F.shape, msg
 
     def test_fourier_red_noise_backend(self):
         """Test that red noise-backend signal returns correct values."""
@@ -152,22 +153,22 @@ class TestGPSignals(unittest.TestCase):
         # parameters
         log10_As = [-14, -14.4, -15, -14.8]
         gammas = [2.3, 4.4, 1.8, 5.6]
-        params = {'B1855+09_gamma_430_ASP': gammas[0],
-                  'B1855+09_gamma_430_PUPPI': gammas[1],
-                  'B1855+09_gamma_L-wide_ASP': gammas[2],
-                  'B1855+09_gamma_L-wide_PUPPI': gammas[3],
-                  'B1855+09_log10_A_430_ASP': log10_As[0],
-                  'B1855+09_log10_A_430_PUPPI': log10_As[1],
-                  'B1855+09_log10_A_L-wide_ASP': log10_As[2],
-                  'B1855+09_log10_A_L-wide_PUPPI': log10_As[3]}
+        params = {'B1855+09_430_ASP_gamma': gammas[0],
+                  'B1855+09_430_PUPPI_gamma': gammas[1],
+                  'B1855+09_L-wide_ASP_gamma': gammas[2],
+                  'B1855+09_L-wide_PUPPI_gamma': gammas[3],
+                  'B1855+09_430_ASP_log10_A': log10_As[0],
+                  'B1855+09_430_PUPPI_log10_A': log10_As[1],
+                  'B1855+09_L-wide_ASP_log10_A': log10_As[2],
+                  'B1855+09_L-wide_PUPPI_log10_A': log10_As[3]}
 
         # get the basis
         bflags = self.psr.backend_flags
         Fmats, fs, phis = [], [], []
         for ct, flag in enumerate(np.unique(bflags)):
             mask = bflags == flag
-            F, f, _ = utils.createfourierdesignmatrix_red(
-                self.psr.toas[mask], 30, freq=True)
+            F, f = utils.createfourierdesignmatrix_red(
+                self.psr.toas[mask], 30)
             Fmats.append(F)
             fs.append(f)
             phis.append(utils.powerlaw(f, log10_As[ct], gammas[ct])*f[0])
@@ -195,7 +196,7 @@ class TestGPSignals(unittest.TestCase):
 
         # test shape
         msg = 'F matrix shape incorrect'
-        assert rnm.basis_shape == F.shape, msg
+        assert rnm.get_basis(params).shape == F.shape, msg
 
     def test_red_noise_add(self):
         """Test that red noise addition only returns independent columns."""
@@ -227,10 +228,10 @@ class TestGPSignals(unittest.TestCase):
             rnm = s(self.psr)
 
             # set up frequencies
-            F1, f1, _ = utils.createfourierdesignmatrix_red(
-                self.psr.toas, nmodes=nf1, freq=True, Tspan=T1)
-            F2, f2, _ = utils.createfourierdesignmatrix_red(
-                self.psr.toas, nmodes=nf2, freq=True, Tspan=T2)
+            F1, f1 = utils.createfourierdesignmatrix_red(
+                self.psr.toas, nmodes=nf1, Tspan=T1)
+            F2, f2 = utils.createfourierdesignmatrix_red(
+                self.psr.toas, nmodes=nf2, Tspan=T2)
 
             # test power spectrum
             p1 = utils.powerlaw(f1, log10_A, gamma) * f1[0]
@@ -273,14 +274,14 @@ class TestGPSignals(unittest.TestCase):
         log10_As = [-14, -14.4, -15, -14.8]
         gammas = [2.3, 4.4, 1.8, 5.6]
         log10_Ac, gammac = -15.5, 1.33
-        params = {'B1855+09_gamma_430_ASP': gammas[0],
-                  'B1855+09_gamma_430_PUPPI': gammas[1],
-                  'B1855+09_gamma_L-wide_ASP': gammas[2],
-                  'B1855+09_gamma_L-wide_PUPPI': gammas[3],
-                  'B1855+09_log10_A_430_ASP': log10_As[0],
-                  'B1855+09_log10_A_430_PUPPI': log10_As[1],
-                  'B1855+09_log10_A_L-wide_ASP': log10_As[2],
-                  'B1855+09_log10_A_L-wide_PUPPI': log10_As[3],
+        params = {'B1855+09_430_ASP_gamma': gammas[0],
+                  'B1855+09_430_PUPPI_gamma': gammas[1],
+                  'B1855+09_L-wide_ASP_gamma': gammas[2],
+                  'B1855+09_L-wide_PUPPI_gamma': gammas[3],
+                  'B1855+09_430_ASP_log10_A': log10_As[0],
+                  'B1855+09_430_PUPPI_log10_A': log10_As[1],
+                  'B1855+09_L-wide_ASP_log10_A': log10_As[2],
+                  'B1855+09_L-wide_PUPPI_log10_A': log10_As[3],
                   'log10_Agw': log10_Ac,
                   'gamma_gw': gammac}
 
@@ -301,13 +302,13 @@ class TestGPSignals(unittest.TestCase):
             # get the basis
             bflags = self.psr.backend_flags
             Fmats, fs, phis = [], [], []
-            F2, f2, _ = utils.createfourierdesignmatrix_red(
-                self.psr.toas, nf2, freq=True, Tspan=T2)
+            F2, f2 = utils.createfourierdesignmatrix_red(
+                self.psr.toas, nf2, Tspan=T2)
             p2 = utils.powerlaw(f2, log10_Ac, gammac)*f2[0]
             for ct, flag in enumerate(np.unique(bflags)):
                 mask = bflags == flag
-                F1, f1, _ = utils.createfourierdesignmatrix_red(
-                    self.psr.toas[mask], nf1, freq=True, Tspan=T1)
+                F1, f1 = utils.createfourierdesignmatrix_red(
+                    self.psr.toas[mask], nf1, Tspan=T1)
                 Fmats.append(F1)
                 fs.append(f1)
                 phis.append(utils.powerlaw(f1, log10_As[ct], gammas[ct])*f1[0])
@@ -361,7 +362,65 @@ class TestGPSignals(unittest.TestCase):
 
         # test shape
         msg = 'M matrix shape incorrect'
-        assert tm.basis_shape == self.psr.Mmat.shape, msg
+        assert tm.get_basis().shape == self.psr.Mmat.shape, msg
+
+    def test_gp_parameter(self):
+        """Test GP basis model with parameterized basis."""
+
+        pl = Function(utils.powerlaw, log10_A=parameter.Uniform(-18,-12),
+                      gamma=parameter.Uniform(0, 7))
+        basis_env = Function(utils.createfourierdesignmatrix_env,
+                             log10_Amp=parameter.Uniform(-10, -5),
+                             t0=parameter.Uniform(4.3e9, 5e9),
+                             log10_Q=parameter.Uniform(0,4))
+
+        basis_red = Function(utils.createfourierdesignmatrix_red)
+
+        rn_env = gs.BasisGP(pl, basis_env, name='env')
+        rn = gs.BasisGP(pl, basis_red)
+        s = rn_env + rn
+        m = s(self.psr)
+
+        # parameters
+        log10_A, gamma = -14.5, 4.33
+        log10_A_env, gamma_env = -14.0, 2.5
+        log10_Amp, log10_Q, t0 = -7.3, np.log10(345), 55000*86400
+        params = {'B1855+09_log10_A': log10_A,
+                  'B1855+09_gamma': gamma,
+                  'B1855+09_env_log10_A': log10_A_env,
+                  'B1855+09_env_gamma': gamma_env,
+                  'B1855+09_env_log10_Q': log10_Q,
+                  'B1855+09_env_log10_Amp': log10_Amp,
+                  'B1855+09_env_t0': t0}
+
+        # get basis
+        Fred, f2_red = utils.createfourierdesignmatrix_red(
+            self.psr.toas, nmodes=30)
+        Fenv, f2_env = utils.createfourierdesignmatrix_env(
+            self.psr.toas, nmodes=30, log10_Amp=log10_Amp,
+            log10_Q=log10_Q, t0=t0)
+        F = np.hstack((Fenv, Fred))
+        phi_env = utils.powerlaw(f2_env, log10_A=log10_A_env,
+                                 gamma=gamma_env) * f2_env[0]
+        phi_red = utils.powerlaw(f2_red, log10_A=log10_A,
+                                 gamma=gamma) * f2_red[0]
+        phi = np.concatenate((phi_env, phi_red))
+
+        # basis matrix test
+        msg = 'F matrix incorrect for GP Fourier signal.'
+        assert np.allclose(F, m.get_basis(params)), msg
+
+        # spectrum test
+        msg = 'Spectrum incorrect for GP Fourier signal.'
+        assert np.all(m.get_phi(params) == phi), msg
+
+        # inverse spectrum test
+        msg = 'Spectrum inverse incorrect for GP Fourier signal.'
+        assert np.all(m.get_phiinv(params) == 1/phi), msg
+
+        # test shape
+        msg = 'F matrix shape incorrect'
+        assert m.get_basis(params).shape == F.shape, msg
 
     def test_combine_signals(self):
         """Test for combining different signals."""
@@ -384,12 +443,12 @@ class TestGPSignals(unittest.TestCase):
                   'B1855+09_gamma': gamma}
 
         # combined basis matrix
-        U = utils.create_quantization_matrix(self.psr.toas)
+        U = utils.create_quantization_matrix(self.psr.toas)[0]
         M = self.psr.Mmat.copy()
         norm = np.sqrt(np.sum(M**2, axis=0))
         M /= norm
-        F, f2, _ = utils.createfourierdesignmatrix_red(
-            self.psr.toas, nmodes=30, freq=True)
+        F, f2 = utils.createfourierdesignmatrix_red(
+            self.psr.toas, nmodes=30)
         T = np.hstack((U, F, M))
 
         # combined prior vector
@@ -412,4 +471,4 @@ class TestGPSignals(unittest.TestCase):
 
         # test shape
         msg = 'Basis matrix shape incorrect size for combined signal.'
-        assert m.basis_shape == T.shape, msg
+        assert m.get_basis(params).shape == T.shape, msg

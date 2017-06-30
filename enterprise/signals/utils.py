@@ -44,13 +44,13 @@ def create_stabletimingdesignmatrix(designmat, fastDesign=True):
 ######################################
 
 
-def createfourierdesignmatrix_red(t, nmodes, freq=False, Tspan=None,
+def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
                                   logf=False, fmin=None, fmax=None,
                                   pshift=False):
     """
     Construct fourier design matrix from eq 11 of Lentati et al, 2013
 
-    :param t: vector of time series in seconds
+    :param toas: vector of time series in seconds
     :param nmodes: number of fourier coefficients to use
     :param freq: option to output frequencies
     :param Tspan: option to some other Tspan
@@ -60,61 +60,49 @@ def createfourierdesignmatrix_red(t, nmodes, freq=False, Tspan=None,
     :param pshift: option to add random phase shift
 
     :return: F: fourier design matrix
-    :return: f: Sampling frequencies (if freq=True)
+    :return: f: Sampling frequencies
     """
 
-    N = len(t)
+    N = len(toas)
     F = np.zeros((N, 2 * nmodes))
 
-    if Tspan is not None:
-        T = Tspan
-    else:
-        T = t.max() - t.min()
+    T = Tspan if Tspan is not None else toas.max() - toas.min()
 
     # define sampling frequencies
-    if fmin is not None and fmax is not None:
-        f = np.linspace(fmin, fmax, nmodes)
-    else:
-        f = np.linspace(1 / T, nmodes / T, nmodes)
+    if fmin is None:
+        fmin = 1 / T
+    if fmax is None:
+        fmax = nmodes / T
+
     if logf:
-        f = np.logspace(np.log10(1 / T), np.log10(nmodes / T), nmodes)
+        f = np.logspace(np.log10(fmin), np.log10(fmax), nmodes)
+    else:
+        f = np.linspace(fmin, fmax, nmodes)
 
     # add random phase shift to basis functions
-    if pshift:
-        ranphase = np.random.uniform(0.0, 2 * np.pi, nmodes)
-    elif not pshift:
-        ranphase = np.zeros(nmodes)
+    ranphase = (np.random.uniform(0.0, 2 * np.pi, nmodes)
+                if pshift else np.zeros(nmodes))
 
-    Ffreqs = np.zeros(2 * nmodes)
-    Ffreqs[0::2] = f
-    Ffreqs[1::2] = f
+    Ffreqs = np.repeat(f, 2)
 
     # The sine/cosine modes
-    if pshift:
-        F[:,::2] = np.sin(2*np.pi*t[:,None]*f[None,:] +
-                          ranphase[None,:])
-        F[:,1::2] = np.cos(2*np.pi*t[:,None]*f[None,:] +
-                           ranphase[None,:])
-    elif not pshift:
-        F[:,::2] = np.sin(2*np.pi*t[:,None]*f[None,:])
-        F[:,1::2] = np.cos(2*np.pi*t[:,None]*f[None,:])
+    F[:,::2] = np.sin(2*np.pi*toas[:,None]*f[None,:] +
+                      ranphase[None,:])
+    F[:,1::2] = np.cos(2*np.pi*toas[:,None]*f[None,:] +
+                       ranphase[None,:])
 
-    if freq:
-        return F, Ffreqs, ranphase
-    else:
-        return F, ranphase
+    return F, Ffreqs
 
 
-def createfourierdesignmatrix_dm(t, nmodes, ssbfreqs, freq=False,
-                                 Tspan=None, logf=False, fmin=None,
-                                 fmax=None):
+def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
+                                 logf=False, fmin=None, fmax=None):
 
     """
     Construct DM-variation fourier design matrix.
 
-    :param t: vector of time series in seconds
+    :param toas: vector of time series in seconds
     :param nmodes: number of fourier coefficients to use
-    :param ssbfreqs: radio frequencies of observations [MHz]
+    :param freqs: radio frequencies of observations [MHz]
     :param freq: option to output frequencies
     :param Tspan: option to some other Tspan
     :param logf: use log frequency spacing
@@ -122,40 +110,53 @@ def createfourierdesignmatrix_dm(t, nmodes, ssbfreqs, freq=False,
     :param fmax: upper sampling frequency
 
     :return: F: DM-variation fourier design matrix
-    :return: f: Sampling frequencies (if freq=True)
+    :return: f: Sampling frequencies
     """
 
-    N = len(t)
-    F = np.zeros((N, 2 * nmodes))
-
-    if Tspan is not None:
-        T = Tspan
-    else:
-        T = t.max() - t.min()
-
-    # define sampling frequencies
-    if fmin is not None and fmax is not None:
-        f = np.linspace(fmin, fmax, nmodes)
-    else:
-        f = np.linspace(1 / T, nmodes / T, nmodes)
-    if logf:
-        f = np.logspace(np.log10(1 / T), np.log10(nmodes / T), nmodes)
-
-    Ffreqs = np.zeros(2 * nmodes)
-    Ffreqs[0::2] = f
-    Ffreqs[1::2] = f
+    # get base fourier design matrix and frequencies
+    F, Ffreqs = createfourierdesignmatrix_red(
+        toas, nmodes=nmodes, Tspan=Tspan, logf=logf,
+        fmin=fmin, fmax=fmax)
 
     # compute the DM-variation vectors
-    Dm = 1.0/(const.DM_K * ssbfreqs**2.0 * 1e12)
+    # TODO: should we use a different normalization
+    Dm = 1.0/(const.DM_K * freqs**2 * 1e12)
 
-    # The sine/cosine modes
-    F[:,::2] = np.sin(2*np.pi*t[:,None]*f[None,:]) * Dm[:,None]
-    F[:,1::2] = np.cos(2*np.pi*t[:,None]*f[None,:]) * Dm[:,None]
+    return F * Dm[:, None], Ffreqs
 
-    if freq:
-        return F, Ffreqs
-    else:
-        return F
+
+def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
+                                  t0=53000*86400, nmodes=30, Tspan=None,
+                                  logf=False, fmin=None, fmax=None):
+    """
+    Construct fourier design matrix with gaussian envelope.
+
+    :param toas: vector of time series in seconds
+    :param nmodes: number of fourier coefficients to use
+    :param freqs: radio frequencies of observations [MHz]
+    :param freq: option to output frequencies
+    :param Tspan: option to some other Tspan
+    :param logf: use log frequency spacing
+    :param fmin: lower sampling frequency
+    :param fmax: upper sampling frequency
+    :param log10_Amp: log10 of the Amplitude [s]
+    :param t0: mean of gaussian envelope [s]
+    :param log10_Q: log10 of standard deviation of gaussian envelope [days]
+
+    :return: F: fourier design matrix with gaussian envelope
+    :return: f: Sampling frequencies
+    """
+
+    # get base fourier design matrix and frequencies
+    F, Ffreqs = createfourierdesignmatrix_red(
+        toas, nmodes=nmodes, Tspan=Tspan, logf=logf,
+        fmin=fmin, fmax=fmax)
+
+    # compute gaussian envelope
+    A = 10**log10_Amp
+    Q = 10**log10_Q * 86400
+    env = A * np.exp(-(toas-t0)**2/2/Q**2)
+    return F * env[:, None], Ffreqs
 
 
 def createfourierdesignmatrix_eph(t, nmodes, phi, theta, freq=False,
@@ -611,28 +612,50 @@ def fplus_fcross(ptheta, pphi, gwtheta, gwphi):
     return fplus, fcross
 
 
-def create_quantization_matrix(times, dt=1):
+def create_quantization_matrix(toas, dt=1, nmin=2):
     """Create quantization matrix mapping TOAs to observing epochs."""
-    isort = np.argsort(times)
+    isort = np.argsort(toas)
 
-    bucket_ref = [times[isort[0]]]
+    bucket_ref = [toas[isort[0]]]
     bucket_ind = [[isort[0]]]
 
     for i in isort[1:]:
-        if times[i] - bucket_ref[-1] < dt:
+        if toas[i] - bucket_ref[-1] < dt:
             bucket_ind[-1].append(i)
         else:
-            bucket_ref.append(times[i])
+            bucket_ref.append(toas[i])
             bucket_ind.append([i])
 
     # find only epochs with more than 1 TOA
-    bucket_ind2 = [ind for ind in bucket_ind if len(ind) > 2]
+    bucket_ind2 = [ind for ind in bucket_ind if len(ind) >= nmin]
 
-    U = np.zeros((len(times),len(bucket_ind2)),'d')
+    U = np.zeros((len(toas),len(bucket_ind2)),'d')
     for i,l in enumerate(bucket_ind2):
         U[l,i] = 1
 
-    return U
+    weights = np.ones(U.shape[1])
+
+    return U, weights
+
+
+def quant2ind(U):
+    """
+    Use quantization matrix to return slices of non-zero elements.
+
+    :param U: quantization matrix
+
+    :return: list of `slice`s for non-zero elements of U
+
+    .. note:: This function assumes that the pulsar TOAs were sorted by time.
+
+    """
+    inds = []
+    for cc, col in enumerate(U.T):
+        epinds = np.flatnonzero(col)
+        if epinds[-1] - epinds[0] + 1 != len(epinds):
+            raise ValueError('ERROR: TOAs not sorted properly!')
+        inds.append(slice(epinds[0], epinds[-1]+1))
+    return inds
 
 
 def powerlaw(f, log10_A=-16, gamma=5):
@@ -644,3 +667,12 @@ def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10/3, beta=0.5):
     hcf = (10**log10_A * (f / const.fyr) ** ((3-gamma) / 2) /
            (1 + (10**lf0 / f) ** kappa) ** beta)
     return hcf**2/12/np.pi**2/f**3
+
+
+def hd_orf(pos1, pos2):
+    if np.all(pos1 == pos2):
+        return 1
+    else:
+        xi = 1 - np.dot(pos1, pos2)
+        omc2 = (1 - np.cos(xi)) / 2
+        return 1.5 * omc2 * np.log(omc2) - 0.25 * omc2 + 0.5
