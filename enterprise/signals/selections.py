@@ -35,7 +35,12 @@ def selection_func(func):
 
             for funcarg in funcargs[len(args):]:
                 if funcarg not in kwargs and hasattr(psr, funcarg):
-                    targs.append(call_me_maybe(getattr(psr, funcarg))[mask])
+                    attr = call_me_maybe(getattr(psr, funcarg))
+                    if (isinstance(attr, np.ndarray) and
+                            getattr(mask, 'shape', [0])[0] == len(attr)):
+                        targs.append(attr[mask])
+                    else:
+                        targs.append(attr)
 
         if 'psr' in kwargs and 'psr' not in funcargs:
             del kwargs['psr']
