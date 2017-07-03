@@ -101,10 +101,10 @@ class TestLikelihood(unittest.TestCase):
         ec = white_signals.EcorrKernelNoise(log10_ecorr=ecorr,
                                             selection=selection)
 
-        pl = signal_base.Function(utils.powerlaw, log10_A=log10_A, gamma=gamma)
+        pl = utils.powerlaw(log10_A=log10_A, gamma=gamma)
         rn = gp_signals.FourierBasisGP(pl)
 
-        orf = signal_base.Function(utils.hd_orf)
+        orf = utils.hd_orf()
         crn = gp_signals.FourierBasisCommonGP(pl, orf, components=20,
                                               name='GW', Tspan=Tspan)
 
