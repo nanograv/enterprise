@@ -18,27 +18,15 @@ enterprise
     :target: https://coveralls.io/github/nanograv/enterprise?branch=master
 
 
-
-
-ENTERPRISE (Enhanced Numerical Toolbox Enabling a Robust PulsaR Inference SuitE) is a pulsar timing analysis code, aimed at noise analysis, gravitational-wave searches, and timing model analysis.
+ENTERPRISE (Enhanced Numerical Toolbox Enabling a Robust PulsaR Inference SuitE)
+is a pulsar timing analysis code, aimed at noise analysis, gravitational-wave
+searches, and timing model analysis.
 
 
 * Free software: MIT license
 * Documentation: https://enterprise.readthedocs.io.
 
-
-Features
---------
-
-* TODO..
-
-Development Leads
------------------
-
-* Justin A. Ellis <justin.ellis18@gmail.com>
-* Stephen R. Taylor <Stephen.R.Taylor@jpl.nasa.gov>
-* Paul T. Baker <paul.baker1@mail.wvu.edu>
-* Michele Vallisneri <vallis@vallis.org>
+.. include:: AUTHORS.rst
 
 Credits
 ---------

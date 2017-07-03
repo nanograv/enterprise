@@ -1,17 +1,21 @@
 Welcome to enterprise's documentation!
 ======================================
 
-Contents:
+.. include:: ../README.rst
 
 .. toctree::
    :maxdepth: 2
+   :caption: User Guide
 
-   readme
    installation
-   usage
-   data
    contributing
-   authorshistory
+   data
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Tutorials
+
+   usage
 
 Indices and tables
 ==================

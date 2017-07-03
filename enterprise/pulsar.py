@@ -28,6 +28,14 @@ except ImportError:
 
 
 def get_maxobs(timfile):
+    """Utility function to return number of lines in tim file.
+
+    :param timfile:
+        Full path to tim-file. For tim-files that use INCLUDEs this
+        should be the base tim file.
+
+    :returns: Number of lines in tim-file
+    """
 
     maxobs = 0
     with open(timfile) as tfile:
