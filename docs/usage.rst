@@ -30,8 +30,8 @@ passing it the par and tim file.
 .. code:: python
 
     # pulsar file information
-    parfiles = 'data/B1855+09_NANOGrav_11yv0.gls.par'
-    timfiles = 'data/B1855+09_NANOGrav_11yv0.tim'
+    parfiles = datadir + '/B1855+09_NANOGrav_11yv0.gls.par'
+    timfiles = datadir + 'data/B1855+09_NANOGrav_11yv0.tim'
     
     psr = Pulsar(parfiles, timfiles)
 

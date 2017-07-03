@@ -3,19 +3,12 @@ enterprise
 ===============================
 
 
-.. image:: https://img.shields.io/pypi/v/enterprise.svg
-        :target: https://pypi.python.org/pypi/enterprise
-
 .. image:: https://img.shields.io/travis/nanograv/enterprise.svg
         :target: https://travis-ci.org/nanograv/enterprise
 
 .. image:: https://readthedocs.org/projects/enterprise/badge/?version=latest
         :target: https://enterprise.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
-
-.. image:: https://pyup.io/repos/github/nanograv/enterprise/shield.svg
-     :target: https://pyup.io/repos/github/nanograv/enterprise/
-     :alt: Updates
 
 .. image:: https://landscape.io/github/nanograv/enterprise/master/landscape.svg?style=flat
    :target: https://landscape.io/github/nanograv/enterprise/master
