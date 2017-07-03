@@ -8,6 +8,8 @@ from __future__ import (absolute_import, division,
 
 import collections
 import itertools
+import inspect
+import functools
 
 import six
 
@@ -706,10 +708,31 @@ def Function(func, name='', **func_kwargs):
     return Function
 
 
+def get_funcargs(func):
+    """Convienience function to get args and kwargs of any function."""
+    argspec = inspect.getargspec(func)
+    if argspec.defaults is None:
+        args = argspec.args
+        kwargs = []
+    else:
+        args = argspec.args[:(len(argspec.args)-len(argspec.defaults))]
+        kwargs = argspec.args[-len(argspec.defaults):]
+
+    return args, kwargs
+
+
 def function(func):
     """Decorator for Function."""
 
+    funcargs, _ = get_funcargs(func)
+
+    @functools.wraps(func)
     def wrapper(*args, **kwargs):
+        fargs = {funcargs[ct]: val for ct, val in
+                 enumerate(args[:len(funcargs)])}
+        fargs.update(kwargs)
+        if not np.all([fa in fargs.keys() for fa in funcargs]):
+            return Function(func, **kwargs)
         for kw, arg in kwargs.items():
             if ((isinstance(arg, type) and issubclass(
                 arg, (Parameter, ConstantParameter))) or isinstance(

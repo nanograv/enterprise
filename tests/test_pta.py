@@ -27,6 +27,7 @@ from enterprise.signals import utils
 from .enterprise_test_data import datadir
 
 
+@signal_base.function
 def hd_orf(pos1, pos2):
     if np.all(pos1 == pos2):
         return 1
@@ -36,6 +37,7 @@ def hd_orf(pos1, pos2):
         return 1.5 * omc2 * np.log(omc2) - 0.25 * omc2 + 0.5
 
 
+@signal_base.function
 def vec_orf(pos1, pos2):
     if np.all(pos1 == pos2):
         return 1
@@ -43,6 +45,7 @@ def vec_orf(pos1, pos2):
         return 0.5 * np.dot(pos1, pos2)
 
 
+@signal_base.function
 def hd_orf_generic(pos1, pos2, a=1.5, b=0.25, c=0.25):
     if np.all(pos1 == pos2):
         return 1
@@ -52,6 +55,7 @@ def hd_orf_generic(pos1, pos2, a=1.5, b=0.25, c=0.25):
         return a * omc2 * np.log(omc2) - b * omc2 + c
 
 
+@signal_base.function
 def hd_powerlaw(f, pos1, pos2, log10_A=-15, gamma=4.3):
     return utils.powerlaw(f, log10_A, gamma) * hd_orf(pos1, pos2)
 
@@ -76,12 +80,11 @@ class TestPTASignals(unittest.TestCase):
 
     def test_parameterized_orf(self):
         T1 = 3.16e8
-        pl = signal_base.Function(utils.powerlaw,
-                                  log10_A=parameter.Uniform(-18,-12),
-                                  gamma=parameter.Uniform(1,7))
-        orf = signal_base.Function(hd_orf_generic, a=parameter.Uniform(0,5),
-                                   b=parameter.Uniform(0,5),
-                                   c=parameter.Uniform(0,5))
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
+                            gamma=parameter.Uniform(1,7))
+        orf = hd_orf_generic(a=parameter.Uniform(0,5),
+                             b=parameter.Uniform(0,5),
+                             c=parameter.Uniform(0,5))
         rn = gp_signals.FourierBasisGP(spectrum=pl, Tspan=T1, components=30)
         crn = gp_signals.FourierBasisCommonGP(spectrum=pl, orf=orf,
                                               components=30, name='gw',
@@ -138,12 +141,11 @@ class TestPTASignals(unittest.TestCase):
 
         span = np.max(self.psrs[0].toas) - np.min(self.psrs[0].toas)
 
-        pl = signal_base.Function(utils.powerlaw,
-                                  log10_A=parameter.Uniform(-16,-13),
-                                  gamma=parameter.Uniform(1,7))
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-16,-13),
+                            gamma=parameter.Uniform(1,7))
 
-        orf = signal_base.Function(hd_orf)
-        vrf = signal_base.Function(vec_orf)
+        orf = hd_orf()
+        vrf = vec_orf()
 
         rn = gp_signals.FourierBasisGP(spectrum=pl,
                                        components=30, Tspan=span)
@@ -276,10 +278,9 @@ class TestPTASignals(unittest.TestCase):
         T1, T2, T3 = 3.16e8, 3.16e8, 3.16e8
         nf1, nf2, nf3 = 2, 2, 1
 
-        pl = signal_base.Function(utils.powerlaw,
-                                  log10_A=parameter.Uniform(-18,-12),
-                                  gamma=parameter.Uniform(1,7))
-        orf = signal_base.Function(hd_orf)
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
+                            gamma=parameter.Uniform(1,7))
+        orf = hd_orf()
         rn = gp_signals.FourierBasisGP(spectrum=pl, components=nf1, Tspan=T1)
         crn = gp_signals.FourierBasisCommonGP(spectrum=pl, orf=orf,
                                               components=1, name='gw',
