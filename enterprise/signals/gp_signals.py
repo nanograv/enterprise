@@ -95,8 +95,7 @@ def FourierBasisGP(spectrum, components=20,
     """Convienience function to return a BasisGP class with a
     fourier basis."""
 
-    basis = base.Function(utils.createfourierdesignmatrix_red,
-                          nmodes=components, Tspan=Tspan)
+    basis = utils.createfourierdesignmatrix_red(nmodes=components, Tspan=Tspan)
     BaseClass = BasisGP(spectrum, basis, selection=selection)
 
     class FourierBasisGP(BaseClass):
@@ -142,6 +141,7 @@ def TimingModel():
     return TimingModel
 
 
+@base.function
 def ecorr_basis_prior(weights, log10_ecorr=-8):
     """Returns the ecorr prior.
     :param weights: A vector or weights for the ecorr prior.
@@ -154,8 +154,8 @@ def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
     """Convienience function to return a BasisGP class with a
     quantized ECORR basis."""
 
-    basis = base.Function(utils.create_quantization_matrix)
-    prior = base.Function(ecorr_basis_prior, log10_ecorr=log10_ecorr)
+    basis = utils.create_quantization_matrix()
+    prior = ecorr_basis_prior(log10_ecorr=log10_ecorr)
     BaseClass = BasisGP(prior, basis, selection=selection)
 
     class EcorrBasisModel(BaseClass):
@@ -219,8 +219,7 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, name='common'):
 def FourierBasisCommonGP(spectrum, orf, components=20,
                          Tspan=None, name='common'):
 
-    basis = base.Function(utils.createfourierdesignmatrix_red,
-                          nmodes=components)
+    basis = utils.createfourierdesignmatrix_red(nmodes=components)
     BaseClass = BasisCommonGP(spectrum, basis, orf, name=name)
 
     class FourierBasisCommonGP(BaseClass):

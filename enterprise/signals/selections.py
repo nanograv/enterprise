@@ -85,16 +85,19 @@ def Selection(func):
 # SELECTION FUNCTIONS
 
 def cut_half(toas):
+    """Selection function to split by data segment"""
     midpoint = (toas.max() + toas.min()) / 2
     return dict(zip(['t1', 't2'], [toas <= midpoint, toas > midpoint]))
 
 
 def by_backend(backend_flags):
+    """Selection function to split by backend flags."""
     flagvals = np.unique(backend_flags)
     return {flagval: backend_flags == flagval for flagval in flagvals}
 
 
 def nanograv_backends(backend_flags):
+    """Selection function to split by NANOGRav backend flags only."""
     flagvals = np.unique(backend_flags)
     ngb = ['ASP', 'GASP', 'GUPPI', 'PUPPI']
     flagvals = filter(lambda x: any(map(lambda y: y in x, ngb)), flagvals)
@@ -102,4 +105,5 @@ def nanograv_backends(backend_flags):
 
 
 def no_selection(toas):
+    """Default selection with no splitting."""
     return {'': np.ones_like(toas, dtype=bool)}

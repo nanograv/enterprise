@@ -12,6 +12,7 @@ from scipy.integrate import odeint
 from scipy import special as ss
 from pkg_resources import resource_filename, Requirement
 import enterprise.constants as const
+from enterprise.signals import signal_base
 
 
 def create_stabletimingdesignmatrix(designmat, fastDesign=True):
@@ -44,6 +45,7 @@ def create_stabletimingdesignmatrix(designmat, fastDesign=True):
 ######################################
 
 
+@signal_base.function
 def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
                                   logf=False, fmin=None, fmax=None,
                                   pshift=False):
@@ -94,6 +96,7 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
     return F, Ffreqs
 
 
+@signal_base.function
 def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
                                  logf=False, fmin=None, fmax=None):
 
@@ -125,6 +128,7 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
     return F * Dm[:, None], Ffreqs
 
 
+@signal_base.function
 def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
                                   t0=53000*86400, nmodes=30, Tspan=None,
                                   logf=False, fmin=None, fmax=None):
@@ -612,6 +616,7 @@ def fplus_fcross(ptheta, pphi, gwtheta, gwphi):
     return fplus, fcross
 
 
+@signal_base.function
 def create_quantization_matrix(toas, dt=1, nmin=2):
     """Create quantization matrix mapping TOAs to observing epochs."""
     isort = np.argsort(toas)
@@ -658,17 +663,20 @@ def quant2ind(U):
     return inds
 
 
+@signal_base.function
 def powerlaw(f, log10_A=-16, gamma=5):
     return ((10**log10_A)**2 / 12.0 / np.pi**2 *
             const.fyr**(gamma-3) * f**(-gamma))
 
 
+@signal_base.function
 def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10/3, beta=0.5):
     hcf = (10**log10_A * (f / const.fyr) ** ((3-gamma) / 2) /
            (1 + (10**lf0 / f) ** kappa) ** beta)
     return hcf**2/12/np.pi**2/f**3
 
 
+@signal_base.function
 def hd_orf(pos1, pos2):
     if np.all(pos1 == pos2):
         return 1
