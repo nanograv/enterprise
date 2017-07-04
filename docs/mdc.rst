@@ -14,8 +14,6 @@ In this tutorial we will use ``enterprise`` to analyze open MDC dataset
 
 
 
-
-
 Get par and tim files
 ---------------------
 
@@ -31,7 +29,7 @@ Load pulsars into ``Pulsar`` objects
 ------------------------------------
 
 ``enterprise`` uses a specific
-`Pulsar <../../_build/html/data.html#the-pulsar-class>`__ object to
+`Pulsar <data.html#the-pulsar-class>`__ object to
 store all of the relevant pulsar information (i.e. TOAs, residuals,
 error bars, flags, etc) from the timing package. Eventually
 ``enterprise`` will support both ``PINT`` and ``tempo2``; however, for
@@ -65,14 +63,14 @@ Set up model
 Here we see the basic ``enterprise`` model building steps:
 
 1. Define parameters and priors (This makes use of the `Parameter class
-   factory <../../_build/html/data.html#the-parameter-class>`__)
+   factory <data.html#the-parameter-class>`__)
 2. Set up the signals making use of the ``Signal`` class factories.
 3. Define the model by summing the individual ``Signal`` classes.
 4. Define a PTA by initializing the signal model with a ``Pulsar``
    object.
 
 Notice that ``powerlaw`` is uses as a
-`Function <../../_build/html/data.html#the-function-structure>`__
+`Function <data.html#the-function-structure>`__
 here.
 
 .. code:: python

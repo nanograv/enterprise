@@ -16,10 +16,6 @@ developer.
 
 
 
-.. parsed-literal::
-
-    Warning: cannot find astropy, units support will not be available.
-
 
 Class Factories
 ---------------
@@ -32,10 +28,10 @@ instances). A simple example is as follows:
 
     def A(farg1, farg2):
         class A(object):
-            
+
             def __init__(self, iarg):
                 self.iarg = iarg
-            
+
             def print_info(self):
                 print('Object instance {}\nInstance argument: {}\nFunction args: {} {}\n'.format(
                     self, self.iarg, farg1, farg2))
@@ -45,11 +41,11 @@ instances). A simple example is as follows:
 
     # define class A with arguments that can be seen within the class
     a = A('arg1', 'arg2')
-    
+
     # instantiate 2 instances of class A with different arguments
     a1 = a('iarg1')
     a2 = a('iarg2')
-    
+
     # call print_info method
     a1.print_info()
     a2.print_info()
@@ -60,11 +56,11 @@ instances). A simple example is as follows:
     Object instance <__main__.A object at 0x10e356810>
     Instance argument: iarg1
     Function args: arg1 arg2
-    
+
     Object instance <__main__.A object at 0x1116f4f10>
     Instance argument: iarg2
     Function args: arg1 arg2
-    
+
 
 
 In the example above we see that the arguments ``arg1`` and ``arg2`` are
@@ -85,7 +81,7 @@ etc.
 
 This class is instantiated with a par and a tim file. Full documentation
 on this class can be found
-`here. <../../_build/html/enterprise.html#module-enterprise.pulsar>`__
+`here. <enterprise.html#module-enterprise.pulsar>`__
 
 .. code:: python
 
@@ -126,13 +122,13 @@ you then have access to many useful methods.
     # initialize efac parameter with name "efac_1"
     efac1 = efac('efac_1')
     print(efac1)
-    
+
     # return parameter name
     print(efac1.name)
-    
+
     # get pdf at a point (log pdf is access)
     print(efac1.get_pdf(1.3), efac1.get_logpdf(1.3))
-    
+
     # return 5 samples from this prior distribution
     print(efac1.sample(size=5))
 
@@ -289,10 +285,10 @@ still obtain a ``Function`` via:
 
     def sine_wave(toas, log10_A=-7, log10_f=-8):
         return 10**log10_A * np.sin(2*np.pi*toas*10**log10_f)
-    
-    sw3 = signal_base.Function(sine_wave, log10_A=parameter.Uniform(-10,-5), 
+
+    sw3 = signal_base.Function(sine_wave, log10_A=parameter.Uniform(-10,-5),
                                log10_f=parameter.Uniform(-9, -7))
-    
+
     print(sw3)
 
 
@@ -309,8 +305,8 @@ function with these rules in mind.
 
 1. If you want to use ``Pulsar`` attributes, define them as positional
    arguments with the same name as used in the ``Pulsar`` class (see
-   `here <../../_build/html/enterprise.html#module-enterprise.pulsar>`__
-   for more information.
+   `here <enterprise.html#module-enterprise.pulsar>`__ for more
+   information.
 2. Any arguments that you may use as ``Parameter``\ s must be keyword
    arguments (although you can have others that aren't ``Parameter``\ s)
 3. Add the ``@function`` decorator.
@@ -397,13 +393,13 @@ the split names as follows:
 
     # make efac class factory
     efac = parameter.Uniform(0.1, 5.0)
-    
+
     # now give it to selection
     params, masks = ch1('efac', efac)
-    
+
     # named parameters
     print(params)
-    
+
     # named masks
     print(masks)
 
@@ -414,10 +410,6 @@ the split names as follows:
     {u't1_efac': array([ True,  True,  True, ..., False, False, False], dtype=bool), u't2_efac': array([False, False, False, ...,  True,  True,  True], dtype=bool)}
 
 
-We will see in the `usage <'../../_build/html/usage.html'>`__ tutorial
-how to use these selections in combination with ``enterprise``
-``Signal``\ s.
-
 Make your own ``Selection``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -426,8 +418,8 @@ function with these rules in mind.
 
 1. If you want to use ``Pulsar`` attributes, define them as positional
    arguments with the same name as used in the ``Pulsar`` class (see
-   `here <../../_build/html/enterprise.html#module-enterprise.pulsar>`__
-   for more information.
+   `here <enterprise.html#module-enterprise.pulsar>`__ for more
+   information.
 2. Make sure the return value is a dictionary with the names you want
    for the different segments and values as boolean arrays specifying
    which points to apply the split to.
@@ -442,4 +434,3 @@ whatever you want!
 -------------------------------------------------------------
 
 **Coming Soon!**
-
