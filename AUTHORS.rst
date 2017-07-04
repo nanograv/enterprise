@@ -1,10 +1,10 @@
 Development Leads
 -----------------
 
-* Justin A. Ellis <justin.ellis18@gmail.com>
-* Stephen R. Taylor <Stephen.R.Taylor@jpl.nasa.gov>
-* Paul T. Baker <paul.baker1@mail.wvu.edu>
-* Michele Vallisneri <vallis@vallis.org>
+* `Justin A. Ellis (@jellis18) <https://github.com/jellis18>`_
+* `Stephen R. Taylor (@stevertaylor) <https://github.com/stevertaylor>`_
+* `Paul T. Baker (@paulthebaker) <https://github.com/paulthebaker>`_
+* `Michele Vallisneri (@vallis) <https://github.com/vallis>`_
 
 Contributors
 ------------
