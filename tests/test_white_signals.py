@@ -55,16 +55,17 @@ class Woodbury(object):
 
 class TestWhiteSignals(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
-                          datadir + '/B1855+09_NANOGrav_9yv1.tim')
+        cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                         datadir + '/B1855+09_NANOGrav_9yv1.tim')
 
         # IPTA-like pulsar
-        self.ipsr = Pulsar(datadir + '/1713.Sep.T2.par',
-                           datadir + '/1713.Sep.T2.tim')
+        cls.ipsr = Pulsar(datadir + '/1713.Sep.T2.par',
+                          datadir + '/1713.Sep.T2.tim')
 
     def test_efac(self):
         """Test that efac signal returns correct covariance."""

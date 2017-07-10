@@ -7,7 +7,6 @@ from __future__ import (absolute_import, division,
 
 import enterprise
 import numpy as np
-import tempfile
 from ephem import Ecliptic, Equatorial
 import os
 import json
@@ -17,14 +16,17 @@ try:
 except:
     import pickle
 
-from collections import OrderedDict
-
-# NOTE: PINT interface is not yet available so just import libstempo
 try:
     import libstempo as t2
 except ImportError:
     print('ERROR: Must have libstempo package installed!')
     t2 = None
+
+import pint.toa as toa
+import pint.models.model_builder as mb
+from pint.models import TimingModel
+from pint.residuals import resids
+import astropy.units as u
 
 
 def get_maxobs(timfile):
@@ -49,174 +51,54 @@ def get_maxobs(timfile):
     return maxobs
 
 
-class Pulsar(object):
+class BasePulsar(object):
+    """Abstract Base Class for Pulsar objects."""
 
-    def __init__(self, parfile, timfile, ephem=None,planets=True,
-                 sort=True, drop_t2pulsar=True):
-
-        # Check whether the two files exist
-        if not os.path.isfile(parfile) or not os.path.isfile(timfile):
-            msg = 'Cannot find parfile {0} or timfile {1}!'.format(
-                parfile, timfile)
-            raise IOError(msg)
-
-        # Obtain the directory name of the timfile, and change to it
-        timfiletup = os.path.split(timfile)
-        dirname = timfiletup[0]
-        reltimfile = timfiletup[-1]
-        relparfile = os.path.relpath(parfile, dirname)
-
-        # get current directory
-        cwd = os.getcwd()
-
-        # Change directory to the base directory of the tim-file to deal with
-        # INCLUDE statements in the tim-file
-        os.chdir(dirname)
-
-        # sorting
-        self._sort = sort
-
-        # hack to set maxobs
-        maxobs = get_maxobs(reltimfile)
-
-        # Load pulsar data from the libstempo library
-        # TODO: make sure we specify libstempo>=2.3.1
-        self.t2pulsar = t2.tempopulsar(relparfile, reltimfile,
-                                       maxobs=maxobs, ephem=ephem)
-
-        # Load the entire par-file into memory, so that we can save it
-        with open(relparfile, 'r') as content_file:
-            self.parfile_content = content_file.read()
-
-        # Save the tim-file to a temporary file (so that we don't have to deal
-        # with 'include' statements in the tim-file), and load that tim-file
-        # in memory for storage
-        tempfilename = tempfile.mktemp()
-        self.t2pulsar.savetim(tempfilename)
-        with open(tempfilename, 'r') as content_file:
-            self.timfile_content = content_file.read()
-        os.remove(tempfilename)
-
-        # Change directory back to where we were
-        os.chdir(cwd)
-
-        # get pulsar name
-        self.name = str(self.t2pulsar.name)
-
-        # get some private attributes
-        self._toas = np.double(self.t2pulsar.toas()) * 86400
-        self._residuals = np.double(self.t2pulsar.residuals())
-        self._toaerrs = np.double(self.t2pulsar.toaerrs) * 1e-6
-        self._designmatrix = np.double(self.t2pulsar.designmatrix())
-        self._ssbfreqs = np.double(self.t2pulsar.ssbfreqs()) / 1e6
-
-        # get pulsar distances and uncertainties
-        # TODO: use fancier datapath representation
+    def _get_pdist(self):
         dfile = enterprise.__path__[0] + '/datafiles/pulsar_distances.json'
         with open(dfile, 'r') as fl:
             pdict = json.load(fl)
 
         try:
-            self._pdist = tuple(pdict[self.name])
+            pdist = tuple(pdict[self.name])
         except KeyError:
             # TODO: should use logging here
             msg = 'WARNING: Could not find pulsar distance for '
             msg += 'PSR {0}.'.format(self.name)
             msg += ' Setting value to 1 with 20% uncertainty.'
             print(msg)
-            self._pdist = (1.0, 0.2)
+            pdist = (1.0, 0.2)
+        return pdist
 
-        # get par-file parameters
-        self.fitpars = ['Offset'] + list(map(str, self.t2pulsar.pars()))
+    def _get_radec_from_ecliptic(self, elong, elat):
+        # convert via pyephem
+        try:
+            ec = Ecliptic(elong, elat)
 
-        # make dictionary with tuple of (val, err) for fitted parameters
+            # check for B name
+            if 'B' in self.name:
+                epoch = '1950'
+            else:
+                epoch = '2000'
+            eq = Equatorial(ec, epoch=str(epoch))
+            raj = np.double(eq.ra)
+            decj = np.double(eq.dec)
 
-        # set values for offset
-        # TODO: should probably try to set uncertainty here in some way
-        self.fitvals = OrderedDict({})
-        self.fitvals['Offset'] = (0.0, 0.0)
+        # TODO: should use logging here
+        except TypeError:
+            msg = 'WARNING: Cannot fine sky location coordinates '
+            msg += 'for PSR {0}. '.format(self.name)
+            msg += 'Setting values to 0.0'
+            print(msg)
+            raj = 0.0
+            decj = 0.0
 
-        # get other fit values
-        for par in self.fitpars[1:]:
-            self.fitvals[par] = (self.t2pulsar[par].val,
-                                 self.t2pulsar[par].err)
+        return raj, decj
 
-        # get set values in par file
-        spars = list(map(str, self.t2pulsar.pars(which='set')))
-        self.setpars = [sp for sp in spars if sp not in self.fitpars]
-
-        # make dictionary with set parameter values
-        self.setvals = OrderedDict({})
-        for par in self.setpars:
-            self.setvals[par] = self.t2pulsar[par].val
-
-        # get flag dictionary
-        # TODO: Deal with heirarchical setting of flags in Models?
-        # For example, some IPTA data has group flags but NANOGrav doesn't
-        self._flags = {}
-        for key in self.t2pulsar.flags():
-            self._flags[key] = self.t2pulsar.flagvals(key)
-
-        # get sky location
-        if 'RAJ' in np.concatenate((self.fitpars, self.setpars)):
-            self._raj = np.double(self.t2pulsar['RAJ'].val)
-            self._decj = np.double(self.t2pulsar['DECJ'].val)
-
-        else:
-            # use ecliptic coordinates
-            elong = self.t2pulsar['ELONG'].val
-            elat = self.t2pulsar['ELAT'].val
-
-            # convert via pyephem
-            try:
-                ec = Ecliptic(elong, elat)
-
-                # check for B name
-                if 'B' in self.name:
-                    epoch = '1950'
-                else:
-                    epoch = '2000'
-                eq = Equatorial(ec, epoch=str(epoch))
-                self._raj = np.double(eq.ra)
-                self._decj = np.double(eq.dec)
-
-            # TODO: should use logging here
-            except TypeError:
-                msg = 'WARNING: Cannot fine sky location coordinates '
-                msg += 'for PSR {0}. '.format(self.name)
-                msg += 'Setting values to 0.0'
-                print(msg)
-                self._raj = 0.0
-                self._decj = 0.0
-
-        self._pos = np.array([np.cos(self._raj) * np.cos(self._decj),
-                              np.sin(self._raj) * np.cos(self._decj),
-                              np.sin(self._decj)])
-
-        # Get the position vectors of the planets
-        self._planetssb = None
-        if planets:
-            for ii in range(1, 10):
-                tag = 'DMASSPLANET' + str(ii)
-                self.t2pulsar[tag].val = 0.0
-            self.t2pulsar.formbats()
-            self._planetssb = np.zeros((len(self._toas), 9, 6))
-            self._planetssb[:, 0, :] = self.t2pulsar.mercury_ssb
-            self._planetssb[:, 1, :] = self.t2pulsar.venus_ssb
-            self._planetssb[:, 2, :] = self.t2pulsar.earth_ssb
-            self._planetssb[:, 3, :] = self.t2pulsar.mars_ssb
-            self._planetssb[:, 4, :] = self.t2pulsar.jupiter_ssb
-            self._planetssb[:, 5, :] = self.t2pulsar.saturn_ssb
-            self._planetssb[:, 6, :] = self.t2pulsar.uranus_ssb
-            self._planetssb[:, 7, :] = self.t2pulsar.neptune_ssb
-            self._planetssb[:, 8, :] = self.t2pulsar.pluto_ssb
-
-        # drop pulsar object to save memory
-        if drop_t2pulsar:
-            del self.t2pulsar
-
-        # sorting
-        self.sort_data()
+    def _get_pos(self):
+        return np.array([np.cos(self._raj) * np.cos(self._decj),
+                         np.sin(self._raj) * np.cos(self._decj),
+                         np.sin(self._decj)])
 
     def sort_data(self):
         """Sort data by time."""
@@ -357,3 +239,181 @@ class Pulsar(object):
     def planetssb(self):
         """Return planetary position vectors at all timestamps"""
         return self._planetssb
+
+
+class PintPulsar(BasePulsar):
+
+    def __init__(self, toas, model, sort=True, planets=True):
+
+        self._sort = sort
+        self.planets = planets
+        self.name = model.PSR.value
+
+        self._toas = np.array(toas.table['tdbld'], dtype='float64') * 86400
+        self._residuals = np.array(resids(toas, model).time_resids.to(u.s),
+                                   dtype='float64')
+        self._toaerrs = np.array(toas.get_errors().to(u.s), dtype='float64')
+        self._designmatrix = model.designmatrix(toas.table)[0]
+        self._ssbfreqs = np.array(model.barycentric_radio_freq(toas.table),
+                                  dtype='float64')
+
+        self._flags = {}
+        for ii, obsflags in enumerate(toas.get_flags()):
+            for jj, flag in enumerate(obsflags):
+
+                if flag not in list(self._flags.keys()):
+                    self._flags[flag] = [''] * toas.ntoas
+
+                self._flags[flag][ii] = obsflags[flag]
+
+        # convert flags to arrays
+        # TODO probably better way to do this
+        for key, val in self._flags.items():
+            if isinstance(val[0], u.quantity.Quantity):
+                self._flags[key] = np.array([v.value for v in val])
+            else:
+                self._flags[key] = np.array(val)
+
+        self._pdist = self._get_pdist()
+        self._raj, self._decj = self._get_radec(model)
+        self._pos = self._get_pos()
+        self._planetssb = self._get_planetssb()
+
+        self.sort_data()
+
+    def _get_radec(self, model):
+        if hasattr(model, 'RAJ') and hasattr(model, 'DECJ'):
+            return (model.RAJ.value, model.DECJ.value)
+        else:
+            # TODO: better way of dealing with units
+            d2r = np.pi / 180
+            elong, elat = model.ELONG.value, model.ELAT.value
+            return self._get_radec_from_ecliptic(elong*d2r, elat*d2r)
+
+    def _get_planetssb(self):
+        return None
+
+
+class Tempo2Pulsar(BasePulsar):
+
+    def __init__(self, t2pulsar, sort=True,
+                 drop_t2pulsar=True, planets=True):
+
+        self._sort = sort
+        self.t2pulsar = t2pulsar
+        self.planets = planets
+        self.name = str(t2pulsar.name)
+
+        self._toas = np.double(t2pulsar.toas()) * 86400
+        self._residuals = np.double(t2pulsar.residuals())
+        self._toaerrs = np.double(t2pulsar.toaerrs) * 1e-6
+        self._designmatrix = np.double(t2pulsar.designmatrix())
+        self._ssbfreqs = np.double(t2pulsar.ssbfreqs()) / 1e6
+
+        self._flags = {}
+        for key in t2pulsar.flags():
+            self._flags[key] = t2pulsar.flagvals(key)
+
+        self._pdist = self._get_pdist()
+        self._raj, self._decj = self._get_radec(t2pulsar)
+        self._pos = self._get_pos()
+        self._planetssb = self._get_planetssb()
+
+        self.sort_data()
+
+        if drop_t2pulsar:
+            del self.t2pulsar
+
+    def _get_radec(self, t2pulsar):
+        if 'RAJ' in np.concatenate((t2pulsar.pars(which='fit'),
+                                    t2pulsar.pars(which='set'))):
+            return np.double(t2pulsar['RAJ'].val),
+            np.double(t2pulsar['DECJ'].val)
+
+        else:
+            # use ecliptic coordinates
+            elong = t2pulsar['ELONG'].val
+            elat = t2pulsar['ELAT'].val
+            return self._get_radec_from_ecliptic(elong, elat)
+
+    def _get_planetssb(self):
+        planetssb = None
+        if self.planets:
+            for ii in range(1, 10):
+                tag = 'DMASSPLANET' + str(ii)
+                self.t2pulsar[tag].val = 0.0
+            self.t2pulsar.formbats()
+            planetssb = np.zeros((len(self._toas), 9, 6))
+            planetssb[:, 0, :] = self.t2pulsar.mercury_ssb
+            planetssb[:, 1, :] = self.t2pulsar.venus_ssb
+            planetssb[:, 2, :] = self.t2pulsar.earth_ssb
+            planetssb[:, 3, :] = self.t2pulsar.mars_ssb
+            planetssb[:, 4, :] = self.t2pulsar.jupiter_ssb
+            planetssb[:, 5, :] = self.t2pulsar.saturn_ssb
+            planetssb[:, 6, :] = self.t2pulsar.uranus_ssb
+            planetssb[:, 7, :] = self.t2pulsar.neptune_ssb
+            planetssb[:, 8, :] = self.t2pulsar.pluto_ssb
+        return planetssb
+
+
+def Pulsar(*args, **kwargs):
+
+    ephem = kwargs.get('ephem', None)
+    planets = kwargs.get('planets', True)
+    sort = kwargs.get('sort', True)
+    drop_t2pulsar = kwargs.get('drop_t2pulsar', True)
+    timing_package = kwargs.get('timing_package', 'pint')
+
+    toas = filter(lambda x: isinstance(x, toa.TOAs), args)
+    model = filter(lambda x: isinstance(x, TimingModel), args)
+    t2pulsar = filter(lambda x: isinstance(x, t2.tempopulsar), args)
+    parfile = filter(lambda x: isinstance(x, str) and
+                     x.split('.')[-1] == 'par', args)
+    timfile = filter(lambda x: isinstance(x, str) and
+                     x.split('.')[-1] in ['tim', 'toa'], args)
+
+    if toas and model:
+        return PintPulsar(toas[0], model[0], sort=sort, planets=planets)
+    elif t2pulsar:
+        return Tempo2Pulsar(t2pulsar, sort=sort, drop_t2pulsar=drop_t2pulsar,
+                            planets=planets)
+    elif parfile and timfile:
+        # Check whether the two files exist
+        if not os.path.isfile(parfile[0]) or not os.path.isfile(timfile[0]):
+            msg = 'Cannot find parfile {0} or timfile {1}!'.format(
+                parfile[0], timfile[0])
+            raise IOError(msg)
+
+        # Obtain the directory name of the timfile, and change to it
+        timfiletup = os.path.split(timfile[0])
+        dirname = timfiletup[0]
+        reltimfile = timfiletup[-1]
+        relparfile = os.path.relpath(parfile[0], dirname)
+
+        # get current directory
+        cwd = os.getcwd()
+
+        # Change directory to the base directory of the tim-file to deal with
+        # INCLUDE statements in the tim-file
+        os.chdir(dirname)
+
+        if timing_package.lower() == 'pint':
+            if ephem is None:
+                ephem = 'DE421'
+            toas = toa.get_TOAs(reltimfile, ephem=ephem, planets=planets)
+            model = mb.get_model(relparfile)
+            os.chdir(cwd)
+            return PintPulsar(toas, model, sort=sort, planets=planets)
+
+        elif timing_package.lower() == 'tempo2':
+
+            # hack to set maxobs
+            maxobs = get_maxobs(reltimfile)
+            t2pulsar = t2.tempopulsar(relparfile, reltimfile,
+                                      maxobs=maxobs, ephem=ephem)
+            os.chdir(cwd)
+            return Tempo2Pulsar(t2pulsar, sort=sort,
+                                drop_t2pulsar=drop_t2pulsar,
+                                planets=planets)
+    else:
+        print('Unknown arguments {}'.format(args))

@@ -59,14 +59,15 @@ def get_noise_from_pal2(noisefile):
 
 class TestLikelihood(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        self.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
-                            datadir + '/B1855+09_NANOGrav_9yv1.tim'),
-                     Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
-                            datadir + '/J1909-3744_NANOGrav_9yv1.tim')]
+        cls.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                           datadir + '/B1855+09_NANOGrav_9yv1.tim'),
+                    Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
+                           datadir + '/J1909-3744_NANOGrav_9yv1.tim')]
 
     def compute_like(self, npsrs=1, inc_corr=False):
 
