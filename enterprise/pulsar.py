@@ -327,7 +327,7 @@ class Tempo2Pulsar(BasePulsar):
     def _get_radec(self, t2pulsar):
         if 'RAJ' in np.concatenate((t2pulsar.pars(which='fit'),
                                     t2pulsar.pars(which='set'))):
-            return (np.double(t2pulsar['RAJ'].val), 
+            return (np.double(t2pulsar['RAJ'].val),
                     np.double(t2pulsar['DECJ'].val))
 
         else:
