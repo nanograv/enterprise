@@ -391,30 +391,30 @@ class TestWhiteSignals(unittest.TestCase):
         msg = 'EFAC/ECORR {} logdet incorrect.'.format(method)
         N = m.get_ndiag(params)
         assert np.allclose(N.solve(self.ipsr.residuals, logdet=True)[1],
-                           wd.logdet(), rtol=1e-10), msg
+                           wd.logdet(), rtol=1e-8), msg
 
         msg = 'EFAC/ECORR {} D1 solve incorrect.'.format(method)
         assert np.allclose(N.solve(self.ipsr.residuals),
-                           wd.solve(self.ipsr.residuals), rtol=1e-10), msg
+                           wd.solve(self.ipsr.residuals), rtol=1e-8), msg
 
         msg = 'EFAC/ECORR {} 1D1 solve incorrect.'.format(method)
         assert np.allclose(
             N.solve(self.ipsr.residuals, left_array=self.ipsr.residuals),
             np.dot(self.ipsr.residuals, wd.solve(self.ipsr.residuals)),
-            rtol=1e-10), msg
+            rtol=1e-8), msg
 
         msg = 'EFAC/ECORR {} 2D1 solve incorrect.'.format(method)
         T = m.get_basis()
         assert np.allclose(
             N.solve(self.ipsr.residuals, left_array=T),
             np.dot(T.T, wd.solve(self.ipsr.residuals)),
-            rtol=1e-10), msg
+            rtol=1e-8), msg
 
         msg = 'EFAC/ECORR {} 2D2 solve incorrect.'.format(method)
         assert np.allclose(
             N.solve(T, left_array=T),
             np.dot(T.T, wd.solve(T)),
-            rtol=1e-10), msg
+            rtol=1e-8), msg
 
     def test_ecorr_sparse(self):
         """Test of sparse ecorr signal and solve methods."""

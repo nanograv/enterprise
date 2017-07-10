@@ -362,7 +362,7 @@ def Pulsar(*args, **kwargs):
     planets = kwargs.get('planets', True)
     sort = kwargs.get('sort', True)
     drop_t2pulsar = kwargs.get('drop_t2pulsar', True)
-    timing_package = kwargs.get('timing_package', 'pint')
+    timing_package = kwargs.get('timing_package', 'tempo2')
 
     toas = filter(lambda x: isinstance(x, toa.TOAs), args)
     model = filter(lambda x: isinstance(x, TimingModel), args)
