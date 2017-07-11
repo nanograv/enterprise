@@ -91,3 +91,15 @@ class TestDeterministicSignals(unittest.TestCase):
         # test
         msg = 'Delay incorrect.'
         assert np.all(m.get_delay(params) == delay), msg
+
+
+class TestDeterministicSignalsPint(TestDeterministicSignals):
+
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                         datadir + '/B1855+09_NANOGrav_9yv1.tim',
+                         ephem='DE430', timing_package='pint')

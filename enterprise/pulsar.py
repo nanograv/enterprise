@@ -257,6 +257,14 @@ class PintPulsar(BasePulsar):
         self._ssbfreqs = np.array(model.barycentric_radio_freq(toas.table),
                                   dtype='float64')
 
+        # fitted parameters
+        self.fitpars = ['Offset'] + [par for par in model.params
+                                     if not getattr(model, par).frozen]
+
+        # set parameters
+        spars = [par for par in model.params]
+        self.setpars = [sp for sp in spars if sp not in self.fitpars]
+
         self._flags = {}
         for ii, obsflags in enumerate(toas.get_flags()):
             for jj, flag in enumerate(obsflags):
@@ -309,6 +317,13 @@ class Tempo2Pulsar(BasePulsar):
         self._toaerrs = np.double(t2pulsar.toaerrs) * 1e-6
         self._designmatrix = np.double(t2pulsar.designmatrix())
         self._ssbfreqs = np.double(t2pulsar.ssbfreqs()) / 1e6
+
+        # fitted parameters
+        self.fitpars = ['Offset'] + list(map(str, t2pulsar.pars()))
+
+        # set parameters
+        spars = list(map(str, t2pulsar.pars(which='set')))
+        self.setpars = [sp for sp in spars if sp not in self.fitpars]
 
         self._flags = {}
         for key in t2pulsar.flags():

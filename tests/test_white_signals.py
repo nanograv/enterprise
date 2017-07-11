@@ -439,3 +439,20 @@ class TestWhiteSignals(unittest.TestCase):
     def test_ecorr_block_ipta(self):
         """Test of block matrix ecorr signal and solve methods."""
         self._ecorr_test_ipta(method='block')
+
+
+class TestWhiteSignalsPint(TestWhiteSignals):
+
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                         datadir + '/B1855+09_NANOGrav_9yv1.tim',
+                         ephem='DE430', timing_package='pint')
+
+        # IPTA-like pulsar
+        cls.ipsr = Pulsar(datadir + '/1713.Sep.T2.par',
+                          datadir + '/1713.Sep.T2.tim',
+                          ephem='DE421', timint_package='pint')

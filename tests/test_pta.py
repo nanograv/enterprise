@@ -341,3 +341,18 @@ class TestPTASignals(unittest.TestCase):
         msg = 'PTA Phi inverse is incorrect {}.'.format(params)
         assert np.allclose(phiinv, np.linalg.inv(phit),
                            rtol=1e-15, atol=1e-17), msg
+
+
+class TestPTASignalsPint(TestPTASignals):
+
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                           datadir + '/B1855+09_NANOGrav_9yv1.tim',
+                           ephem='DE430', timing_package='pint'),
+                    Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
+                           datadir + '/J1909-3744_NANOGrav_9yv1.tim',
+                           ephem='DE430', timing_package='pint')]

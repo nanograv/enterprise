@@ -470,3 +470,15 @@ class TestGPSignals(unittest.TestCase):
         # test shape
         msg = 'Basis matrix shape incorrect size for combined signal.'
         assert m.get_basis(params).shape == T.shape, msg
+
+
+class TestGPSignalsPint(TestGPSignals):
+
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                         datadir + '/B1855+09_NANOGrav_9yv1.tim',
+                         ephem='DE430', timing_package='pint')
