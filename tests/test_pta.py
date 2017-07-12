@@ -9,8 +9,8 @@ Tests for common signal and PTA class modules.
 """
 
 
-import os
-import pickle
+#import os
+#import pickle
 import itertools
 import unittest
 
@@ -62,21 +62,26 @@ def hd_powerlaw(f, pos1, pos2, log10_A=-15, gamma=4.3):
 
 class TestPTASignals(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Setup the Pulsar object."""
 
-        if os.path.isfile(datadir + '/B1855+09.pkl') and \
-                os.path.isfile(datadir + '/J1909-3744.pkl'):
-            self.psrs = [pickle.load(open(datadir + '/B1855+09.pkl','r')),
-                         pickle.load(open(datadir + '/J1909-3744.pkl','r'))]
-        else:
-            self.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
-                                datadir + '/B1855+09_NANOGrav_9yv1.tim'),
-                         Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
-                                datadir + '/J1909-3744_NANOGrav_9yv1.tim')]
-
-            for psr in self.psrs:
-                psr.to_pickle(datadir)
+        #if os.path.isfile(datadir + '/B1855+09.pkl') and \
+        #        os.path.isfile(datadir + '/J1909-3744.pkl'):
+        #    self.psrs = [pickle.load(open(datadir + '/B1855+09.pkl','r')),
+        #                 pickle.load(open(datadir + '/J1909-3744.pkl','r'))]
+        #else:
+        #    self.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+        #                        datadir + '/B1855+09_NANOGrav_9yv1.tim'),
+        #                 Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
+        #                        datadir + '/J1909-3744_NANOGrav_9yv1.tim')]
+#
+        #    for psr in self.psrs:
+        #        psr.to_pickle(datadir)
+        cls.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                           datadir + '/B1855+09_NANOGrav_9yv1.tim'),
+                    Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
+                           datadir + '/J1909-3744_NANOGrav_9yv1.tim')]
 
     def test_parameterized_orf(self):
         T1 = 3.16e8
@@ -336,3 +341,18 @@ class TestPTASignals(unittest.TestCase):
         msg = 'PTA Phi inverse is incorrect {}.'.format(params)
         assert np.allclose(phiinv, np.linalg.inv(phit),
                            rtol=1e-15, atol=1e-17), msg
+
+
+class TestPTASignalsPint(TestPTASignals):
+
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                           datadir + '/B1855+09_NANOGrav_9yv1.tim',
+                           ephem='DE430', timing_package='pint'),
+                    Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
+                           datadir + '/J1909-3744_NANOGrav_9yv1.tim',
+                           ephem='DE430', timing_package='pint')]

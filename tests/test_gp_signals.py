@@ -23,12 +23,13 @@ from enterprise.signals import utils
 
 class TestGPSignals(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
-                          datadir + '/B1855+09_NANOGrav_9yv1.tim')
+        cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                         datadir + '/B1855+09_NANOGrav_9yv1.tim')
 
     def test_ecorr(self):
         """Test that ecorr signal returns correct values."""
@@ -469,3 +470,15 @@ class TestGPSignals(unittest.TestCase):
         # test shape
         msg = 'Basis matrix shape incorrect size for combined signal.'
         assert m.get_basis(params).shape == T.shape, msg
+
+
+class TestGPSignalsPint(TestGPSignals):
+
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                         datadir + '/B1855+09_NANOGrav_9yv1.tim',
+                         ephem='DE430', timing_package='pint')

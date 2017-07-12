@@ -55,16 +55,17 @@ class Woodbury(object):
 
 class TestWhiteSignals(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
-                          datadir + '/B1855+09_NANOGrav_9yv1.tim')
+        cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                         datadir + '/B1855+09_NANOGrav_9yv1.tim')
 
         # IPTA-like pulsar
-        self.ipsr = Pulsar(datadir + '/1713.Sep.T2.par',
-                           datadir + '/1713.Sep.T2.tim')
+        cls.ipsr = Pulsar(datadir + '/1713.Sep.T2.par',
+                          datadir + '/1713.Sep.T2.tim')
 
     def test_efac(self):
         """Test that efac signal returns correct covariance."""
@@ -390,30 +391,30 @@ class TestWhiteSignals(unittest.TestCase):
         msg = 'EFAC/ECORR {} logdet incorrect.'.format(method)
         N = m.get_ndiag(params)
         assert np.allclose(N.solve(self.ipsr.residuals, logdet=True)[1],
-                           wd.logdet(), rtol=1e-10), msg
+                           wd.logdet(), rtol=1e-8), msg
 
         msg = 'EFAC/ECORR {} D1 solve incorrect.'.format(method)
         assert np.allclose(N.solve(self.ipsr.residuals),
-                           wd.solve(self.ipsr.residuals), rtol=1e-10), msg
+                           wd.solve(self.ipsr.residuals), rtol=1e-8), msg
 
         msg = 'EFAC/ECORR {} 1D1 solve incorrect.'.format(method)
         assert np.allclose(
             N.solve(self.ipsr.residuals, left_array=self.ipsr.residuals),
             np.dot(self.ipsr.residuals, wd.solve(self.ipsr.residuals)),
-            rtol=1e-10), msg
+            rtol=1e-8), msg
 
         msg = 'EFAC/ECORR {} 2D1 solve incorrect.'.format(method)
         T = m.get_basis()
         assert np.allclose(
             N.solve(self.ipsr.residuals, left_array=T),
             np.dot(T.T, wd.solve(self.ipsr.residuals)),
-            rtol=1e-10), msg
+            rtol=1e-8), msg
 
         msg = 'EFAC/ECORR {} 2D2 solve incorrect.'.format(method)
         assert np.allclose(
             N.solve(T, left_array=T),
             np.dot(T.T, wd.solve(T)),
-            rtol=1e-10), msg
+            rtol=1e-8), msg
 
     def test_ecorr_sparse(self):
         """Test of sparse ecorr signal and solve methods."""
@@ -438,3 +439,20 @@ class TestWhiteSignals(unittest.TestCase):
     def test_ecorr_block_ipta(self):
         """Test of block matrix ecorr signal and solve methods."""
         self._ecorr_test_ipta(method='block')
+
+
+class TestWhiteSignalsPint(TestWhiteSignals):
+
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                         datadir + '/B1855+09_NANOGrav_9yv1.tim',
+                         ephem='DE430', timing_package='pint')
+
+        # IPTA-like pulsar
+        cls.ipsr = Pulsar(datadir + '/1713.Sep.T2.par',
+                          datadir + '/1713.Sep.T2.tim',
+                          ephem='DE421', timint_package='pint')

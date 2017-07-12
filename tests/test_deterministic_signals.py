@@ -28,12 +28,13 @@ def sine_wave(toas, log10_A=-7, log10_f=-8, phase=0.0):
 
 class TestDeterministicSignals(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
-                          datadir + '/B1855+09_NANOGrav_9yv1.tim')
+        cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                         datadir + '/B1855+09_NANOGrav_9yv1.tim')
 
     def test_delay(self):
         """Test deterministic signal no selection."""
@@ -90,3 +91,15 @@ class TestDeterministicSignals(unittest.TestCase):
         # test
         msg = 'Delay incorrect.'
         assert np.all(m.get_delay(params) == delay), msg
+
+
+class TestDeterministicSignalsPint(TestDeterministicSignals):
+
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                         datadir + '/B1855+09_NANOGrav_9yv1.tim',
+                         ephem='DE430', timing_package='pint')

@@ -59,14 +59,15 @@ def get_noise_from_pal2(noisefile):
 
 class TestLikelihood(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        self.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
-                            datadir + '/B1855+09_NANOGrav_9yv1.tim'),
-                     Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
-                            datadir + '/J1909-3744_NANOGrav_9yv1.tim')]
+        cls.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                           datadir + '/B1855+09_NANOGrav_9yv1.tim'),
+                    Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
+                           datadir + '/J1909-3744_NANOGrav_9yv1.tim')]
 
     def compute_like(self, npsrs=1, inc_corr=False):
 
@@ -251,3 +252,18 @@ class TestLikelihood(unittest.TestCase):
         l1 = pta1.get_lnlikelihood(params)
         l2 = pta2.get_lnlikelihood(params)
         assert np.allclose(l1, l2), msg
+
+
+class TestLikelihoodPint(TestLikelihood):
+
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                           datadir + '/B1855+09_NANOGrav_9yv1.tim',
+                           ephem='DE430', timing_package='pint'),
+                    Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
+                           datadir + '/J1909-3744_NANOGrav_9yv1.tim',
+                           ephem='DE430', timing_package='pint')]

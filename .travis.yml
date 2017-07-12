@@ -27,7 +27,7 @@ install:
     - pip install libstempo --install-option="--with-tempo2=$TEMPO2"
 
 script:
-    - coverage run --source enterprise setup.py test
+    - make test
     - make lint
 
 after_success:

@@ -19,12 +19,13 @@ import cPickle as pickle
 
 class TestPulsar(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
-                          datadir + '/B1855+09_NANOGrav_9yv1.tim')
+        cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                         datadir + '/B1855+09_NANOGrav_9yv1.tim')
 
     def test_residuals(self):
         """Check Residual shape."""
@@ -103,3 +104,15 @@ class TestPulsar(unittest.TestCase):
 
             msg = 'Cannot find parfile wrong.par or timfile wrong.tim!'
             self.assertTrue(msg in context.exception)
+
+
+class TestPulsarPint(TestPulsar):
+
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                         datadir + '/B1855+09_NANOGrav_9yv1.tim',
+                         ephem='DE430', timing_package='pint')
