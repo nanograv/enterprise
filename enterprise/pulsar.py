@@ -401,8 +401,7 @@ def Pulsar(*args, **kwargs):
 
         # Obtain the directory name of the timfile, and change to it
         timfiletup = os.path.split(timfile[0])
-        #dirname = timfiletup[0] or './'
-        dirname = timfiletup[0]
+        dirname = timfiletup[0] or './'
         reltimfile = timfiletup[-1]
         relparfile = os.path.relpath(parfile[0], dirname)
 
