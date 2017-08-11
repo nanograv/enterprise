@@ -54,7 +54,7 @@ class Prior(object):
 
             # A bounded Gaussian prior to ensure that eccentrity is in [0, 1]
             mean, std, low, up = 0.9, 0.1, 0.0, 1.0
-            model.ecc.prior = Prior(GaussinaBoundedRV(loc=mean, scale=std,
+            model.ecc.prior = Prior(GaussianBoundedRV(loc=mean, scale=std,
                                                       lower=low, upper=up))
 
         .. _rv_continuous: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.rv_continuous.html#scipy.stats.rv_continuous

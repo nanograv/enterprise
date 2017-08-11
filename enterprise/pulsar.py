@@ -22,10 +22,15 @@ except ImportError:
     print('ERROR: Must have libstempo package installed!')
     t2 = None
 
-import pint.toa as toa
-import pint.models.model_builder as mb
-from pint.models import TimingModel
-from pint.residuals import resids
+try:
+    import pint.toa as toa
+    import pint.models.model_builder as mb
+    from pint.models import TimingModel
+    from pint.residuals import resids
+except ImportError:
+    print('No PINT? Meh...')
+    pint = None
+
 import astropy.units as u
 
 
@@ -379,15 +384,18 @@ def Pulsar(*args, **kwargs):
     drop_t2pulsar = kwargs.get('drop_t2pulsar', True)
     timing_package = kwargs.get('timing_package', 'tempo2')
 
-    toas = filter(lambda x: isinstance(x, toa.TOAs), args)
-    model = filter(lambda x: isinstance(x, TimingModel), args)
-    t2pulsar = filter(lambda x: isinstance(x, t2.tempopulsar), args)
-    parfile = filter(lambda x: isinstance(x, str) and
-                     x.split('.')[-1] == 'par', args)
-    timfile = filter(lambda x: isinstance(x, str) and
-                     x.split('.')[-1] in ['tim', 'toa'], args)
+    if pint:
+        toas     = list(filter(lambda x: isinstance(x, toa.TOAs), args))
+        model    = list(filter(lambda x: isinstance(x, TimingModel), args))
 
-    if toas and model:
+    t2pulsar = list(filter(lambda x: isinstance(x, t2.tempopulsar), args))
+    
+    parfile  = list(filter(lambda x: isinstance(x, str) and
+                           x.split('.')[-1] == 'par', args))
+    timfile  = list(filter(lambda x: isinstance(x, str) and
+                           x.split('.')[-1] in ['tim', 'toa'], args))
+
+    if pint and toas and model:
         return PintPulsar(toas[0], model[0], sort=sort, planets=planets)
     elif t2pulsar:
         return Tempo2Pulsar(t2pulsar, sort=sort, drop_t2pulsar=drop_t2pulsar,

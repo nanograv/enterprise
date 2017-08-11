@@ -40,8 +40,8 @@ def BasisGP(priorFunction, basisFunction,
                 pname = '_'.join([n for n in pnames if n])
                 self._prior[key] = priorfn(pname, psr=psr)
                 self._bases[key] = basisfn(pname, psr=psr)
-                params = sum([self._prior[key]._params.values(),
-                              self._bases[key]._params.values()],[])
+                params = sum([list(self._prior[key]._params.values()),
+                              list(self._bases[key]._params.values())],[])
                 for param in params:
                     self._params[param.name] = param
 
@@ -92,7 +92,7 @@ def BasisGP(priorFunction, basisFunction,
 def FourierBasisGP(spectrum, components=20,
                    selection=Selection(selections.no_selection),
                    Tspan=None):
-    """Convienience function to return a BasisGP class with a
+    """Convenience function to return a BasisGP class with a
     fourier basis."""
 
     basis = utils.createfourierdesignmatrix_red(nmodes=components, Tspan=Tspan)
@@ -176,8 +176,8 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, name='common'):
         def __init__(self, psr):
 
             self._bases = basisFunction(psr.name+name, psr=psr)
-            params = sum([BasisCommonGP._prior._params.values(),
-                          BasisCommonGP._orf._params.values(),
+            params = sum([list(BasisCommonGP._prior._params.values()),
+                          list(BasisCommonGP._orf._params.values()),
                           self._bases._params.values()], [])
             self._params = {}
             for param in params:
