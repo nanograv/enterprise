@@ -16,7 +16,6 @@ from tests.enterprise_test_data import datadir
 from enterprise.pulsar import Pulsar
 from enterprise.signals import parameter
 from enterprise.signals import selections
-from enterprise.signals.signal_base import Function
 from enterprise.signals.selections import Selection
 import enterprise.signals.gp_signals as gs
 from enterprise.signals import utils
@@ -24,12 +23,13 @@ from enterprise.signals import utils
 
 class TestGPSignals(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
-                          datadir + '/B1855+09_NANOGrav_9yv1.tim')
+        cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                         datadir + '/B1855+09_NANOGrav_9yv1.tim')
 
     def test_ecorr(self):
         """Test that ecorr signal returns correct values."""
@@ -112,8 +112,8 @@ class TestGPSignals(unittest.TestCase):
     def test_fourier_red_noise(self):
         """Test that red noise signal returns correct values."""
         # set up signal parameter
-        pl = Function(utils.powerlaw, log10_A=parameter.Uniform(-18,-12),
-                      gamma=parameter.Uniform(1,7))
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
+                            gamma=parameter.Uniform(1,7))
         rn = gs.FourierBasisGP(spectrum=pl, components=30)
         rnm = rn(self.psr)
 
@@ -144,8 +144,8 @@ class TestGPSignals(unittest.TestCase):
     def test_fourier_red_noise_backend(self):
         """Test that red noise-backend signal returns correct values."""
         # set up signal parameter
-        pl = Function(utils.powerlaw, log10_A=parameter.Uniform(-18,-12),
-                      gamma=parameter.Uniform(1,7))
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
+                            gamma=parameter.Uniform(1,7))
         selection = Selection(selections.by_backend)
         rn = gs.FourierBasisGP(spectrum=pl, components=30, selection=selection)
         rnm = rn(self.psr)
@@ -201,11 +201,10 @@ class TestGPSignals(unittest.TestCase):
     def test_red_noise_add(self):
         """Test that red noise addition only returns independent columns."""
         # set up signals
-        pl = Function(utils.powerlaw, log10_A=parameter.Uniform(-18,-12),
-                      gamma=parameter.Uniform(1,7))
-        cpl = Function(utils.powerlaw,
-                       log10_A=parameter.Uniform(-18,-12)('log10_Agw'),
-                       gamma=parameter.Uniform(1,7)('gamma_gw'))
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
+                            gamma=parameter.Uniform(1,7))
+        cpl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12)('log10_Agw'),
+                             gamma=parameter.Uniform(1,7)('gamma_gw'))
 
         # parameters
         log10_A, gamma = -14.5, 4.33
@@ -263,12 +262,11 @@ class TestGPSignals(unittest.TestCase):
         """Test that red noise with backend addition only returns
         independent columns."""
         # set up signals
-        pl = Function(utils.powerlaw, log10_A=parameter.Uniform(-18,-12),
-                      gamma=parameter.Uniform(1,7))
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
+                            gamma=parameter.Uniform(1,7))
         selection = Selection(selections.by_backend)
-        cpl = Function(utils.powerlaw,
-                       log10_A=parameter.Uniform(-18,-12)('log10_Agw'),
-                       gamma=parameter.Uniform(1,7)('gamma_gw'))
+        cpl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12)('log10_Agw'),
+                             gamma=parameter.Uniform(1,7)('gamma_gw'))
 
         # parameters
         log10_As = [-14, -14.4, -15, -14.8]
@@ -367,14 +365,14 @@ class TestGPSignals(unittest.TestCase):
     def test_gp_parameter(self):
         """Test GP basis model with parameterized basis."""
 
-        pl = Function(utils.powerlaw, log10_A=parameter.Uniform(-18,-12),
-                      gamma=parameter.Uniform(0, 7))
-        basis_env = Function(utils.createfourierdesignmatrix_env,
-                             log10_Amp=parameter.Uniform(-10, -5),
-                             t0=parameter.Uniform(4.3e9, 5e9),
-                             log10_Q=parameter.Uniform(0,4))
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
+                            gamma=parameter.Uniform(0, 7))
+        basis_env = utils.createfourierdesignmatrix_env(
+            log10_Amp=parameter.Uniform(-10, -5),
+            t0=parameter.Uniform(4.3e9, 5e9),
+            log10_Q=parameter.Uniform(0,4))
 
-        basis_red = Function(utils.createfourierdesignmatrix_red)
+        basis_red = utils.createfourierdesignmatrix_red()
 
         rn_env = gs.BasisGP(pl, basis_env, name='env')
         rn = gs.BasisGP(pl, basis_red)
@@ -428,8 +426,8 @@ class TestGPSignals(unittest.TestCase):
         ecorr = parameter.Uniform(-10, -5)
         ec = gs.EcorrBasisModel(log10_ecorr=ecorr)
 
-        pl = Function(utils.powerlaw, log10_A=parameter.Uniform(-18,-12),
-                      gamma=parameter.Uniform(1,7))
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
+                            gamma=parameter.Uniform(1,7))
         rn = gs.FourierBasisGP(spectrum=pl, components=30)
         ts = gs.TimingModel()
         s = ec + rn + ts
@@ -472,3 +470,15 @@ class TestGPSignals(unittest.TestCase):
         # test shape
         msg = 'Basis matrix shape incorrect size for combined signal.'
         assert m.get_basis(params).shape == T.shape, msg
+
+
+class TestGPSignalsPint(TestGPSignals):
+
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                         datadir + '/B1855+09_NANOGrav_9yv1.tim',
+                         ephem='DE430', timing_package='pint')

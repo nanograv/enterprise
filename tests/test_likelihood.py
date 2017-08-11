@@ -49,7 +49,7 @@ def get_noise_from_pal2(noisefile):
         else:
             break
         if flag:
-            name = [psrname, par, flag]
+            name = [psrname, flag, par]
         else:
             name = [psrname, par]
         pname = '_'.join(name)
@@ -59,14 +59,15 @@ def get_noise_from_pal2(noisefile):
 
 class TestLikelihood(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        self.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
-                            datadir + '/B1855+09_NANOGrav_9yv1.tim'),
-                     Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
-                            datadir + '/J1909-3744_NANOGrav_9yv1.tim')]
+        cls.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                           datadir + '/B1855+09_NANOGrav_9yv1.tim'),
+                    Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
+                           datadir + '/J1909-3744_NANOGrav_9yv1.tim')]
 
     def compute_like(self, npsrs=1, inc_corr=False):
 
@@ -101,10 +102,10 @@ class TestLikelihood(unittest.TestCase):
         ec = white_signals.EcorrKernelNoise(log10_ecorr=ecorr,
                                             selection=selection)
 
-        pl = signal_base.Function(utils.powerlaw, log10_A=log10_A, gamma=gamma)
+        pl = utils.powerlaw(log10_A=log10_A, gamma=gamma)
         rn = gp_signals.FourierBasisGP(pl)
 
-        orf = signal_base.Function(utils.hd_orf)
+        orf = utils.hd_orf()
         crn = gp_signals.FourierBasisCommonGP(pl, orf, components=20,
                                               name='GW', Tspan=Tspan)
 
@@ -230,3 +231,39 @@ class TestLikelihood(unittest.TestCase):
     def test_like_corr(self):
         """Test likelihood with spatial correlations."""
         self.compute_like(npsrs=2, inc_corr=True)
+
+    def test_compare_ecorr_likelihood(self):
+        """Compare basis and kernel ecorr methods."""
+
+        selection = Selection(selections.nanograv_backends)
+        ef = white_signals.MeasurementNoise()
+        ec = white_signals.EcorrKernelNoise(selection=selection)
+        ec2 = gp_signals.EcorrBasisModel(selection=selection)
+        tm = gp_signals.TimingModel()
+        m = ef + ec + tm
+        m2 = ef + ec2 + tm
+
+        pta1 = signal_base.PTA([m(p) for p in self.psrs])
+        pta2 = signal_base.PTA([m2(p) for p in self.psrs])
+
+        params = {p.name: p.sample()[0] for p in pta1.params}
+
+        msg = 'Likelihood mismatch between ECORR methods'
+        l1 = pta1.get_lnlikelihood(params)
+        l2 = pta2.get_lnlikelihood(params)
+        assert np.allclose(l1, l2), msg
+
+
+class TestLikelihoodPint(TestLikelihood):
+
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                           datadir + '/B1855+09_NANOGrav_9yv1.tim',
+                           ephem='DE430', timing_package='pint'),
+                    Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
+                           datadir + '/J1909-3744_NANOGrav_9yv1.tim',
+                           ephem='DE430', timing_package='pint')]

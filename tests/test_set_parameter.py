@@ -49,7 +49,7 @@ def get_noise_from_pal2(noisefile):
         else:
             break
         if flag:
-            name = [psrname, par, flag]
+            name = [psrname, flag, par]
         else:
             name = [psrname, par]
         pname = '_'.join(name)
@@ -59,14 +59,15 @@ def get_noise_from_pal2(noisefile):
 
 class TestSetParameters(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        self.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
-                            datadir + '/B1855+09_NANOGrav_9yv1.tim'),
-                     Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
-                            datadir + '/J1909-3744_NANOGrav_9yv1.tim')]
+        cls.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                           datadir + '/B1855+09_NANOGrav_9yv1.tim'),
+                    Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
+                           datadir + '/J1909-3744_NANOGrav_9yv1.tim')]
 
     def test_single_pulsar(self):
 
@@ -305,3 +306,18 @@ class TestSetParameters(unittest.TestCase):
             # inverse spectrum test
             msg = 'Spectrum inverse incorrect for GP Fourier signal.'
             assert np.all(pphiinv == 1/phi), msg
+
+
+class TestSetParametersPint(TestSetParameters):
+
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                           datadir + '/B1855+09_NANOGrav_9yv1.tim',
+                           ephem='DE430', timing_package='pint'),
+                    Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
+                           datadir + '/J1909-3744_NANOGrav_9yv1.tim',
+                           ephem='DE430', timing_package='pint')]

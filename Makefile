@@ -52,7 +52,7 @@ lint: ## check style with flake8
 
 test: ## run tests quickly with the default Python
 
-		pytest -v --full-trace --ignore tests/test_pulsar.py --cov-config .coveragerc --cov=enterprise tests
+		pytest -v --full-trace --cov-config .coveragerc --cov=enterprise tests
 
 test-all: ## run tests on every Python version with tox
 	tox
@@ -65,9 +65,14 @@ coverage: ## check code coverage quickly with the default Python
 		coverage html
 		$(BROWSER) htmlcov/index.html
 
+jupyter-docs:
+	jupyter nbconvert --template docs/nb-rst.tpl --to rst docs/_static/notebooks/*.ipynb --output-dir docs/
+	#jupyter nbconvert --template docs/nb-rst.tpl --to rst docs/_static/notebooks/tutorials/*.ipynb --output-dir docs/tutorials/
+
 docs: ## generate Sphinx HTML documentation, including API docs
 	rm -f docs/enterprise*.rst
 	rm -f docs/modules.rst
+	rm -rf docs/_build
 	sphinx-apidoc -o docs/ -M enterprise
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html

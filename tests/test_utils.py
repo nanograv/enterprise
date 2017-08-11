@@ -18,23 +18,24 @@ import enterprise.constants as const
 
 class TestUtils(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
-                          datadir + '/B1855+09_NANOGrav_9yv1.tim')
-        self.F, _ = utils.createfourierdesignmatrix_red(
-            self.psr.toas, nmodes=30)
-        self.Fdm, _ = utils.createfourierdesignmatrix_dm(
-            self.psr.toas,freqs=self.psr.freqs, nmodes=30)
-        tmp = utils.createfourierdesignmatrix_eph(t=self.psr.toas,
-                                                  phi=self.psr.phi,
-                                                  theta=self.psr.theta,
+        cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                         datadir + '/B1855+09_NANOGrav_9yv1.tim')
+        cls.F, _ = utils.createfourierdesignmatrix_red(
+            cls.psr.toas, nmodes=30)
+        cls.Fdm, _ = utils.createfourierdesignmatrix_dm(
+            cls.psr.toas,freqs=cls.psr.freqs, nmodes=30)
+        tmp = utils.createfourierdesignmatrix_eph(t=cls.psr.toas,
+                                                  phi=cls.psr.phi,
+                                                  theta=cls.psr.theta,
                                                   nmodes=30)
-        self.Fx, self.Fy, self.Fz = tmp
+        cls.Fx, cls.Fy, cls.Fz = tmp
 
-        self.Mm = utils.create_stabletimingdesignmatrix(self.psr.Mmat)
+        cls.Mm = utils.create_stabletimingdesignmatrix(cls.psr.Mmat)
 
     def test_createstabletimingdesignmatrix(self):
         """Timing model design matrix shape."""

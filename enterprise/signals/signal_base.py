@@ -8,12 +8,12 @@ from __future__ import (absolute_import, division,
 
 import collections
 import itertools
-# import logging
+import inspect
+import functools
 
 import six
 
 import numpy as np
-# import scipy
 import scipy.sparse as sps
 import scipy.linalg as sl
 
@@ -708,7 +708,42 @@ def Function(func, name='', **func_kwargs):
     return Function
 
 
-def cache_call(attrs, limit=10):
+def get_funcargs(func):
+    """Convienience function to get args and kwargs of any function."""
+    argspec = inspect.getargspec(func)
+    if argspec.defaults is None:
+        args = argspec.args
+        kwargs = []
+    else:
+        args = argspec.args[:(len(argspec.args)-len(argspec.defaults))]
+        kwargs = argspec.args[-len(argspec.defaults):]
+
+    return args, kwargs
+
+
+def function(func):
+    """Decorator for Function."""
+
+    funcargs, _ = get_funcargs(func)
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        fargs = {funcargs[ct]: val for ct, val in
+                 enumerate(args[:len(funcargs)])}
+        fargs.update(kwargs)
+        if not np.all([fa in fargs.keys() for fa in funcargs]):
+            return Function(func, **kwargs)
+        for kw, arg in kwargs.items():
+            if ((isinstance(arg, type) and issubclass(
+                arg, (Parameter, ConstantParameter))) or isinstance(
+                    arg, (Parameter, ConstantParameter))):
+                return Function(func, **kwargs)
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+def cache_call(attrs, limit=2):
     """Cache function that allows for subsets of parameters to be keyed."""
 
     # convert to list of lists if only one attribute used
@@ -814,6 +849,13 @@ class BlockMatrix(object):
         self._slices = slices
         self._nvec = nvec
 
+        if np.any(nvec != 0):
+            s1 = set(np.arange(len(nvec)))
+            s2 = set(np.concatenate([np.arange(len(nvec))[slc]
+                                     for slc in slices]))
+            sd = s1.difference(s2)
+            self._idx = np.array([s for s in sd])
+
     def __add__(self, other):
         nvec = self._nvec + other
         return BlockMatrix(self._blocks, self._slices, nvec)
@@ -836,6 +878,11 @@ class BlockMatrix(object):
 
         n, m = Z.shape[1], X.shape[1]
         ZNX = np.zeros((n, m))
+        if len(self._idx) > 0:
+            ZNXr = np.dot(Z[self._idx,:].T, X[self._idx,:] /
+                          self._nvec[self._idx, None])
+        else:
+            ZNXr = 0
         for slc, block in zip(self._slices, self._blocks):
             Zblock = Z[slc, :]
             Xblock = X[slc, :]
@@ -846,6 +893,7 @@ class BlockMatrix(object):
             else:
                 bx = Xblock / self._nvec[slc][:, None]
             ZNX += np.dot(Zblock.T, bx)
+        ZNX += ZNXr
         return ZNX.squeeze() if len(ZNX) > 1 else float(ZNX)
 
     def _solve_NX(self, X):
@@ -855,22 +903,22 @@ class BlockMatrix(object):
         if X.ndim == 1:
             X = X.reshape(X.shape[0], 1)
 
-        m = X.shape[1]
-        NX = np.zeros((len(self._nvec), m))
+        NX = X / self._nvec[:,None]
         for slc, block in zip(self._slices, self._blocks):
             Xblock = X[slc, :]
             if slc.stop - slc.start > 1:
                 cf = sl.cho_factor(block+np.diag(self._nvec[slc]))
                 NX[slc] = sl.cho_solve(cf, Xblock)
-            else:
-                NX[slc] = Xblock / self._nvec[slc][:, None]
         return NX.squeeze()
 
     def _get_logdet(self):
         """Returns log determinant of :math:`N+UJU^{T}` where :math:`U`
         is a quantization matrix.
         """
-        logdet = 0
+        if len(self._idx) > 0:
+            logdet = np.sum(np.log(self._nvec[self._idx]))
+        else:
+            logdet = 0
         for slc, block in zip(self._slices, self._blocks):
             if slc.stop - slc.start > 1:
                 cf = sl.cho_factor(block+np.diag(self._nvec[slc]))

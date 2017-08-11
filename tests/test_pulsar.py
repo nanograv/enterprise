@@ -19,12 +19,13 @@ import cPickle as pickle
 
 class TestPulsar(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        self.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
-                          datadir + '/B1855+09_NANOGrav_9yv1.tim')
+        cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                         datadir + '/B1855+09_NANOGrav_9yv1.tim')
 
     def test_residuals(self):
         """Check Residual shape."""
@@ -68,7 +69,8 @@ class TestPulsar(unittest.TestCase):
         sky = (1.4023093811712661, 4.9533700839400492)
 
         msg = 'Incorrect sky location'
-        assert (self.psr.theta, self.psr.phi) == sky, msg
+        assert np.allclose(self.psr.theta, sky[0]), msg
+        assert np.allclose(self.psr.phi, sky[1]), msg
 
     def test_design_matrix(self):
         """Check design matrix shape."""
@@ -102,3 +104,15 @@ class TestPulsar(unittest.TestCase):
 
             msg = 'Cannot find parfile wrong.par or timfile wrong.tim!'
             self.assertTrue(msg in context.exception)
+
+
+class TestPulsarPint(TestPulsar):
+
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
+                         datadir + '/B1855+09_NANOGrav_9yv1.tim',
+                         ephem='DE430', timing_package='pint')
