@@ -146,20 +146,11 @@ class TestPTASignals(unittest.TestCase):
 
         span = np.max(self.psrs[0].toas) - np.min(self.psrs[0].toas)
 
-<<<<<<< HEAD
-        pl = signal_base.Function(utils.powerlaw,
-                                  log10_A=parameter.Uniform(-16,-13),
-                                  gamma=parameter.Uniform(1,7))
-
-        orf = signal_base.Function(hd_orf)
-        vrf = signal_base.Function(vec_orf)
-=======
         pl = utils.powerlaw(log10_A=parameter.Uniform(-16,-13),
                             gamma=parameter.Uniform(1,7))
 
         orf = hd_orf()
         vrf = vec_orf()
->>>>>>> 733170aa260e0ad5736cbdb759c7fd31cd9cc85f
 
         rn = gp_signals.FourierBasisGP(spectrum=pl,
                                        components=30, Tspan=span)
