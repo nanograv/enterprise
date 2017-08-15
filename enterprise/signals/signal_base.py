@@ -525,7 +525,7 @@ def SignalCollection(metasignals):
                     self.white_params.extend(signal.ndiag_params)
                 elif signal.signal_type in ['basis', 'common basis']:
                     self.basis_params.extend(signal.basis_params)
-                elif signal.signal_type == 'delay':
+                elif signal.signal_type == 'deterministic':
                     self.delay_params.extend(signal.delay_params)
 
         # a candidate for memoization
