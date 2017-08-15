@@ -423,7 +423,7 @@ def Pulsar(*args, **kwargs):
         elif timing_package.lower() == 'tempo2':
 
             # hack to set maxobs
-            maxobs = get_maxobs(reltimfile)
+            maxobs = get_maxobs(reltimfile) + 100
             t2pulsar = t2.tempopulsar(relparfile, reltimfile,
                                       maxobs=maxobs, ephem=ephem)
             os.chdir(cwd)
