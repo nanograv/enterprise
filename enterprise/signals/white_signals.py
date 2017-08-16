@@ -16,6 +16,16 @@ from enterprise.signals import selections
 from enterprise.signals.selections import Selection
 
 
+def WhiteNoise(varianceFunction,
+               selection=Selection(selections.no_selection),
+               name=''):
+    """ Class factory for generic white noise signals."""
+
+    class WhiteNoise(base.Signal):
+        signal_type = 'white noise'
+        signal_name = name
+
+
 def MeasurementNoise(efac=parameter.Uniform(0.5,1.5),
                      selection=Selection(selections.no_selection)):
     """Class factory for EFAC type measurement noise."""
