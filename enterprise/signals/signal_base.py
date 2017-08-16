@@ -157,8 +157,11 @@ class MarginalizedLogLikelihood(object):
             for TNr, TNT, (phiinv, logdet_phi) in zip(TNrs, TNTs, phiinvs):
                 Sigma = TNT + np.diag(phiinv)
 
-                cf = sl.cho_factor(Sigma)
-                expval = sl.cho_solve(cf, TNr)
+                try:
+                    cf = sl.cho_factor(Sigma)
+                    expval = sl.cho_solve(cf, TNr)
+                except:
+                    return -np.inf
 
                 logdet_sigma = np.sum(2 * np.log(np.diag(cf[0])))
 
