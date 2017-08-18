@@ -76,7 +76,7 @@ def MeasurementNoise(efac=parameter.Uniform(0.5,1.5),
     return MeasurementNoise
 
 
-@base.functions
+@base.function
 def equad_ndiag(toas, log10_equad=-8):
     return np.ones_like(toas) * 10**(2*log10_equad)
 
