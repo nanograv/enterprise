@@ -25,19 +25,22 @@ def WhiteNoise(varianceFunction,
         signal_type = 'white noise'
         signal_name = name
 
-
-def MeasurementNoise(efac=parameter.Uniform(0.5,1.5),
-                     selection=Selection(selections.no_selection)):
-    """Class factory for EFAC type measurement noise."""
-
-    class MeasurementNoise(base.Signal):
-        signal_type = 'white noise'
-        signal_name = 'efac'
-
         def __init__(self, psr):
 
+            self._do_selection(psr, varianceFunction, selection)
+
+        def _do_selection(self, psr, vfn, selection):
+
             sel = selection(psr)
-            self._params, self._ndiag = sel('efac', efac, psr.toaerrs**2)
+            self._keys = list(sorted(sel.masks.keys()))
+            self._masks = [sel.masks[key] for key in self._keys]
+            self._ndiag, self._params = {}, {}
+            for key, mask in zip(self._keys, self._masks):
+                pnames = [psr.name, name, key]
+                pname = '_'.join([n for n in pnames if n])
+                self._ndiag[key] = vfn(pname, psr=psr)
+                for param in list(self._ndiag[key]._params.values()):
+                    self._params[param.name] = param
 
         @property
         def ndiag_params(self):
@@ -46,39 +49,48 @@ def MeasurementNoise(efac=parameter.Uniform(0.5,1.5),
 
         @base.cache_call('ndiag_params')
         def get_ndiag(self, params):
-            ret = base.ndarray_alt(np.sum(
-                [self.get(p, params)**2*self._ndiag[p]
-                 for p in self._params], axis=0))
-            return ret
+            ret = 0
+            for key, mask in zip(self._keys, self._masks):
+                ret += self._ndiag[key](params=params) * mask
+            return base.ndarray_alt(ret)
+
+    return WhiteNoise
+
+
+@base.function
+def efac_ndiag(toaerrs, efac=1.0):
+    return efac**2 * toaerrs**2
+
+
+def MeasurementNoise(efac=parameter.Uniform(0.5,1.5),
+                     selection=Selection(selections.no_selection)):
+    """Class factory for EFAC type measurement noise."""
+
+    varianceFunction = efac_ndiag(efac=efac)
+    BaseClass = WhiteNoise(varianceFunction, selection=selection)
+
+    class MeasurementNoise(BaseClass):
+        signal_type = 'white_noise'
+        signal_name = 'efac'
 
     return MeasurementNoise
+
+
+@base.functions
+def equad_ndiag(toas, log10_equad=-8):
+    return np.ones_like(toas) * 10**(2*log10_equad)
 
 
 def EquadNoise(log10_equad=parameter.Uniform(-10,-5),
                selection=Selection(selections.no_selection)):
     """Class factory for EQUAD type measurement noise."""
 
-    class EquadNoise(base.Signal):
-        signal_type = 'white noise'
+    varianceFunction = equad_ndiag(log10_equad=log10_equad)
+    BaseClass = WhiteNoise(varianceFunction, selection=selection)
+
+    class EquadNoise(BaseClass):
+        signal_type = 'white_noise'
         signal_name = 'equad'
-
-        def __init__(self,psr):
-
-            sel = selection(psr)
-            self._params, self._ndiag = sel('log10_equad', log10_equad,
-                                            np.ones_like(psr.toaerrs))
-
-        @property
-        def ndiag_params(self):
-            """Get any varying ndiag parameters."""
-            return [pp.name for pp in self.params]
-
-        @base.cache_call('ndiag_params')
-        def get_ndiag(self, params):
-            ret = base.ndarray_alt(np.sum(
-                [10**(2*self.get(p, params))*self._ndiag[p]
-                 for p in self._params], axis=0))
-            return ret
 
     return EquadNoise
 
