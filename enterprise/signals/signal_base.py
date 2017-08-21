@@ -530,6 +530,11 @@ def SignalCollection(metasignals):
                     self.basis_params.extend(signal.basis_params)
                 elif signal.signal_type == 'deterministic':
                     self.delay_params.extend(signal.delay_params)
+                else:
+                    msg = '{} signal type not recognized! Caching '.format(
+                        signal.signal_type)
+                    msg += 'may not work correctly for this signal.'
+                    logger.error(msg)
 
         # a candidate for memoization
         @property
