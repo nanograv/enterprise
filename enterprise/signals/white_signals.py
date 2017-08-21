@@ -70,7 +70,7 @@ def MeasurementNoise(efac=parameter.Uniform(0.5,1.5),
     BaseClass = WhiteNoise(varianceFunction, selection=selection)
 
     class MeasurementNoise(BaseClass):
-        signal_type = 'white_noise'
+        signal_type = 'white noise'
         signal_name = 'efac'
 
     return MeasurementNoise
@@ -89,7 +89,7 @@ def EquadNoise(log10_equad=parameter.Uniform(-10,-5),
     BaseClass = WhiteNoise(varianceFunction, selection=selection)
 
     class EquadNoise(BaseClass):
-        signal_type = 'white_noise'
+        signal_type = 'white noise'
         signal_name = 'equad'
 
     return EquadNoise
