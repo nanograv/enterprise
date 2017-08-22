@@ -44,6 +44,10 @@ class Parameter(object):
 
         return s
 
+    @property
+    def size(self):
+        return self._size
+
     # this trick lets us pass an instantiated parameter to a signal;
     # the parameter will refuse to be renamed and will return itself
     def __call__(self, name):
