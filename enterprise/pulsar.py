@@ -23,6 +23,7 @@ except ImportError:
     t2 = None
 
 try:
+    import pint
     import pint.toa as toa
     import pint.models.model_builder as mb
     from pint.models import TimingModel
