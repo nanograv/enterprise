@@ -29,13 +29,13 @@ class Parameter(object):
     def sample(self, n=1, random_state=None):
         if self._size is None:
             s = self._prior.sample(n, random_state)
-            
             if n == 1:
                 s = float(s)
         else:
             if random_state is None:
                 if n > 1:
-                    s = self._prior.sample(n * self._size).reshape((n,self._size))
+                    s = self._prior.sample(n * self._size).reshape(
+                        (n,self._size))
                 else:
                     s = self._prior.sample(self._size)
             else:
@@ -43,6 +43,10 @@ class Parameter(object):
                     "Currently cannot handle random_state when size > 1")
 
         return s
+
+    @property
+    def size(self):
+        return self._size
 
     # this trick lets us pass an instantiated parameter to a signal;
     # the parameter will refuse to be renamed and will return itself
@@ -113,5 +117,5 @@ def Normal(mu=0, sigma=1, size=None):
 def Constant(val=None):
     class Constant(ConstantParameter):
         value = val
-    
+
     return Constant

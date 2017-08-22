@@ -123,7 +123,8 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
 
     # compute the DM-variation vectors
     # TODO: should we use a different normalization
-    Dm = 1.0/(const.DM_K * freqs**2 * 1e12)
+    #Dm = 1.0/(const.DM_K * freqs**2 * 1e12)
+    Dm = (1400/freqs)**2
 
     return F * Dm[:, None], Ffreqs
 

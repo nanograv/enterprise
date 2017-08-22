@@ -64,6 +64,17 @@ class Signal(object):
         return [par for par in self._params.values() if not
                 isinstance(par, ConstantParameter)]
 
+    @property
+    def param_names(self):
+        ret = []
+        for p in self.params:
+            if p.size > 1:
+                for ii in range(0, p.size):
+                    ret.append(p.name+'_{}'.format(ii))
+            else:
+                ret.append(p.name)
+        return ret
+
     def get(self, parname, params={}):
         try:
             return params[self._params[parname].name]
@@ -157,8 +168,11 @@ class MarginalizedLogLikelihood(object):
             for TNr, TNT, (phiinv, logdet_phi) in zip(TNrs, TNTs, phiinvs):
                 Sigma = TNT + np.diag(phiinv)
 
-                cf = sl.cho_factor(Sigma)
-                expval = sl.cho_solve(cf, TNr)
+                try:
+                    cf = sl.cho_factor(Sigma)
+                    expval = sl.cho_solve(cf, TNr)
+                except:
+                    return -np.inf
 
                 logdet_sigma = np.sum(2 * np.log(np.diag(cf[0])))
 
@@ -190,6 +204,17 @@ class PTA(object):
         return sorted({par for signalcollection in self._signalcollections for
                        par in signalcollection.params},
                       key=lambda par: par.name)
+
+    @property
+    def param_names(self):
+        ret = []
+        for p in self.params:
+            if p.size > 1:
+                for ii in range(0, p.size):
+                    ret.append(p.name+'_{}'.format(ii))
+            else:
+                ret.append(p.name)
+        return ret
 
     def get_TNr(self, params):
         return [signalcollection.get_TNr(params) for signalcollection
@@ -485,7 +510,13 @@ class PTA(object):
             return phivecs
 
     def map_params(self, xs):
-        return {par.name: x for par, x in zip(self.params, xs)}
+        ret = {}
+        ct = 0
+        for p in self.params:
+            n = p.size if p.size else 1
+            ret[p.name] = xs[ct:ct+n] if n > 1 else float(xs[ct])
+            ct += n
+        return ret
 
     def get_lnprior(self, xs):
         # map parameter vector if needed
@@ -525,14 +556,30 @@ def SignalCollection(metasignals):
                     self.white_params.extend(signal.ndiag_params)
                 elif signal.signal_type in ['basis', 'common basis']:
                     self.basis_params.extend(signal.basis_params)
-                elif signal.signal_type == 'delay':
+                elif signal.signal_type == 'deterministic':
                     self.delay_params.extend(signal.delay_params)
+                else:
+                    msg = '{} signal type not recognized! Caching '.format(
+                        signal.signal_type)
+                    msg += 'may not work correctly for this signal.'
+                    logger.error(msg)
 
         # a candidate for memoization
         @property
         def params(self):
             return sorted({param for signal in self._signals for param
                            in signal.params}, key=lambda par: par.name)
+
+        @property
+        def param_names(self):
+            ret = []
+            for p in self.params:
+                if p.size > 1:
+                    for ii in range(0, p.size):
+                        ret.append(p.name+'_{}'.format(ii))
+                else:
+                    ret.append(p.name)
+            return ret
 
         def set_default_params(self, params):
             for signal in self._signals:

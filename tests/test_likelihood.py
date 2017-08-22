@@ -246,7 +246,7 @@ class TestLikelihood(unittest.TestCase):
         pta1 = signal_base.PTA([m(p) for p in self.psrs])
         pta2 = signal_base.PTA([m2(p) for p in self.psrs])
 
-        params = {p.name: p.sample()[0] for p in pta1.params}
+        params = {p.name: p.sample() for p in pta1.params}
 
         msg = 'Likelihood mismatch between ECORR methods'
         l1 = pta1.get_lnlikelihood(params)
