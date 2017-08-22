@@ -157,8 +157,11 @@ class MarginalizedLogLikelihood(object):
             for TNr, TNT, (phiinv, logdet_phi) in zip(TNrs, TNTs, phiinvs):
                 Sigma = TNT + np.diag(phiinv)
 
-                cf = sl.cho_factor(Sigma)
-                expval = sl.cho_solve(cf, TNr)
+                try:
+                    cf = sl.cho_factor(Sigma)
+                    expval = sl.cho_solve(cf, TNr)
+                except:
+                    return -np.inf
 
                 logdet_sigma = np.sum(2 * np.log(np.diag(cf[0])))
 
@@ -525,8 +528,13 @@ def SignalCollection(metasignals):
                     self.white_params.extend(signal.ndiag_params)
                 elif signal.signal_type in ['basis', 'common basis']:
                     self.basis_params.extend(signal.basis_params)
-                elif signal.signal_type == 'delay':
+                elif signal.signal_type == 'deterministic':
                     self.delay_params.extend(signal.delay_params)
+                else:
+                    msg = '{} signal type not recognized! Caching '.format(
+                        signal.signal_type)
+                    msg += 'may not work correctly for this signal.'
+                    logger.error(msg)
 
         # a candidate for memoization
         @property
