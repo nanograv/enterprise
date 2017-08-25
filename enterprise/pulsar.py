@@ -155,7 +155,7 @@ class BasePulsar(object):
         if not os.path.exists(outdir):
             os.makedirs(outdir)
 
-        with open(outdir + '/{0}.pkl'.format(self.name), 'w') as f:
+        with open(outdir + '/{0}.pkl'.format(self.name), 'wb') as f:
             pickle.dump(self, f)
 
     @property
