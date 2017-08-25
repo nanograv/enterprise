@@ -21,7 +21,6 @@ except:
     import pickle
 
 
-
 class TestPulsar(unittest.TestCase):
 
     @classmethod
