@@ -522,7 +522,7 @@ class PTA(object):
         # map parameter vector if needed
         params = xs if isinstance(xs,dict) else self.map_params(xs)
 
-        return np.sum(p.get_logpdf(params[p.name]) for p in self.params)
+        return np.sum(p.get_logpdf(params) for p in self.params)
 
 
 def SignalCollection(metasignals):
@@ -749,14 +749,14 @@ def Function(func, name='', **func_kwargs):
         def params(self):
             # if we extract the ConstantParameter value above, we would not
             # need a special case here
-            return [par for par in self._params.values() if not
-                    isinstance(par, ConstantParameter)]
+            return sum([par.params for par in self._params.values()
+                        if not isinstance(par, ConstantParameter)], [])
 
     return Function
 
 
 def get_funcargs(func):
-    """Convienience function to get args and kwargs of any function."""
+    """Convenience function to get args and kwargs of any function."""
     argspec = inspect.getargspec(func)
     if argspec.defaults is None:
         args = argspec.args

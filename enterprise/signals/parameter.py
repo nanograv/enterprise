@@ -18,11 +18,17 @@ class Parameter(object):
     def __init__(self, name):
         self.name = name
 
-    def get_logpdf(self, value):
+    def get_logpdf(self, value=None, params={}):
+        if value is None:
+            value = params[self.name]
+
         logpdf = self._prior.logpdf(value)
         return logpdf if self._size is None else np.sum(logpdf)
 
-    def get_pdf(self, value):
+    def get_pdf(self, value=None, params={}):
+        if value is None:
+            value = params[self.name]
+
         pdf = self._prior.pdf(value)
         return pdf if self._size is None else np.prod(pdf)
 
@@ -48,10 +54,58 @@ class Parameter(object):
     def size(self):
         return self._size
 
+    @property
+    def params(self):
+        return [self]
+
     # this trick lets us pass an instantiated parameter to a signal;
     # the parameter will refuse to be renamed and will return itself
     def __call__(self, name):
         return self
+
+
+def UserParameter(prior, size=None):
+    """Class factor for UserParameter, with prior given as an Enterprise
+    function (one argument, arbitrary keyword arguments, which become
+    hyperparameters."""
+
+    class UserParameter(Parameter):
+        _size = size
+
+        def __init__(self, name):
+            super(UserParameter, self).__init__(name)
+            self.prior = prior(name)
+
+        def get_logpdf(self, value=None, **kwargs):
+            if value is None and 'params' in kwargs:
+                value = kwargs['params'][self.name]
+                del kwargs['params'][self.name]
+
+            logpdf = np.log(self.prior(value, **kwargs))
+            return logpdf if self._size is None else np.sum(logpdf)
+
+        def get_pdf(self, value=None, **kwargs):
+            if value is None and 'params' in kwargs:
+                value = kwargs['params'][self.name]
+                del kwargs['params'][self.name]
+
+            pdf = self.prior(value, **kwargs)
+            return pdf if self._size is None else np.prod(pdf)
+
+        def sample(self, *args):
+            raise NoteImplementedError(
+                "Currently cannot sample UserParameters")
+
+        @property
+        def params(self):
+            return [self] + [par for par in self.prior.params
+                             if not isinstance(par, ConstantParameter)]
+
+        def __repr__(self):
+            return '"{}":UserParameter({})'.format(self.name,
+                ','.join(param.name for param in self.params[1:]))
+
+    return UserParameter
 
 
 class ConstantParameter(object):
