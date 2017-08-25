@@ -178,7 +178,7 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, name='common'):
             self._bases = basisFunction(psr.name+name, psr=psr)
             params = sum([list(BasisCommonGP._prior._params.values()),
                           list(BasisCommonGP._orf._params.values()),
-                          self._bases._params.values()], [])
+                          list(self._bases._params.values())], [])
             self._params = {}
             for param in params:
                 self._params[param.name] = param
