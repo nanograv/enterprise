@@ -1,5 +1,6 @@
 language: python
 cache: pip
+dist: precise
 
 python:
     - "2.7"
