@@ -68,7 +68,7 @@ class Signal(object):
     def param_names(self):
         ret = []
         for p in self.params:
-            if p.size > 1:
+            if p.size:
                 for ii in range(0, p.size):
                     ret.append(p.name+'_{}'.format(ii))
             else:
@@ -209,7 +209,7 @@ class PTA(object):
     def param_names(self):
         ret = []
         for p in self.params:
-            if p.size > 1:
+            if p.size:
                 for ii in range(0, p.size):
                     ret.append(p.name+'_{}'.format(ii))
             else:
@@ -574,7 +574,7 @@ def SignalCollection(metasignals):
         def param_names(self):
             ret = []
             for p in self.params:
-                if p.size > 1:
+                if p.size:
                     for ii in range(0, p.size):
                         ret.append(p.name+'_{}'.format(ii))
                 else:
@@ -873,7 +873,7 @@ class ndarray_alt(np.ndarray):
     def __add__(self, other):
         try:
             ret = super(ndarray_alt, self).__add__(other)
-        except TypeError:
+        except:
             ret = other + self
         return ret
 

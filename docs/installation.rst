@@ -44,6 +44,8 @@ Once you have a copy of the source, you can install it with:
 
 .. code-block:: console
 
+    $ pip install -r requirements.txt
+    $ pip install git+https://github.com/vallis/libstempo.git --install-option="--with-tempo2=$TEMPO2"
     $ python setup.py install
 
 
