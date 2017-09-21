@@ -19,7 +19,7 @@ import scipy.linalg as sl
 
 from sksparse.cholmod import cholesky
 
-from enterprise.signals.parameter import ConstantParameter, Parameter
+from enterprise.signals.parameter import ConstantParameter, Parameter, Function, function
 from enterprise.signals.selections import selection_func
 
 import logging
@@ -522,7 +522,7 @@ class PTA(object):
         # map parameter vector if needed
         params = xs if isinstance(xs,dict) else self.map_params(xs)
 
-        return np.sum(p.get_logpdf(params) for p in self.params)
+        return np.sum(p.get_logpdf(params=params) for p in self.params)
 
 
 def SignalCollection(metasignals):
@@ -683,111 +683,6 @@ def SignalCollection(metasignals):
             return Nvec.solve(res, left_array=res, logdet=True)
 
     return SignalCollection
-
-
-def Function(func, name='', **func_kwargs):
-    fname = name
-
-    class Function(object):
-        def __init__(self, name, psr=None):
-            self._func = selection_func(func)
-            self._psr = psr
-
-            self._params = {}
-            self._defaults = {}
-
-            # divide keyword parameters into those that are Parameter classes,
-            # Parameter instances (useful for global parameters),
-            # and something else (which we will assume is a value)
-            for kw, arg in func_kwargs.items():
-                if isinstance(arg, type) and issubclass(
-                        arg, (Parameter, ConstantParameter)):
-                    # parameter name template
-                    # pname_[signalname_][fname_]parname
-                    pnames = [name, fname, kw]
-                    par = arg('_'.join([n for n in pnames if n]))
-                    self._params[kw] = par
-                elif isinstance(arg, (Parameter, ConstantParameter)):
-                    self._params[kw] = arg
-                else:
-                    self._defaults[kw] = arg
-
-        def __call__(self, *args, **kwargs):
-            # order of parameter resolution:
-            # - parameter given in kwargs
-            # - named sampling parameter in self._params, if given in params
-            #   or if it has a value
-            # - parameter given as constant in Function definition
-            # - default value for keyword parameter in func definition
-
-            # trick to get positional arguments before params kwarg
-            params = kwargs.get('params',{})
-            if 'params' in kwargs:
-                del kwargs['params']
-
-            for kw, arg in func_kwargs.items():
-                if kw not in kwargs and kw in self._params:
-                    par = self._params[kw]
-
-                    if par.name in params:
-                        kwargs[kw] = params[par.name]
-                    elif hasattr(par, 'value'):
-                        kwargs[kw] = par.value
-
-            for kw, arg in self._defaults.items():
-                if kw not in kwargs:
-                    kwargs[kw] = arg
-
-            if self._psr is not None and 'psr' not in kwargs:
-                kwargs['psr'] = self._psr
-            return self._func(*args, **kwargs)
-
-        def add_kwarg(self, **kwargs):
-            self._defaults.update(kwargs)
-
-        @property
-        def params(self):
-            # if we extract the ConstantParameter value above, we would not
-            # need a special case here
-            return sum([par.params for par in self._params.values()
-                        if not isinstance(par, ConstantParameter)], [])
-
-    return Function
-
-
-def get_funcargs(func):
-    """Convenience function to get args and kwargs of any function."""
-    argspec = inspect.getargspec(func)
-    if argspec.defaults is None:
-        args = argspec.args
-        kwargs = []
-    else:
-        args = argspec.args[:(len(argspec.args)-len(argspec.defaults))]
-        kwargs = argspec.args[-len(argspec.defaults):]
-
-    return args, kwargs
-
-
-def function(func):
-    """Decorator for Function."""
-
-    funcargs, _ = get_funcargs(func)
-
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        fargs = {funcargs[ct]: val for ct, val in
-                 enumerate(args[:len(funcargs)])}
-        fargs.update(kwargs)
-        if not np.all([fa in fargs.keys() for fa in funcargs]):
-            return Function(func, **kwargs)
-        for kw, arg in kwargs.items():
-            if ((isinstance(arg, type) and issubclass(
-                arg, (Parameter, ConstantParameter))) or isinstance(
-                    arg, (Parameter, ConstantParameter))):
-                return Function(func, **kwargs)
-        return func(*args, **kwargs)
-
-    return wrapper
 
 
 def cache_call(attrs, limit=2):
