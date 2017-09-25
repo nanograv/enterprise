@@ -244,12 +244,12 @@ class BasePulsar(object):
     @property
     def pos_t(self):
         """Return unit vector to pulsar as function of time."""
-        return self._pos_t
+        return self._pos_t[self._isort, :]
 
     @property
     def planetssb(self):
         """Return planetary position vectors at all timestamps"""
-        return self._planetssb
+        return self._planetssb[self._isort, :, :]
 
 
 class PintPulsar(BasePulsar):
@@ -346,7 +346,7 @@ class Tempo2Pulsar(BasePulsar):
         self._pdist = self._get_pdist()
         self._raj, self._decj = self._get_radec(t2pulsar)
         self._pos = self._get_pos()
-        self._pos_t = t2pulsar.psrPos
+        self._pos_t = t2pulsar.psrPos.copy()
         self._planetssb = self._get_planetssb()
 
         self.sort_data()
