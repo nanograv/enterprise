@@ -17,7 +17,7 @@ def sample(parlist):
     track of hyperparameters)."""
 
     # we'll be nice and accept a single parameter
-    parlist = [parlist] if isinstance(parlist,Parameter) else parlist
+    parlist = [parlist] if isinstance(parlist, Parameter) else parlist
 
     ret = {}
     _sample(parlist, ret)
@@ -106,7 +106,7 @@ def _argrepr(typename, **kwargs):
     for par, arg in kwargs.items():
         if type(arg) == type and issubclass(arg,Parameter):
             args.append('{}="{{{}.name}}"'.format(par, par))
-        elif isinstance(arg,Parameter):
+        elif isinstance(arg, Parameter):
             args.append('{}={}'.format(par, arg.name))
         else:
             args.append('{}={}'.format(par, arg))
@@ -145,29 +145,41 @@ def Uniform(pmin, pmax, size=None):
 
 # note: will not do a jointly normal prior
 def NormalPrior(value, mu, sigma):
-    """Prior function for Normal parameters."""
+    """Prior function for Normal parameters. Note that `sigma` is the stdev
+    for scalar parameters, but the covariance matrix for vector parameters."""
 
-    if sigma <= 0:
-        raise ValueError("Normal Parameter requires positive sigma.")
+    # TO DO: this begs for some kind of caching
+    if isinstance(sigma, np.ndarray):
+        detsigma = np.linalg.det(sigma)
+        invsigma = np.linalg.inv(sigma)
 
-    return np.exp(-0.5 * (value - mu)**2 / sigma**2) / math.sqrt(2 * math.pi * sigma**2)
+        return np.exp(-0.5 * np.dot(np.dot(value - mu, invsigma), value - mu)) \
+                   / math.sqrt(2 * math.pi * detsigma)        
+    else:
+        if sigma <= 0:
+            raise ValueError("Normal Parameter requires positive sigma.")
+
+        return np.exp(-0.5 * (value - mu)**2 / sigma**2) / math.sqrt(2 * math.pi * sigma**2)
 
 def NormalSampler(mu, sigma, size=None):
     """Sampling function for Normal parameters."""
 
-    if sigma <= 0:
-        raise ValueError("Normal Parameter requires positive sigma.")
+    if isinstance(sigma, np.ndarray):
+        return np.random.multivariate_normal(mu, sigma, size)
+    else:
+        if sigma <= 0:
+            raise ValueError("Normal Parameter requires positive sigma.")
 
-    return np.random.normal(mu, sigma, size)
+        return np.random.normal(mu, sigma, size)
 
 def Normal(mu=0, sigma=1, size=None):
     """Class factory for Normal parameters."""
 
     class Normal(Parameter):
         _size = size
-        _prior = Function(NormalPrior, mu=mu, pmax=pmax)
+        _prior = Function(NormalPrior, mu=mu, sigma=sigma)
         _sampler = staticmethod(NormalSampler)
-        _typename = _argrepr('Normal', mu=mu, pmax=pmax)
+        _typename = _argrepr('Normal', mu=mu, sigma=sigma)
 
     return Normal
 
