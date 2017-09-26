@@ -299,7 +299,7 @@ class PintPulsar(BasePulsar):
         self._planetssb = self._get_planetssb()
 
         # TODO: pos_t not currently implemented
-        self._pos_t = None
+        self._pos_t = np.zeros((len(self._toas), 3))
 
         self.sort_data()
 
@@ -313,7 +313,7 @@ class PintPulsar(BasePulsar):
             return self._get_radec_from_ecliptic(elong*d2r, elat*d2r)
 
     def _get_planetssb(self):
-        return None
+        return np.zeros((len(self._toas), 9, 6))
 
 
 class Tempo2Pulsar(BasePulsar):

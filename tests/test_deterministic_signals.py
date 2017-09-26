@@ -19,6 +19,7 @@ from enterprise.signals import selections
 from enterprise.signals.selections import Selection
 from enterprise.signals import deterministic_signals
 from enterprise.signals import signal_base
+from enterprise.signals import utils
 
 
 @signal_base.function
@@ -91,6 +92,49 @@ class TestDeterministicSignals(unittest.TestCase):
         # test
         msg = 'Delay incorrect.'
         assert np.all(m.get_delay(params) == delay), msg
+
+    def test_physical_ephem_model(self):
+        """Test physical ephemeris model"""
+
+        # define signals with and without epoch TOAs
+        eph1 = deterministic_signals.PhysicalEphemerisSignal(
+            inc_saturn_orb=True)
+        eph2 = deterministic_signals.PhysicalEphemerisSignal(
+            inc_saturn_orb=True, use_epoch_toas=False)
+
+        # initialize signals
+        e1, e2 = eph1(self.psr), eph2(self.psr)
+
+        # set parameters
+        params = {'d_jupiter_mass': -8.561198198000628e-12,
+                  'd_neptune_mass': 1.0251757860647059e-11,
+                  'd_saturn_mass': 6.22114376130324e-12,
+                  'd_uranus_mass': -2.1157536169469958e-10,
+                  'frame_drift_rate': 2.874659280396648e-10,
+                  'jup_orb_elements': np.array([0.04140015, -0.03422412,
+                                                0.01165894, -0.03525219,
+                                                -0.00406852, 0.0421522]),
+                  'sat_orb_elements': np.array([-0.39701798, -0.13322608,
+                                                -0.05025925, 0.36331171,
+                                                -0.17080321,0.25093799])
+                  }
+
+        # test against waveform and compare non-epoch and epoch TOA results
+        d1 = e1.get_delay(params=params)
+        d2 = e2.get_delay(params=params)
+
+        jup_mjd, jup_orbelxyz, sat_mjd, sat_orbelxyz = (
+            utils.get_planet_orbital_elements())
+        d3 = utils.physical_ephem_delay(
+            self.psr.toas, self.psr.planetssb, self.psr.pos_t,
+            jup_mjd=jup_mjd, jup_orbelxyz=jup_orbelxyz, sat_mjd=sat_mjd,
+            sat_orbelxyz=sat_orbelxyz, inc_jupiter_orb=True,
+            inc_saturn_orb=True, **params)
+
+        msg1 = 'Signal delay does not match function delay'
+        assert np.allclose(d1, d3, rtol=1e-10), msg1
+        msg2 = 'epoch-TOA delay does not match full TOA delay'
+        assert np.allclose(d1, d2, rtol=1e-10), msg2
 
 
 class TestDeterministicSignalsPint(TestDeterministicSignals):
