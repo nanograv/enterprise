@@ -12,6 +12,25 @@ import scipy.stats
 from enterprise.signals.selections import selection_func
 
 
+def sample(parlist):
+    """Sample a list of Parameters consistently (i.e., keeping
+    track of hyperparameters)."""
+
+    ret = {}
+    
+    _sample(parlist,ret)
+    
+    return ret
+
+def _sample(parlist, parvalues):
+    """Recursive function used by sample()."""
+
+    for par in parlist:
+        if par not in parvalues:
+            parvalues.update(sample(par.params[1:]))
+            parvalues[par.name] = par.sample(parvalues)
+
+
 class Parameter(object):
     # instances will need to define _size, _prior, and _typename
     # thus this class is technically abstract
@@ -37,7 +56,14 @@ class Parameter(object):
         return pdf if self._size is None else np.prod(pdf)
 
     def sample(self, **kwargs):
-        raise NotImplementedError
+        if self._sampler is None:
+            raise AttributeError("No sampler was provided for this Parameter.")
+        else:
+            if self.name in kwargs:
+                raise ValueError(
+                    "You shouldn't give me my value when you're sampling me.!")
+
+            return self.prior(func=self._sampler, **kwargs)
 
     @property
     def size(self):
@@ -60,14 +86,16 @@ class Parameter(object):
         return self
 
 
-def UserParameter(prior, size=None):
-    """Class factor for UserParameter, with prior given as an Enterprise
-    function (one argument, the value; arbitrary keyword arguments, which become
-    hyperparameters)."""
+def UserParameter(prior, sampler=None, size=None):
+    """Class factor for UserParameter, with `prior` given as an Enterprise
+    Function (one argument, the value; arbitrary keyword arguments, which become
+    hyperparameters). Optionally, `sampler` can be given as a regular
+    (not Enterprise function), taking the same keyword parameters as `prior`."""
 
     class UserParameter(Parameter):
         _size = size
         _prior = prior
+        _sampler = staticmethod(sampler)
         _typename = 'UserParameter'
 
     return UserParameter
@@ -87,15 +115,21 @@ def _argrepr(typename, **kwargs):
 
 
 def UniformPrior(value, pmin, pmax):
-    """Prior function for LinearExp parameters."""
+    """Prior function for Uniform parameters."""
 
     if pmin >= pmax:
         raise ValueError("Uniform Parameter requires pmin < pmax.")
 
-    if pmin <= value <= pmax:
-        return 1.0 / (pmax - pmin)
-    else:
-        return 0.0
+    # this should handle also vector arguments
+    return (pmin <= value <= pmax) / (pmax - pmin)
+
+def UniformSampler(pmin, pmax, size=None):
+    """Sampling function for Uniform parameters."""
+
+    if pmin >= pmax:
+        raise ValueError("Uniform Parameter requires pmin < pmax.")
+
+    return np.random.uniform(pmin, pmax, size)
 
 def Uniform(pmin, pmax, size=None):
     """Class factory for Uniform parameters."""
@@ -103,6 +137,7 @@ def Uniform(pmin, pmax, size=None):
     class Uniform(Parameter):
         _size = size
         _prior = Function(UniformPrior, pmin=pmin, pmax=pmax)
+        _sampler = staticmethod(UniformSampler)
         _typename = _argrepr('Uniform', pmin=pmin, pmax=pmax)
 
     return Uniform
@@ -112,7 +147,18 @@ def Uniform(pmin, pmax, size=None):
 def NormalPrior(value, mu, sigma):
     """Prior function for Normal parameters."""
 
-    return math.exp(-0.5 * (value - mu)**2 / sigma**2) / math.sqrt(2 * math.pi * sigma**2)
+    if sigma <= 0:
+        raise ValueError("Normal Parameter requires positive sigma.")
+
+    return np.exp(-0.5 * (value - mu)**2 / sigma**2) / math.sqrt(2 * math.pi * sigma**2)
+
+def NormalSampler(mu, sigma, size=None):
+    """Sampling function for Normal parameters."""
+
+    if sigma <= 0:
+        raise ValueError("Normal Parameter requires positive sigma.")
+
+    return np.random.normal(mu, sigma, size)
 
 def Normal(mu=0, sigma=1, size=None):
     """Class factory for Normal parameters."""
@@ -120,6 +166,7 @@ def Normal(mu=0, sigma=1, size=None):
     class Normal(Parameter):
         _size = size
         _prior = Function(NormalPrior, mu=mu, pmax=pmax)
+        _sampler = staticmethod(NormalSampler)
         _typename = _argrepr('Normal', mu=mu, pmax=pmax)
 
     return Normal
@@ -131,14 +178,24 @@ def LinearExpPrior(value, pmin, pmax):
     if pmin >= pmax:
         raise ValueError("LinearExp Parameter requires pmin < pmax.")
 
-    return np.log(10) * 10**value / (10**pmax - 10**pmin)
+    return (pmin <= value <= pmax) * \
+               np.log(10) * 10**value / (10**pmax - 10**pmin)
+
+def LinearExpSampler(pmin, pmax, size):
+    """Sampling function for LinearExp parameters."""
+
+    if pmin >= pmax:
+        raise ValueError("LinearExp Parameter requires pmin < pmax.")
+
+    return np.log10(np.random.uniform(10**pmin, 10**pmax, size))
 
 def LinearExp(pmin, pmax, size=None):
-    """Class factory for LinearExp parameters."""
+    """Class factory for LinearExp parameters (with pdf(x) ~ 10^x)."""
 
     class LinearExp(Parameter):
         _size = size
         _prior = Function(LinearExpPrior, pmin=pmin, pmax=pmax)
+        _sampler = staticmethod(LinearExpSampler)
         _typename = _argrepr('LinearExp', pmin=pmin, pmax=pmax)
 
     return LinearExp
@@ -211,6 +268,11 @@ def Function(func, name='', **func_kwargs):
             if 'params' in kwargs:
                 del kwargs['params']
 
+            # allow calling an alternate function with the same parameters
+            func = kwargs.get('func',self._func)
+            if 'func' in kwargs:
+                del kwargs['func']
+
             for kw, arg in func_kwargs.items():
                 if kw not in kwargs and kw in self._params:
                     par = self._params[kw]
@@ -226,7 +288,8 @@ def Function(func, name='', **func_kwargs):
 
             if self._psr is not None and 'psr' not in kwargs:
                 kwargs['psr'] = self._psr
-            return self._func(*args, **kwargs)
+
+            return func(*args, **kwargs)
 
         def add_kwarg(self, **kwargs):
             self._defaults.update(kwargs)

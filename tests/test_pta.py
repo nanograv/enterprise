@@ -173,7 +173,7 @@ class TestPTASignals(unittest.TestCase):
 
         pta = signal_base.PTA([model(psr) for psr in self.psrs])
 
-        ps = {p.name: float(p.sample()) for p in pta.params}
+        ps = parameter.sample(pta.params)
 
         phi = pta.get_phi(ps)
         ldp = np.linalg.slogdet(phi)[1]
@@ -201,7 +201,7 @@ class TestPTASignals(unittest.TestCase):
 
         pta = signal_base.PTA([model(psr) for psr in self.psrs])
 
-        ps = {p.name: float(p.sample()) for p in pta.params}
+        ps = parameter.sample(pta.params)
 
         phi = pta.get_phi(ps)
         ldp = np.linalg.slogdet(phi)[1]
@@ -229,7 +229,7 @@ class TestPTASignals(unittest.TestCase):
 
         pta = signal_base.PTA([model(psr) for psr in self.psrs])
 
-        ps = {p.name: float(p.sample()) for p in pta.params}
+        ps = parameter.sample(pta.params)
 
         phi = pta.get_phi(ps)
         ldp = np.linalg.slogdet(phi)[1]
@@ -257,7 +257,7 @@ class TestPTASignals(unittest.TestCase):
 
         pta = signal_base.PTA([model(psr) for psr in self.psrs])
 
-        ps = {p.name: float(p.sample()) for p in pta.params}
+        ps = parameter.sample(pta.params)
 
         phi = pta.get_phi(ps)
         ldp = np.linalg.slogdet(phi)[1]
