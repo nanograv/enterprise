@@ -16,10 +16,12 @@ def sample(parlist):
     """Sample a list of Parameters consistently (i.e., keeping
     track of hyperparameters)."""
 
+    # we'll be nice and accept a single parameter
+    parlist = [parlist] if isinstance(parlist,Parameter) else parlist
+
     ret = {}
-    
-    _sample(parlist,ret)
-    
+    _sample(parlist, ret)
+
     return ret
 
 def _sample(parlist, parvalues):
@@ -28,7 +30,7 @@ def _sample(parlist, parvalues):
     for par in parlist:
         if par not in parvalues:
             parvalues.update(sample(par.params[1:]))
-            parvalues[par.name] = par.sample(parvalues)
+            parvalues[par.name] = par.sample(params=parvalues)
 
 
 class Parameter(object):
@@ -42,7 +44,6 @@ class Parameter(object):
     def get_logpdf(self, value=None, **kwargs):
         if value is None and 'params' in kwargs:
             value = kwargs['params'][self.name]
-            del kwargs['params'][self.name]
 
         logpdf = np.log(self.prior(value, **kwargs))
         return logpdf if self._size is None else np.sum(logpdf)
@@ -50,7 +51,6 @@ class Parameter(object):
     def get_pdf(self, value=None, **kwargs):
         if value is None and 'params' in kwargs:
             value = kwargs['params'][self.name]
-            del kwargs['params'][self.name]
 
         pdf = self.prior(value, **kwargs)
         return pdf if self._size is None else np.prod(pdf)
@@ -63,7 +63,7 @@ class Parameter(object):
                 raise ValueError(
                     "You shouldn't give me my value when you're sampling me.!")
 
-            return self.prior(func=self._sampler, **kwargs)
+            return self.prior(func=self._sampler, size=self._size, **kwargs)
 
     @property
     def size(self):
@@ -121,7 +121,7 @@ def UniformPrior(value, pmin, pmax):
         raise ValueError("Uniform Parameter requires pmin < pmax.")
 
     # this should handle also vector arguments
-    return (pmin <= value <= pmax) / (pmax - pmin)
+    return ((pmin <= value) & (value <= pmax)) / (pmax - pmin)
 
 def UniformSampler(pmin, pmax, size=None):
     """Sampling function for Uniform parameters."""
@@ -178,7 +178,7 @@ def LinearExpPrior(value, pmin, pmax):
     if pmin >= pmax:
         raise ValueError("LinearExp Parameter requires pmin < pmax.")
 
-    return (pmin <= value <= pmax) * \
+    return ((pmin <= value) & (value <= pmax)) * \
                np.log(10) * 10**value / (10**pmax - 10**pmin)
 
 def LinearExpSampler(pmin, pmax, size):
