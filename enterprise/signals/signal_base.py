@@ -804,6 +804,7 @@ def cache_call(attrs, limit=2):
             # get the relevant parameters to be cached
             keys = sum([getattr(self, attr) for attr in attrs], [])
             ret = []
+            # TODO: this deals with vector parameters but could be cleaner...
             for key in keys:
                 if key in params:
                     if np.ndim(params[key]) > 0:
