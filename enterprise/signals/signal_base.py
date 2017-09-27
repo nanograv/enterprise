@@ -19,6 +19,11 @@ from sksparse.cholmod import cholesky
 
 from enterprise.signals.parameter import ConstantParameter
 
+# these are defined in parameter.py, but currently imported
+# in various places from signal_base.py
+from enterprise.signals.parameter import function  # noqa: F401
+from enterprise.signals.parameter import Function  # noqa: F401
+
 import logging
 logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s',
                     level=logging.INFO)
