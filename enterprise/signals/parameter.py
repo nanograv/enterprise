@@ -87,7 +87,7 @@ class Parameter(object):
 
 
 def UserParameter(prior, sampler=None, size=None):
-    """Class factor for UserParameter, with `prior` given as an Enterprise
+    """Class factory for UserParameter, with `prior` given as an Enterprise
     Function (one argument, the value; arbitrary keyword arguments, which become
     hyperparameters). Optionally, `sampler` can be given as a regular
     (not Enterprise function), taking the same keyword parameters as `prior`."""
@@ -104,7 +104,7 @@ def UserParameter(prior, sampler=None, size=None):
 def _argrepr(typename, **kwargs):
     args = []
     for par, arg in kwargs.items():
-        if type(arg) == type and issubclass(arg,Parameter):
+        if type(arg) == type and issubclass(arg, Parameter):
             args.append('{}="{{{}.name}}"'.format(par, par))
         elif isinstance(arg, Parameter):
             args.append('{}={}'.format(par, arg.name))
@@ -117,19 +117,18 @@ def _argrepr(typename, **kwargs):
 def UniformPrior(value, pmin, pmax):
     """Prior function for Uniform parameters."""
 
-    if pmin >= pmax:
+    if np.any(pmin >= pmax):
         raise ValueError("Uniform Parameter requires pmin < pmax.")
 
-    # this should handle also vector arguments
-    return ((pmin <= value) & (value <= pmax)) / (pmax - pmin)
+    return scipy.stats.uniform.pdf(value, pmin, (pmax - pmin))
 
 def UniformSampler(pmin, pmax, size=None):
     """Sampling function for Uniform parameters."""
 
-    if pmin >= pmax:
+    if np.any(pmin >= pmax):
         raise ValueError("Uniform Parameter requires pmin < pmax.")
 
-    return np.random.uniform(pmin, pmax, size)
+    return scipy.stats.uniform.rvs(pmin, pmax-pmin, size=size)
 
 def Uniform(pmin, pmax, size=None):
     """Class factory for Uniform parameters."""
@@ -148,29 +147,14 @@ def NormalPrior(value, mu, sigma):
     """Prior function for Normal parameters. Note that `sigma` is the stdev
     for scalar parameters, but the covariance matrix for vector parameters."""
 
-    # TO DO: this begs for some kind of caching
-    if isinstance(sigma, np.ndarray):
-        detsigma = np.linalg.det(sigma)
-        invsigma = np.linalg.inv(sigma)
+    return scipy.stats.multivariate_normal.pdf(value, mean=mu, cov=sigma**2)
 
-        return np.exp(-0.5 * np.dot(np.dot(value - mu, invsigma), value - mu)) \
-                   / math.sqrt(2 * math.pi * detsigma)        
-    else:
-        if sigma <= 0:
-            raise ValueError("Normal Parameter requires positive sigma.")
-
-        return np.exp(-0.5 * (value - mu)**2 / sigma**2) / math.sqrt(2 * math.pi * sigma**2)
 
 def NormalSampler(mu, sigma, size=None):
     """Sampling function for Normal parameters."""
 
-    if isinstance(sigma, np.ndarray):
-        return np.random.multivariate_normal(mu, sigma, size)
-    else:
-        if sigma <= 0:
-            raise ValueError("Normal Parameter requires positive sigma.")
+    return scipy.stats.multivariate_normal.rvs(mean=mu, cov=sigma**2, size=size)
 
-        return np.random.normal(mu, sigma, size)
 
 def Normal(mu=0, sigma=1, size=None):
     """Class factory for Normal parameters."""
