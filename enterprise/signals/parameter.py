@@ -4,10 +4,11 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
-import math, inspect, functools
+import math
+import inspect
+import functools
 
 import numpy as np
-import scipy.stats
 
 from enterprise.signals.selections import selection_func
 
@@ -23,6 +24,7 @@ def sample(parlist):
     _sample(parlist, ret)
 
     return ret
+
 
 def _sample(parlist, parvalues):
     """Recursive function used by sample()."""
@@ -88,9 +90,10 @@ class Parameter(object):
 
 def UserParameter(prior, sampler=None, size=None):
     """Class factor for UserParameter, with `prior` given as an Enterprise
-    Function (one argument, the value; arbitrary keyword arguments, which become
-    hyperparameters). Optionally, `sampler` can be given as a regular
-    (not Enterprise function), taking the same keyword parameters as `prior`."""
+    Function (one argument, the value; arbitrary keyword arguments, which
+    become hyperparameters). Optionally, `sampler` can be given as a
+    regular (not Enterprise function), taking the same keyword parameters
+    as `prior`."""
 
     class UserParameter(Parameter):
         _size = size
@@ -123,6 +126,7 @@ def UniformPrior(value, pmin, pmax):
     # this should handle also vector arguments
     return ((pmin <= value) & (value <= pmax)) / (pmax - pmin)
 
+
 def UniformSampler(pmin, pmax, size=None):
     """Sampling function for Uniform parameters."""
 
@@ -130,6 +134,7 @@ def UniformSampler(pmin, pmax, size=None):
         raise ValueError("Uniform Parameter requires pmin < pmax.")
 
     return np.random.uniform(pmin, pmax, size)
+
 
 def Uniform(pmin, pmax, size=None):
     """Class factory for Uniform parameters."""
@@ -153,13 +158,15 @@ def NormalPrior(value, mu, sigma):
         detsigma = np.linalg.det(sigma)
         invsigma = np.linalg.inv(sigma)
 
-        return np.exp(-0.5 * np.dot(np.dot(value - mu, invsigma), value - mu)) \
-                   / math.sqrt(2 * math.pi * detsigma)        
+        return np.exp(-0.5 * np.dot(np.dot(value-mu, invsigma), value-mu)) \
+            / math.sqrt(2 * math.pi * detsigma)
     else:
         if sigma <= 0:
             raise ValueError("Normal Parameter requires positive sigma.")
 
-        return np.exp(-0.5 * (value - mu)**2 / sigma**2) / math.sqrt(2 * math.pi * sigma**2)
+        return np.exp(-0.5 * (value - mu)**2 / sigma**2) \
+            / math.sqrt(2 * math.pi * sigma**2)
+
 
 def NormalSampler(mu, sigma, size=None):
     """Sampling function for Normal parameters."""
@@ -171,6 +178,7 @@ def NormalSampler(mu, sigma, size=None):
             raise ValueError("Normal Parameter requires positive sigma.")
 
         return np.random.normal(mu, sigma, size)
+
 
 def Normal(mu=0, sigma=1, size=None):
     """Class factory for Normal parameters."""
@@ -191,7 +199,8 @@ def LinearExpPrior(value, pmin, pmax):
         raise ValueError("LinearExp Parameter requires pmin < pmax.")
 
     return ((pmin <= value) & (value <= pmax)) * \
-               np.log(10) * 10**value / (10**pmax - 10**pmin)
+        np.log(10) * 10**value / (10**pmax - 10**pmin)
+
 
 def LinearExpSampler(pmin, pmax, size):
     """Sampling function for LinearExp parameters."""
@@ -200,6 +209,7 @@ def LinearExpSampler(pmin, pmax, size):
         raise ValueError("LinearExp Parameter requires pmin < pmax.")
 
     return np.log10(np.random.uniform(10**pmin, 10**pmax, size))
+
 
 def LinearExp(pmin, pmax, size=None):
     """Class factory for LinearExp parameters (with pdf(x) ~ 10^x)."""
@@ -232,6 +242,7 @@ class ConstantParameter(object):
 
     def __repr__(self):
         return '"{}":Constant={}'.format(self.name, self.value)
+
 
 def Constant(val=None):
     class Constant(ConstantParameter):

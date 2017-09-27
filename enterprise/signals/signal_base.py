@@ -8,8 +8,6 @@ from __future__ import (absolute_import, division,
 
 import collections
 import itertools
-import inspect
-import functools
 
 import six
 
@@ -19,8 +17,7 @@ import scipy.linalg as sl
 
 from sksparse.cholmod import cholesky
 
-from enterprise.signals.parameter import ConstantParameter, Parameter, Function, function
-from enterprise.signals.selections import selection_func
+from enterprise.signals.parameter import ConstantParameter
 
 import logging
 logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s',
