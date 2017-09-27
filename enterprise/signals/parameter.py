@@ -4,10 +4,6 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
-<<<<<<< HEAD
-=======
-import math
->>>>>>> pull/upstream/119
 import inspect
 import functools
 
@@ -92,19 +88,11 @@ class Parameter(object):
 
 
 def UserParameter(prior, sampler=None, size=None):
-<<<<<<< HEAD
     """Class factory for UserParameter, with `prior` given as an Enterprise
     Function (one argument, the value; arbitrary keyword arguments, which
     become hyperparameters). Optionally, `sampler` can be given as a regular
     (not Enterprise function), taking the same keyword parameters as `prior`.
     """
-=======
-    """Class factor for UserParameter, with `prior` given as an Enterprise
-    Function (one argument, the value; arbitrary keyword arguments, which
-    become hyperparameters). Optionally, `sampler` can be given as a
-    regular (not Enterprise function), taking the same keyword parameters
-    as `prior`."""
->>>>>>> pull/upstream/119
 
     class UserParameter(Parameter):
         _size = size
@@ -170,18 +158,6 @@ def NormalPrior(value, mu, sigma):
     cov = sigma if np.ndim(sigma) == 2 else sigma**2
     return scipy.stats.multivariate_normal.pdf(value, mean=mu, cov=cov)
 
-<<<<<<< HEAD
-=======
-        return np.exp(-0.5 * np.dot(np.dot(value-mu, invsigma), value-mu)) \
-            / math.sqrt(2 * math.pi * detsigma)
-    else:
-        if sigma <= 0:
-            raise ValueError("Normal Parameter requires positive sigma.")
-
-        return np.exp(-0.5 * (value - mu)**2 / sigma**2) \
-            / math.sqrt(2 * math.pi * sigma**2)
-
->>>>>>> pull/upstream/119
 
 def NormalSampler(mu, sigma, size=None):
     """Sampling function for Normal parameters."""
@@ -210,13 +186,8 @@ def LinearExpPrior(value, pmin, pmax):
     if pmin >= pmax:
         raise ValueError("LinearExp Parameter requires pmin < pmax.")
 
-<<<<<<< HEAD
     return (((pmin <= value) & (value <= pmax)) * np.log(10) *
             10**value / (10**pmax - 10**pmin))
-=======
-    return ((pmin <= value) & (value <= pmax)) * \
-        np.log(10) * 10**value / (10**pmax - 10**pmin)
->>>>>>> pull/upstream/119
 
 
 def LinearExpSampler(pmin, pmax, size):
