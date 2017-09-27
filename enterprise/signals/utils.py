@@ -760,7 +760,7 @@ def ss_framerotate(mjd, planet, x, y, z, dz,
     """
     Rotate planet trajectory given as (n,3) tensor,
     by ecliptic Euler angles x, y, z, and by z rate
-    dz. The rate has units of deg/year, and is referred
+    dz. The rate has units of rad/year, and is referred
     to offset 2010/1/1. dates must be given in MJD.
     """
     if equatorial:

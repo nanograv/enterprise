@@ -78,7 +78,7 @@ def PhysicalEphemerisSignal(
     defaults.
 
     :param frame_drift_rate:
-        ecliptic z-drift rate in units of deg/year referred to offset 1/1/2010.
+        ecliptic z-drift rate in units of rad/year referred to offset 1/1/2010.
         Default prior is Uniform(-1e-9, 1e-9).
 
     :param d_jupiter_mass:
