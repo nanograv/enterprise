@@ -149,17 +149,21 @@ def Uniform(pmin, pmax, size=None):
 
 # note: will not do a jointly normal prior
 def NormalPrior(value, mu, sigma):
-    """Prior function for Normal parameters. Note that `sigma` is the stdev
-    for scalar parameters, but the covariance matrix for vector parameters."""
+    """Prior function for Normal parameters. Note that `sigma` can be a
+    scalar for a 1-d distribution, a vector for multivariate distribution that
+    uses the vector as the sqrt of the diagonal of the covaraince matrix,
+    or a matrix which is the covariance."""
 
-    return scipy.stats.multivariate_normal.pdf(value, mean=mu, cov=sigma**2)
+    cov = sigma if np.ndim(sigma) == 2 else sigma**2
+    return scipy.stats.multivariate_normal.pdf(value, mean=mu, cov=cov)
 
 
 def NormalSampler(mu, sigma, size=None):
     """Sampling function for Normal parameters."""
 
+    cov = sigma if np.ndim(sigma) == 2 else sigma**2
     return scipy.stats.multivariate_normal.rvs(
-        mean=mu, cov=sigma**2, size=size)
+        mean=mu, cov=cov, size=size)
 
 
 def Normal(mu=0, sigma=1, size=None):
