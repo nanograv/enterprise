@@ -4,7 +4,8 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
-import math, inspect, functools
+import inspect
+import functools
 
 import numpy as np
 import scipy.stats
@@ -23,6 +24,7 @@ def sample(parlist):
     _sample(parlist, ret)
 
     return ret
+
 
 def _sample(parlist, parvalues):
     """Recursive function used by sample()."""
@@ -88,9 +90,10 @@ class Parameter(object):
 
 def UserParameter(prior, sampler=None, size=None):
     """Class factory for UserParameter, with `prior` given as an Enterprise
-    Function (one argument, the value; arbitrary keyword arguments, which become
-    hyperparameters). Optionally, `sampler` can be given as a regular
-    (not Enterprise function), taking the same keyword parameters as `prior`."""
+    Function (one argument, the value; arbitrary keyword arguments, which
+    become hyperparameters). Optionally, `sampler` can be given as a regular
+    (not Enterprise function), taking the same keyword parameters as `prior`.
+    """
 
     class UserParameter(Parameter):
         _size = size
@@ -122,6 +125,7 @@ def UniformPrior(value, pmin, pmax):
 
     return scipy.stats.uniform.pdf(value, pmin, (pmax - pmin))
 
+
 def UniformSampler(pmin, pmax, size=None):
     """Sampling function for Uniform parameters."""
 
@@ -129,6 +133,7 @@ def UniformSampler(pmin, pmax, size=None):
         raise ValueError("Uniform Parameter requires pmin < pmax.")
 
     return scipy.stats.uniform.rvs(pmin, pmax-pmin, size=size)
+
 
 def Uniform(pmin, pmax, size=None):
     """Class factory for Uniform parameters."""
@@ -153,7 +158,8 @@ def NormalPrior(value, mu, sigma):
 def NormalSampler(mu, sigma, size=None):
     """Sampling function for Normal parameters."""
 
-    return scipy.stats.multivariate_normal.rvs(mean=mu, cov=sigma**2, size=size)
+    return scipy.stats.multivariate_normal.rvs(
+        mean=mu, cov=sigma**2, size=size)
 
 
 def Normal(mu=0, sigma=1, size=None):
@@ -174,8 +180,9 @@ def LinearExpPrior(value, pmin, pmax):
     if pmin >= pmax:
         raise ValueError("LinearExp Parameter requires pmin < pmax.")
 
-    return ((pmin <= value) & (value <= pmax)) * \
-               np.log(10) * 10**value / (10**pmax - 10**pmin)
+    return (((pmin <= value) & (value <= pmax)) * np.log(10) *
+            10**value / (10**pmax - 10**pmin))
+
 
 def LinearExpSampler(pmin, pmax, size):
     """Sampling function for LinearExp parameters."""
@@ -184,6 +191,7 @@ def LinearExpSampler(pmin, pmax, size):
         raise ValueError("LinearExp Parameter requires pmin < pmax.")
 
     return np.log10(np.random.uniform(10**pmin, 10**pmax, size))
+
 
 def LinearExp(pmin, pmax, size=None):
     """Class factory for LinearExp parameters (with pdf(x) ~ 10^x)."""
@@ -216,6 +224,7 @@ class ConstantParameter(object):
 
     def __repr__(self):
         return '"{}":Constant={}'.format(self.name, self.value)
+
 
 def Constant(val=None):
     class Constant(ConstantParameter):

@@ -23,11 +23,12 @@ import enterprise.signals.signal_base as signal_base
 import enterprise.signals.white_signals as white_signals
 import enterprise.signals.gp_signals as gp_signals
 from enterprise.signals import utils
+from enterprise.signals.parameter import function as enterprise_function
 
 from .enterprise_test_data import datadir
 
 
-@signal_base.function
+@enterprise_function
 def hd_orf(pos1, pos2):
     if np.all(pos1 == pos2):
         return 1
@@ -37,7 +38,7 @@ def hd_orf(pos1, pos2):
         return 1.5 * omc2 * np.log(omc2) - 0.25 * omc2 + 0.5
 
 
-@signal_base.function
+@enterprise_function
 def vec_orf(pos1, pos2):
     if np.all(pos1 == pos2):
         return 1
@@ -45,7 +46,7 @@ def vec_orf(pos1, pos2):
         return 0.5 * np.dot(pos1, pos2)
 
 
-@signal_base.function
+@enterprise_function
 def hd_orf_generic(pos1, pos2, a=1.5, b=0.25, c=0.25):
     if np.all(pos1 == pos2):
         return 1
@@ -55,7 +56,7 @@ def hd_orf_generic(pos1, pos2, a=1.5, b=0.25, c=0.25):
         return a * omc2 * np.log(omc2) - b * omc2 + c
 
 
-@signal_base.function
+@enterprise_function
 def hd_powerlaw(f, pos1, pos2, log10_A=-15, gamma=4.3):
     return utils.powerlaw(f, log10_A, gamma) * hd_orf(pos1, pos2)
 
