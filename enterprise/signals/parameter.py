@@ -8,6 +8,7 @@ import inspect
 import functools
 
 import numpy as np
+import scipy.stats
 
 from enterprise.signals.selections import selection_func
 
@@ -125,7 +126,6 @@ def UniformPrior(value, pmin, pmax):
     return scipy.stats.uniform.pdf(value, pmin, (pmax - pmin))
 
 
-
 def UniformSampler(pmin, pmax, size=None):
     """Sampling function for Uniform parameters."""
 
@@ -133,7 +133,6 @@ def UniformSampler(pmin, pmax, size=None):
         raise ValueError("Uniform Parameter requires pmin < pmax.")
 
     return scipy.stats.uniform.rvs(pmin, pmax-pmin, size=size)
-
 
 
 def Uniform(pmin, pmax, size=None):
@@ -165,7 +164,6 @@ def NormalSampler(mu, sigma, size=None):
     cov = sigma if np.ndim(sigma) == 2 else sigma**2
     return scipy.stats.multivariate_normal.rvs(
         mean=mu, cov=cov, size=size)
-
 
 
 def Normal(mu=0, sigma=1, size=None):
