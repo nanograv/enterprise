@@ -14,6 +14,7 @@ from enterprise.signals import parameter
 import enterprise.signals.signal_base as base
 from enterprise.signals import selections
 from enterprise.signals.selections import Selection
+from enterprise.signals.parameter import function as enterprise_function
 
 
 def BasisGP(priorFunction, basisFunction,
@@ -141,7 +142,7 @@ def TimingModel():
     return TimingModel
 
 
-@base.function
+@enterprise_function
 def ecorr_basis_prior(weights, log10_ecorr=-8):
     """Returns the ecorr prior.
     :param weights: A vector or weights for the ecorr prior.
