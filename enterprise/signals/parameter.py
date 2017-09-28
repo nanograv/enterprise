@@ -120,19 +120,19 @@ def _argrepr(typename, **kwargs):
 def UniformPrior(value, pmin, pmax):
     """Prior function for Uniform parameters."""
 
-    if np.any(pmin >= pmax):
-        raise ValueError("Uniform Parameter requires pmin < pmax.")
-
-    return scipy.stats.uniform.pdf(value, pmin, (pmax - pmin))
+    # we'll let scipy.stats handle errors in pmin/pmax specification
+    # this handles vectors correctly, if pmin and pmax are scalars,
+    # or if len(value) = len(pmin) = len(pmax) 
+    return scipy.stats.uniform.pdf(value, pmin, pmax - pmin)
 
 
 def UniformSampler(pmin, pmax, size=None):
     """Sampling function for Uniform parameters."""
 
-    if np.any(pmin >= pmax):
-        raise ValueError("Uniform Parameter requires pmin < pmax.")
-
-    return scipy.stats.uniform.rvs(pmin, pmax-pmin, size=size)
+    # we'll let scipy.stats handle errors in pmin/pmax specification
+    # this handles vectors correctly, if pmin and pmax are scalars,
+    # or if len(value) = len(pmin) = len(pmax) 
+    return scipy.stats.uniform.rvs(pmin, pmax - pmin, size=size)
 
 
 def Uniform(pmin, pmax, size=None):
@@ -147,13 +147,16 @@ def Uniform(pmin, pmax, size=None):
     return Uniform
 
 
-# note: will not do a jointly normal prior
 def NormalPrior(value, mu, sigma):
     """Prior function for Normal parameters. Note that `sigma` can be a
-    scalar for a 1-d distribution, a vector for multivariate distribution that
-    uses the vector as the sqrt of the diagonal of the covaraince matrix,
-    or a matrix which is the covariance."""
+    scalar for a 1-d distribution, a vector for multivariate distribution
+    that uses the vector as the sqrt of the diagonal of the covariance
+    matrix, or a matrix giving the covariance directly."""
 
+    # we let scipy.stats handle parameter errors
+    # this code handles vectors correctly, if mu and sigma are scalars,
+    # if mu and sigma are vectors with len(value) = len(mu) = len(sigma),
+    # or if len(value) = len(mu) and sigma is len(value) x len(value)
     cov = sigma if np.ndim(sigma) == 2 else sigma**2
     return scipy.stats.multivariate_normal.pdf(value, mean=mu, cov=cov)
 
@@ -161,9 +164,21 @@ def NormalPrior(value, mu, sigma):
 def NormalSampler(mu, sigma, size=None):
     """Sampling function for Normal parameters."""
 
+    if np.ndim(mu) == 1 and len(mu) != size:
+        raise ValueError(
+            "Size mismatch between Parameter size and distribution arguments")
+
+    # we let scipy.stats handle all other errors
+    # this code handles vectors correctly, if mu and sigma are scalars,
+    # if mu and sigma are vectors with len(value) = len(mu) = len(sigma),
+    # or if len(value) = len(mu) and sigma is len(value) x len(value);
+    # note that scipy.stats.multivariate_normal.rvs infers parameter
+    # size from mu and sigma, so if these are vectors we pass size=None;
+    # otherwise we'd get multiple copies of a jointly-normal vector 
     cov = sigma if np.ndim(sigma) == 2 else sigma**2
     return scipy.stats.multivariate_normal.rvs(
-        mean=mu, cov=cov, size=size)
+        mean=mu, cov=cov,
+        size=(None if np.ndim(mu) == 1 else size))
 
 
 def Normal(mu=0, sigma=1, size=None):
@@ -181,9 +196,11 @@ def Normal(mu=0, sigma=1, size=None):
 def LinearExpPrior(value, pmin, pmax):
     """Prior function for LinearExp parameters."""
 
-    if pmin >= pmax:
+    if np.any(pmin >= pmax):
         raise ValueError("LinearExp Parameter requires pmin < pmax.")
 
+    # works with vectors if pmin and pmax are either scalars,
+    # or len(value) vectors
     return (((pmin <= value) & (value <= pmax)) * np.log(10) *
             10**value / (10**pmax - 10**pmin))
 
@@ -191,9 +208,11 @@ def LinearExpPrior(value, pmin, pmax):
 def LinearExpSampler(pmin, pmax, size):
     """Sampling function for LinearExp parameters."""
 
-    if pmin >= pmax:
+    if np.any(pmin >= pmax):
         raise ValueError("LinearExp Parameter requires pmin < pmax.")
 
+    # works with vectors if pmin and pmax are either scalars
+    # or vectors, in which case one must have len(pmin) = len(pmax) = size
     return np.log10(np.random.uniform(10**pmin, 10**pmax, size))
 
 
