@@ -122,7 +122,7 @@ def UniformPrior(value, pmin, pmax):
 
     # we'll let scipy.stats handle errors in pmin/pmax specification
     # this handles vectors correctly, if pmin and pmax are scalars,
-    # or if len(value) = len(pmin) = len(pmax) 
+    # or if len(value) = len(pmin) = len(pmax)
     return scipy.stats.uniform.pdf(value, pmin, pmax - pmin)
 
 
@@ -131,7 +131,7 @@ def UniformSampler(pmin, pmax, size=None):
 
     # we'll let scipy.stats handle errors in pmin/pmax specification
     # this handles vectors correctly, if pmin and pmax are scalars,
-    # or if len(value) = len(pmin) = len(pmax) 
+    # or if len(value) = len(pmin) = len(pmax)
     return scipy.stats.uniform.rvs(pmin, pmax - pmin, size=size)
 
 
@@ -174,7 +174,7 @@ def NormalSampler(mu, sigma, size=None):
     # or if len(value) = len(mu) and sigma is len(value) x len(value);
     # note that scipy.stats.multivariate_normal.rvs infers parameter
     # size from mu and sigma, so if these are vectors we pass size=None;
-    # otherwise we'd get multiple copies of a jointly-normal vector 
+    # otherwise we'd get multiple copies of a jointly-normal vector
     cov = sigma if np.ndim(sigma) == 2 else sigma**2
     return scipy.stats.multivariate_normal.rvs(
         mean=mu, cov=cov,
@@ -256,82 +256,110 @@ def Constant(val=None):
     return Constant
 
 
-class Functional(object):
+class FunctionBase(object):
     pass
 
 
 def Function(func, name='', **func_kwargs):
     fname = name
 
-    class Function(Functional):
+    class Function(FunctionBase):
         def __init__(self, name, psr=None):
             self._func = selection_func(func)
             self._psr = psr
 
             self._params = {}
             self._defaults = {}
-            # self._funcs = {}
+            self._funcs = {}
 
-            # divide keyword parameters into those that are Parameter classes,
-            # Parameter instances (useful for global parameters),
-            # and something else (which we will assume is a value)
+            self.func_kwargs = func_kwargs
+
+            # process keyword parameters:
+            # - if they are Parameter classes, then we will instantiate
+            #   them to named Parameter instances (using the Function name,
+            #   if given, and the keyword), and save them to the
+            #   self._params dictionary, using the keyword as key
+            # - if they are Parameter instances, we will save them directly
+            #   to self._params
+            # - if they are Function classes, then we will instantiate
+            #   them, save them to self._funcs, and add all of their
+            #   parameters to self._params
+            # - if they are something else, we will assume they are values,
+            #   which we will save in self._defaults
+
             for kw, arg in func_kwargs.items():
                 if isinstance(arg, type) and issubclass(
                         arg, (Parameter, ConstantParameter)):
-                    # parameter name template
-                    # pname_[signalname_][fname_]parname
+
+                    # parameter name template:
+                    #   pname_[signalname_][fname_]parname
                     pnames = [name, fname, kw]
                     par = arg('_'.join([n for n in pnames if n]))
+
                     self._params[kw] = par
                 elif isinstance(arg, (Parameter, ConstantParameter)):
                     self._params[kw] = arg
-                # elif isinstance(arg, type) and issubclass(
-                #         arg, Functional):
-                #     pnames = [name, fname, kw]
-                #     parfunc = arg('_'.join([n for n in pnames if n]), psr)
-                #     self._funcs[kw] = parfunc
-                #     self._params.update(parfunc._params)
+                elif isinstance(arg, type) and issubclass(arg, FunctionBase):
+                    # instantiate the function
+                    pnames = [name, fname, kw]
+                    parfunc = arg('_'.join([n for n in pnames if n]), psr)
+
+                    self._funcs[kw] = parfunc
+                    self._params.update(parfunc._params)
                 else:
                     self._defaults[kw] = arg
 
         def __call__(self, *args, **kwargs):
-            # order of parameter resolution:
-            # - parameter given in kwargs
-            # - named sampling parameter in self._params, if given in params
-            #   or if it has a value
-            # - parameter given as constant in Function definition
-            # - default value for keyword parameter in func definition
+            # we call self._func (or possibly the `func` given in kwargs)
+            # by passing it args, kwargs, after augmenting kwargs (see below)
 
-            # trick to get positional arguments before params kwarg
+            # kwargs['params'] is special, take it out of kwargs
             params = kwargs.get('params', {})
-            if 'params' in kwargs:
-                del kwargs['params']
 
-            # allow calling an alternate function with the same parameters
+            # if kwargs['func'] is given, we will call that instead
             func = kwargs.get('func', self._func)
             if 'func' in kwargs:
                 del kwargs['func']
 
-            # for kw, arg in func_kwargs.items():
-            #     if kw not in kwargs and kw in self._funcs:
-            #         # note: should we look for psr first?
-            #         kwargs[kw] = self._funcs[kw](params=kwargs)
-
+            # we augment kwargs as follows:
+            # - parameters given in the original Function definition
+            #   (and therefore included in func_kwargs), that are included
+            #   in self._params, and given in kwargs['params']
+            # - parameters given in the original Function definition
+            #   (and therefore included in func_kwargs), that are included
+            #   in self._params, and have a value attribute (e.g., Constants)
+            # - parameters given as constants in the original Function
+            #   definition (they are included in func_kwargs, and saved in
+            #   self._defaults)
+            # - parameters given as Functions, evaluated by passing
+            #   them only the parameters they may care about
+            # - [if the func itself has default parameters, they may yet
+            #   apply if none of the above does]
             for kw, arg in func_kwargs.items():
-                if kw not in kwargs and kw in self._params:
-                    par = self._params[kw]
-
-                    if par.name in params:
-                        kwargs[kw] = params[par.name]
-                    elif hasattr(par, 'value'):
-                        kwargs[kw] = par.value
-
-            for kw, arg in self._defaults.items():
                 if kw not in kwargs:
-                    kwargs[kw] = arg
+                    if kw in self._params:
+                        par = self._params[kw]
 
+                        if par.name in params:
+                            kwargs[kw] = params[par.name]
+                        elif hasattr(par, 'value'):
+                            kwargs[kw] = par.value
+                    elif kw in self._defaults:
+                        kwargs[kw] = self._defaults[kw]
+                    elif kw in self._funcs:
+                        f = self._funcs[kw]
+                        fargs = {par: val for par, val in kwargs.items()
+                                 if par in f.func_kwargs}
+                        fargs['params'] = params
+                        kwargs[kw] = f(**fargs)
+
+            # pass our pulsar if we have one
             if self._psr is not None and 'psr' not in kwargs:
                 kwargs['psr'] = self._psr
+
+            # clean up parameter list
+            kwargs = {par: val for par, val in kwargs.items()
+                      if par in func_kwargs or par == 'psr'}
 
             return func(*args, **kwargs)
 
@@ -345,12 +373,17 @@ def Function(func, name='', **func_kwargs):
             return sum([par.params for par in self._params.values()
                         if not isinstance(par, ConstantParameter)], [])
 
+        def __repr__(self):
+            return '{}({})'.format(self._func.__name__,
+                                   ','.join(map(str,self.params)))
+
     return Function
 
 
 def get_funcargs(func):
     """Convenience function to get args and kwargs of any function."""
     argspec = inspect.getargspec(func)
+
     if argspec.defaults is None:
         args = argspec.args
         kwargs = []
