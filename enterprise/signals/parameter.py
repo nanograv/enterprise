@@ -98,7 +98,7 @@ def UserParameter(prior, sampler=None, size=None):
     class UserParameter(Parameter):
         _size = size
         _prior = prior
-        _sampler = staticmethod(sampler)
+        _sampler = None if sampler is None else staticmethod(sampler)
         _typename = 'UserParameter'
 
     return UserParameter
@@ -251,16 +251,21 @@ def Constant(val=None):
     return Constant
 
 
+class Functional(object):
+    pass
+
+
 def Function(func, name='', **func_kwargs):
     fname = name
 
-    class Function(object):
+    class Function(Functional):
         def __init__(self, name, psr=None):
             self._func = selection_func(func)
             self._psr = psr
 
             self._params = {}
             self._defaults = {}
+            # self._funcs = {}
 
             # divide keyword parameters into those that are Parameter classes,
             # Parameter instances (useful for global parameters),
@@ -275,6 +280,12 @@ def Function(func, name='', **func_kwargs):
                     self._params[kw] = par
                 elif isinstance(arg, (Parameter, ConstantParameter)):
                     self._params[kw] = arg
+                # elif isinstance(arg, type) and issubclass(
+                #         arg, Functional):
+                #     pnames = [name, fname, kw]
+                #     parfunc = arg('_'.join([n for n in pnames if n]), psr)
+                #     self._funcs[kw] = parfunc
+                #     self._params.update(parfunc._params)
                 else:
                     self._defaults[kw] = arg
 
@@ -287,14 +298,19 @@ def Function(func, name='', **func_kwargs):
             # - default value for keyword parameter in func definition
 
             # trick to get positional arguments before params kwarg
-            params = kwargs.get('params',{})
+            params = kwargs.get('params', {})
             if 'params' in kwargs:
                 del kwargs['params']
 
             # allow calling an alternate function with the same parameters
-            func = kwargs.get('func',self._func)
+            func = kwargs.get('func', self._func)
             if 'func' in kwargs:
                 del kwargs['func']
+
+            # for kw, arg in func_kwargs.items():
+            #     if kw not in kwargs and kw in self._funcs:
+            #         # note: should we look for psr first?
+            #         kwargs[kw] = self._funcs[kw](params=kwargs)
 
             for kw, arg in func_kwargs.items():
                 if kw not in kwargs and kw in self._params:
