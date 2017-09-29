@@ -315,7 +315,8 @@ def Function(func, name='', **func_kwargs):
 
             # kwargs['params'] is special, take it out of kwargs
             params = kwargs.get('params', {})
-            del kwargs['params']
+            if 'params' in kwargs:
+                del kwargs['params']
 
             # if kwargs['func'] is given, we will call that instead
             func = kwargs.get('func', self._func)
@@ -358,9 +359,10 @@ def Function(func, name='', **func_kwargs):
             if self._psr is not None and 'psr' not in kwargs:
                 kwargs['psr'] = self._psr
 
-            # clean up parameter list
-            # kwargs = {par: val for par, val in kwargs.items()
-            #           if par in func_kwargs or par == 'psr'}
+            # clean up parameters that are not meant for func
+            # keep those required for selection_func to work
+            kwargs = {par: val for par, val in kwargs.items()
+                      if par in func_kwargs or par in ['psr', 'mask']}
 
             return func(*args, **kwargs)
 
