@@ -81,6 +81,9 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
     else:
         f = np.linspace(fmin, fmax, nmodes)
 
+    # fix any round-off issues
+    f = np.double(f.astype('float32'))
+
     # add random phase shift to basis functions
     ranphase = (np.random.uniform(0.0, 2 * np.pi, nmodes)
                 if pshift else np.zeros(nmodes))

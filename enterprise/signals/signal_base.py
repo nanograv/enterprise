@@ -604,7 +604,7 @@ def SignalCollection(metasignals):
                     idx[signal] = []
 
                     for i, column in enumerate(Fmat.T):
-                        colhash = hash(column.astype('S8').tostring())
+                        colhash = hash(column.tostring())
                         try:
                             j = hashlist.index(colhash)
                             idx[signal].append(j)
