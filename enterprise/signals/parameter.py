@@ -77,10 +77,13 @@ class Parameter(object):
                          if not isinstance(par, ConstantParameter)]
 
     def __repr__(self):
-        typename = self._typename.format(**self.prior._params)
+        args = self.prior._params.copy()
+        args.update(self.prior._funcs)
+
+        typename = self._typename.format(**args)
         array = '' if self._size is None else '[{}]'.format(self._size)
 
-        return '"{}":{}{}'.format(self.name, typename, array)
+        return '{}:{}{}'.format(self.name, typename, array)
 
     # this trick lets us pass an instantiated parameter to a signal;
     # the parameter will refuse to be renamed and will return itself
@@ -107,14 +110,15 @@ def UserParameter(prior, sampler=None, size=None):
 def _argrepr(typename, **kwargs):
     args = []
     for par, arg in kwargs.items():
-        if type(arg) == type and issubclass(arg, Parameter):
-            args.append('{}="{{{}.name}}"'.format(par, par))
-        elif isinstance(arg, Parameter):
-            args.append('{}={}'.format(par, arg.name))
+        if isinstance(arg, type) and \
+                issubclass(arg, (Parameter, FunctionBase)): 
+            args.append('{}={{{}}}'.format(par, par))
+        elif isinstance(arg, (Parameter, FunctionBase)):
+            args.append('{}={}'.format(par, arg))
         else:
             args.append('{}={}'.format(par, arg))
 
-    return '{}({})'.format(typename,','.join(args))
+    return '{}({})'.format(typename,', '.join(args))
 
 
 def UniformPrior(value, pmin, pmax):
@@ -246,7 +250,7 @@ class ConstantParameter(object):
         return self
 
     def __repr__(self):
-        return '"{}":Constant={}'.format(self.name, self.value)
+        return '{}:Constant={}'.format(self.name, self.value)
 
 
 def Constant(val=None):
@@ -272,6 +276,7 @@ def Function(func, name='', **func_kwargs):
             self._defaults = {}
             self._funcs = {}
 
+            self.name = '_'.join([n for n in [name, fname] if n])
             self.func_kwargs = func_kwargs
 
             # process keyword parameters:
@@ -306,6 +311,9 @@ def Function(func, name='', **func_kwargs):
 
                     self._funcs[kw] = parfunc
                     self._params.update(parfunc._params)
+                elif isinstance(arg, FunctionBase):
+                    self._funcs[kw] = arg
+                    self._params.update(arg._params)
                 else:
                     self._defaults[kw] = arg
 
@@ -359,10 +367,11 @@ def Function(func, name='', **func_kwargs):
             if self._psr is not None and 'psr' not in kwargs:
                 kwargs['psr'] = self._psr
 
-            # clean up parameters that are not meant for func
-            # keep those required for selection_func to work
+            # clean up parameters that are not meant for `func`
+            # keep those required for `selection_func` to work
+            # keep also `size` needed by samplers
             kwargs = {par: val for par, val in kwargs.items()
-                      if par in func_kwargs or par in ['psr', 'mask']}
+                      if par in func_kwargs or par in ['psr', 'mask', 'size']}
 
             return func(*args, **kwargs)
 
@@ -377,8 +386,8 @@ def Function(func, name='', **func_kwargs):
                         if not isinstance(par, ConstantParameter)], [])
 
         def __repr__(self):
-            return '{}({})'.format(self._func.__name__,
-                                   ','.join(map(str,self.params)))
+            return '{}({})'.format(self.name,
+                                   ', '.join(map(str,self.params)))
 
     return Function
 
@@ -400,20 +409,33 @@ def get_funcargs(func):
 def function(func):
     """Decorator for Function."""
 
+    # get the positional arguments
     funcargs, _ = get_funcargs(func)
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
+        # make a dictionary of positional arguments (declared for func,
+        # and passed to wrapper), and of keyword arguments passed to wrapper
         fargs = {funcargs[ct]: val for ct, val in
                  enumerate(args[:len(funcargs)])}
         fargs.update(kwargs)
-        if not np.all([fa in fargs.keys() for fa in funcargs]):
+
+        # if any of the positional arguments are missing, we make a Function
+        if not all(fa in fargs.keys() for fa in funcargs):
             return Function(func, **kwargs)
+
+        # if any of the keyword arguments are Parameters or Functions,
+        # we make a Function
         for kw, arg in kwargs.items():
-            if ((isinstance(arg, type) and issubclass(
-                arg, (Parameter, ConstantParameter))) or isinstance(
-                    arg, (Parameter, ConstantParameter))):
+            if isinstance(arg, type) and issubclass(
+                    arg, (Parameter, ConstantParameter)) or \
+               isinstance(arg, (Parameter, ConstantParameter)) or \
+               isinstance(arg, type) and issubclass(arg, FunctionBase) or \
+               isinstance(arg, FunctionBase):
+
                 return Function(func, **kwargs)
+
+        # otherwise, we simply call the function
         return func(*args, **kwargs)
 
     return wrapper

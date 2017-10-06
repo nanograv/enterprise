@@ -220,7 +220,8 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, name='common'):
 def FourierBasisCommonGP(spectrum, orf, components=20,
                          Tspan=None, name='common'):
 
-    basis = utils.createfourierdesignmatrix_red(nmodes=components)
+    basis = utils.createfourierdesignmatrix_red(nmodes=components,
+                                                Tspan=Tspan)
     BaseClass = BasisCommonGP(spectrum, basis, orf, name=name)
 
     class FourierBasisCommonGP(BaseClass):
