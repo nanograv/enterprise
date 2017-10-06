@@ -12,6 +12,7 @@ Tests for deterministic signal module
 import unittest
 import numpy as np
 
+import enterprise
 from tests.enterprise_test_data import datadir
 from enterprise.pulsar import Pulsar
 from enterprise.signals import parameter
@@ -96,45 +97,62 @@ class TestDeterministicSignals(unittest.TestCase):
     def test_physical_ephem_model(self):
         """Test physical ephemeris model"""
 
-        # define signals with and without epoch TOAs
-        eph1 = deterministic_signals.PhysicalEphemerisSignal(
-            inc_saturn_orb=True)
-        eph2 = deterministic_signals.PhysicalEphemerisSignal(
-            inc_saturn_orb=True, use_epoch_toas=False)
+        if isinstance(self.psr, enterprise.pulsar.Tempo2Pulsar):
+            # define signals with and without epoch TOAs
+            eph1 = deterministic_signals.PhysicalEphemerisSignal(
+                inc_saturn_orb=True)
+            eph2 = deterministic_signals.PhysicalEphemerisSignal(
+                inc_saturn_orb=True, use_epoch_toas=False)
 
-        # initialize signals
-        e1, e2 = eph1(self.psr), eph2(self.psr)
+            # initialize signals
+            e1, e2 = eph1(self.psr), eph2(self.psr)
 
-        # set parameters
-        params = {'d_jupiter_mass': -8.561198198000628e-12,
-                  'd_neptune_mass': 1.0251757860647059e-11,
-                  'd_saturn_mass': 6.22114376130324e-12,
-                  'd_uranus_mass': -2.1157536169469958e-10,
-                  'frame_drift_rate': 2.874659280396648e-10,
-                  'jup_orb_elements': np.array([0.04140015, -0.03422412,
-                                                0.01165894, -0.03525219,
-                                                -0.00406852, 0.0421522]),
-                  'sat_orb_elements': np.array([-0.39701798, -0.13322608,
-                                                -0.05025925, 0.36331171,
-                                                -0.17080321,0.25093799])
-                  }
+            # set parameters
+            params = {'d_jupiter_mass': -8.561198198000628e-12,
+                      'd_neptune_mass': 1.0251757860647059e-11,
+                      'd_saturn_mass': 6.22114376130324e-12,
+                      'd_uranus_mass': -2.1157536169469958e-10,
+                      'frame_drift_rate': 2.874659280396648e-10,
+                      'jup_orb_elements': np.array([0.04140015, -0.03422412,
+                                                    0.01165894, -0.03525219,
+                                                    -0.00406852, 0.0421522]),
+                      'sat_orb_elements': np.array([-0.39701798, -0.13322608,
+                                                    -0.05025925, 0.36331171,
+                                                    -0.17080321,0.25093799])
+                      }
 
-        # test against waveform and compare non-epoch and epoch TOA results
-        d1 = e1.get_delay(params=params)
-        d2 = e2.get_delay(params=params)
+            # test against waveform and compare non-epoch and epoch TOA results
+            d1 = e1.get_delay(params=params)
+            d2 = e2.get_delay(params=params)
 
-        jup_mjd, jup_orbelxyz, sat_mjd, sat_orbelxyz = (
-            utils.get_planet_orbital_elements())
-        d3 = utils.physical_ephem_delay(
-            self.psr.toas, self.psr.planetssb, self.psr.pos_t,
-            jup_mjd=jup_mjd, jup_orbelxyz=jup_orbelxyz, sat_mjd=sat_mjd,
-            sat_orbelxyz=sat_orbelxyz, inc_jupiter_orb=True,
-            inc_saturn_orb=True, **params)
+            jup_mjd, jup_orbelxyz, sat_mjd, sat_orbelxyz = (
+                utils.get_planet_orbital_elements())
+            d3 = utils.physical_ephem_delay(
+                self.psr.toas, self.psr.planetssb, self.psr.pos_t,
+                jup_mjd=jup_mjd, jup_orbelxyz=jup_orbelxyz, sat_mjd=sat_mjd,
+                sat_orbelxyz=sat_orbelxyz, inc_jupiter_orb=True,
+                inc_saturn_orb=True, **params)
 
-        msg1 = 'Signal delay does not match function delay'
-        assert np.allclose(d1, d3, rtol=1e-10), msg1
-        msg2 = 'epoch-TOA delay does not match full TOA delay'
-        assert np.allclose(d1, d2, rtol=1e-10), msg2
+            msg1 = 'Signal delay does not match function delay'
+            assert np.allclose(d1, d3, rtol=1e-10), msg1
+            msg2 = 'epoch-TOA delay does not match full TOA delay'
+            assert np.allclose(d1, d2, rtol=1e-10), msg2
+
+            # test against pre-computed wafeform
+            eph_wf = np.load(datadir + '/phys_ephem_1855_test.npy')
+            msg = 'Ephemeris delay does not match pre-computed values'
+            assert np.allclose(d1, eph_wf, rtol=1e-10), msg
+
+        # test PINT exception raising
+        elif isinstance(self.psr, enterprise.pulsar.PintPulsar):
+            with self.assertRaises(NotImplementedError) as context:
+                eph1 = deterministic_signals.PhysicalEphemerisSignal(
+                    inc_saturn_orb=True)
+                e1 = eph1(self.psr)
+
+                msg = 'Physical Ephemeris model is not compatible with PINT '
+                msg += 'at this time.'
+                self.assertEqual(msg, str(context.exception))
 
 
 class TestDeterministicSignalsPint(TestDeterministicSignals):

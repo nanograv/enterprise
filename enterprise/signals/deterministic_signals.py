@@ -9,6 +9,7 @@ from __future__ import (absolute_import, division,
 
 import numpy as np
 
+import enterprise
 import enterprise.signals.signal_base as base
 from enterprise.signals import selections
 from enterprise.signals import parameter
@@ -73,6 +74,8 @@ def PhysicalEphemerisSignal(
     It is parameterized by an overall frame drift rate, masses of gas giants,
     6 orbital elements of Jupiter (uses a PCA basis), and 6 orbital elements
     of Saturn (uses PCA basis).
+
+    .. note:: This signal is only compatible with a tempo2 Pulsar object.
 
     The user can implement their own priors but we have set reasonable
     defaults.
@@ -159,6 +162,13 @@ def PhysicalEphemerisSignal(
     class PhysicalEphemerisSignal(BaseClass):
 
         def __init__(self, psr):
+
+            # not available for PINT yet
+            if isinstance(psr, enterprise.pulsar.PintPulsar):
+                msg = 'Physical Ephemeris model is not compatible with PINT '
+                msg += 'at this time.'
+                raise NotImplementedError(msg)
+
             super(PhysicalEphemerisSignal, self).__init__(psr)
 
             if use_epoch_toas:
