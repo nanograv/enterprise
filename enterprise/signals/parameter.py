@@ -111,7 +111,7 @@ def _argrepr(typename, **kwargs):
     args = []
     for par, arg in kwargs.items():
         if isinstance(arg, type) and \
-                issubclass(arg, (Parameter, FunctionBase)): 
+                issubclass(arg, (Parameter, FunctionBase)):
             args.append('{}={{{}}}'.format(par, par))
         elif isinstance(arg, (Parameter, FunctionBase)):
             args.append('{}={}'.format(par, arg))
