@@ -31,7 +31,7 @@ setup(
     package_dir={'enterprise':
                  'enterprise'},
     include_package_data=True,
-    package_data={'enterprise':['datafiles/*']},
+    package_data={'enterprise':['datafiles/*', 'datafiles/ephemeris/*']},
     install_requires=requirements,
     license="MIT license",
     zip_safe=False,

@@ -11,6 +11,7 @@ from scipy.interpolate import interp1d
 from scipy.integrate import odeint
 from scipy import special as ss
 from pkg_resources import resource_filename, Requirement
+import enterprise
 import enterprise.constants as const
 from enterprise.signals import signal_base
 
@@ -685,3 +686,150 @@ def hd_orf(pos1, pos2):
         xi = 1 - np.dot(pos1, pos2)
         omc2 = (1 - np.cos(xi)) / 2
         return 1.5 * omc2 * np.log(omc2) - 0.25 * omc2 + 0.5
+
+
+# Physical ephemeris model utility functions
+
+t_offset = 55197.0
+e_ecl = 23.43704 * np.pi / 180.0
+M_ecl = np.array([[1.0, 0.0, 0.0],
+                  [0.0, np.cos(e_ecl), -np.sin(e_ecl)],
+                  [0.0, np.sin(e_ecl), np.cos(e_ecl)]])
+
+
+def get_planet_orbital_elements():
+    """Grab physical ephemeris model files"""
+    dpath = enterprise.__path__[0] + '/datafiles/ephemeris/'
+    jup_mjd = np.load(dpath + 'jupiter-orbel-mjd.npy')
+    jup_orbelxyz = np.load(dpath + 'jupiter-orbel-xyz-svd.npy')
+    sat_mjd = np.load(dpath + 'saturn-orbel-mjd.npy')
+    sat_orbelxyz = np.load(dpath + 'saturn-orbel-xyz-svd.npy')
+    return jup_mjd, jup_orbelxyz, sat_mjd, sat_orbelxyz
+
+
+def ecl2eq_vec(x):
+    """
+    Rotate (n,3) vector time series from ecliptic to equatorial.
+    """
+    return np.einsum('jk,ik->ij', M_ecl, x)
+
+
+def eq2ecl_vec(x):
+    """
+    Rotate (n,3) vector time series from equatorial to ecliptic.
+    """
+    return np.einsum('kj,ik->ij', M_ecl, x)
+
+
+def euler_vec(z, y, x, n):
+    """
+    Return (n,3,3) tensor with each (3,3) block containing an
+    Euler rotation with angles z, y, x. Optionally each of z, y, x
+    can be a vector of length n.
+    """
+    L = np.zeros((n,3,3), 'd')
+    cosx, sinx = np.cos(x), np.sin(x)
+    L[:,0,0] = 1
+    L[:,1,1] = L[:,2,2] = cosx
+    L[:,1,2] = -sinx
+    L[:,2,1] = sinx
+
+    N = np.zeros((n,3,3),'d')
+    cosy, siny = np.cos(y), np.sin(y)
+    N[:,0,0] = N[:,2,2] = cosy
+    N[:,1,1] = 1
+    N[:,0,2] = siny
+    N[:,2,0] = -siny
+
+    ret = np.einsum('ijk,ikl->ijl', L, N)
+
+    M = np.zeros((n,3,3),'d')
+    cosz, sinz = np.cos(z), np.sin(z)
+    M[:,0,0] = M[:,1,1] = cosz
+    M[:,0,1] = -sinz
+    M[:,1,0] = sinz
+    M[:,2,2] = 1
+
+    ret = np.einsum('ijk,ikl->ijl', ret, M)
+
+    return ret
+
+
+def ss_framerotate(mjd, planet, x, y, z, dz,
+                   offset=None, equatorial=False):
+    """
+    Rotate planet trajectory given as (n,3) tensor,
+    by ecliptic Euler angles x, y, z, and by z rate
+    dz. The rate has units of rad/year, and is referred
+    to offset 2010/1/1. dates must be given in MJD.
+    """
+    if equatorial:
+        planet = eq2ecl_vec(planet)
+
+    E = euler_vec(z + dz * (mjd - t_offset) / 365.25, y, x,
+                  planet.shape[0])
+
+    planet = np.einsum('ijk,ik->ij', E, planet)
+
+    if offset is not None:
+        planet = np.array(offset) + planet
+
+    if equatorial:
+        planet = ecl2eq_vec(planet)
+
+    return planet
+
+
+def dmass(planet, dm_over_Msun):
+    return dm_over_Msun * planet
+
+
+@signal_base.function
+def physical_ephem_delay(toas, planetssb, pos_t, frame_drift_rate=0,
+                         d_jupiter_mass=0, d_saturn_mass=0, d_uranus_mass=0,
+                         d_neptune_mass=0, jup_orb_elements=np.zeros(6),
+                         sat_orb_elements=np.zeros(6), inc_jupiter_orb=False,
+                         jup_orbelxyz=None, jup_mjd=None, inc_saturn_orb=False,
+                         sat_orbelxyz=None, sat_mjd=None, equatorial=True):
+
+        # convert toas to MJD
+        mjd = toas / 86400
+
+        # grab planet-to-SSB vectors
+        earth = planetssb[:, 2, :3]
+        jupiter = planetssb[:, 4, :3]
+        saturn = planetssb[:, 5, :3]
+        uranus = planetssb[:, 6, :3]
+        neptune = planetssb[:, 7, :3]
+
+        # do frame rotation
+        earth = ss_framerotate(mjd, earth, 0.0, 0.0, 0.0, frame_drift_rate,
+                               offset=None, equatorial=equatorial)
+
+        # mass perturbations
+        mpert = [(jupiter, d_jupiter_mass), (saturn, d_saturn_mass),
+                 (uranus, d_uranus_mass), (neptune, d_neptune_mass)]
+        for planet, dm in mpert:
+            earth += dmass(planet, dm)
+
+        # jupter orbital element perturbations
+        if inc_jupiter_orb:
+            jup_perturb_tmp = 0.0009547918983127075 * np.einsum(
+                'i,ijk->jk', jup_orb_elements, jup_orbelxyz)
+            earth += np.array([np.interp(mjd, jup_mjd, jup_perturb_tmp[:,aa])
+                               for aa in range(3)]).T
+
+        # saturn orbital element perturbations
+        if inc_saturn_orb:
+            sat_perturb_tmp = 0.00028588567008942334 * np.einsum(
+                'i,ijk->jk', sat_orb_elements, sat_orbelxyz)
+            earth += np.array([np.interp(mjd, sat_mjd, sat_perturb_tmp[:,aa])
+                               for aa in range(3)]).T
+
+        # construct the true geocenter to barycenter roemer
+        tmp_roemer = np.einsum('ij,ij->i', planetssb[:, 2, :3], pos_t)
+
+        # create the delay
+        delay = tmp_roemer - np.einsum('ij,ij->i', earth, pos_t)
+
+        return delay
