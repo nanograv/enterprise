@@ -803,7 +803,16 @@ def cache_call(attrs, limit=2):
 
             # get the relevant parameters to be cached
             keys = sum([getattr(self, attr) for attr in attrs], [])
-            key = tuple([(key, params[key]) for key in keys if key in params])
+            ret = []
+            # TODO: this deals with vector parameters but could be cleaner...
+            for key in keys:
+                if key in params:
+                    if np.ndim(params[key]) > 0:
+                        ret.append((key, tuple(params[key])))
+                    else:
+                        ret.append((key, params[key]))
+            key = tuple(ret)
+            #key = tuple([(key, params[key]) for key in keys if key in params])
 
             # make sure the cache is part of the object
             if not hasattr(self, '_cache_'+func.__name__):
