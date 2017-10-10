@@ -52,7 +52,6 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
                                   pshift=False):
     """
     Construct fourier design matrix from eq 11 of Lentati et al, 2013
-
     :param toas: vector of time series in seconds
     :param nmodes: number of fourier coefficients to use
     :param freq: option to output frequencies
@@ -61,7 +60,6 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
     :param fmin: lower sampling frequency
     :param fmax: upper sampling frequency
     :param pshift: option to add random phase shift
-
     :return: F: fourier design matrix
     :return: f: Sampling frequencies
     """
@@ -72,15 +70,23 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
     T = Tspan if Tspan is not None else toas.max() - toas.min()
 
     # define sampling frequencies
-    if fmin is None:
-        fmin = 1 / T
-    if fmax is None:
-        fmax = nmodes / T
-
-    if logf:
-        f = np.logspace(np.log10(fmin), np.log10(fmax), nmodes)
+    if fmin is None and fmax is None and not logf:
+        # make sure partially overlapping sets of modes
+        # have identical frequencies
+        f = 1.0 * np.arange(1, nmodes + 1) / T
     else:
-        f = np.linspace(fmin, fmax, nmodes)
+        # more general case
+
+        if fmin is None:
+            fmin = 1 / T
+
+        if fmax is None:
+            fmax = nmodes / T
+
+        if logf:
+            f = np.logspace(np.log10(fmin), np.log10(fmax), nmodes)
+        else:
+            f = np.linspace(fmin, fmax, nmodes)
 
     # add random phase shift to basis functions
     ranphase = (np.random.uniform(0.0, 2 * np.pi, nmodes)

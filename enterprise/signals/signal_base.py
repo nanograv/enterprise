@@ -595,7 +595,7 @@ def SignalCollection(metasignals):
             matrix to save computations when calling `get_basis` later.
             """
 
-            idx, Fmatlist = {}, []
+            idx, Fmatlist, hashlist = {}, [], []
             cc = 0
             for signal in signals:
                 Fmat = signal.get_basis()
@@ -604,15 +604,15 @@ def SignalCollection(metasignals):
                     idx[signal] = []
 
                     for i, column in enumerate(Fmat.T):
-                        for j, savedcolumn in enumerate(Fmatlist):
-                            if np.allclose(column,savedcolumn,rtol=1e-15):
-                                idx[signal].append(j)
-                                break
-                        else:
+                        colhash = hash(column.tostring())
+                        try:
+                            j = hashlist.index(colhash)
+                            idx[signal].append(j)
+                        except ValueError:
                             idx[signal].append(cc)
                             Fmatlist.append(column)
+                            hashlist.append(colhash)
                             cc += 1
-
                 elif Fmat is not None and signal.basis_params:
                     nf = Fmat.shape[1]
                     idx[signal] = list(np.arange(cc, cc+nf))
