@@ -689,8 +689,7 @@ def hd_orf(pos1, pos2):
     if np.all(pos1 == pos2):
         return 1
     else:
-        xi = 1 - np.dot(pos1, pos2)
-        omc2 = (1 - np.cos(xi)) / 2
+        omc2 = (1 - np.dot(pos1, pos2)) / 2
         return 1.5 * omc2 * np.log(omc2) - 0.25 * omc2 + 0.5
 
 
