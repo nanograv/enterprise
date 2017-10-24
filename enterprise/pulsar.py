@@ -10,6 +10,7 @@ import numpy as np
 from ephem import Ecliptic, Equatorial
 import os
 import json
+from enterprise.signals import utils
 
 try:
     import cPickle as pickle
@@ -247,9 +248,14 @@ class BasePulsar(object):
         return self._pos
 
     @property
+    def pos_t(self):
+        """Return unit vector to pulsar as function of time."""
+        return self._pos_t[self._isort, :]
+
+    @property
     def planetssb(self):
         """Return planetary position vectors at all timestamps"""
-        return self._planetssb
+        return self._planetssb[self._isort, :, :]
 
 
 class PintPulsar(BasePulsar):
@@ -298,6 +304,9 @@ class PintPulsar(BasePulsar):
         self._pos = self._get_pos()
         self._planetssb = self._get_planetssb()
 
+        # TODO: pos_t not currently implemented
+        self._pos_t = np.zeros((len(self._toas), 3))
+
         self.sort_data()
 
     def _get_radec(self, model):
@@ -310,7 +319,7 @@ class PintPulsar(BasePulsar):
             return self._get_radec_from_ecliptic(elong*d2r, elat*d2r)
 
     def _get_planetssb(self):
-        return None
+        return np.zeros((len(self._toas), 9, 6))
 
 
 class Tempo2Pulsar(BasePulsar):
@@ -343,7 +352,12 @@ class Tempo2Pulsar(BasePulsar):
         self._pdist = self._get_pdist()
         self._raj, self._decj = self._get_radec(t2pulsar)
         self._pos = self._get_pos()
-        self._planetssb = self._get_planetssb()
+        self._planetssb = self._get_planetssb(t2pulsar)
+
+        self._pos_t = t2pulsar.psrPos.copy()
+        if 'ELONG' and 'ELAT' in np.concatenate((t2pulsar.pars(which='fit'),
+                                                 t2pulsar.pars(which='set'))):
+            self._pos_t = utils.ecl2eq_vec(self._pos_t)
 
         self.sort_data()
 
@@ -362,7 +376,7 @@ class Tempo2Pulsar(BasePulsar):
             elat = t2pulsar['ELAT'].val
             return self._get_radec_from_ecliptic(elong, elat)
 
-    def _get_planetssb(self):
+    def _get_planetssb(self, t2pulsar):
         planetssb = None
         if self.planets:
             for ii in range(1, 10):
@@ -379,6 +393,13 @@ class Tempo2Pulsar(BasePulsar):
             planetssb[:, 6, :] = self.t2pulsar.uranus_ssb
             planetssb[:, 7, :] = self.t2pulsar.neptune_ssb
             planetssb[:, 8, :] = self.t2pulsar.pluto_ssb
+
+            if 'ELONG' and 'ELAT' in np.concatenate((t2pulsar.pars(),
+                                                     t2pulsar.pars(
+                                                         which='set'))):
+                for ii in range(9):
+                    planetssb[:,ii,:3] = utils.ecl2eq_vec(planetssb[:,ii,:3])
+                    planetssb[:,ii,3:] = utils.ecl2eq_vec(planetssb[:,ii,3:])
         return planetssb
 
 

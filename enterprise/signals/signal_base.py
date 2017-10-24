@@ -595,7 +595,7 @@ def SignalCollection(metasignals):
             matrix to save computations when calling `get_basis` later.
             """
 
-            idx, Fmatlist = {}, []
+            idx, Fmatlist, hashlist = {}, [], []
             cc = 0
             for signal in signals:
                 Fmat = signal.get_basis()
@@ -604,15 +604,15 @@ def SignalCollection(metasignals):
                     idx[signal] = []
 
                     for i, column in enumerate(Fmat.T):
-                        for j, savedcolumn in enumerate(Fmatlist):
-                            if np.allclose(column,savedcolumn,rtol=1e-15):
-                                idx[signal].append(j)
-                                break
-                        else:
+                        colhash = hash(column.tostring())
+                        try:
+                            j = hashlist.index(colhash)
+                            idx[signal].append(j)
+                        except ValueError:
                             idx[signal].append(cc)
                             Fmatlist.append(column)
+                            hashlist.append(colhash)
                             cc += 1
-
                 elif Fmat is not None and signal.basis_params:
                     nf = Fmat.shape[1]
                     idx[signal] = list(np.arange(cc, cc+nf))
@@ -803,7 +803,16 @@ def cache_call(attrs, limit=2):
 
             # get the relevant parameters to be cached
             keys = sum([getattr(self, attr) for attr in attrs], [])
-            key = tuple([(key, params[key]) for key in keys if key in params])
+            ret = []
+            # TODO: this deals with vector parameters but could be cleaner...
+            for key in keys:
+                if key in params:
+                    if np.ndim(params[key]) > 0:
+                        ret.append((key, tuple(params[key])))
+                    else:
+                        ret.append((key, params[key]))
+            key = tuple(ret)
+            #key = tuple([(key, params[key]) for key in keys if key in params])
 
             # make sure the cache is part of the object
             if not hasattr(self, '_cache_'+func.__name__):
