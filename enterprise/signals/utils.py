@@ -16,6 +16,61 @@ import enterprise.constants as const
 from enterprise.signals.parameter import function as enterprise_function
 
 
+class KernelMatrix(np.ndarray):
+    def __new__(cls, init):
+        if isinstance(init, int):
+            return np.zeros(init, 'd').view(cls)
+        else:
+            return init.view(cls)
+
+    def add(self, other, idx):
+        if other.ndim == 2 and self.ndim == 1:
+            self = KernelMatrix(np.diag(self))
+
+        if self.ndim == 1:
+            self[idx] += other
+        else:
+            if other.ndim == 1:
+                self[idx, idx] += other
+            else:
+                idx = np.idx_(idx,idx)
+                self[idx] += other
+
+        return self
+
+    def set(self, other, idx):
+        if other.ndim == 2 and self.ndim == 1:
+            self = KernelMatrix(np.diag(self))
+
+        if self.ndim == 1:
+            self[idx] = other
+        else:
+            if other.ndim == 1:
+                self[idx, idx] = other
+            else:
+                idx = np.idx_(idx,idx)
+                self[idx] = other
+
+        return self
+
+    def inv(self, logdet=False):
+        if self.ndim == 1:
+            inv = 1.0/self
+
+            if logdet:
+                return inv, np.sum(np.log(self))
+            else:
+                return inv
+        else:
+            cf = sl.cho_factor(self)
+            inv = sl.cho_solve(cf, np.identity(cf[0].shape[0]))
+
+            if logdet:
+                return inv, 2.0*np.sum(np.log(np.diag(cf[0])))
+            else:
+                return inv
+
+
 def create_stabletimingdesignmatrix(designmat, fastDesign=True):
     """
     Stabilize the timing-model design matrix.
@@ -789,7 +844,7 @@ def dmass(planet, dm_over_Msun):
     return dm_over_Msun * planet
 
 
-@signal_base.function
+@enterprise_function
 def physical_ephem_delay(toas, planetssb, pos_t, frame_drift_rate=0,
                          d_jupiter_mass=0, d_saturn_mass=0, d_uranus_mass=0,
                          d_neptune_mass=0, jup_orb_elements=np.zeros(6),

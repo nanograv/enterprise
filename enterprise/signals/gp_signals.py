@@ -15,7 +15,7 @@ import enterprise.signals.signal_base as base
 from enterprise.signals import selections
 from enterprise.signals.selections import Selection
 from enterprise.signals.parameter import function as enterprise_function
-
+from enterprise.signals.utils import KernelMatrix
 
 def BasisGP(priorFunction, basisFunction,
             selection=Selection(selections.no_selection),
@@ -62,8 +62,8 @@ def BasisGP(priorFunction, basisFunction,
                     params=params, mask=mask)
 
             nc = np.sum(F.shape[1] for F in basis.values())
-            self._basis = np.zeros((len(self._masks[0]), nc))
-            self._phi = np.zeros(nc)
+            self._basis = np.zeros((len(self._masks[0]), nc))            
+            self._phi = KernelMatrix(nc)
             self._slices = {}
             nctot = 0
             for key, mask in zip(self._keys, self._masks):
@@ -80,12 +80,13 @@ def BasisGP(priorFunction, basisFunction,
         def get_phi(self, params):
             self._construct_basis(params)
             for key, slc in self._slices.items():
-                self._phi[slc] = self._prior[key](
+                phislc = self._prior[key](
                     self._labels[key], params=params) * self._labels[key][0]
+                self._phi = self._phi.set(phislc, slc) 
             return self._phi
 
         def get_phiinv(self, params):
-            return 1 / self.get_phi(params)
+            return self.get_phi(params).inv()
 
     return BasisGP
 

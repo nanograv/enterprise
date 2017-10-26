@@ -18,6 +18,7 @@ import scipy.linalg as sl
 from sksparse.cholmod import cholesky
 
 from enterprise.signals.parameter import ConstantParameter
+from enterprise.signals.utils import KernelMatrix
 
 # these are defined in parameter.py, but currently imported
 # in various places from signal_base.py
@@ -98,7 +99,7 @@ class Signal(object):
     def get_ndiag(self, params):
         """Returns the diagonal of the white noise vector `N`.
 
-        This method also supports block diagaonal sparse matrices.
+        This method also supports block diagonal sparse matrices.
         """
         return None
 
@@ -111,7 +112,7 @@ class Signal(object):
         return None
 
     def get_phi(self, params):
-        """Returns a diagonal covaraince matrix of the basis amplitudes."""
+        """Returns a diagonal covariance matrix of the basis amplitudes."""
         return None
 
     def get_phiinv(self, params):
@@ -168,7 +169,7 @@ class MarginalizedLogLikelihood(object):
             loglike += 0.5*(np.dot(TNr, expval) - logdet_sigma - logdet_phi)
         else:
             for TNr, TNT, (phiinv, logdet_phi) in zip(TNrs, TNTs, phiinvs):
-                Sigma = TNT + np.diag(phiinv)
+                Sigma = TNT + (np.diag(phiinv) if phiinv.ndim == 1 else phiinv)
 
                 try:
                     cf = sl.cho_factor(Sigma)
@@ -305,12 +306,8 @@ class PTA(object):
         phi = self.get_phi(params)
 
         if isinstance(phi, list):
-            if logdet:
-                return [None if phivec is None
-                        else (1/phivec, np.sum(np.log(phivec)))
-                        for phivec in phi]
-            else:
-                return [None if phivec is None else 1/phivec for phivec in phi]
+            return [None if phivec is None else phivec.inv(logdet)
+                    for phivec in phi]
         else:
             phisparse = sps.csc_matrix(phi)
             cf = cholesky(phisparse)
@@ -388,24 +385,14 @@ class PTA(object):
             else:
                 return phiinv
         else:
-            if logdet:
-                return [None if phivec is None
-                        else (1/phivec, np.sum(np.log(phivec)))
-                        for phivec in phivecs]
-            else:
-                return [None if phivec is None else 1/phivec for
-                        phivec in phivecs]
+            return [None if phivec is None else phivec.inv(logdet)
+                    for phivec in phivecs]
 
     def get_phiinv_byfreq_cliques(self, params, logdet=False, cholesky=False):
         phi = self.get_phi(params, cliques=True)
 
         if isinstance(phi, list):
-            if logdet:
-                return [None if phivec is None
-                        else (1/phivec, np.sum(np.log(phivec)))
-                        for phivec in phi]
-            else:
-                return [None if phivec is None else 1/phivec for phivec in phi]
+            return [None if phivec is None else phivec.inv(logdet) for phivec in phi]
         else:
             ld = 0
 
@@ -657,13 +644,17 @@ def SignalCollection(metasignals):
             return self._Fmat
 
         def get_phiinv(self, params):
-            return 1.0/self.get_phi(params)
+            return self.get_phi(params).inv()
 
+        # returns a KernelMatrix object
         def get_phi(self, params):
-            phi = np.zeros(self._Fmat.shape[1],'d')
+            phi = KernelMatrix(self._Fmat.shape[1])
+
             for signal in self._signals:
                 if signal in self._idx:
-                    phi[self._idx[signal]] += signal.get_phi(params)
+                    phi = phi.add(signal.get_phi(params),
+                                  self._idx[signal])
+
             return phi
 
         @cache_call(['basis_params', 'white_params', 'delay_params'])
