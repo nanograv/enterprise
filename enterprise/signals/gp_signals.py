@@ -80,7 +80,7 @@ def BasisGP(priorFunction, basisFunction,
             self._construct_basis(params)
             for key, slc in self._slices.items():
                 phislc = self._prior[key](
-                    self._labels[key], params=params) * self._labels[key][0]
+                    self._labels[key], params=params)
                 self._phi = self._phi.set(phislc, slc)
             return self._phi
 
@@ -197,14 +197,14 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, name='common'):
         def get_phi(self, params):
             self._construct_basis(params)
             prior = BasisCommonGP._prior(
-                self._labels, params=params) * self._labels[0]
+                self._labels, params=params)
             orf = BasisCommonGP._orf(self._psrpos, self._psrpos, params=params)
             return prior * orf
 
         @classmethod
         def get_phicross(cls, signal1, signal2, params):
             prior = BasisCommonGP._prior(signal1._labels,
-                                         params=params) * signal1._labels[0]
+                                         params=params)
             orf = BasisCommonGP._orf(signal1._psrpos, signal2._psrpos,
                                      params=params)
             return prior * orf

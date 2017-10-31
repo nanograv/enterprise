@@ -179,10 +179,10 @@ class TestLikelihood(unittest.TestCase):
             T = np.hstack((F, Mmat))
             Ts.append(T)
             phi = utils.powerlaw(f2, log10_A=log10_A[ii],
-                                 gamma=gamma[ii]) * f2[0]
+                                 gamma=gamma[ii])
             if inc_corr:
                 phigw = utils.powerlaw(f2, log10_A=GW_log10_A,
-                                       gamma=GW_gamma) * f2[0]
+                                       gamma=GW_gamma)
             else:
                 phigw = np.zeros(40)
             phis.append(np.concatenate(

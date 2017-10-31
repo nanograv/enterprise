@@ -673,15 +673,17 @@ def quant2ind(U):
 
 @signal_base.function
 def powerlaw(f, log10_A=-16, gamma=5):
+    df = np.diff(np.concatenate((np.array([0]), f[::2])))
     return ((10**log10_A)**2 / 12.0 / np.pi**2 *
-            const.fyr**(gamma-3) * f**(-gamma))
+            const.fyr**(gamma-3) * f**(-gamma) * np.repeat(df, 2))
 
 
 @signal_base.function
 def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10/3, beta=0.5):
+    df = np.diff(np.concatenate((np.array([0]), f[::2])))
     hcf = (10**log10_A * (f / const.fyr) ** ((3-gamma) / 2) /
            (1 + (10**lf0 / f) ** kappa) ** beta)
-    return hcf**2/12/np.pi**2/f**3
+    return hcf**2/12/np.pi**2/f**3*np.repeat(df, 2)
 
 
 @signal_base.function

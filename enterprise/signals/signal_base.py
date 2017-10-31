@@ -607,7 +607,8 @@ def SignalCollection(metasignals):
 
             ncol = len(np.unique(sum(idx.values(), [])))
             nrow = len(Fmatlist[0])
-            return idx, np.zeros((nrow, ncol))
+            return ({key: np.array(idx[key]) for key in idx.keys()},
+                    np.zeros((nrow, ncol)))
 
         # goofy way to cache _idx
         def __getattr__(self, par):
@@ -842,7 +843,8 @@ class KernelMatrix(np.ndarray):
             if other.ndim == 1:
                 self[idx, idx] += other
             else:
-                idx = np.idx_(idx,idx)
+                idx = ((idx, idx) if isinstance(idx, slice)
+                       else (idx[:, None], idx))
                 self[idx] += other
 
         return self
@@ -857,7 +859,8 @@ class KernelMatrix(np.ndarray):
             if other.ndim == 1:
                 self[idx, idx] = other
             else:
-                idx = np.idx_(idx,idx)
+                idx = ((idx, idx) if isinstance(idx, slice)
+                       else (idx[:, None], idx))
                 self[idx] = other
 
         return self
@@ -871,11 +874,18 @@ class KernelMatrix(np.ndarray):
             else:
                 return inv
         else:
-            cf = sl.cho_factor(self)
-            inv = sl.cho_solve(cf, np.identity(cf[0].shape[0]))
-
+            try:
+                cf = sl.cho_factor(self)
+                inv = sl.cho_solve(cf, np.identity(cf[0].shape[0]))
+                if logdet:
+                    ld = 2.0*np.sum(np.log(np.diag(cf[0])))
+            except np.linalg.LinAlgError:
+                u, s, v = np.linalg.svd(self)
+                inv = np.dot(u/s, u.T)
+                if logdet:
+                    ld = np.sum(np.log(s))
             if logdet:
-                return inv, 2.0*np.sum(np.log(np.diag(cf[0])))
+                return inv, ld
             else:
                 return inv
 

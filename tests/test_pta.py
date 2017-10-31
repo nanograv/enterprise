@@ -66,18 +66,6 @@ class TestPTASignals(unittest.TestCase):
     def setUpClass(cls):
         """Setup the Pulsar object."""
 
-        #if os.path.isfile(datadir + '/B1855+09.pkl') and \
-        #        os.path.isfile(datadir + '/J1909-3744.pkl'):
-        #    self.psrs = [pickle.load(open(datadir + '/B1855+09.pkl','r')),
-        #                 pickle.load(open(datadir + '/J1909-3744.pkl','r'))]
-        #else:
-        #    self.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
-        #                        datadir + '/B1855+09_NANOGrav_9yv1.tim'),
-        #                 Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
-        #                        datadir + '/J1909-3744_NANOGrav_9yv1.tim')]
-#
-        #    for psr in self.psrs:
-        #        psr.to_pickle(datadir)
         cls.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
                            datadir + '/B1855+09_NANOGrav_9yv1.tim'),
                     Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
@@ -124,14 +112,14 @@ class TestPTASignals(unittest.TestCase):
         phidiag = np.zeros(nftot)
         phit = np.zeros((nftot, nftot))
 
-        phidiag[:60] = utils.powerlaw(f1, lA1, gamma1) * f1[0]
-        phidiag[:60] += utils.powerlaw(f1, lAc, gammac) * f1[0]
-        phidiag[60:] = utils.powerlaw(f2, lA2, gamma2) * f2[0]
-        phidiag[60:] += utils.powerlaw(f2, lAc, gammac) * f2[0]
+        phidiag[:60] = utils.powerlaw(f1, lA1, gamma1)
+        phidiag[:60] += utils.powerlaw(f1, lAc, gammac)
+        phidiag[60:] = utils.powerlaw(f2, lA2, gamma2)
+        phidiag[60:] += utils.powerlaw(f2, lAc, gammac)
 
         phit[np.diag_indices(nftot)] = phidiag
         orf = hd_orf_generic(self.psrs[0].pos, self.psrs[1].pos, a=a, b=b, c=c)
-        spec = utils.powerlaw(f1, log10_A=lAc, gamma=gammac) * f1[0]
+        spec = utils.powerlaw(f1, log10_A=lAc, gamma=gammac)
         phit[:60, 60:] = np.diag(orf*spec)
         phit[60:, :60] = phit[:60, 60:]
 
@@ -321,19 +309,19 @@ class TestPTASignals(unittest.TestCase):
         phidiag = np.zeros(nftot)
         phit = np.zeros((nftot, nftot))
 
-        phidiag[:4] = utils.powerlaw(f1, lA1, gamma1) * f1[0]
-        phidiag[:2] += utils.powerlaw(fc, lAc, gammac) * fc[0]
-        phidiag[4:] = utils.powerlaw(f2, lA2, gamma2) * f2[0]
-        phidiag[4:6] += utils.powerlaw(fc, lAc, gammac) * fc[0]
+        phidiag[:4] = utils.powerlaw(f1, lA1, gamma1)
+        phidiag[:2] += utils.powerlaw(fc, lAc, gammac)
+        phidiag[4:] = utils.powerlaw(f2, lA2, gamma2)
+        phidiag[4:6] += utils.powerlaw(fc, lAc, gammac)
 
         phit[np.diag_indices(nftot)] = phidiag
 
         phit[:2, 4:6] = np.diag(hd_powerlaw(fc, self.psrs[0].pos,
                                             self.psrs[1].pos, lAc,
-                                            gammac) * fc[0])
+                                            gammac))
         phit[4:6, :2] = np.diag(hd_powerlaw(fc, self.psrs[0].pos,
                                             self.psrs[1].pos, lAc,
-                                            gammac) * fc[0])
+                                            gammac))
 
         msg = '{} {}'.format(np.diag(phi), np.diag(phit))
         assert np.allclose(phi, phit, rtol=1e-15, atol=1e-17), msg

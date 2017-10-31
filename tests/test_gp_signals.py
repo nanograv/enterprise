@@ -129,7 +129,7 @@ class TestGPSignals(unittest.TestCase):
         assert np.allclose(F, rnm.get_basis(params)), msg
 
         # spectrum test
-        phi = utils.powerlaw(f2, log10_A=log10_A, gamma=gamma) * f2[0]
+        phi = utils.powerlaw(f2, log10_A=log10_A, gamma=gamma)
         msg = 'Spectrum incorrect for GP Fourier signal.'
         assert np.all(rnm.get_phi(params) == phi), msg
 
@@ -171,7 +171,7 @@ class TestGPSignals(unittest.TestCase):
                 self.psr.toas[mask], 30)
             Fmats.append(F)
             fs.append(f)
-            phis.append(utils.powerlaw(f, log10_As[ct], gammas[ct])*f[0])
+            phis.append(utils.powerlaw(f, log10_As[ct], gammas[ct]))
 
         nf = sum(F.shape[1] for F in Fmats)
         F = np.zeros((len(self.psr.toas), nf))
@@ -233,8 +233,8 @@ class TestGPSignals(unittest.TestCase):
                 self.psr.toas, nmodes=nf2, Tspan=T2)
 
             # test power spectrum
-            p1 = utils.powerlaw(f1, log10_A, gamma) * f1[0]
-            p2 = utils.powerlaw(f2, log10_Ac, gammac) * f2[0]
+            p1 = utils.powerlaw(f1, log10_A, gamma)
+            p2 = utils.powerlaw(f2, log10_Ac, gammac)
             if T1 == T2:
                 nf = max(2*nf1, 2*nf2)
                 phi = np.zeros(nf)
@@ -302,14 +302,14 @@ class TestGPSignals(unittest.TestCase):
             Fmats, fs, phis = [], [], []
             F2, f2 = utils.createfourierdesignmatrix_red(
                 self.psr.toas, nf2, Tspan=T2)
-            p2 = utils.powerlaw(f2, log10_Ac, gammac)*f2[0]
+            p2 = utils.powerlaw(f2, log10_Ac, gammac)
             for ct, flag in enumerate(np.unique(bflags)):
                 mask = bflags == flag
                 F1, f1 = utils.createfourierdesignmatrix_red(
                     self.psr.toas[mask], nf1, Tspan=T1)
                 Fmats.append(F1)
                 fs.append(f1)
-                phis.append(utils.powerlaw(f1, log10_As[ct], gammas[ct])*f1[0])
+                phis.append(utils.powerlaw(f1, log10_As[ct], gammas[ct]))
 
             Fmats.append(F2)
             phis.append(p2)
@@ -399,9 +399,9 @@ class TestGPSignals(unittest.TestCase):
             log10_Q=log10_Q, t0=t0)
         F = np.hstack((Fenv, Fred))
         phi_env = utils.powerlaw(f2_env, log10_A=log10_A_env,
-                                 gamma=gamma_env) * f2_env[0]
+                                 gamma=gamma_env)
         phi_red = utils.powerlaw(f2_red, log10_A=log10_A,
-                                 gamma=gamma) * f2_red[0]
+                                 gamma=gamma)
         phi = np.concatenate((phi_env, phi_red))
 
         # basis matrix test
@@ -452,7 +452,7 @@ class TestGPSignals(unittest.TestCase):
         # combined prior vector
         jvec = 10**(2*ecorr) * np.ones(U.shape[1])
         phim = np.ones(self.psr.Mmat.shape[1]) * 1e40
-        phi = utils.powerlaw(f2, log10_A=log10_A, gamma=gamma) * f2[0]
+        phi = utils.powerlaw(f2, log10_A=log10_A, gamma=gamma)
         phivec = np.concatenate((jvec, phi, phim))
 
         # basis matrix test
