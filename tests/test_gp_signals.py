@@ -11,6 +11,7 @@ Tests for GP signal modules.
 
 import unittest
 import numpy as np
+import scipy.linalg as sl
 
 from tests.enterprise_test_data import datadir
 from enterprise.pulsar import Pulsar
@@ -18,8 +19,21 @@ from enterprise.signals import parameter
 from enterprise.signals import selections
 from enterprise.signals.selections import Selection
 import enterprise.signals.gp_signals as gs
+from enterprise.signals import signal_base
 from enterprise.signals import utils
 
+@signal_base.function
+def create_quant_matrix(toas, dt=1):
+
+    U, _ = utils.create_quantization_matrix(toas, dt=dt, nmin=1)
+    avetoas = np.array([toas[idx.astype(bool)].mean() for idx in U.T])
+    return U, avetoas
+
+@signal_base.function
+def se_kernel(etoas, log10_sigma=-7, log10_lam=np.log10(30*86400)):
+    tm = np.abs(etoas[None, :] - etoas[:, None])
+    d = np.eye(tm.shape[0]) * 10**(2*(log10_sigma-1.5))
+    return 10**(2*log10_sigma) * np.exp(-tm**2/2/10**(2*log10_lam)) + d
 
 class TestGPSignals(unittest.TestCase):
 
@@ -108,6 +122,93 @@ class TestGPSignals(unittest.TestCase):
         # test shape
         msg = 'U matrix shape incorrect'
         assert ecm.get_basis(params).shape == U.shape, msg
+
+    def test_kernel(self):
+
+        log10_sigma = parameter.Uniform(-10, -5)
+        log10_lam = parameter.Uniform(np.log10(86400), np.log10(1500*86400))
+        basis = create_quant_matrix(dt=7*86400)
+        prior = se_kernel(log10_sigma=log10_sigma, log10_lam=log10_lam)
+        se = gs.BasisGP(prior, basis, name='se')
+
+        sem = se(self.psr)
+
+        # parameters
+        log10_lam, log10_sigma = 7.4, -6.4
+        params =  {'B1855+09_se_log10_lam': log10_lam,
+                   'B1855+09_se_log10_sigma': log10_sigma}
+
+        # basis check
+        U, avetoas = create_quant_matrix(self.psr.toas, dt=7*86400)
+        msg = 'Kernel Basis incorrect'
+        assert np.allclose(U, sem.get_basis(params)), msg
+
+        # kernel test
+        K = se_kernel(avetoas, log10_lam=log10_lam, log10_sigma=log10_sigma)
+        msg = 'Kernel incorrect'
+        assert np.allclose(K, sem.get_phi(params)), msg
+
+        # inverse kernel test
+        Kinv = np.linalg.inv(K)
+        msg = 'Kernel inverse incorrect'
+        assert np.allclose(Kinv, sem.get_phiinv(params)), msg
+
+    def test_kernel_backend(self):
+        # set up signal parameter
+        selection = Selection(selections.by_backend)
+        log10_sigma = parameter.Uniform(-10, -5)
+        log10_lam = parameter.Uniform(np.log10(86400), np.log10(1500*86400))
+        basis = create_quant_matrix(dt=7*86400)
+        prior = se_kernel(log10_sigma=log10_sigma, log10_lam=log10_lam)
+
+        se = gs.BasisGP(prior, basis, selection=selection, name='se')
+        sem = se(self.psr)
+
+        # parameters
+        log10_sigmas = [-7, -6, -6.4, -8.5]
+        log10_lams = [8.3, 7.4, 6.8, 5.6]
+        params = {'B1855+09_se_430_ASP_log10_lam': log10_lams[0],
+                  'B1855+09_se_430_ASP_log10_sigma': log10_sigmas[0],
+                  'B1855+09_se_430_PUPPI_log10_lam': log10_lams[1],
+                  'B1855+09_se_430_PUPPI_log10_sigma': log10_sigmas[1],
+                  'B1855+09_se_L-wide_ASP_log10_lam': log10_lams[2],
+                  'B1855+09_se_L-wide_ASP_log10_sigma': log10_sigmas[2],
+                  'B1855+09_se_L-wide_PUPPI_log10_lam': log10_lams[3],
+                  'B1855+09_se_L-wide_PUPPI_log10_sigma': log10_sigmas[3]}
+
+        # get the basis
+        bflags = self.psr.backend_flags
+        Fmats, fs, phis = [], [], []
+        for ct, flag in enumerate(np.unique(bflags)):
+            mask = bflags == flag
+            U, avetoas = create_quant_matrix(self.psr.toas[mask], dt=7*86400)
+            Fmats.append(U)
+            fs.append(avetoas)
+            phis.append(se_kernel(avetoas, log10_sigma=log10_sigmas[ct],
+                                  log10_lam=log10_lams[ct]))
+
+        nf = sum(F.shape[1] for F in Fmats)
+        U = np.zeros((len(self.psr.toas), nf))
+        K = sl.block_diag(*phis)
+        Kinv = np.linalg.inv(K)
+        nftot = 0
+        for ct, flag in enumerate(np.unique(bflags)):
+            mask = bflags == flag
+            nn = Fmats[ct].shape[1]
+            U[mask, nftot:nn+nftot] = Fmats[ct]
+            nftot += nn
+
+        msg = 'Kernel basis incorrect for backend signal.'
+        assert np.allclose(U, sem.get_basis(params)), msg
+
+        # spectrum test
+        msg = 'Kernel incorrect for backend signal.'
+        assert np.allclose(sem.get_phi(params), K), msg
+
+        # inverse spectrum test
+        msg = 'Kernel inverse incorrect for backend signal.'
+        assert np.allclose(sem.get_phiinv(params), Kinv), msg
+
 
     def test_fourier_red_noise(self):
         """Test that red noise signal returns correct values."""
