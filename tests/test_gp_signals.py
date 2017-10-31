@@ -27,7 +27,8 @@ def create_quant_matrix(toas, dt=1):
 
     U, _ = utils.create_quantization_matrix(toas, dt=dt, nmin=1)
     avetoas = np.array([toas[idx.astype(bool)].mean() for idx in U.T])
-    return U, avetoas
+    # return value slightly different than 1 to get around ECORR columns
+    return U*1.0000001, avetoas
 
 @signal_base.function
 def se_kernel(etoas, log10_sigma=-7, log10_lam=np.log10(30*86400)):
@@ -530,16 +531,27 @@ class TestGPSignals(unittest.TestCase):
         pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
                             gamma=parameter.Uniform(1,7))
         rn = gs.FourierBasisGP(spectrum=pl, components=30)
+
+        log10_sigma = parameter.Uniform(-10, -5)
+        log10_lam = parameter.Uniform(np.log10(86400), np.log10(1500*86400))
+        basis = create_quant_matrix(dt=7*86400)
+        prior = se_kernel(log10_sigma=log10_sigma, log10_lam=log10_lam)
+        se = gs.BasisGP(prior, basis, name='se')
+
         ts = gs.TimingModel()
-        s = ec + rn + ts
+
+        s = ec + rn + ts + se
         m = s(self.psr)
 
         # parameters
         ecorr = -6.4
         log10_A, gamma = -14.5, 4.33
+        log10_lam, log10_sigma = 7.4, -6.4
         params = {'B1855+09_log10_ecorr': ecorr,
                   'B1855+09_log10_A': log10_A,
-                  'B1855+09_gamma': gamma}
+                  'B1855+09_gamma': gamma,
+                  'B1855+09_se_log10_lam': log10_lam,
+                  'B1855+09_se_log10_sigma': log10_sigma}
 
         # combined basis matrix
         U = utils.create_quantization_matrix(self.psr.toas)[0]
@@ -548,25 +560,29 @@ class TestGPSignals(unittest.TestCase):
         M /= norm
         F, f2 = utils.createfourierdesignmatrix_red(
             self.psr.toas, nmodes=30)
-        T = np.hstack((U, F, M))
+        U2, avetoas = create_quant_matrix(self.psr.toas, dt=7*86400)
+        T = np.hstack((U, F, M, U2))
 
         # combined prior vector
         jvec = 10**(2*ecorr) * np.ones(U.shape[1])
         phim = np.ones(self.psr.Mmat.shape[1]) * 1e40
         phi = utils.powerlaw(f2, log10_A=log10_A, gamma=gamma)
+        K = se_kernel(avetoas, log10_lam=log10_lam, log10_sigma=log10_sigma)
         phivec = np.concatenate((jvec, phi, phim))
+        phi = sl.block_diag(np.diag(phivec), K)
+        phiinv = np.linalg.inv(phi)
 
         # basis matrix test
         msg = 'Basis matrix incorrect for combined signal.'
         assert np.allclose(T, m.get_basis(params)), msg
 
-        # Jvec test
-        msg = 'Prior vector incorrect for combined signal.'
-        assert np.all(m.get_phi(params) == phivec), msg
+        # Kernal test
+        msg = 'Prior matrix incorrect for combined signal.'
+        assert np.allclose(m.get_phi(params), phi), msg
 
-        # inverse Jvec test
-        msg = 'Prior vector inverse incorrect for combined signal.'
-        assert np.all(m.get_phiinv(params) == 1/phivec), msg
+        # inverse Kernel test
+        msg = 'Prior matrix inverse incorrect for combined signal.'
+        assert np.allclose(m.get_phiinv(params), phiinv), msg
 
         # test shape
         msg = 'Basis matrix shape incorrect size for combined signal.'

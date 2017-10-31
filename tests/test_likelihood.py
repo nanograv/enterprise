@@ -23,6 +23,20 @@ from enterprise.signals import white_signals
 from enterprise.signals import gp_signals
 from enterprise.signals import utils
 
+@signal_base.function
+def create_quant_matrix(toas, dt=1):
+
+    U, _ = utils.create_quantization_matrix(toas, dt=dt, nmin=1)
+    avetoas = np.array([toas[idx.astype(bool)].mean() for idx in U.T])
+    # return value slightly different than 1 to get around ECORR columns
+    return U*1.0000001, avetoas
+
+@signal_base.function
+def se_kernel(etoas, log10_sigma=-7, log10_lam=np.log10(30*86400)):
+    tm = np.abs(etoas[None, :] - etoas[:, None])
+    d = np.eye(tm.shape[0]) * 10**(2*(log10_sigma-1.5))
+    return 10**(2*log10_sigma) * np.exp(-tm**2/2/10**(2*log10_lam)) + d
+
 
 def get_noise_from_pal2(noisefile):
     psrname = noisefile.split('/')[-1].split('_noise.txt')[0]
@@ -111,18 +125,32 @@ class TestLikelihood(unittest.TestCase):
 
         tm = gp_signals.TimingModel()
 
+        log10_sigma = parameter.Uniform(-10, -5)
+        log10_lam = parameter.Uniform(np.log10(86400), np.log10(1500*86400))
+        basis = create_quant_matrix(dt=7*86400)
+        prior = se_kernel(log10_sigma=log10_sigma, log10_lam=log10_lam)
+        se = gp_signals.BasisGP(prior, basis, name='se')
+
         if inc_corr:
-            s = ef + eq + ec + rn + crn + tm
+            s = ef + eq + ec + rn + crn + tm + se
         else:
-            s = ef + eq + ec + rn + tm
+            s = ef + eq + ec + rn + tm + se
 
         pta = signal_base.PTA([s(psr) for psr in psrs])
 
         # set parameters
         pta.set_default_params(params)
 
+        # SE kernel parameters
+        log10_sigmas, log10_lams = [-7.0, -6.5], [7.0, 6.5]
+        params.update({'B1855+09_se_log10_lam': log10_lams[0],
+                       'B1855+09_se_log10_sigma': log10_sigmas[0],
+                       'J1909-3744_se_log10_lam': log10_lams[1],
+                       'J1909-3744_se_log10_sigma': log10_sigmas[1]})
+
         # get parameters
         efacs, equads, ecorrs, log10_A, gamma = [], [], [], [], []
+        lsig, llam = [], []
         for pname in [p.name for p in psrs]:
             efacs.append([params[key] for key in sorted(params.keys())
                           if 'efac' in key and pname in key])
@@ -132,6 +160,8 @@ class TestLikelihood(unittest.TestCase):
                            if 'ecorr' in key and pname in key])
             log10_A.append(params['{}_log10_A'.format(pname)])
             gamma.append(params['{}_gamma'.format(pname)])
+            lsig.append(params['{}_se_log10_sigma'.format(pname)])
+            llam.append(params['{}_se_log10_lam'.format(pname)])
         GW_gamma = 4.33
         GW_log10_A = -15.0
 
@@ -176,7 +206,8 @@ class TestLikelihood(unittest.TestCase):
             Mmat = psr.Mmat.copy()
             norm = np.sqrt(np.sum(Mmat**2, axis=0))
             Mmat /= norm
-            T = np.hstack((F, Mmat))
+            U2, avetoas = create_quant_matrix(psr.toas, dt=7*86400)
+            T = np.hstack((F, Mmat, U2))
             Ts.append(T)
             phi = utils.powerlaw(f2, log10_A=log10_A[ii],
                                  gamma=gamma[ii])
@@ -185,8 +216,12 @@ class TestLikelihood(unittest.TestCase):
                                        gamma=GW_gamma)
             else:
                 phigw = np.zeros(40)
-            phis.append(np.concatenate(
-                (phi+phigw, np.ones(Mmat.shape[1])*1e40)))
+            K = se_kernel(avetoas, log10_sigma=log10_sigmas[ii],
+                          log10_lam=log10_lams[ii])
+            k = np.diag(np.concatenate((phi+phigw,
+                                        np.ones(Mmat.shape[1])*1e40)))
+            k = sl.block_diag(k, K)
+            phis.append(k)
 
         # manually compute loglike
         loglike = 0
@@ -198,7 +233,7 @@ class TestLikelihood(unittest.TestCase):
                 cfs[ct], psr.residuals)) + logdets[ct])
 
         TNr = np.concatenate(TNrs)
-        phi = np.diag(np.concatenate(phis))
+        phi = sl.block_diag(*phis)
 
         if inc_corr:
             hd = utils.hd_orf(psrs[0].pos, psrs[1].pos)
