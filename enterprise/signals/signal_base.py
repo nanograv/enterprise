@@ -166,7 +166,7 @@ class MarginalizedLogLikelihood(object):
             loglike += 0.5*(np.dot(TNr, expval) - logdet_sigma - logdet_phi)
         else:
             for TNr, TNT, (phiinv, logdet_phi) in zip(TNrs, TNTs, phiinvs):
-                Sigma = TNT + np.diag(phiinv)
+                Sigma = TNT + (np.diag(phiinv) if phiinv.ndim == 1 else phiinv)
 
                 try:
                     cf = sl.cho_factor(Sigma)
@@ -303,12 +303,8 @@ class PTA(object):
         phi = self.get_phi(params)
 
         if isinstance(phi, list):
-            if logdet:
-                return [None if phivec is None
-                        else (1/phivec, np.sum(np.log(phivec)))
-                        for phivec in phi]
-            else:
-                return [None if phivec is None else 1/phivec for phivec in phi]
+            return [None if phivec is None else phivec.inv(logdet)
+                    for phivec in phi]
         else:
             phisparse = sps.csc_matrix(phi)
             cf = cholesky(phisparse)
@@ -386,24 +382,15 @@ class PTA(object):
             else:
                 return phiinv
         else:
-            if logdet:
-                return [None if phivec is None
-                        else (1/phivec, np.sum(np.log(phivec)))
-                        for phivec in phivecs]
-            else:
-                return [None if phivec is None else 1/phivec for
-                        phivec in phivecs]
+            return [None if phivec is None else phivec.inv(logdet)
+                    for phivec in phivecs]
 
     def get_phiinv_byfreq_cliques(self, params, logdet=False, cholesky=False):
         phi = self.get_phi(params, cliques=True)
 
         if isinstance(phi, list):
-            if logdet:
-                return [None if phivec is None
-                        else (1/phivec, np.sum(np.log(phivec)))
-                        for phivec in phi]
-            else:
-                return [None if phivec is None else 1/phivec for phivec in phi]
+            return [None if phivec is None else phivec.inv(logdet)
+                    for phivec in phi]
         else:
             ld = 0
 
@@ -654,13 +641,13 @@ def SignalCollection(metasignals):
             return self._Fmat
 
         def get_phiinv(self, params):
-            return 1.0/self.get_phi(params)
+            return self.get_phi(params).inv()
 
         def get_phi(self, params):
-            phi = np.zeros(self._Fmat.shape[1],'d')
+            phi = KernelMatrix(self._Fmat.shape[1])
             for signal in self._signals:
                 if signal in self._idx:
-                    phi[self._idx[signal]] += signal.get_phi(params)
+                    phi = phi.add(signal.get_phi(params), self._idx[signal])
             return phi
 
         @cache_call(['basis_params', 'white_params', 'delay_params'])
@@ -836,6 +823,61 @@ def cache_call(attrs, limit=2):
         return wrapper
 
     return cache_decorator
+
+
+class KernelMatrix(np.ndarray):
+    def __new__(cls, init):
+        if isinstance(init, int):
+            return np.zeros(init, 'd').view(cls)
+        else:
+            return init.view(cls)
+
+    def add(self, other, idx):
+        if other.ndim == 2 and self.ndim == 1:
+            self = KernelMatrix(np.diag(self))
+
+        if self.ndim == 1:
+            self[idx] += other
+        else:
+            if other.ndim == 1:
+                self[idx, idx] += other
+            else:
+                idx = np.idx_(idx,idx)
+                self[idx] += other
+
+        return self
+
+    def set(self, other, idx):
+        if other.ndim == 2 and self.ndim == 1:
+            self = KernelMatrix(np.diag(self))
+
+        if self.ndim == 1:
+            self[idx] = other
+        else:
+            if other.ndim == 1:
+                self[idx, idx] = other
+            else:
+                idx = np.idx_(idx,idx)
+                self[idx] = other
+
+        return self
+
+    def inv(self, logdet=False):
+        if self.ndim == 1:
+            inv = 1.0/self
+
+            if logdet:
+                return inv, np.sum(np.log(self))
+            else:
+                return inv
+        else:
+            cf = sl.cho_factor(self)
+            inv = sl.cho_solve(cf, np.identity(cf[0].shape[0]))
+
+            if logdet:
+                return inv, 2.0*np.sum(np.log(np.diag(cf[0])))
+            else:
+                return inv
 
 
 class csc_matrix_alt(sps.csc_matrix):
