@@ -43,7 +43,7 @@ install:
     - conda info -a
 
     # Replace dep1 dep2 ... with your dependencies
-    - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy cython 
+    - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy cython
     - source activate test-environment
     - pip install -r requirements_dev.txt
     - pip install -r requirements.txt
@@ -51,6 +51,10 @@ install:
     - cd libstempo
     - python setup.py install --with-tempo2=$TEMPO2
     - cd ../
+
+    # hack
+    - pip install -U scikit-sparse
+
     - python setup.py install
 
     #- pip install -r requirements_dev.txt
