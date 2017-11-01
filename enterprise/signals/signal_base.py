@@ -325,12 +325,12 @@ class PTA(object):
 
             #TODO: This is messy, maybe we should clean up
             phis = [phivec for phivec in phivecs if phivec is not None]
-            if np.any([phivec.ndim==2 for phivec in phis]):
+            if np.any([phivec.ndim == 2 for phivec in phis]):
                 phiinvs = [phivec.inv(logdet) for phivec in phis]
                 phiinv = sl.block_diag(*[pi[0] for pi in phiinvs])
                 if logdet:
                     ld = np.sum([pi[1] for pi in phiinvs])
-                phidiag = np.concatenate([np.diag(phi) if phi.ndim==2
+                phidiag = np.concatenate([np.diag(phi) if phi.ndim == 2
                                           else phi for phi in phis])
             else:
                 phidiag = np.concatenate(phis)
@@ -473,7 +473,7 @@ class PTA(object):
         if self._commonsignals:
             # would be easier if get_phi would return an empty array
             phis = [phivec for phivec in phivecs if phivec is not None]
-            if np.any([phivec.ndim==2 for phivec in phis]):
+            if np.any([phivec.ndim == 2 for phivec in phis]):
                 phi = sl.block_diag(*phis)
                 phidiag = np.diag(phi)
             else:
