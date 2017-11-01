@@ -321,15 +321,22 @@ class PTA(object):
         # if we found common signals, we'll return a big phivec matrix,
         # otherwise a list of phivec vectors (some of which possibly None)
         if self._commonsignals:
-            # would be easier if get_phi would return an empty array
-            phidiag = np.concatenate([phivec for phivec in phivecs
-                                      if phivec is not None])
             slices = self._get_slices(phivecs)
 
-            if logdet:
-                ld = np.sum(np.log(phidiag))
-
-            phiinv = np.diag(1.0/phidiag)
+            #TODO: This is messy, maybe we should clean up
+            phis = [phivec for phivec in phivecs if phivec is not None]
+            if np.any([phivec.ndim==2 for phivec in phis]):
+                phiinvs = [phivec.inv(logdet) for phivec in phis]
+                phiinv = sl.block_diag(*[pi[0] for pi in phiinvs])
+                if logdet:
+                    ld = np.sum([pi[1] for pi in phiinvs])
+                phidiag = np.concatenate([np.diag(phi) if phi.ndim==2
+                                          else phi for phi in phis])
+            else:
+                phidiag = np.concatenate(phis)
+                phiinv = np.diag(1.0/phidiag)
+                if logdet:
+                    ld = np.sum(np.log(phidiag))
 
             # this will only work if all common signals are shared among all
             # the pulsars and share the same basis
@@ -407,8 +414,8 @@ class PTA(object):
                         if logdet:
                             ld += 2.0*np.sum(np.log(np.diag(cf[0])))
 
-                        phi[idx2] = sl.cho_solve(cf,
-                                                 np.identity(cf[0].shape[0]))
+                        phi[idx2] = sl.cho_solve(
+                            cf, np.identity(cf[0].shape[0]))
                     else:
                         phi2 = phi[idx2]
 
@@ -465,11 +472,14 @@ class PTA(object):
         # otherwise a list of phivec vectors (some of which possibly None)
         if self._commonsignals:
             # would be easier if get_phi would return an empty array
-            phidiag = np.concatenate([phivec for phivec in phivecs
-                                      if phivec is not None])
+            phis = [phivec for phivec in phivecs if phivec is not None]
+            if np.any([phivec.ndim==2 for phivec in phis]):
+                phi = sl.block_diag(*phis)
+                phidiag = np.diag(phi)
+            else:
+                phidiag = np.concatenate(phis)
+                phi = np.diag(phidiag)
             slices = self._get_slices(phivecs)
-
-            phi = np.diag(phidiag)
 
             if cliques:
                 self._resetcliques(phidiag)

@@ -85,7 +85,7 @@ class TestLikelihood(unittest.TestCase):
                     Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
                            datadir + '/J1909-3744_NANOGrav_9yv1.tim')]
 
-    def compute_like(self, npsrs=1, inc_corr=False):
+    def compute_like(self, npsrs=1, inc_corr=False, inc_kernel=False):
 
         # get parameters from PAL2 style noise files
         params = get_noise_from_pal2(datadir+'/B1855+09_noise.txt')
@@ -134,9 +134,12 @@ class TestLikelihood(unittest.TestCase):
         se = gp_signals.BasisGP(prior, basis, name='se')
 
         if inc_corr:
-            s = ef + eq + ec + rn + crn + tm + se
+            s = ef + eq + ec + rn + crn + tm
         else:
-            s = ef + eq + ec + rn + tm + se
+            s = ef + eq + ec + rn + tm
+
+        if inc_kernel:
+            s += se
 
         pta = signal_base.PTA([s(psr) for psr in psrs])
 
@@ -209,7 +212,10 @@ class TestLikelihood(unittest.TestCase):
             norm = np.sqrt(np.sum(Mmat**2, axis=0))
             Mmat /= norm
             U2, avetoas = create_quant_matrix(psr.toas, dt=7*86400)
-            T = np.hstack((F, Mmat, U2))
+            if inc_kernel:
+                T = np.hstack((F, Mmat, U2))
+            else:
+                T = np.hstack((F, Mmat))
             Ts.append(T)
             phi = utils.powerlaw(f2, log10_A=log10_A[ii],
                                  gamma=gamma[ii])
@@ -222,7 +228,8 @@ class TestLikelihood(unittest.TestCase):
                           log10_lam=log10_lams[ii])
             k = np.diag(np.concatenate((phi+phigw,
                                         np.ones(Mmat.shape[1])*1e40)))
-            k = sl.block_diag(k, K)
+            if inc_kernel:
+                k = sl.block_diag(k, K)
             phis.append(k)
 
         # manually compute loglike
@@ -268,6 +275,15 @@ class TestLikelihood(unittest.TestCase):
     def test_like_corr(self):
         """Test likelihood with spatial correlations."""
         self.compute_like(npsrs=2, inc_corr=True)
+
+    def test_like_nocorr_kernel(self):
+        """Test likelihood with no spatial correlations."""
+        self.compute_like(npsrs=1, inc_kernel=True)
+        self.compute_like(npsrs=2, inc_kernel=True)
+
+    def test_like_corr_kernel(self):
+        """Test likelihood with spatial correlations."""
+        self.compute_like(npsrs=2, inc_corr=True, inc_kernel=True)
 
     def test_compare_ecorr_likelihood(self):
         """Compare basis and kernel ecorr methods."""
