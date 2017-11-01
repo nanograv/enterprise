@@ -149,4 +149,4 @@ class TestUtils(unittest.TestCase):
         msg = 'PSD calculation incorrect'
         assert np.allclose(utils.powerlaw(f, log10_A, gamma), pl), msg
         assert np.allclose(utils.turnover(f, log10_A, gamma,
-                                     lf0, kappa, beta),pt), msg
+                                          lf0, kappa, beta),pt), msg

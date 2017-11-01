@@ -23,6 +23,7 @@ from enterprise.signals import white_signals
 from enterprise.signals import gp_signals
 from enterprise.signals import utils
 
+
 @signal_base.function
 def create_quant_matrix(toas, dt=1):
 
@@ -30,6 +31,7 @@ def create_quant_matrix(toas, dt=1):
     avetoas = np.array([toas[idx.astype(bool)].mean() for idx in U.T])
     # return value slightly different than 1 to get around ECORR columns
     return U*1.0000001, avetoas
+
 
 @signal_base.function
 def se_kernel(etoas, log10_sigma=-7, log10_lam=np.log10(30*86400)):

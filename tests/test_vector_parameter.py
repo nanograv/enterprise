@@ -22,7 +22,7 @@ from enterprise.signals import signal_base
 
 @signal_base.function
 def free_spectrum(f, log10_rho=None):
-    return np.repeat(10**log10_rho,2) 
+    return np.repeat(10**log10_rho,2)
 
 
 class TestVectorParameter(unittest.TestCase):

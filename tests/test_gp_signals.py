@@ -22,6 +22,7 @@ import enterprise.signals.gp_signals as gs
 from enterprise.signals import signal_base
 from enterprise.signals import utils
 
+
 @signal_base.function
 def create_quant_matrix(toas, dt=1):
 
@@ -30,11 +31,13 @@ def create_quant_matrix(toas, dt=1):
     # return value slightly different than 1 to get around ECORR columns
     return U*1.0000001, avetoas
 
+
 @signal_base.function
 def se_kernel(etoas, log10_sigma=-7, log10_lam=np.log10(30*86400)):
     tm = np.abs(etoas[None, :] - etoas[:, None])
     d = np.eye(tm.shape[0]) * 10**(2*(log10_sigma-1.5))
     return 10**(2*log10_sigma) * np.exp(-tm**2/2/10**(2*log10_lam)) + d
+
 
 class TestGPSignals(unittest.TestCase):
 
@@ -136,8 +139,8 @@ class TestGPSignals(unittest.TestCase):
 
         # parameters
         log10_lam, log10_sigma = 7.4, -6.4
-        params =  {'B1855+09_se_log10_lam': log10_lam,
-                   'B1855+09_se_log10_sigma': log10_sigma}
+        params = {'B1855+09_se_log10_lam': log10_lam,
+                  'B1855+09_se_log10_sigma': log10_sigma}
 
         # basis check
         U, avetoas = create_quant_matrix(self.psr.toas, dt=7*86400)
@@ -209,7 +212,6 @@ class TestGPSignals(unittest.TestCase):
         # inverse spectrum test
         msg = 'Kernel inverse incorrect for backend signal.'
         assert np.allclose(sem.get_phiinv(params), Kinv), msg
-
 
     def test_fourier_red_noise(self):
         """Test that red noise signal returns correct values."""
