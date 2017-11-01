@@ -65,8 +65,8 @@ install:
     #- cd ../
 
 script:
-    - make test
-    #- coverage run --source enterprise setup.py test
+    #- make test
+    - coverage run --source enterprise setup.py test
     - make lint
 
 after_success:
