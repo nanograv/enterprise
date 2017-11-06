@@ -133,15 +133,21 @@ class TestLikelihood(unittest.TestCase):
         prior = se_kernel(log10_sigma=log10_sigma, log10_lam=log10_lam)
         se = gp_signals.BasisGP(prior, basis, name='se')
 
+        # set up kernel stuff
+        if isinstance(inc_kernel, bool):
+            inc_kernel = [inc_kernel] * npsrs
+
         if inc_corr:
             s = ef + eq + ec + rn + crn + tm
         else:
             s = ef + eq + ec + rn + tm
 
-        if inc_kernel:
-            s += se
+        models = []
+        for ik, psr in zip(inc_kernel, psrs):
+            snew = s + se if ik else s
+            models.append(snew(psr))
 
-        pta = signal_base.PTA([s(psr) for psr in psrs])
+        pta = signal_base.PTA(models)
 
         # set parameters
         pta.set_default_params(params)
@@ -173,7 +179,7 @@ class TestLikelihood(unittest.TestCase):
         # correct value
         tflags = [sorted(list(np.unique(p.backend_flags))) for p in psrs]
         cfs, logdets, phis, Ts = [], [], [], []
-        for ii, (psr, flags) in enumerate(zip(psrs, tflags)):
+        for ii, (ik, psr, flags) in enumerate(zip(inc_kernel, psrs, tflags)):
             nvec0 = np.zeros_like(psr.toas)
             for ct, flag in enumerate(flags):
                 ind = psr.backend_flags == flag
@@ -212,7 +218,7 @@ class TestLikelihood(unittest.TestCase):
             norm = np.sqrt(np.sum(Mmat**2, axis=0))
             Mmat /= norm
             U2, avetoas = create_quant_matrix(psr.toas, dt=7*86400)
-            if inc_kernel:
+            if ik:
                 T = np.hstack((F, Mmat, U2))
             else:
                 T = np.hstack((F, Mmat))
@@ -228,7 +234,7 @@ class TestLikelihood(unittest.TestCase):
                           log10_lam=log10_lams[ii])
             k = np.diag(np.concatenate((phi+phigw,
                                         np.ones(Mmat.shape[1])*1e40)))
-            if inc_kernel:
+            if ik:
                 k = sl.block_diag(k, K)
             phis.append(k)
 
@@ -261,7 +267,8 @@ class TestLikelihood(unittest.TestCase):
         loglike -= 0.5 * (logdetphi + logdetsigma)
         loglike += 0.5 * np.dot(TNr, expval)
 
-        method = ['partition', 'sparse', 'cliques']
+        #method = ['partition', 'sparse', 'cliques']
+        method = ['partition', 'sparse']
         for mth in method:
             eloglike = pta.get_lnlikelihood(params, phiinv_method=mth)
             msg = 'Incorrect like for npsr={}, phiinv={}'.format(npsrs, mth)
@@ -277,13 +284,21 @@ class TestLikelihood(unittest.TestCase):
         self.compute_like(npsrs=2, inc_corr=True)
 
     def test_like_nocorr_kernel(self):
-        """Test likelihood with no spatial correlations."""
+        """Test likelihood with no spatial correlations and kernel."""
         self.compute_like(npsrs=1, inc_kernel=True)
         self.compute_like(npsrs=2, inc_kernel=True)
 
     def test_like_corr_kernel(self):
-        """Test likelihood with spatial correlations."""
+        """Test likelihood with spatial correlations and kernel."""
         self.compute_like(npsrs=2, inc_corr=True, inc_kernel=True)
+
+    def test_like_nocorr_one_kernel(self):
+        """Test likelihood with no spatial correlations and one kernel."""
+        self.compute_like(npsrs=2, inc_kernel=[True, False])
+
+    def test_like_corr_one_kernel(self):
+        """Test likelihood with spatial correlations and one kernel."""
+        self.compute_like(npsrs=2, inc_corr=True, inc_kernel=[True, False])
 
     def test_compare_ecorr_likelihood(self):
         """Compare basis and kernel ecorr methods."""

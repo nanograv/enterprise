@@ -327,7 +327,9 @@ class PTA(object):
             phis = [phivec for phivec in phivecs if phivec is not None]
             if np.any([phivec.ndim == 2 for phivec in phis]):
                 phiinvs = [phivec.inv(logdet) for phivec in phis]
-                phiinv = sl.block_diag(*[pi[0] for pi in phiinvs])
+                phiinv_full = [np.diag(phi[0]) if phi[0].ndim == 1 else phi[0]
+                               for phi in phiinvs]
+                phiinv = sl.block_diag(*phiinv_full)
                 if logdet:
                     ld = np.sum([pi[1] for pi in phiinvs])
                 phidiag = np.concatenate([np.diag(phi) if phi.ndim == 2
@@ -474,7 +476,9 @@ class PTA(object):
             # would be easier if get_phi would return an empty array
             phis = [phivec for phivec in phivecs if phivec is not None]
             if np.any([phivec.ndim == 2 for phivec in phis]):
-                phi = sl.block_diag(*phis)
+                phi_full = [np.diag(phi) if phi.ndim == 1 else phi
+                            for phi in phis]
+                phi = sl.block_diag(*phi_full)
                 phidiag = np.diag(phi)
             else:
                 phidiag = np.concatenate(phis)
