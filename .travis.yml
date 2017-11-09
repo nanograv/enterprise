@@ -57,13 +57,6 @@ install:
 
     - python setup.py install
 
-    #- pip install -r requirements_dev.txt
-    #- pip install -r requirements.txt
-    #- git clone https://github.com/vallis/libstempo.git
-    #- cd libstempo
-    #- python setup.py install --with-tempo2=$TEMPO2
-    #- cd ../
-
 script:
     #- make test
     - coverage run --source enterprise setup.py test
