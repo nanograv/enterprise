@@ -592,12 +592,11 @@ def calculate_splus_scross(nmax, mc, dl, h0, F, e,
     return np.sum(splus_n, axis=1), np.sum(scross_n, axis=1)
 
 
-def create_gw_antenna_pattern(theta, phi, gwtheta, gwphi):
+def create_gw_antenna_pattern(pos, gwtheta, gwphi):
     """
     Function to create pulsar antenna pattern functions as defined
     in Ellis, Siemens, and Creighton (2012).
-    :param theta: Polar angle of pulsar location.
-    :param phi: Azimuthal angle of pulsar location.
+    :param pos: Unit vector from Earth to pulsar
     :param gwtheta: GW polar angle in radians
     :param gwphi: GW azimuthal angle in radians
 
@@ -616,20 +615,16 @@ def create_gw_antenna_pattern(theta, phi, gwtheta, gwphi):
                       -np.sin(gwtheta)*np.sin(gwphi),
                       -np.cos(gwtheta)])
 
-    phat = np.array([np.sin(theta)*np.cos(phi),
-                     np.sin(theta)*np.sin(phi),
-                     np.cos(theta)])
-
-    fplus = (0.5 * (np.dot(m, phat)**2 - np.dot(n, phat)**2) /
-             (1+np.dot(omhat, phat)))
-    fcross = (np.dot(m, phat)*np.dot(n, phat)) / (1 + np.dot(omhat, phat))
-    cosMu = -np.dot(omhat, phat)
+    fplus = (0.5 * (np.dot(m, pos)**2 - np.dot(n, pos)**2) /
+             (1+np.dot(omhat, pos)))
+    fcross = (np.dot(m, pos)*np.dot(n, pos)) / (1 + np.dot(omhat, pos))
+    cosMu = -np.dot(omhat, pos)
 
     return fplus, fcross, cosMu
 
 
 @signal_base.function
-def bwm_delay(toas, theta, phi, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
+def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
               gwpol=0.0, t0=55000):
     """
     Function that calculates the earth-term gravitational-wave
@@ -639,8 +634,7 @@ def bwm_delay(toas, theta, phi, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
     Continuous Wave and Anisotropy papers.
 
     :param toas: Time-of-arrival measurements [s]
-    :param theta: Polar angle of pulsar sky location
-    :param phi: Azimuthal angle of pulsar sky location
+    :param pos: Unit vector from Earth to pulsar
     :param log10_h: log10 of GW strain
     :param cos_gwtheta: Cosine of GW polar angle
     :param gwphi: GW azimuthal polar angle [rad]
@@ -656,7 +650,7 @@ def bwm_delay(toas, theta, phi, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
     t0 *= const.day
 
     # antenna patterns
-    fp, fc, _ = create_gw_antenna_pattern(theta, phi, gwtheta, gwphi)
+    fp, fc, _ = create_gw_antenna_pattern(pos, gwtheta, gwphi)
 
     # combined polarization
     pol = np.cos(2*gwpol)*fp + np.sin(2*gwpol)*fc
