@@ -592,36 +592,80 @@ def calculate_splus_scross(nmax, mc, dl, h0, F, e,
     return np.sum(splus_n, axis=1), np.sum(scross_n, axis=1)
 
 
-def fplus_fcross(ptheta, pphi, gwtheta, gwphi):
+def create_gw_antenna_pattern(theta, phi, gwtheta, gwphi):
     """
-    Compute gravitational-wave quadrupolar antenna pattern.
+    Function to create pulsar antenna pattern functions as defined
+    in Ellis, Siemens, and Creighton (2012).
+    :param theta: Polar angle of pulsar location.
+    :param phi: Azimuthal angle of pulsar location.
+    :param gwtheta: GW polar angle in radians
+    :param gwphi: GW azimuthal angle in radians
 
-    :param ptheta: Polar angle of pulsar in celestial coords [radians]
-    :param pphi: Azimuthal angle of pulsar in celestial coords [radians]
-    :param gwtheta: Polar angle of GW source in celestial coords [radians]
-    :param gwphi: Azimuthal angle of GW source in celestial coords [radians]
-
-    :returns: fplus, fcross
+    :return: (fplus, fcross, cosMu), where fplus and fcross
+             are the plus and cross antenna pattern functions
+             and cosMu is the cosine of the angle between the
+             pulsar and the GW source.
     """
-
-    # define variable for later use
-    cosgwtheta, cosgwphi = np.cos(gwtheta), np.cos(gwphi)
-    singwtheta, singwphi = np.sin(gwtheta), np.sin(gwphi)
-
-    # unit vectors to GW source
-    m = np.array([singwphi, -cosgwphi, 0.0])
-    n = np.array([-cosgwtheta*cosgwphi, -cosgwtheta*singwphi, singwtheta])
-    omhat = np.array([-singwtheta*cosgwphi, -singwtheta*singwphi, -cosgwtheta])
 
     # use definition from Sesana et al 2010 and Ellis et al 2012
-    phat = np.array([np.sin(ptheta)*np.cos(pphi), np.sin(ptheta)*np.sin(pphi),
-                     np.cos(ptheta)])
+    m = np.array([-np.sin(gwphi), np.cos(gwphi), 0.0])
+    n = np.array([-np.cos(gwtheta)*np.cos(gwphi),
+                  -np.cos(gwtheta)*np.sin(gwphi),
+                  np.sin(gwtheta)])
+    omhat = np.array([-np.sin(gwtheta)*np.cos(gwphi),
+                      -np.sin(gwtheta)*np.sin(gwphi),
+                      -np.cos(gwtheta)])
+
+    phat = np.array([np.sin(theta)*np.cos(phi),
+                     np.sin(theta)*np.sin(phi),
+                     np.cos(theta)])
 
     fplus = (0.5 * (np.dot(m, phat)**2 - np.dot(n, phat)**2) /
              (1+np.dot(omhat, phat)))
     fcross = (np.dot(m, phat)*np.dot(n, phat)) / (1 + np.dot(omhat, phat))
+    cosMu = -np.dot(omhat, phat)
 
-    return fplus, fcross
+    return fplus, fcross, cosMu
+
+
+@signal_base.function
+def bwm_delay(toas, theta, phi, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
+              gwpol=0.0, t0=55000):
+    """
+    Function that calculates the earth-term gravitational-wave
+    burst-with-memory signal, as described in:
+    Seto et al, van haasteren and Levin, phsirkov et al, Cordes and Jenet.
+    This version uses the F+/Fx polarization modes, as verified with the
+    Continuous Wave and Anisotropy papers.
+
+    :param toas: Time-of-arrival measurements [s]
+    :param theta: Polar angle of pulsar sky location
+    :param phi: Azimuthal angle of pulsar sky location
+    :param log10_h: log10 of GW strain
+    :param cos_gwtheta: Cosine of GW polar angle
+    :param gwphi: GW azimuthal polar angle [rad]
+    :param gwpol: GW polarization angle
+    :param t0: Burst central time [day]
+
+    :return: the waveform as induced timing residuals (seconds)
+    """
+
+    # convert
+    h = 10**log10_h
+    gwtheta = np.arccos(cos_gwtheta)
+    t0 *= const.day
+
+    # antenna patterns
+    fp, fc, _ = create_gw_antenna_pattern(theta, phi, gwtheta, gwphi)
+
+    # combined polarization
+    pol = np.cos(2*gwpol)*fp + np.sin(2*gwpol)*fc
+
+    # Define the heaviside function
+    heaviside = lambda x: 0.5 * (np.sign(x) + 1)
+
+    # Return the time-series for the pulsar
+    return pol * h * heaviside(toas-t0) * (toas-t0)
 
 
 @signal_base.function
