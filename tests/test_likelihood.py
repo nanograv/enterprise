@@ -267,8 +267,7 @@ class TestLikelihood(unittest.TestCase):
         loglike -= 0.5 * (logdetphi + logdetsigma)
         loglike += 0.5 * np.dot(TNr, expval)
 
-        #method = ['partition', 'sparse', 'cliques']
-        method = ['partition', 'sparse']
+        method = ['partition', 'sparse', 'cliques']
         for mth in method:
             eloglike = pta.get_lnlikelihood(params, phiinv_method=mth)
             msg = 'Incorrect like for npsr={}, phiinv={}'.format(npsrs, mth)
