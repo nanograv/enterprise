@@ -607,7 +607,7 @@ def create_gw_antenna_pattern(pos, gwtheta, gwphi):
     """
 
     # use definition from Sesana et al 2010 and Ellis et al 2012
-    m = np.array([-np.sin(gwphi), np.cos(gwphi), 0.0])
+    m = np.array([np.sin(gwphi), -np.cos(gwphi), 0.0])
     n = np.array([-np.cos(gwtheta)*np.cos(gwphi),
                   -np.cos(gwtheta)*np.sin(gwphi),
                   np.sin(gwtheta)])
@@ -625,7 +625,7 @@ def create_gw_antenna_pattern(pos, gwtheta, gwphi):
 
 @signal_base.function
 def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
-              gwpol=0.0, t0=55000):
+              gwpol=0.0, t0=55000, antenna_pattern_fn=None):
     """
     Function that calculates the earth-term gravitational-wave
     burst-with-memory signal, as described in:
@@ -640,6 +640,9 @@ def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
     :param gwphi: GW azimuthal polar angle [rad]
     :param gwpol: GW polarization angle
     :param t0: Burst central time [day]
+    :param antenna_pattern_fn:
+        User defined function that takes `pos`, `gwtheta`, `gwphi` as
+        arguments and returns (fplus, fcross)
 
     :return: the waveform as induced timing residuals (seconds)
     """
@@ -650,7 +653,13 @@ def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
     t0 *= const.day
 
     # antenna patterns
-    fp, fc, _ = create_gw_antenna_pattern(pos, gwtheta, gwphi)
+    if antenna_pattern_fn is None:
+        apc = create_gw_antenna_pattern(pos, gwtheta, gwphi)
+    else:
+        apc = antenna_pattern_fn(pos, gwtheta, gwphi)
+
+    # grab fplus, fcross
+    fp, fc = apc[0], apc[1]
 
     # combined polarization
     pol = np.cos(2*gwpol)*fp + np.sin(2*gwpol)*fc
