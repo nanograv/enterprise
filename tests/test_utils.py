@@ -97,8 +97,8 @@ class TestUtils(unittest.TestCase):
         """Check fplus, fcross generation."""
         gwtheta = 1.4
         gwphi = 2.7
-        fplus, fcross = utils.fplus_fcross(self.psr.theta, self.psr.phi,
-                                           gwtheta, gwphi)
+        fplus, fcross, _ = utils.create_gw_antenna_pattern(self.psr.pos,
+                                                           gwtheta, gwphi)
 
         msg1 = 'Fplus value incorrect'
         msg2 = 'Fcross value incorrect'
