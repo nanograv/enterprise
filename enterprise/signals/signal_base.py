@@ -280,10 +280,13 @@ class PTA(object):
 
         return self._cs
 
+    # return a dictionary (indexed by SignalCollection) of Python slices
+    # corresponding to the span of each pulsar within a Phi matrix
     def _get_slices(self, phivecs):
         ret, offset = {}, 0
         for sc, phivec in zip(self._signalcollections, phivecs):
-            stop = 0 if phivec is None else len(phivec)
+            # assume phi is either a column vector or a square matrix 
+            stop = 0 if phivec is None else phivec.shape[0]
             ret[sc] = slice(offset, offset+stop)
             offset = ret[sc].stop
 
@@ -436,63 +439,107 @@ class PTA(object):
 
             return (phi, ld) if logdet else phi
 
-    # sort matrix indices by presence of non-diagonal elements
-    # for each value in self._cliques, the indices with that value form
+    # we use "cliques" to account for sparse non-diagonal Phi matrices
+    # for each value in self._cliques, the matrix indices with that value form
     # an independent submatrix that can be inverted separately
-    def _resetcliques(self,phidiag):
-        self._cliques = -1 * np.ones_like(phidiag)
+
+    # reset clique index
+    def _resetcliques(self, n):
+        self._cliques = -1 * np.ones(n)
         self._clcount = 0
 
+    # update clique index by considering a common signal under
+    # the assumption that the corresponding "big-Phi" matrix is block diagonal
     def _setcliques(self,slices,csdict):
+        # each column in idxmatrix (mind the .T) corresponds to the indices
+        # that participate in a common signal for a given pulsar
         idxmatrix = np.array([csc._idx[cs] for cs, csc in csdict.items()]).T
+
+        # each row in the updated idxmatrix corresponds to a set of "global"
+        # Phi indices that are correlated across pulsars
         idxmatrix = idxmatrix + np.array([slices[csc].start
                                           for cs, csc in csdict.items()])
 
+        # loop over vectors of common-signal-correlated global-indices
         for idxs in idxmatrix:
+            # find the existing cliques assigned to these global indices 
             allidx = set(self._cliques[idxs])
             maxidx = max(allidx)
 
             if maxidx == -1:
+                # if no clique is found, create a new one, and assign it
+                # to the indices in idx
+
                 self._cliques[idxs] = self._clcount
 
+                # I don't think this code is ever exercised...
+                # if maxidx == -1, then allidx = [-1]
                 if len(allidx) > 1:
                     self._cliques[np.in1d(self._cliques,allidx)] = \
                         self._clcount
 
                 self._clcount = self._clcount + 1
             else:
+                # if we find at least one clique, assign all indices in idx
+                # to the maximum clique index
+
                 self._cliques[idxs] = maxidx
 
+                # since cliques are "contagious", reassign all the other
+                # clique indices that we found to maxidx
                 if len(allidx) > 1:
                     self._cliques[np.in1d(self._cliques,allidx)] = maxidx
 
+    # add cliques from individual pulsar phis; these will never overlap
+    # TO DO: at this point Phi could be defined as a smarter KernelMatrix!
+    def _setpulsarcliques(self, slices, phis):
+        for sc, phi in zip(self._signalcollections, phis):
+            if phi is not None:
+                for clindex in range(getattr(phi, '_clcount', 0)):
+                    phiind = np.where(phi._cliques == clindex)[0]
+                    
+                    if len(phiind) > 0:
+                        try:
+                            self._cliques[slices[sc].start + phiind] = self._clcount
+                            self._clcount = self._clcount + 1
+                        except:
+                            print(self._cliques.shape)
+                            print("phiind",phiind,len(phiind))
+                            print(slices)
+                            raise
+
     def get_phi(self, params, cliques=False):
-        phivecs = [signalcollection.get_phi(params) for
-                   signalcollection in self._signalcollections]
+        phis = [signalcollection.get_phi(params) for
+                signalcollection in self._signalcollections]
 
         # if we found common signals, we'll return a big phivec matrix,
         # otherwise a list of phivec vectors (some of which possibly None)
         if self._commonsignals:
-            # would be easier if get_phi would return an empty array
-            phis = [phivec for phivec in phivecs if phivec is not None]
-            if np.any([phivec.ndim == 2 for phivec in phis]):
-                phi_full = [np.diag(phi) if phi.ndim == 1 else phi
-                            for phi in phis]
-                phi = sl.block_diag(*phi_full)
-                phidiag = np.diag(phi)
+            if np.any([phi.ndim == 2 for phi in phis if phi is not None]):
+                # if we have any dense matrices, 
+                Phi = sl.block_diag(*[np.diag(phi) if phi.ndim == 1 else phi
+                                      for phi in phis
+                                      if phi is not None])
             else:
-                phidiag = np.concatenate(phis)
-                phi = np.diag(phidiag)
-            slices = self._get_slices(phivecs)
+                Phi = np.diag(np.concatenate([phi for phi in phis
+                                              if phi is not None]))
 
+            # get a dictionary of slices locating each pulsar in Phi matrix 
+            slices = self._get_slices(phis)
+
+            # self._cliques is a vector of the same size as the Phi matrix
+            # for each Phi index i, self._cliques[i] is -1 if row/column
+            # belong to no clique, or it gives the clique number otherwise 
             if cliques:
-                self._resetcliques(phidiag)
+                self._resetcliques(Phi.shape[0])
+                self._setpulsarcliques(slices, phis)
 
             # iterate over all common signal classes
             for csclass, csdict in self._commonsignals.items():
                 # first figure out which indices are used in this common signal
+                # and update the clique index
                 if cliques:
-                    self._setcliques(slices,csdict)
+                    self._setcliques(slices, csdict)
 
                 # now iterate over all pairs of common signal instances
                 pairs = itertools.combinations(csdict.items(),2)
@@ -503,12 +550,12 @@ class PTA(object):
                     block1, idx1 = slices[csc1], csc1._idx[cs1]
                     block2, idx2 = slices[csc2], csc2._idx[cs2]
 
-                    phi[block1,block2][idx1,idx2] += crossdiag
-                    phi[block2,block1][idx2,idx1] += crossdiag
+                    Phi[block1,block2][idx1,idx2] += crossdiag
+                    Phi[block2,block1][idx2,idx1] += crossdiag
 
-            return phi
+            return Phi
         else:
-            return phivecs
+            return phis
 
     def map_params(self, xs):
         ret = {}
@@ -843,9 +890,28 @@ def cache_call(attrs, limit=2):
 class KernelMatrix(np.ndarray):
     def __new__(cls, init):
         if isinstance(init, int):
-            return np.zeros(init, 'd').view(cls)
+            ret = np.zeros(init, 'd').view(cls)
         else:
-            return init.view(cls)
+            ret = init.view(cls)
+
+        if ret.ndim == 2:
+            ret._cliques = -1 * np.ones(ret.shape[0])
+            ret._clcount = 0
+
+        return ret
+
+    # see PTA._setcliques
+    def _setcliques(self, idxs):
+        allidx = set(self._cliques[idxs])
+        maxidx = max(allidx)
+
+        if maxidx == -1:
+            self._cliques[idxs] = self._clcount
+            self._clcount = self._clcount + 1
+        else:
+            self._cliques[idxs] = maxidx
+            if len(allidx) > 1:
+                self._cliques[np.in1d(self._cliques,allidx)] = maxidx
 
     def add(self, other, idx):
         if other.ndim == 2 and self.ndim == 1:
@@ -857,10 +923,11 @@ class KernelMatrix(np.ndarray):
             if other.ndim == 1:
                 self[idx, idx] += other
             else:
+                self._setcliques(idx)
                 idx = ((idx, idx) if isinstance(idx, slice)
                        else (idx[:, None], idx))
                 self[idx] += other
-
+                
         return self
 
     def set(self, other, idx):
@@ -873,6 +940,7 @@ class KernelMatrix(np.ndarray):
             if other.ndim == 1:
                 self[idx, idx] = other
             else:
+                self._setcliques(idx)
                 idx = ((idx, idx) if isinstance(idx, slice)
                        else (idx[:, None], idx))
                 self[idx] = other
