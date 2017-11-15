@@ -285,7 +285,7 @@ class PTA(object):
     def _get_slices(self, phivecs):
         ret, offset = {}, 0
         for sc, phivec in zip(self._signalcollections, phivecs):
-            # assume phi is either a column vector or a square matrix 
+            # assume phi is either a column vector or a square matrix
             stop = 0 if phivec is None else phivec.shape[0]
             ret[sc] = slice(offset, offset+stop)
             offset = ret[sc].stop
@@ -462,7 +462,7 @@ class PTA(object):
 
         # loop over vectors of common-signal-correlated global-indices
         for idxs in idxmatrix:
-            # find the existing cliques assigned to these global indices 
+            # find the existing cliques assigned to these global indices
             allidx = set(self._cliques[idxs])
             maxidx = max(allidx)
 
@@ -497,10 +497,11 @@ class PTA(object):
             if phi is not None:
                 for clindex in range(getattr(phi, '_clcount', 0)):
                     phiind = np.where(phi._cliques == clindex)[0]
-                    
+
                     if len(phiind) > 0:
                         try:
-                            self._cliques[slices[sc].start + phiind] = self._clcount
+                            self._cliques[slices[sc].start+phiind] = (
+                                self._clcount)
                             self._clcount = self._clcount + 1
                         except:
                             print(self._cliques.shape)
@@ -516,7 +517,7 @@ class PTA(object):
         # otherwise a list of phivec vectors (some of which possibly None)
         if self._commonsignals:
             if np.any([phi.ndim == 2 for phi in phis if phi is not None]):
-                # if we have any dense matrices, 
+                # if we have any dense matrices,
                 Phi = sl.block_diag(*[np.diag(phi) if phi.ndim == 1 else phi
                                       for phi in phis
                                       if phi is not None])
@@ -524,12 +525,12 @@ class PTA(object):
                 Phi = np.diag(np.concatenate([phi for phi in phis
                                               if phi is not None]))
 
-            # get a dictionary of slices locating each pulsar in Phi matrix 
+            # get a dictionary of slices locating each pulsar in Phi matrix
             slices = self._get_slices(phis)
 
             # self._cliques is a vector of the same size as the Phi matrix
             # for each Phi index i, self._cliques[i] is -1 if row/column
-            # belong to no clique, or it gives the clique number otherwise 
+            # belong to no clique, or it gives the clique number otherwise
             if cliques:
                 self._resetcliques(Phi.shape[0])
                 self._setpulsarcliques(slices, phis)
@@ -927,7 +928,7 @@ class KernelMatrix(np.ndarray):
                 idx = ((idx, idx) if isinstance(idx, slice)
                        else (idx[:, None], idx))
                 self[idx] += other
-                
+
         return self
 
     def set(self, other, idx):
