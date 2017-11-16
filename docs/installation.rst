@@ -43,6 +43,7 @@ Or download the `tarball`_:
 Once you have a copy of the source, you can install it with:
 
 .. code-block:: console
+
     $ pip install numpy
     $ pip install -r requirements.txt
     $ pip install git+https://github.com/vallis/libstempo.git --install-option="--with-tempo2=$TEMPO2"
@@ -51,6 +52,7 @@ Once you have a copy of the source, you can install it with:
 If you want to run tests or do any other development then also run:
 
 .. code-block:: console
+
     $ pip install -r requirements_dev.txt
 
 .. _Github repo: https://github.com/nanograv/enterprise

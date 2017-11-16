@@ -66,15 +66,20 @@ class BasePulsar(object):
         with open(dfile, 'r') as fl:
             pdict = json.load(fl)
 
-        try:
-            pdist = tuple(pdict[self.name])
-        except KeyError:
+        if self.name[0] not in ['J', 'B']:
+            if 'J' + self.name in pdict:
+                pdist = tuple(pdict.get('J'+self.name))
+            elif 'B' + self.name in pdict:
+                pdist = tuple(pdict.get('B'+self.name))
+        else:
+            pdist = tuple(pdict.get(self.name, (1.0, 0.2)))
+
+        if pdist == (1.0, 0.2):
             # TODO: should use logging here
             msg = 'WARNING: Could not find pulsar distance for '
             msg += 'PSR {0}.'.format(self.name)
             msg += ' Setting value to 1 with 20% uncertainty.'
             print(msg)
-            pdist = (1.0, 0.2)
         return pdist
 
     def _get_radec_from_ecliptic(self, elong, elat):
