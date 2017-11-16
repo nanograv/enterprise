@@ -51,13 +51,8 @@ install:
     - python setup.py install
 
 script:
-<<<<<<< HEAD
-    #- coverage run --source enterprise setup.py test
-    - make test
-=======
     #- make test
     - coverage run --source enterprise setup.py test
->>>>>>> 4052252da5c93273f3eac496651492b55d9977e5
     - make lint
 
 after_success:
