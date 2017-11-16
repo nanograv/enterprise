@@ -1,7 +1,7 @@
-numpy==1.12.0
-scipy==0.18.1
-ephem==3.7.6.0
-Cython==0.25.2
+numpy>=1.12.0
+scipy>=0.18.1
+ephem>=3.7.6.0
+Cython>=0.25.2
 scikit-sparse>=0.4.2
 git+https://github.com/nanograv/PINT.git
-jplephem==2.6
+jplephem>=2.6

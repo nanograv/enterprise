@@ -718,17 +718,44 @@ def quant2ind(U):
     return inds
 
 
+def linear_interp_basis(toas, dt=30*86400):
+    """Provides a basis for linear interpolation.
+
+    :param toas: Pulsar TOAs in seconds
+    :param dt: Linear interpolation step size in seconds.
+
+    :returns: Linear interpolation basis and nodes
+    """
+
+    # evenly spaced points
+    x = np.arange(toas.min(), toas.max()+dt, dt)
+    M = np.zeros((len(toas), len(x)))
+
+    # make linear interpolation basis
+    for ii in range(len(x)-1):
+        idx = np.logical_and(toas >= x[ii], toas <= x[ii+1])
+        M[idx, ii] = (toas[idx] - x[ii+1]) / (x[ii] - x[ii+1])
+        M[idx, ii+1] = (toas[idx] - x[ii]) / (x[ii+1] - x[ii])
+
+    # only return non-zero columns
+    idx = M.sum(axis=0) != 0
+
+    return M[:, idx], x[idx]
+
+
 @signal_base.function
 def powerlaw(f, log10_A=-16, gamma=5):
+    df = np.diff(np.concatenate((np.array([0]), f[::2])))
     return ((10**log10_A)**2 / 12.0 / np.pi**2 *
-            const.fyr**(gamma-3) * f**(-gamma))
+            const.fyr**(gamma-3) * f**(-gamma) * np.repeat(df, 2))
 
 
 @signal_base.function
 def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10/3, beta=0.5):
+    df = np.diff(np.concatenate((np.array([0]), f[::2])))
     hcf = (10**log10_A * (f / const.fyr) ** ((3-gamma) / 2) /
            (1 + (10**lf0 / f) ** kappa) ** beta)
-    return hcf**2/12/np.pi**2/f**3
+    return hcf**2/12/np.pi**2/f**3*np.repeat(df, 2)
 
 
 @signal_base.function
