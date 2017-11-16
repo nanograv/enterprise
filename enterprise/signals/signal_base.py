@@ -166,7 +166,7 @@ class MarginalizedLogLikelihood(object):
             loglike += 0.5*(np.dot(TNr, expval) - logdet_sigma - logdet_phi)
         else:
             for TNr, TNT, (phiinv, logdet_phi) in zip(TNrs, TNTs, phiinvs):
-                Sigma = TNT + np.diag(phiinv)
+                Sigma = TNT + (np.diag(phiinv) if phiinv.ndim == 1 else phiinv)
 
                 try:
                     cf = sl.cho_factor(Sigma)
@@ -280,10 +280,13 @@ class PTA(object):
 
         return self._cs
 
+    # return a dictionary (indexed by SignalCollection) of Python slices
+    # corresponding to the span of each pulsar within a Phi matrix
     def _get_slices(self, phivecs):
         ret, offset = {}, 0
         for sc, phivec in zip(self._signalcollections, phivecs):
-            stop = 0 if phivec is None else len(phivec)
+            # assume phi is either a column vector or a square matrix
+            stop = 0 if phivec is None else phivec.shape[0]
             ret[sc] = slice(offset, offset+stop)
             offset = ret[sc].stop
 
@@ -303,12 +306,8 @@ class PTA(object):
         phi = self.get_phi(params)
 
         if isinstance(phi, list):
-            if logdet:
-                return [None if phivec is None
-                        else (1/phivec, np.sum(np.log(phivec)))
-                        for phivec in phi]
-            else:
-                return [None if phivec is None else 1/phivec for phivec in phi]
+            return [None if phivec is None else phivec.inv(logdet)
+                    for phivec in phi]
         else:
             phisparse = sps.csc_matrix(phi)
             cf = cholesky(phisparse)
@@ -325,15 +324,24 @@ class PTA(object):
         # if we found common signals, we'll return a big phivec matrix,
         # otherwise a list of phivec vectors (some of which possibly None)
         if self._commonsignals:
-            # would be easier if get_phi would return an empty array
-            phidiag = np.concatenate([phivec for phivec in phivecs
-                                      if phivec is not None])
             slices = self._get_slices(phivecs)
 
-            if logdet:
-                ld = np.sum(np.log(phidiag))
-
-            phiinv = np.diag(1.0/phidiag)
+            #TODO: This is messy, maybe we should clean up
+            phis = [phivec for phivec in phivecs if phivec is not None]
+            if np.any([phivec.ndim == 2 for phivec in phis]):
+                phiinvs = [phivec.inv(logdet) for phivec in phis]
+                phiinv_full = [np.diag(phi[0]) if phi[0].ndim == 1 else phi[0]
+                               for phi in phiinvs]
+                phiinv = sl.block_diag(*phiinv_full)
+                if logdet:
+                    ld = np.sum([pi[1] for pi in phiinvs])
+                phidiag = np.concatenate([np.diag(phi) if phi.ndim == 2
+                                          else phi for phi in phis])
+            else:
+                phidiag = np.concatenate(phis)
+                phiinv = np.diag(1.0/phidiag)
+                if logdet:
+                    ld = np.sum(np.log(phidiag))
 
             # this will only work if all common signals are shared among all
             # the pulsars and share the same basis
@@ -386,24 +394,15 @@ class PTA(object):
             else:
                 return phiinv
         else:
-            if logdet:
-                return [None if phivec is None
-                        else (1/phivec, np.sum(np.log(phivec)))
-                        for phivec in phivecs]
-            else:
-                return [None if phivec is None else 1/phivec for
-                        phivec in phivecs]
+            return [None if phivec is None else phivec.inv(logdet)
+                    for phivec in phivecs]
 
     def get_phiinv_byfreq_cliques(self, params, logdet=False, cholesky=False):
         phi = self.get_phi(params, cliques=True)
 
         if isinstance(phi, list):
-            if logdet:
-                return [None if phivec is None
-                        else (1/phivec, np.sum(np.log(phivec)))
-                        for phivec in phi]
-            else:
-                return [None if phivec is None else 1/phivec for phivec in phi]
+            return [None if phivec is None else phivec.inv(logdet)
+                    for phivec in phi]
         else:
             ld = 0
 
@@ -420,8 +419,8 @@ class PTA(object):
                         if logdet:
                             ld += 2.0*np.sum(np.log(np.diag(cf[0])))
 
-                        phi[idx2] = sl.cho_solve(cf,
-                                                 np.identity(cf[0].shape[0]))
+                        phi[idx2] = sl.cho_solve(
+                            cf, np.identity(cf[0].shape[0]))
                     else:
                         phi2 = phi[idx2]
 
@@ -440,58 +439,108 @@ class PTA(object):
 
             return (phi, ld) if logdet else phi
 
-    # sort matrix indices by presence of non-diagonal elements
-    # for each value in self._cliques, the indices with that value form
+    # we use "cliques" to account for sparse non-diagonal Phi matrices
+    # for each value in self._cliques, the matrix indices with that value form
     # an independent submatrix that can be inverted separately
-    def _resetcliques(self,phidiag):
-        self._cliques = -1 * np.ones_like(phidiag)
+
+    # reset clique index
+    def _resetcliques(self, n):
+        self._cliques = -1 * np.ones(n)
         self._clcount = 0
 
+    # update clique index by considering a common signal under
+    # the assumption that the corresponding "big-Phi" matrix is block diagonal
     def _setcliques(self,slices,csdict):
+        # each column in idxmatrix (mind the .T) corresponds to the indices
+        # that participate in a common signal for a given pulsar
         idxmatrix = np.array([csc._idx[cs] for cs, csc in csdict.items()]).T
+
+        # each row in the updated idxmatrix corresponds to a set of "global"
+        # Phi indices that are correlated across pulsars
         idxmatrix = idxmatrix + np.array([slices[csc].start
                                           for cs, csc in csdict.items()])
 
+        # loop over vectors of common-signal-correlated global-indices
         for idxs in idxmatrix:
+            # find the existing cliques assigned to these global indices
             allidx = set(self._cliques[idxs])
             maxidx = max(allidx)
 
             if maxidx == -1:
+                # if no clique is found, create a new one, and assign it
+                # to the indices in idx
+
                 self._cliques[idxs] = self._clcount
 
+                # I don't think this code is ever exercised...
+                # if maxidx == -1, then allidx = [-1]
                 if len(allidx) > 1:
                     self._cliques[np.in1d(self._cliques,allidx)] = \
                         self._clcount
 
                 self._clcount = self._clcount + 1
             else:
+                # if we find at least one clique, assign all indices in idx
+                # to the maximum clique index
+
                 self._cliques[idxs] = maxidx
 
+                # since cliques are "contagious", reassign all the other
+                # clique indices that we found to maxidx
                 if len(allidx) > 1:
                     self._cliques[np.in1d(self._cliques,allidx)] = maxidx
 
+    # add cliques from individual pulsar phis; these will never overlap
+    # TO DO: at this point Phi could be defined as a smarter KernelMatrix!
+    def _setpulsarcliques(self, slices, phis):
+        for sc, phi in zip(self._signalcollections, phis):
+            if phi is not None:
+                for clindex in range(getattr(phi, '_clcount', 0)):
+                    phiind = np.where(phi._cliques == clindex)[0]
+
+                    if len(phiind) > 0:
+                        try:
+                            self._cliques[slices[sc].start+phiind] = (
+                                self._clcount)
+                            self._clcount = self._clcount + 1
+                        except:
+                            print(self._cliques.shape)
+                            print("phiind",phiind,len(phiind))
+                            print(slices)
+                            raise
+
     def get_phi(self, params, cliques=False):
-        phivecs = [signalcollection.get_phi(params) for
-                   signalcollection in self._signalcollections]
+        phis = [signalcollection.get_phi(params) for
+                signalcollection in self._signalcollections]
 
         # if we found common signals, we'll return a big phivec matrix,
         # otherwise a list of phivec vectors (some of which possibly None)
         if self._commonsignals:
-            # would be easier if get_phi would return an empty array
-            phidiag = np.concatenate([phivec for phivec in phivecs
-                                      if phivec is not None])
-            slices = self._get_slices(phivecs)
+            if np.any([phi.ndim == 2 for phi in phis if phi is not None]):
+                # if we have any dense matrices,
+                Phi = sl.block_diag(*[np.diag(phi) if phi.ndim == 1 else phi
+                                      for phi in phis
+                                      if phi is not None])
+            else:
+                Phi = np.diag(np.concatenate([phi for phi in phis
+                                              if phi is not None]))
 
-            phi = np.diag(phidiag)
+            # get a dictionary of slices locating each pulsar in Phi matrix
+            slices = self._get_slices(phis)
 
+            # self._cliques is a vector of the same size as the Phi matrix
+            # for each Phi index i, self._cliques[i] is -1 if row/column
+            # belong to no clique, or it gives the clique number otherwise
             if cliques:
-                self._resetcliques(phidiag)
+                self._resetcliques(Phi.shape[0])
+                self._setpulsarcliques(slices, phis)
 
             # iterate over all common signal classes
             for csclass, csdict in self._commonsignals.items():
                 # first figure out which indices are used in this common signal
+                # and update the clique index
                 if cliques:
-                    self._setcliques(slices,csdict)
+                    self._setcliques(slices, csdict)
 
                 # now iterate over all pairs of common signal instances
                 pairs = itertools.combinations(csdict.items(),2)
@@ -502,12 +551,12 @@ class PTA(object):
                     block1, idx1 = slices[csc1], csc1._idx[cs1]
                     block2, idx2 = slices[csc2], csc2._idx[cs2]
 
-                    phi[block1,block2][idx1,idx2] += crossdiag
-                    phi[block2,block1][idx2,idx1] += crossdiag
+                    Phi[block1,block2][idx1,idx2] += crossdiag
+                    Phi[block2,block1][idx2,idx1] += crossdiag
 
-            return phi
+            return Phi
         else:
-            return phivecs
+            return phis
 
     def map_params(self, xs):
         ret = {}
@@ -620,7 +669,8 @@ def SignalCollection(metasignals):
 
             ncol = len(np.unique(sum(idx.values(), [])))
             nrow = len(Fmatlist[0])
-            return idx, np.zeros((nrow, ncol))
+            return ({key: np.array(idx[key]) for key in idx.keys()},
+                    np.zeros((nrow, ncol)))
 
         # goofy way to cache _idx
         def __getattr__(self, par):
@@ -654,13 +704,13 @@ def SignalCollection(metasignals):
             return self._Fmat
 
         def get_phiinv(self, params):
-            return 1.0/self.get_phi(params)
+            return self.get_phi(params).inv()
 
         def get_phi(self, params):
-            phi = np.zeros(self._Fmat.shape[1],'d')
+            phi = KernelMatrix(self._Fmat.shape[1])
             for signal in self._signals:
                 if signal in self._idx:
-                    phi[self._idx[signal]] += signal.get_phi(params)
+                    phi = phi.add(signal.get_phi(params), self._idx[signal])
             return phi
 
         @cache_call(['basis_params', 'white_params', 'delay_params'])
@@ -836,6 +886,91 @@ def cache_call(attrs, limit=2):
         return wrapper
 
     return cache_decorator
+
+
+class KernelMatrix(np.ndarray):
+    def __new__(cls, init):
+        if isinstance(init, int):
+            ret = np.zeros(init, 'd').view(cls)
+        else:
+            ret = init.view(cls)
+
+        if ret.ndim == 2:
+            ret._cliques = -1 * np.ones(ret.shape[0])
+            ret._clcount = 0
+
+        return ret
+
+    # see PTA._setcliques
+    def _setcliques(self, idxs):
+        allidx = set(self._cliques[idxs])
+        maxidx = max(allidx)
+
+        if maxidx == -1:
+            self._cliques[idxs] = self._clcount
+            self._clcount = self._clcount + 1
+        else:
+            self._cliques[idxs] = maxidx
+            if len(allidx) > 1:
+                self._cliques[np.in1d(self._cliques,allidx)] = maxidx
+
+    def add(self, other, idx):
+        if other.ndim == 2 and self.ndim == 1:
+            self = KernelMatrix(np.diag(self))
+
+        if self.ndim == 1:
+            self[idx] += other
+        else:
+            if other.ndim == 1:
+                self[idx, idx] += other
+            else:
+                self._setcliques(idx)
+                idx = ((idx, idx) if isinstance(idx, slice)
+                       else (idx[:, None], idx))
+                self[idx] += other
+
+        return self
+
+    def set(self, other, idx):
+        if other.ndim == 2 and self.ndim == 1:
+            self = KernelMatrix(np.diag(self))
+
+        if self.ndim == 1:
+            self[idx] = other
+        else:
+            if other.ndim == 1:
+                self[idx, idx] = other
+            else:
+                self._setcliques(idx)
+                idx = ((idx, idx) if isinstance(idx, slice)
+                       else (idx[:, None], idx))
+                self[idx] = other
+
+        return self
+
+    def inv(self, logdet=False):
+        if self.ndim == 1:
+            inv = 1.0/self
+
+            if logdet:
+                return inv, np.sum(np.log(self))
+            else:
+                return inv
+        else:
+            try:
+                cf = sl.cho_factor(self)
+                inv = sl.cho_solve(cf, np.identity(cf[0].shape[0]))
+                if logdet:
+                    ld = 2.0*np.sum(np.log(np.diag(cf[0])))
+            except np.linalg.LinAlgError:
+                u, s, v = np.linalg.svd(self)
+                inv = np.dot(u/s, u.T)
+                if logdet:
+                    ld = np.sum(np.log(s))
+            if logdet:
+                return inv, ld
+            else:
+                return inv
 
 
 class csc_matrix_alt(sps.csc_matrix):

@@ -97,8 +97,8 @@ class TestUtils(unittest.TestCase):
         """Check fplus, fcross generation."""
         gwtheta = 1.4
         gwphi = 2.7
-        fplus, fcross = utils.fplus_fcross(self.psr.theta, self.psr.phi,
-                                           gwtheta, gwphi)
+        fplus, fcross, _ = utils.create_gw_antenna_pattern(self.psr.pos,
+                                                           gwtheta, gwphi)
 
         msg1 = 'Fplus value incorrect'
         msg2 = 'Fcross value incorrect'
@@ -141,12 +141,12 @@ class TestUtils(unittest.TestCase):
         kappa = 10/3
         beta = 0.5
         pl = ((10**log10_A)**2 / 12.0 / np.pi**2 *
-              const.fyr**(gamma-3) * f**(-gamma))
+              const.fyr**(gamma-3) * f**(-gamma)*f[0])
         hcf = (10**log10_A * (f / const.fyr) ** ((3-gamma) / 2) /
                (1 + (10**lf0 / f) ** kappa) ** beta)
-        pt = hcf**2/12/np.pi**2/f**3
+        pt = hcf**2/12/np.pi**2/f**3 * f[0]
 
         msg = 'PSD calculation incorrect'
-        assert np.all(utils.powerlaw(f, log10_A, gamma) == pl), msg
-        assert np.all(utils.turnover(f, log10_A, gamma,
-                                     lf0, kappa, beta) == pt), msg
+        assert np.allclose(utils.powerlaw(f, log10_A, gamma), pl), msg
+        assert np.allclose(utils.turnover(f, log10_A, gamma,
+                                          lf0, kappa, beta),pt), msg
