@@ -18,7 +18,7 @@ from enterprise.signals.selections import Selection
 
 def WhiteNoise(varianceFunction,
                selection=Selection(selections.no_selection),
-               name=''):
+               name='white_noise'):
     """ Class factory for generic white noise signals."""
 
     class WhiteNoise(base.Signal):
@@ -26,7 +26,8 @@ def WhiteNoise(varianceFunction,
         signal_name = name
 
         def __init__(self, psr):
-
+            super(WhiteNoise, self).__init__(psr)
+            self.name = self.psrname + '_' + name
             self._do_selection(psr, varianceFunction, selection)
 
         def _do_selection(self, psr, vfn, selection):
@@ -63,15 +64,16 @@ def efac_ndiag(toaerrs, efac=1.0):
 
 
 def MeasurementNoise(efac=parameter.Uniform(0.5,1.5),
-                     selection=Selection(selections.no_selection)):
+                     selection=Selection(selections.no_selection),
+                     name='efac'):
     """Class factory for EFAC type measurement noise."""
 
     varianceFunction = efac_ndiag(efac=efac)
-    BaseClass = WhiteNoise(varianceFunction, selection=selection)
+    BaseClass = WhiteNoise(varianceFunction, selection=selection, name=name)
 
     class MeasurementNoise(BaseClass):
         signal_type = 'white noise'
-        signal_name = 'efac'
+        signal_name = name
 
     return MeasurementNoise
 
@@ -82,22 +84,23 @@ def equad_ndiag(toas, log10_equad=-8):
 
 
 def EquadNoise(log10_equad=parameter.Uniform(-10,-5),
-               selection=Selection(selections.no_selection)):
+               selection=Selection(selections.no_selection),
+               name='equad'):
     """Class factory for EQUAD type measurement noise."""
 
     varianceFunction = equad_ndiag(log10_equad=log10_equad)
-    BaseClass = WhiteNoise(varianceFunction, selection=selection)
+    BaseClass = WhiteNoise(varianceFunction, selection=selection, name=name)
 
     class EquadNoise(BaseClass):
         signal_type = 'white noise'
-        signal_name = 'equad'
+        signal_name = name
 
     return EquadNoise
 
 
 def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
                      selection=Selection(selections.no_selection),
-                     method='sherman-morrison'):
+                     method='sherman-morrison', name='ecorr'):
     r"""Class factory for ECORR type noise.
 
     :param log10_ecorr: ``Parameter`` type for log10 or ecorr parameter.
@@ -156,6 +159,8 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
         signal_name = 'ecorr_' + method
 
         def __init__(self, psr):
+            super(EcorrKernelNoise, self).__init__(psr)
+            self.name = self.psrname + '_' + name + '_' + method
 
             sel = selection(psr)
             self._params, self._masks = sel('log10_ecorr', log10_ecorr)

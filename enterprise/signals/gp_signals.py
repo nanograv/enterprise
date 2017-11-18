@@ -26,7 +26,8 @@ def BasisGP(priorFunction, basisFunction,
         signal_name = name
 
         def __init__(self, psr):
-
+            super(BasisGP, self).__init__(psr)
+            self.name = self.psrname + '_' + name
             self._do_selection(psr, priorFunction, basisFunction, selection)
 
         def _do_selection(self, psr, priorfn, basisfn, selection):
@@ -92,28 +93,30 @@ def BasisGP(priorFunction, basisFunction,
 
 def FourierBasisGP(spectrum, components=20,
                    selection=Selection(selections.no_selection),
-                   Tspan=None):
+                   Tspan=None, name='red_noise'):
     """Convenience function to return a BasisGP class with a
     fourier basis."""
 
     basis = utils.createfourierdesignmatrix_red(nmodes=components, Tspan=Tspan)
-    BaseClass = BasisGP(spectrum, basis, selection=selection)
+    BaseClass = BasisGP(spectrum, basis, selection=selection, name=name)
 
     class FourierBasisGP(BaseClass):
         signal_type = 'basis'
-        signal_name = 'red noise'
+        signal_name = name
 
     return FourierBasisGP
 
 
-def TimingModel():
+def TimingModel(name='linear_timing_model'):
     """Class factory for marginalized linear timing model signals."""
 
     class TimingModel(base.Signal):
         signal_type = 'basis'
-        signal_name = 'linear timing model'
+        signal_name = name
 
         def __init__(self, psr):
+            super(TimingModel, self).__init__(psr)
+            self.name = self.psrname + '_' + name
             self._params = {}
 
             self._F = psr.Mmat.copy()
@@ -151,17 +154,18 @@ def ecorr_basis_prior(weights, log10_ecorr=-8):
 
 
 def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
-                    selection=Selection(selections.no_selection)):
+                    selection=Selection(selections.no_selection),
+                    name='basis_ecorr'):
     """Convienience function to return a BasisGP class with a
     quantized ECORR basis."""
 
     basis = utils.create_quantization_matrix()
     prior = ecorr_basis_prior(log10_ecorr=log10_ecorr)
-    BaseClass = BasisGP(prior, basis, selection=selection)
+    BaseClass = BasisGP(prior, basis, selection=selection, name=name)
 
     class EcorrBasisModel(BaseClass):
         signal_type = 'basis'
-        signal_name = 'basis ecorr'
+        signal_name = name
 
     return EcorrBasisModel
 
@@ -175,6 +179,8 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, name='common'):
         _prior = priorFunction(name)
 
         def __init__(self, psr):
+            super(BasisCommonGP, self).__init__(psr)
+            self.name = self.psrname + '_' + name
 
             self._bases = basisFunction(psr.name+name, psr=psr)
             params = sum([list(BasisCommonGP._prior._params.values()),

@@ -58,6 +58,9 @@ class MetaCollection(type):
 class Signal(object):
     """Base class for Signal objects."""
 
+    def __init__(self, psr):
+        self.psrname = psr.name
+
     @property
     def params(self):
         # return only nonconstant parameters
@@ -572,6 +575,26 @@ class PTA(object):
         params = xs if isinstance(xs,dict) else self.map_params(xs)
 
         return np.sum(p.get_logpdf(params[p.name]) for p in self.params)
+
+    def summary(self, print_params=True):
+        row = ['Signal Name', 'Signal Class', 'no. Parameters']
+        print("{: <40} {: <20} {: <20}".format(*row))
+        print(''.join(['=']*80))
+        pcount = 0
+        for sc in self._signalcollections:
+            for sig in sc._signals:
+                pcount += len(sig.param_names)
+                row = [sig.name, sig.__class__.__name__, len(sig.param_names)]
+                print("{: <40} {: <20} {: <20}".format(*row))
+                if print_params:
+                    print('\n')
+                    print('params:')
+                    for par in sig.params:
+                        print("{: <80}".format(par))
+                print(''.join(['_']*80))
+        print(''.join(['=']*80))
+        print('Total params: {}'.format(pcount))
+        print('Number of pulsars: {}'.format(len(self._signalcollections)))
 
 
 def SignalCollection(metasignals):
