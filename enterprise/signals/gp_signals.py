@@ -93,7 +93,7 @@ def BasisGP(priorFunction, basisFunction,
 
 def FourierBasisGP(spectrum, components=20,
                    selection=Selection(selections.no_selection),
-                   Tspan=None, name='red_noise'):
+                   Tspan=None, name=''):
     """Convenience function to return a BasisGP class with a
     fourier basis."""
 
@@ -102,7 +102,7 @@ def FourierBasisGP(spectrum, components=20,
 
     class FourierBasisGP(BaseClass):
         signal_type = 'basis'
-        signal_name = name
+        signal_name = name if name else 'red_noise'
 
     return FourierBasisGP
 
@@ -155,7 +155,7 @@ def ecorr_basis_prior(weights, log10_ecorr=-8):
 
 def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
                     selection=Selection(selections.no_selection),
-                    name='basis_ecorr'):
+                    name=''):
     """Convienience function to return a BasisGP class with a
     quantized ECORR basis."""
 
@@ -165,7 +165,7 @@ def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
 
     class EcorrBasisModel(BaseClass):
         signal_type = 'basis'
-        signal_name = name
+        signal_name = name if name else 'basis_ecorr'
 
     return EcorrBasisModel
 
