@@ -642,7 +642,7 @@ def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
     :param t0: Burst central time [day]
     :param antenna_pattern_fn:
         User defined function that takes `pos`, `gwtheta`, `gwphi` as
-        arguments and returns (fplus, fcross)
+        arguments and returns (fplus, fcross, cosMu)
 
     :return: the waveform as induced timing residuals (seconds)
     """
@@ -669,6 +669,131 @@ def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
 
     # Return the time-series for the pulsar
     return pol * h * heaviside(toas-t0) * (toas-t0)
+
+
+@signal_base.function
+def cw_delay(toas, pos, cos_gwtheta=0, gwphi=0, log10_mc=9, log10_dL=2,
+             log10_fgw=-8, phase0=0, psi=0, cos_inc=0, log10_h=None, p_dist=1,
+             p_phase=None, inc_psr_term=True, evolve=False, phase_approx=True,
+             tref=53000*86400, antenna_pattern_fn=None):
+    """
+    Function to create GW incuced residuals from a SMBMB as
+    defined in Ellis et. al 2012,2013.
+    :param toas: Pulsar toas in seconds
+    :param pos: Unit vector from Earth to pulsar
+    :param cos_gwtheta:
+        Cosine of Polar angle of GW source in celestial coords [radians]
+    :param gwphi: Azimuthal angle of GW source in celestial coords [radians]
+    :param log10_mc: log10 of Chirp mass of SMBMB [solar masses]
+    :param log10_dL: log10 of Luminosity distance to SMBMB [Mpc]
+    :param log10_fgw:
+        log10 of Frequency of GW (twice the orbital frequency) [Hz]
+    :param phase0: Initial Phase of GW source [radians]
+    :param psi: Polarization of GW source [radians]
+    :param cos_inc: cosine of Inclination of GW source [radians]
+    :param p_dist: Pulsar distance to use other than those in psr [kpc]
+    :param p_phase: Use pulsar phase to determine distance [radian]
+    :param psrTerm: Option to include pulsar term [boolean]
+    :param evolve: Option to exclude full evolution [boolean]
+    :param phase_approx:
+        Option to not model phase evolution across observation time [default]
+    :param tref: Reference time for phase and frequency [s]
+    :param antenna_pattern_fn:
+        User defined function that takes `pos`, `gwtheta`, `gwphi` as
+        arguments and returns (fplus, fcross, cosMu)
+
+    :return: Vector of induced residuals
+    """
+
+    # convert units
+    mc = 10**log10_mc * const.Tsun
+    dist = 10**log10_dL * const.Mpc / const.c
+    p_dist *= const.kpc / const.c
+    gwtheta = np.arccos(cos_gwtheta)
+    inc = np.arccos(cos_inc)
+    fgw = 10**log10_fgw
+
+    # is log10_h is given, use it
+    if log10_h is not None:
+        dist = 2 * mc**(5/3) * (np.pi*fgw)**(2/3) / 10**log10_h
+
+    # get antenna pattern funcs and cosMu
+    if antenna_pattern_fn is None:
+        apc = create_gw_antenna_pattern(pos, gwtheta, gwphi)
+    else:
+        apc = antenna_pattern_fn(pos, gwtheta, gwphi)
+
+    # grab fplus, fcross
+    fplus, fcross, cosMu = apc[0], apc[1], apc[2]
+
+    # get pulsar time
+    t = toas - tref
+    tp = t - p_dist * (1-cosMu)
+
+    # orbital frequency
+    w0 = np.pi * fgw
+    phase0 /= 2  # orbital phase
+
+    # evolution
+    if evolve:
+
+        # calculate time dependent frequency at earth and pulsar
+        omega = w0 * (1 - 256/5 * mc**(5/3) * w0**(8/3) * t)**(-3/8)
+        omega_p = w0 * (1 - 256/5 * mc**(5/3) * w0**(8/3) * tp)**(-3/8)
+
+        # calculate time dependent phase
+        phase = phase0 + 1/32/mc**(5/3) * (w0**(-5/3) - omega**(-5/3))
+        phase_p = phase0 + 1/32/mc**(5/3) * (w0**(-5/3) - omega_p**(-5/3))
+
+    elif phase_approx:
+
+        # monochromatic
+        omega = np.pi * fgw
+        omega_p = w0 * (1 + 256/5 * mc**(5/3) * w0**(8/3) *
+                        p_dist*(1-cosMu))**(-3/8)
+
+        # phases
+        phase = phase0 + omega * toas
+        if p_phase is not None:
+            phase_p = phase0 + p_phase + omega_p * t
+        else:
+            phase_p = phase0 + 1/32/mc**(5/3) * (w0**(-5/3) -
+                                                 omega_p**(-5/3)) + omega_p*t
+
+    # no evolution
+    else:
+
+        # monochromatic
+        omega = np.pi*fgw
+        omega_p = omega
+
+        # phases
+        phase = phase0 + omega * t
+        phase_p = phase0 + omega * tp
+
+    # define time dependent coefficients
+    At = -0.5*np.sin(2*phase)*(3+np.cos(2*inc))
+    Bt = 2*np.cos(2*phase)*np.cos(inc)
+    At_p = -0.5*np.sin(2*phase_p)*(3+np.cos(2*inc))
+    Bt_p = 2*np.cos(2*phase_p)*np.cos(inc)
+
+    # now define time dependent amplitudes
+    alpha = mc**(5./3.)/(dist*omega**(1./3.))
+    alpha_p = mc**(5./3.)/(dist*omega_p**(1./3.))
+
+    # define rplus and rcross
+    rplus = alpha*(-At*np.cos(2*psi)+Bt*np.sin(2*psi))
+    rcross = alpha*(At*np.sin(2*psi)+Bt*np.cos(2*psi))
+    rplus_p = alpha_p*(-At_p*np.cos(2*psi)+Bt_p*np.sin(2*psi))
+    rcross_p = alpha_p*(At_p*np.sin(2*psi)+Bt_p*np.cos(2*psi))
+
+    # residuals
+    if inc_psr_term:
+        res = fplus*(rplus_p-rplus)+fcross*(rcross_p-rcross)
+    else:
+        res = -fplus*rplus - fcross*rcross
+
+    return res
 
 
 @signal_base.function
