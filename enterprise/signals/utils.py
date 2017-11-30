@@ -384,20 +384,22 @@ def get_coupled_ecc_eqns(y, t, mc, q):
     return np.array([dFdt, dedt, dgdt, dphasedt])
 
 
-def solve_coupled_constecc_solution(F0, e0, phase0, mc, t):
+def solve_coupled_constecc_solution(F0, e0, l0, mc, t):
     """
     Compute the solution to the coupled system of equations
     from from Peters (1964) and Barack & Cutler (2004) at
-    a given time.
+    a given time for a constant eccentricity.
 
     :param F0: Initial orbital frequency [Hz]
+    :param e0: Initial orbital eccentricity
+    :param l0: Initial mean anomoly [rad]
     :param mc: Chirp mass of binary [Solar Mass]
     :param t: Time at which to evaluate solution [s]
 
     :returns: (F(t), phase(t))
     """
 
-    y0 = np.array([F0, phase0])
+    y0 = np.array([F0, l0])
 
     y, infodict = odeint(get_coupled_constecc_eqns, y0, t,
                          args=(mc,e0), full_output=True)
@@ -410,7 +412,7 @@ def solve_coupled_constecc_solution(F0, e0, phase0, mc, t):
     return ret
 
 
-def solve_coupled_ecc_solution(F0, e0, gamma0, phase0, mc, q, t):
+def solve_coupled_ecc_solution(F0, e0, gamma0, l0, mc, q, t):
     """
     Compute the solution to the coupled system of equations
     from from Peters (1964) and Barack & Cutler (2004) at
@@ -419,6 +421,7 @@ def solve_coupled_ecc_solution(F0, e0, gamma0, phase0, mc, q, t):
     :param F0: Initial orbital frequency [Hz]
     :param e0: Initial orbital eccentricity
     :param gamma0: Initial angle of precession of periastron [rad]
+    :param l0: Initial mean anomoly [rad]
     :param mc: Chirp mass of binary [Solar Mass]
     :param q: Mass ratio of binary
     :param t: Time at which to evaluate solution [s]
@@ -426,7 +429,7 @@ def solve_coupled_ecc_solution(F0, e0, gamma0, phase0, mc, q, t):
     :returns: (F(t), e(t), gamma(t), phase(t))
     """
 
-    y0 = np.array([F0, e0, gamma0, phase0])
+    y0 = np.array([F0, e0, gamma0, l0])
 
     y, infodict = odeint(get_coupled_ecc_eqns, y0, t,
                          args=(mc,q), full_output=True)
@@ -439,7 +442,7 @@ def solve_coupled_ecc_solution(F0, e0, gamma0, phase0, mc, q, t):
     return ret
 
 
-def get_an(n, mc, dl, h0, F, e):
+def get_an(n, mc, dl, F, e):
     """
     Compute a_n from Eq. 22 of Taylor et al. (2016).
 
@@ -457,11 +460,7 @@ def get_an(n, mc, dl, h0, F, e):
     dl *= const.Mpc / const.c
 
     omega = 2 * np.pi * F
-
-    if h0 is None:
-        amp = n * mc**(5/3) * omega**(2/3) / dl
-    elif h0 is not None:
-        amp = n * h0 / 2.0
+    amp = n * mc**(5/3) * omega**(2/3) / dl
 
     ret = -amp * (ss.jn(n-2,n*e) - 2*e*ss.jn(n-1,n*e) +
                   (2/n)*ss.jn(n,n*e) + 2*e*ss.jn(n+1,n*e) -
@@ -470,7 +469,7 @@ def get_an(n, mc, dl, h0, F, e):
     return ret
 
 
-def get_bn(n, mc, dl, h0, F, e):
+def get_bn(n, mc, dl, F, e):
     """
     Compute b_n from Eq. 22 of Taylor et al. (2015).
 
@@ -488,11 +487,7 @@ def get_bn(n, mc, dl, h0, F, e):
     dl *= const.Mpc / const.c
 
     omega = 2 * np.pi * F
-
-    if h0 is None:
-        amp = n * mc**(5/3) * omega**(2/3) / dl
-    elif h0 is not None:
-        amp = n * h0 / 2.0
+    amp = n * mc**(5/3) * omega**(2/3) / dl
 
     ret = (-amp * np.sqrt(1-e**2) * (ss.jn(n-2,n*e) -
            2*ss.jn(n,n*e) + ss.jn(n+2,n*e)))
@@ -500,7 +495,7 @@ def get_bn(n, mc, dl, h0, F, e):
     return ret
 
 
-def get_cn(n, mc, dl, h0, F, e):
+def get_cn(n, mc, dl, F, e):
     """
     Compute c_n from Eq. 22 of Taylor et al. (2016).
 
@@ -518,19 +513,15 @@ def get_cn(n, mc, dl, h0, F, e):
     dl *= const.Mpc / const.c
 
     omega = 2 * np.pi * F
-
-    if h0 is None:
-        amp = 2 * mc**(5/3) * omega**(2/3) / dl
-    elif h0 is not None:
-        amp = h0
+    amp = 2 * mc**(5/3) * omega**(2/3) / dl
 
     ret = amp * ss.jn(n,n*e) / (n * omega)
 
     return ret
 
 
-def calculate_splus_scross(nmax, mc, dl, h0, F, e,
-                           t, l0, gamma, gammadot, inc):
+def calculate_splus_scross(nmax, mc, dl, F, e, t, l0,
+                           gamma, gammadot, inc):
     """
     Calculate splus and scross for a CGW summed over all harmonics.
     This waveform differs slightly from that in Taylor et al (2016)
@@ -542,28 +533,28 @@ def calculate_splus_scross(nmax, mc, dl, h0, F, e,
     :param F: Orbital frequency of binary [Hz]
     :param e: Orbital Eccentricity
     :param t: TOAs [s]
-    :param l0: Initial eccentric anomoly [rad]
+    :param l0: Initial mean anomoly [rad]
     :param gamma: Angle of periastron advance [rad]
     :param gammadot: Time derivative of angle of periastron advance [rad/s]
     :param inc: Inclination angle [rad]
 
-    :return splus, scross: plus and cross time-domain waveforms for a CGW
+    :returns: (splus, scross) plus and cross time-domain waveforms for a CGW
     """
-    n = np.arange(1, nmax)
+    n = np.arange(1, nmax+1)
 
     # time dependent amplitudes
-    an = get_an(n, mc, dl, h0, F, e)
-    bn = get_bn(n, mc, dl, h0, F, e)
-    cn = get_cn(n, mc, dl, h0, F, e)
+    an = get_an(n, mc, dl, F, e)
+    bn = get_bn(n, mc, dl, F, e)
+    cn = get_cn(n, mc, dl, F, e)
 
     # time dependent terms
-    omega = 2*np.pi*F
+    omega = 2 * np.pi * F
     gt = gamma + gammadot * t
     lt = l0 + omega * t
 
     # tiled phase
-    phase1 = n * np.tile(lt, (nmax-1,1)).T
-    phase2 = np.tile(gt, (nmax-1,1)).T
+    phase1 = n * np.tile(lt, (nmax,1)).T
+    phase2 = np.tile(gt, (nmax,1)).T
 
     sinp1 = np.sin(phase1)
     cosp1 = np.cos(phase1)
@@ -671,14 +662,35 @@ def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
     return pol * h * heaviside(toas-t0) * (toas-t0)
 
 
+def get_nharm_from_table(e0):
+    """Convenience function to return number of harmonics to use in
+    eccentric waveform as function of eccentricity.
+    """
+    if e0 < 0.999 and e0 > 0.001:
+        nharm = int(ecc_interp(e0))
+    elif e0 < 0.001:
+        nharm = 2
+    else:
+        nharm = int(ecc_interp(0.999))
+
+    return nharm
+
+
 @signal_base.function
 def cw_delay(toas, pos, cos_gwtheta=0, gwphi=0, log10_mc=9, log10_dL=2,
-             log10_fgw=-8, phase0=0, psi=0, cos_inc=0, log10_h=None, p_dist=1,
-             p_phase=None, inc_psr_term=True, evolve=False, phase_approx=True,
-             tref=53000*86400, antenna_pattern_fn=None):
+             log10_fgw=-8, psi=0, cos_inc=0, log10_h=None, gamma0=0, e0=0,
+             l0=0.0, q=0.25, p_dist=1.0, p_phase=None, p_gam=None,
+             nmax=None, inc_psr_term=True, tref=53000*86400,
+             evolve_gamma=True, antenna_pattern_fn=None):
+
     """
-    Function to create GW incuced residuals from a SMBMB as
-    defined in Ellis et. al 2012,2013.
+    Simulate GW from eccentric SMBHB. Waveform models from
+    Taylor et al. (2015) and Barack and Cutler (2004).
+
+    WARNING: This residual waveform is only accurate if the
+    GW frequency is not significantly evolving over the
+    observation time of the pulsar.
+
     :param toas: Pulsar toas in seconds
     :param pos: Unit vector from Earth to pulsar
     :param cos_gwtheta:
@@ -688,34 +700,52 @@ def cw_delay(toas, pos, cos_gwtheta=0, gwphi=0, log10_mc=9, log10_dL=2,
     :param log10_dL: log10 of Luminosity distance to SMBMB [Mpc]
     :param log10_fgw:
         log10 of Frequency of GW (twice the orbital frequency) [Hz]
-    :param phase0: Initial Phase of GW source [radians]
     :param psi: Polarization of GW source [radians]
     :param cos_inc: cosine of Inclination of GW source [radians]
-    :param p_dist: Pulsar distance to use other than those in psr [kpc]
-    :param p_phase: Use pulsar phase to determine distance [radian]
-    :param psrTerm: Option to include pulsar term [boolean]
-    :param evolve: Option to exclude full evolution [boolean]
-    :param phase_approx:
-        Option to not model phase evolution across observation time [default]
-    :param tref: Reference time for phase and frequency [s]
+    :param log10_h: log10 of Strain amplitude (see note!)
+    :param gamma0: Initial angle of periastron [radians]
+    :param e0: Initial eccentricity of SMBHB
+    :param l0: Initial mean anomoly [radians]
+    :param q: Mass ratio of SMBHB
+    :param p_dist: Pulsar distance [kpc]
+    :param p_phase:
+        Pulsar phase, by default this phase is computed from phase
+        evolution equations [radian]
+    :param p_gam:
+        Pulsar angle of periastron, by default this is calculated
+        from the evolution equations[rad]
+    :param nmax:
+        Maximum number of harmonics to use. By default we use a pre-computed
+        interpolation table as a function of eccentricity.
+    :param inc_psr_term: Option to include pulsar term [boolean]
+
+    :param tref: Fidicuial time at which initial parameters are referenced [s]
+    :param evolve_gamma:
+        Boolean option to include evolution of the angle of periastron
     :param antenna_pattern_fn:
         User defined function that takes `pos`, `gwtheta`, `gwphi` as
         arguments and returns (fplus, fcross, cosMu)
 
     :return: Vector of induced residuals
+
+    .. note:: If log10_dL and log10_h are both specified log10_h will be used.
+
     """
 
     # convert units
-    mc = 10**log10_mc * const.Tsun
-    dist = 10**log10_dL * const.Mpc / const.c
+    mc = 10**log10_mc
+    dist = 10**log10_dL
     p_dist *= const.kpc / const.c
     gwtheta = np.arccos(cos_gwtheta)
     inc = np.arccos(cos_inc)
     fgw = 10**log10_fgw
+    F = fgw / 2
+    sin2psi, cos2psi = np.sin(2*psi), np.cos(2*psi)
 
     # is log10_h is given, use it
     if log10_h is not None:
-        dist = 2 * mc**(5/3) * (np.pi*fgw)**(2/3) / 10**log10_h
+        dist = 2 * (mc*const.Tsun)**(5/3) * (np.pi*fgw)**(2/3) / 10**log10_h
+        dist *= const.c / const.Mpc
 
     # get antenna pattern funcs and cosMu
     if antenna_pattern_fn is None:
@@ -730,70 +760,55 @@ def cw_delay(toas, pos, cos_gwtheta=0, gwphi=0, log10_mc=9, log10_dL=2,
     t = toas - tref
     tp = t - p_dist * (1-cosMu)
 
-    # orbital frequency
-    w0 = np.pi * fgw
-    phase0 /= 2  # orbital phase
+    # get gammadot for earth term
+    gammadot = get_gammadot(F, mc, q, e0) if evolve_gamma else 0.0
 
-    # evolution
-    if evolve:
+    # get number of harmonics to use
+    nharm = min(get_nharm_from_table(e0) if nmax is None else nmax, 1000)
 
-        # calculate time dependent frequency at earth and pulsar
-        omega = w0 * (1 - 256/5 * mc**(5/3) * w0**(8/3) * t)**(-3/8)
-        omega_p = w0 * (1 - 256/5 * mc**(5/3) * w0**(8/3) * tp)**(-3/8)
+    # earth term
+    splus, scross = calculate_splus_scross(nharm, mc, dist, F, e0, t,
+                                           l0, gamma0, gammadot, inc)
 
-        # calculate time dependent phase
-        phase = phase0 + 1/32/mc**(5/3) * (w0**(-5/3) - omega**(-5/3))
-        phase_p = phase0 + 1/32/mc**(5/3) * (w0**(-5/3) - omega_p**(-5/3))
-
-    elif phase_approx:
-
-        # monochromatic
-        omega = np.pi * fgw
-        omega_p = w0 * (1 + 256/5 * mc**(5/3) * w0**(8/3) *
-                        p_dist*(1-cosMu))**(-3/8)
-
-        # phases
-        phase = phase0 + omega * toas
-        if p_phase is not None:
-            phase_p = phase0 + p_phase + omega_p * t
-        else:
-            phase_p = phase0 + 1/32/mc**(5/3) * (w0**(-5/3) -
-                                                 omega_p**(-5/3)) + omega_p*t
-
-    # no evolution
-    else:
-
-        # monochromatic
-        omega = np.pi*fgw
-        omega_p = omega
-
-        # phases
-        phase = phase0 + omega * t
-        phase_p = phase0 + omega * tp
-
-    # define time dependent coefficients
-    At = -0.5*np.sin(2*phase)*(3+np.cos(2*inc))
-    Bt = 2*np.cos(2*phase)*np.cos(inc)
-    At_p = -0.5*np.sin(2*phase_p)*(3+np.cos(2*inc))
-    Bt_p = 2*np.cos(2*phase_p)*np.cos(inc)
-
-    # now define time dependent amplitudes
-    alpha = mc**(5./3.)/(dist*omega**(1./3.))
-    alpha_p = mc**(5./3.)/(dist*omega_p**(1./3.))
-
-    # define rplus and rcross
-    rplus = alpha*(-At*np.cos(2*psi)+Bt*np.sin(2*psi))
-    rcross = alpha*(At*np.sin(2*psi)+Bt*np.cos(2*psi))
-    rplus_p = alpha_p*(-At_p*np.cos(2*psi)+Bt_p*np.sin(2*psi))
-    rcross_p = alpha_p*(At_p*np.sin(2*psi)+Bt_p*np.cos(2*psi))
-
-    # residuals
+    # pulsar term
     if inc_psr_term:
-        res = fplus*(rplus_p-rplus)+fcross*(rcross_p-rcross)
-    else:
-        res = -fplus*rplus - fcross*rcross
+        # solve coupled system of equations to get pulsar term values
+        y = solve_coupled_ecc_solution(F, e0, gamma0, l0, mc,
+                                       q, np.array([t.min(), tp.min()]))
 
-    return res
+        # get pulsar term values
+        if np.any(y):
+            Fp, ep, gp, phip = y[-1,:]
+
+            # get gammadot at pulsar term
+            gammadotp = get_gammadot(Fp, mc, q, ep) if evolve_gamma else 0.0
+
+            # get phase at pulsar
+            lp = phip if p_phase is None else l0 + p_phase
+
+            # get angle of periastron at pulsar
+            gp = gp if p_gam is None else gamma0 + p_gam
+
+            # get number of harmonics to use
+            nharm = min(get_nharm_from_table(ep) if nmax is None
+                        else nmax, 1000)
+
+            # pulsar term waveform
+            splusp, scrossp = calculate_splus_scross(nharm, mc, dist, Fp, ep,
+                                                     t, lp, gp, gammadotp, inc)
+
+            # full waveform
+            rr = (fplus*cos2psi - fcross*sin2psi) * (splusp - splus)
+            rr += (fplus*sin2psi + fcross*cos2psi) * (scrossp - scross)
+
+        else:
+            rr = np.ones(len(t)) * np.nan
+
+    else:
+        rr = - (fplus*cos2psi - fcross*sin2psi) * splus
+        rr -= (fplus*sin2psi + fcross*cos2psi) * scross
+
+    return rr
 
 
 @signal_base.function
