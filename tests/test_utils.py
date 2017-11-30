@@ -78,7 +78,6 @@ class TestUtils(unittest.TestCase):
         nmax = 100
         mc = 5e8
         dl = 300
-        h0 = 1e-14
         F = 2e-8
         e = 0.6
         t = self.psr.toas
@@ -86,7 +85,7 @@ class TestUtils(unittest.TestCase):
         gamma = 0.4
         gammadot = 0.1
         inc = 1.3
-        s = utils.calculate_splus_scross(nmax, mc, dl, h0, F, e,
+        s = utils.calculate_splus_scross(nmax, mc, dl, F, e,
                                          t, l0, gamma, gammadot, inc)
 
         msg = 'Single source waveform shape incorrect'
