@@ -67,6 +67,7 @@ coverage: ## check code coverage quickly with the default Python
 
 jupyter-docs:
 	jupyter nbconvert --template docs/nb-rst.tpl --to rst docs/_static/notebooks/*.ipynb --output-dir docs/
+	cp -r docs/_static/notebooks/img docs/
 	#jupyter nbconvert --template docs/nb-rst.tpl --to rst docs/_static/notebooks/tutorials/*.ipynb --output-dir docs/tutorials/
 
 docs: ## generate Sphinx HTML documentation, including API docs
