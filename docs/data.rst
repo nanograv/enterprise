@@ -15,8 +15,6 @@ code as user-friendly as possible, both for the end user and the
 developer.
 
 
-
-
 Class Factories
 ---------------
 
@@ -28,10 +26,10 @@ instances). A simple example is as follows:
 
     def A(farg1, farg2):
         class A(object):
-
+            
             def __init__(self, iarg):
                 self.iarg = iarg
-
+            
             def print_info(self):
                 print('Object instance {}\nInstance argument: {}\nFunction args: {} {}\n'.format(
                     self, self.iarg, farg1, farg2))
@@ -41,11 +39,11 @@ instances). A simple example is as follows:
 
     # define class A with arguments that can be seen within the class
     a = A('arg1', 'arg2')
-
+    
     # instantiate 2 instances of class A with different arguments
     a1 = a('iarg1')
     a2 = a('iarg2')
-
+    
     # call print_info method
     a1.print_info()
     a2.print_info()
@@ -53,20 +51,20 @@ instances). A simple example is as follows:
 
 .. parsed-literal::
 
-    Object instance <__main__.A object at 0x10e356810>
+    Object instance <__main__.A object at 0x10bb64290>
     Instance argument: iarg1
     Function args: arg1 arg2
-
-    Object instance <__main__.A object at 0x1116f4f10>
+    
+    Object instance <__main__.A object at 0x10bb642d0>
     Instance argument: iarg2
     Function args: arg1 arg2
-
+    
 
 
 In the example above we see that the arguments ``arg1`` and ``arg2`` are
 seen by both instances ``a1`` and ``a2``; however these instances were
 intantiated with different input arguments ``iarg1`` and ``iarg2``. So
-we see that class-factories are great when we want to give "global"
+we see that class-factories are great when we want to give “global”
 parameters to a class without having to pass them on initialization.
 This also allows us to mix and match classes, as we will do in
 ``enterprise`` before we instantiate them.
@@ -113,24 +111,24 @@ functionality.
 
 ``Uniform`` is a class factory that returns a class. The parameter is
 then intialized via a name. This way, a single parameter class can be
-initialized for multiple signal parameters with different names (i.e.
-EFAC per observing backend, etc). Once the parameter is initialized then
-you then have access to many useful methods.
+initialized for multiple signal parameters with different names
+(i.e. EFAC per observing backend, etc). Once the parameter is
+initialized then you then have access to many useful methods.
 
 .. code:: python
 
     # initialize efac parameter with name "efac_1"
     efac1 = efac('efac_1')
     print(efac1)
-
+    
     # return parameter name
     print(efac1.name)
-
+    
     # get pdf at a point (log pdf is access)
     print(efac1.get_pdf(1.3), efac1.get_logpdf(1.3))
-
+    
     # return 5 samples from this prior distribution
-    print(efac1.sample(size=5))
+    print(efac1.sample(n=5))
 
 
 .. parsed-literal::
@@ -138,7 +136,7 @@ you then have access to many useful methods.
     "efac_1":Uniform(0.5,5)
     efac_1
     (0.22222222222222221, -1.5040773967762742)
-    [ 2.82288791  3.47338006  1.68693806  4.34250608  4.79228485]
+    [ 4.15875031  4.02527174  0.86093696  2.29835222  3.14076572]
 
 
 The ``Function`` structure
@@ -208,7 +206,7 @@ is initialized with a name and a ``Pulsar`` object as follows:
 
 .. parsed-literal::
 
-    <enterprise.signals.signal_base.Function object at 0x10e3567d0>
+    <enterprise.signals.signal_base.Function object at 0x109da10d0>
 
 
 Now this ``Function`` object carries around instances of the
@@ -270,9 +268,9 @@ internally inside ``enterprise``.
 
 
 Notice that the last two methods give the same answer since we gave it
-the same values just in different ways. So you may be thinking: "Why did
-we pass the ``Pulsar`` object on initialization?" or "Wait. How does it
-know about the toas?!". Well the first question answers the second. By
+the same values just in different ways. So you may be thinking: “Why did
+we pass the ``Pulsar`` object on initialization?” or “Wait. How does it
+know about the toas?!”. Well the first question answers the second. By
 passing the pulsar object it grabs the ``toas`` attribute internally.
 This feature, combined with the ability to recognize ``Parameter``\ s
 and the ability to call the original function as we always would are the
@@ -285,10 +283,10 @@ still obtain a ``Function`` via:
 
     def sine_wave(toas, log10_A=-7, log10_f=-8):
         return 10**log10_A * np.sin(2*np.pi*toas*10**log10_f)
-
-    sw3 = signal_base.Function(sine_wave, log10_A=parameter.Uniform(-10,-5),
+    
+    sw3 = signal_base.Function(sine_wave, log10_A=parameter.Uniform(-10,-5), 
                                log10_f=parameter.Uniform(-9, -7))
-
+    
     print(sw3)
 
 
@@ -308,7 +306,7 @@ function with these rules in mind.
    `here <enterprise.html#module-enterprise.pulsar>`__ for more
    information.
 2. Any arguments that you may use as ``Parameter``\ s must be keyword
-   arguments (although you can have others that aren't ``Parameter``\ s)
+   arguments (although you can have others that aren’t ``Parameter``\ s)
 3. Add the ``@function`` decorator.
 
 And thats it! You can now define your own ``Function``\ s with minimal
@@ -337,7 +335,7 @@ then we can define the following function:
         midpoint = (toas.max() + toas.min()) / 2
         return dict(zip(['t1', 't2'], [toas <= midpoint, toas > midpoint]))
 
-This function will return a dictionary with keys (i.e. the names of the
+This function will return a dictionary with keys (i.e. the names of the
 different subsections) ``t1`` and ``t2`` and boolean arrays
 corresponding to the first and second halves of the data span,
 respectively. So for a simple input we have:
@@ -379,7 +377,7 @@ As we have stated, this is class factory that will be initialized inside
 
 .. parsed-literal::
 
-    <enterprise.signals.selections.Selection object at 0x111be3450>
+    <enterprise.signals.selections.Selection object at 0x1048212d0>
     {'t2': array([False, False, False, ...,  True,  True,  True], dtype=bool), 't1': array([ True,  True,  True, ..., False, False, False], dtype=bool)}
 
 
@@ -393,13 +391,13 @@ the split names as follows:
 
     # make efac class factory
     efac = parameter.Uniform(0.1, 5.0)
-
+    
     # now give it to selection
     params, masks = ch1('efac', efac)
-
+    
     # named parameters
     print(params)
-
+    
     # named masks
     print(masks)
 
@@ -433,4 +431,53 @@ whatever you want!
 ``Signal``\ s, ``SignalCollection``\ s, and ``PTA``\ s oh my!
 -------------------------------------------------------------
 
-**Coming Soon!**
+|image0|
+
+-  The data (residuals) are modeled as the sum of ``Signal`` components
+   which have their own ``Parameter``\ s.
+-  The sum of all ``Signal`` components is a ``SignalCollection``.
+
+.. |image0| image:: img/signal_collection.jpg
+
+|image0|
+
+-  Each pulsar’s model is a ``SignalCollection`` that are combined to
+   form a ``PTA``.
+-  Common ``Signal``\ s are shared across pulsars
+-  ``Likelihood``\ s act on ``PTA``\ s.
+
+.. |image0| image:: img/pta.jpg
+
+Anatomy of an ``enterprise`` ``Signal``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  :math:`\delta\tau = \sum_{i} X(\phi_{\rm basis})_{(i)}w_{(i)} + s(\phi_{\rm det}) + n(\phi_{\rm white})`
+-  :math:`w_{(i)} | K_{(i)} = \mathrm{Normal}(0, K(\phi_{\rm gp})_{(i)})`
+
+.. code:: python
+
+    class Signal(object):
+        """Base class for Signal objects."""
+
+        def get_ndiag(self, params):
+            """Returns the diagonal of the white noise vector `N`.
+            This method also supports block diagaonal sparse matrices.
+            """
+            return None
+
+        def get_delay(self, params):
+            """Returns the waveform of a deterministic signal."""
+            return 0
+
+        def get_basis(self, params=None):
+            """Returns the basis array of shape N_toa x N_basis."""
+            return None
+
+        def get_phi(self, params):
+            """Returns a diagonal or full rank covaraince matrix 
+            of the basis amplitudes."""
+            return None
+
+        def get_phiinv(self, params):
+            """Returns inverse of the covaraince of basis amplitudes."""
+            return None
