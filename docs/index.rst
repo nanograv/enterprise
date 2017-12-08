@@ -1,6 +1,10 @@
 Welcome to enterprise's documentation!
 ======================================
 
+
+.. image:: https://img.shields.io/badge/GitHub-nanograv%2Fenterprise-blue.svg
+        :target: https://github.com/nanograv/enterprise
+
 .. image:: https://img.shields.io/travis/nanograv/enterprise.svg
         :target: https://travis-ci.org/nanograv/enterprise
 
@@ -28,6 +32,7 @@ searches, and timing model analysis.
    installation
    contributing
    data
+   Overview <https://jellis18.github.io/enterprise_tutorial_talk/>
 
 .. toctree::
    :maxdepth: 2

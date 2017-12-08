@@ -161,15 +161,19 @@ all pulsars. Lastly, we fixt the spectral index of the GWB to be 13/3
     pl = utils.powerlaw(log10_A=log10_A, gamma=gamma)
     rn = gp_signals.FourierBasisGP(spectrum=pl, components=30, Tspan=Tspan)
     
-    # gwb
-    pl = utils.powerlaw(log10_A=log10_A_gw, gamma=gamma_gw)
-    gw = gp_signals.FourierBasisGP(spectrum=pl, components=30, Tspan=Tspan)
+    # gwb (no spatial correlations)
+    cpl = utils.powerlaw(log10_A=log10_A_gw, gamma=gamma_gw)
+    gw = gp_signals.FourierBasisGP(spectrum=cpl, components=30, Tspan=Tspan)
+    
+    # for spatial correltions you can do...
+    #orf = utils.hd_orf()
+    #crn = gp_signals.FourierBasisCommonGP(cpl, orf, components=30, name='gw', Tspan=Tspan)
     
     # timing model
     tm = gp_signals.TimingModel()
     
     # to add solar system ephemeris modeling...
-    eph = deterministic_signals.PhysicalEphemerisSignal(use_epoch_toas=True)
+    #eph = deterministic_signals.PhysicalEphemerisSignal(use_epoch_toas=True)
     
     # full model is sum of components
     model = ef + eq + ec + rn + tm + gw

@@ -51,11 +51,11 @@ instances). A simple example is as follows:
 
 .. parsed-literal::
 
-    Object instance <__main__.A object at 0x10e356810>
+    Object instance <__main__.A object at 0x10bb64290>
     Instance argument: iarg1
     Function args: arg1 arg2
     
-    Object instance <__main__.A object at 0x1116f4f10>
+    Object instance <__main__.A object at 0x10bb642d0>
     Instance argument: iarg2
     Function args: arg1 arg2
     
@@ -128,7 +128,7 @@ initialized then you then have access to many useful methods.
     print(efac1.get_pdf(1.3), efac1.get_logpdf(1.3))
     
     # return 5 samples from this prior distribution
-    print(efac1.sample(size=5))
+    print(efac1.sample(n=5))
 
 
 .. parsed-literal::
@@ -136,7 +136,7 @@ initialized then you then have access to many useful methods.
     "efac_1":Uniform(0.5,5)
     efac_1
     (0.22222222222222221, -1.5040773967762742)
-    [ 2.82288791  3.47338006  1.68693806  4.34250608  4.79228485]
+    [ 4.15875031  4.02527174  0.86093696  2.29835222  3.14076572]
 
 
 The ``Function`` structure
@@ -206,7 +206,7 @@ is initialized with a name and a ``Pulsar`` object as follows:
 
 .. parsed-literal::
 
-    <enterprise.signals.signal_base.Function object at 0x10e3567d0>
+    <enterprise.signals.signal_base.Function object at 0x109da10d0>
 
 
 Now this ``Function`` object carries around instances of the
@@ -377,7 +377,7 @@ As we have stated, this is class factory that will be initialized inside
 
 .. parsed-literal::
 
-    <enterprise.signals.selections.Selection object at 0x111be3450>
+    <enterprise.signals.selections.Selection object at 0x1048212d0>
     {'t2': array([False, False, False, ...,  True,  True,  True], dtype=bool), 't1': array([ True,  True,  True, ..., False, False, False], dtype=bool)}
 
 
