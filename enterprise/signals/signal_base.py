@@ -30,12 +30,14 @@ logger = logging.getLogger(__name__)
 try:
     from sksparse.cholmod import cholesky
 except ImportError:
-    msg = 'No sksparse library. Using numpy instead!'
+    msg = 'No sksparse library. Using scipy instead!'
     logger.warning(msg)
 
     class cholesky(object):
 
         def __init__(self, x):
+            if sps.issparse(x):
+                x = x.toarray()
             self.cf = sl.cho_factor(x)
 
         def __call__(self, other):
