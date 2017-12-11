@@ -21,8 +21,8 @@ in the tests directory.
 
 .. code:: python
 
-    parfiles = sorted(glob.glob(datadir + '/mdc1/*.par'))
-    timfiles = sorted(glob.glob(datadir + '/mdc1/*.tim'))
+    parfiles = sorted(glob.glob(datadir + '/*.par'))
+    timfiles = sorted(glob.glob(datadir + '/*.tim'))
 
 Load pulsars into ``Pulsar`` objects
 ------------------------------------
