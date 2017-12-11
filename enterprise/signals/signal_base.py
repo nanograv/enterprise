@@ -17,7 +17,6 @@ import numpy as np
 import scipy.sparse as sps
 import scipy.linalg as sl
 
-from sksparse.cholmod import cholesky
 
 from enterprise.signals.parameter import ConstantParameter, Parameter
 from enterprise.signals.selections import selection_func
@@ -26,6 +25,29 @@ import logging
 logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s',
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+try:
+    from sksparse.cholmod import cholesky
+except ImportError:
+    msg = 'No sksparse library. Using scipy instead!'
+    logger.warning(msg)
+
+    class cholesky(object):
+
+        def __init__(self, x):
+            if sps.issparse(x):
+                x = x.toarray()
+            self.cf = sl.cho_factor(x)
+
+        def __call__(self, other):
+            return sl.cho_solve(self.cf, other)
+
+        def logdet(self):
+            return np.sum(2 * np.log(np.diag(self.cf[0])))
+
+        def inv(self):
+            return sl.cho_solve(self.cf, np.eye(len(self.cf[0])))
 
 
 class MetaSignal(type):
