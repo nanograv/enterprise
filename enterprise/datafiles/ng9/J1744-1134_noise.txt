@@ -1,0 +1,14 @@
+efac-Rcvr_800_GUPPI 1.04852
+efac-Rcvr_800_GASP 1.16982
+efac-Rcvr1_2_GUPPI 1.21601
+efac-Rcvr1_2_GASP 1.02696
+jitter_q-Rcvr1_2_GASP -6.3269
+jitter_q-Rcvr1_2_GUPPI -6.45387
+jitter_q-Rcvr_800_GASP -6.84423
+jitter_q-Rcvr_800_GUPPI -6.57852
+equad-Rcvr_800_GUPPI -6.5577
+equad-Rcvr_800_GASP -6.47133
+equad-Rcvr1_2_GUPPI -6.73425
+equad-Rcvr1_2_GASP -6.83644
+RN-Amplitude -15.6471
+RN-spectral-index 3.30492
