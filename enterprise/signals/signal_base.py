@@ -111,7 +111,7 @@ class Signal(object):
                 logger.info(msg)
                 self._params[kw].value = params[par.name]
             elif par.name not in params and isinstance(par, ConstantParameter):
-                if par.value is not None:
+                if par.value is None:
                     msg = '{} not set! Check parameter dict.'.format(par.name)
                     logger.warning(msg)
 
