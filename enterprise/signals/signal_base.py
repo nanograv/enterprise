@@ -148,6 +148,10 @@ class MarginalizedLogLikelihood(object):
         phiinvs = self.pta.get_phiinv(params, logdet=True,
                                       method=phiinv_method)
 
+        # pre-computed cholesky factors
+        #if not self.pta._commonsignals:
+        #    cfs = self.pta.get_Sigma_cf(params)
+
         # get -0.5 * (rNr + logdet_N) piece of likelihood
         loglike = -0.5 * np.sum([l for l in self.pta.get_rNr_logdet(params)])
 
@@ -222,6 +226,10 @@ class PTA(object):
 
     def get_TNT(self, params):
         return [signalcollection.get_TNT(params) for signalcollection
+                in self._signalcollections]
+
+    def get_Sigma_cf(self, params):
+        return [signalcollection.get_Sigma_cf(params) for signalcollection
                 in self._signalcollections]
 
     def get_rNr_logdet(self, params):
@@ -731,6 +739,13 @@ def SignalCollection(metasignals):
             Nvec = self.get_ndiag(params)
             res = self.get_detres(params)
             return Nvec.solve(res, left_array=res, logdet=True)
+
+        @cache_call(['basis_params', 'white_params'])
+        def get_Sigma_cf(self, params):
+            phiinv = self.get_phiinv(params)
+            TNT = self.get_TNT(params)
+            Sigma = TNT + (np.diag(phiinv) if phiinv.ndim == 1 else phiinv)
+            return sl.cho_factor(Sigma)
 
     return SignalCollection
 

@@ -80,6 +80,7 @@ def Uniform(pmin, pmax, size=None):
     class Uniform(Parameter):
         _prior = prior.Prior(prior.UniformBoundedRV(pmin, pmax))
         _size = size
+        _pmin, _pmax = pmin, pmax
 
         def __repr__(self):
             return '"{}":Uniform({},{})'.format(self.name, pmin, pmax) \
@@ -93,6 +94,7 @@ def LinearExp(pmin, pmax, size=None):
     class LinearExp(Parameter):
         _prior = prior.Prior(prior.LinearExpRV(pmin, pmax))
         _size = size
+        _pmin, _pmax = pmin, pmax
 
         def __repr__(self):
             return '"{}":LinearExp({},{})'.format(self.name, pmin, pmax) \
@@ -106,6 +108,7 @@ def Normal(mu=0, sigma=1, size=None):
     class Normal(Parameter):
         _prior = prior.Prior(scipy.stats.norm(loc=mu, scale=sigma))
         _size = size
+        _mu, _sigma = mu, sigma
 
         def __repr__(self):
             return '"{}": Normal({},{})'.format(self.name, mu, sigma) \
