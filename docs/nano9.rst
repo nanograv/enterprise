@@ -15,9 +15,6 @@ background. We will reproduce the power-law GWB limit from `this
 paper. <http://adsabs.harvard.edu/cgi-bin/bib_query?arXiv:1508.03024>`__
 
 
-
-
-
 Function to convert PAL2 noise parameters to enterprise parameter dict
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -69,10 +66,10 @@ dictionaries.
     parfiles = sorted(glob.glob(datadir + '/*.par'))
     timfiles = sorted(glob.glob(datadir + '/*.tim'))
     noisefiles = sorted(glob.glob(datadir + '/*noise.txt'))
-
+    
     # 18 pulsars used in 9 year analysis
     p9 = np.loadtxt(datadir+'/9yr_pulsars.txt', dtype='S42')
-
+    
     # filter
     parfiles = [x for x in parfiles if x.split('/')[-1].split('_')[0] in p9]
     timfiles = [x for x in timfiles if x.split('/')[-1].split('_')[0] in p9]
@@ -87,9 +84,6 @@ Load into Pulsar class list
     for p, t in zip(parfiles, timfiles):
         psr = Pulsar(p, t, ephem='DE421')
         psrs.append(psr)
-
-
-
 
 Get parameter dict from noisefiles
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -135,48 +129,55 @@ all pulsars. Lastly, we fixt the spectral index of the GWB to be 13/3
     tmin = [p.toas.min() for p in psrs]
     tmax = [p.toas.max() for p in psrs]
     Tspan = np.max(tmax) - np.min(tmin)
-
+    
     # selection class to break white noise by backend
     selection = selections.Selection(selections.by_backend)
-
+    
     ##### parameters and priors #####
-
+    
     # white noise parameters
     # since we are fixing these to values from the noise file we set
     # them as constant parameters
     efac = parameter.Constant()
     equad = parameter.Constant()
     ecorr = parameter.Constant()
-
-    # red noise parameters
+    
+    # red noise parameters 
     log10_A = parameter.LinearExp(-20,-12)
     gamma = parameter.Uniform(0,7)
-
+    
     # GW parameters (initialize with names here to use parameters in common across pulsars)
     log10_A_gw = parameter.LinearExp(-18,-12)('log10_A_gw')
     gamma_gw = parameter.Constant(4.33)('gamma_gw')
-
+    
     ##### Set up signals #####
-
+    
     # white noise
     ef = white_signals.MeasurementNoise(efac=efac, selection=selection)
     eq = white_signals.EquadNoise(log10_equad=equad, selection=selection)
     ec = white_signals.EcorrKernelNoise(log10_ecorr=ecorr, selection=selection)
-
+    
     # red noise (powerlaw with 30 frequencies)
-    pl = signal_base.Function(utils.powerlaw, log10_A=log10_A, gamma=gamma)
+    pl = utils.powerlaw(log10_A=log10_A, gamma=gamma)
     rn = gp_signals.FourierBasisGP(spectrum=pl, components=30, Tspan=Tspan)
-
-    # gwb
-    pl = signal_base.Function(utils.powerlaw, log10_A=log10_A_gw, gamma=gamma_gw)
-    gw = gp_signals.FourierBasisGP(spectrum=pl, components=30, Tspan=Tspan)
-
+    
+    # gwb (no spatial correlations)
+    cpl = utils.powerlaw(log10_A=log10_A_gw, gamma=gamma_gw)
+    gw = gp_signals.FourierBasisGP(spectrum=cpl, components=30, Tspan=Tspan)
+    
+    # for spatial correltions you can do...
+    #orf = utils.hd_orf()
+    #crn = gp_signals.FourierBasisCommonGP(cpl, orf, components=30, name='gw', Tspan=Tspan)
+    
     # timing model
     tm = gp_signals.TimingModel()
-
+    
+    # to add solar system ephemeris modeling...
+    #eph = deterministic_signals.PhysicalEphemerisSignal(use_epoch_toas=True)
+    
     # full model is sum of components
     model = ef + eq + ec + rn + tm + gw
-
+    
     # intialize PTA
     pta = signal_base.PTA([model(psr) for psr in psrs])
 
@@ -187,9 +188,6 @@ Set white noise parameters
 
     pta.set_default_params(params)
 
-
-
-
 Set initial parameters drawn from prior and evaluate likelihood to fill caches
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -198,7 +196,7 @@ the first time it is called within the sampler if not called here.
 
 .. code:: python
 
-    xs = {par.name: par.sample()[0] for par in pta.params}
+    xs = {par.name: par.sample() for par in pta.params}
     print pta.get_lnlikelihood(xs);
     print pta.get_lnprior(xs);
 
@@ -216,17 +214,17 @@ Set up sampler
 
     # dimension of parameter space
     ndim = len(xs)
-
+    
     # initial jump covariance matrix
     cov = np.diag(np.ones(ndim) * 0.01**2)
-
-    # set up jump groups by red noise groups (need better way of doing this)
+    
+    # set up jump groups by red noise groups 
     ndim = len(xs)
     groups  = [range(0, ndim)]
     groups.extend(map(list, zip(range(0,ndim,2), range(1,ndim,2))))
     groups.extend([[36]])
-
-    sampler = ptmcmc(ndim, pta.get_lnlikelihood, pta.get_lnprior, cov, groups=groups,
+    
+    sampler = ptmcmc(ndim, pta.get_lnlikelihood, pta.get_lnprior, cov, groups=groups, 
                      outDir='chains/nano_9_gwb/')
 
 Sample!
@@ -236,11 +234,8 @@ Sample!
 
     # sampler for N steps
     N = 1000000
-    x0 = np.array([xs[key] for key in sorted(xs.keys())])
+    x0 = np.hstack(p.sample() for p in pta.params)
     sampler.sample(x0, N, SCAMweight=30, AMweight=15, DEweight=50, )
-
-
-
 
 Plot output
 ~~~~~~~~~~~
@@ -259,32 +254,22 @@ Plot output
 
 
 .. image:: nano9_files/nano9_22_0.png
+   :width: 373px
+   :height: 264px
 
 
 Upper limit value
 ~~~~~~~~~~~~~~~~~
 
-You will need
-`statsmodels <http://www.statsmodels.org/stable/index.html>`__ installed
-for this part. We see that the upper limit agrees perfectly with the
-published value.
+We see that the upper limit agrees perfectly with the published value.
 
 .. code:: python
 
-    from statsmodels.distributions.empirical_distribution import ECDF
-
-.. code:: python
-
-    samples = chain[burn:,-5]
-    x = np.linspace(min(samples), max(samples), 1000)
-    ecdf = ECDF(samples)
-    y = ecdf(x)
-
-    # get 95% upper limit
-    upper = 10**x[np.flatnonzero(y<=0.95)[-1]]
+    upper = 10**np.percentile(chain[burn:, -5], q=0.95)
     print(upper)
 
 
 .. parsed-literal::
 
     1.49899289556e-15
+
