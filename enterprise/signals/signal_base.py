@@ -643,10 +643,10 @@ class PTA(object):
                 if print_params:
                     print('\n')
                     print('params:')
-                    for par in sorted(sig._params.values()):
+                    for par in sig._params.values():
                         if isinstance(par, ConstantParameter):
                             copcount += 1
-                        print("{!s: <90}".format(par))
+                        print("{!s: <90}".format(par.__repr__()))
                 print(''.join(['_']*90))
         print(''.join(['=']*90))
         print('Total params: {}'.format(len(self.param_names)+copcount))
