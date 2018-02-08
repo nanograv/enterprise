@@ -216,6 +216,9 @@ class PTA(object):
 
         self.lnlikelihood = lnlikelihood
 
+        # set signal dictionary
+        self._set_signal_dict()
+
     def __add__(self, other):
         if hasattr(other, '_signalcollections'):
             return PTA(self._signalcollections+other._signalcollections,
@@ -601,6 +604,29 @@ class PTA(object):
     @property
     def pulsars(self):
         return [p.psrname for p in self._signalcollections]
+
+    def _set_signal_dict(self):
+        """ Set signal dictionary"""
+
+        self._signal_dict = {}
+        sig_list = []
+        for ct1, sc in enumerate(self._signalcollections):
+            for ct2, sig in enumerate(sc._signals):
+                if sig.name not in sig_list:
+                    sig_list.append(sig.name)
+                    self._signal_dict[sig.name] = sig
+                else:
+                    msg = 'Duplicate signal {}. Please rename'.format(sig.name)
+                    raise ValueError(msg)
+
+    @property
+    def signals(self):
+        """ Return signal dictionary."""
+        return self._signal_dict
+
+    def get_signal(self, signal_name):
+        """Returns ``Signal`` instance given the signal name."""
+        return self._signal_dict[signal_name]
 
     def summary(self, print_params=True):
         row = ['Signal Name', 'Signal Class', 'no. Parameters']
