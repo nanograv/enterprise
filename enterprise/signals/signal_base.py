@@ -644,7 +644,7 @@ class PTA(object):
                     print('\n')
                     print('params:')
                     for par in sig.params:
-                        print("{: <90}".format(par))
+                        print("{!s: <90}".format(par))
                 print(''.join(['_']*90))
         print(''.join(['=']*90))
         print('Common params: {}'.format(cpcount))
