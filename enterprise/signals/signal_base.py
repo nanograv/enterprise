@@ -632,7 +632,7 @@ class PTA(object):
         row = ['Signal Name', 'Signal Class', 'no. Parameters']
         print("{: <40} {: <30} {: <20}".format(*row))
         print(''.join(['=']*90))
-        cpcount = 0
+        cpcount, copcount = 0, 0
         for sc in self._signalcollections:
             for sig in sc._signals:
                 for p in sig.param_names:
@@ -643,12 +643,16 @@ class PTA(object):
                 if print_params:
                     print('\n')
                     print('params:')
-                    for par in sig.params:
+                    for par in sorted(sig._params.values()):
+                        if isinstance(par, ConstantParameter):
+                            copcount += 1
                         print("{!s: <90}".format(par))
                 print(''.join(['_']*90))
         print(''.join(['=']*90))
+        print('Total params: {}'.format(len(self.param_names)+copcount))
+        print('Varying params: {}'.format(len(self.param_names)))
         print('Common params: {}'.format(cpcount))
-        print('Total params: {}'.format(len(self.param_names)))
+        print('Fixed params: {}'.format(copcount))
         print('Number of pulsars: {}'.format(len(self._signalcollections)))
 
 
