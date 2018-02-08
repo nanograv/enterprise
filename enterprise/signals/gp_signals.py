@@ -27,7 +27,7 @@ def BasisGP(priorFunction, basisFunction,
 
         def __init__(self, psr):
             super(BasisGP, self).__init__(psr)
-            self.name = self.psrname + '_' + name
+            self.name = self.psrname + '_' + self.signal_name
             self._do_selection(psr, priorFunction, basisFunction, selection)
 
         def _do_selection(self, psr, priorfn, basisfn, selection):
@@ -102,7 +102,7 @@ def FourierBasisGP(spectrum, components=20,
 
     class FourierBasisGP(BaseClass):
         signal_type = 'basis'
-        signal_name = name if name else 'red_noise'
+        signal_name = 'red_noise_' + name if name else 'red_noise'
 
     return FourierBasisGP
 
@@ -165,12 +165,12 @@ def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
 
     class EcorrBasisModel(BaseClass):
         signal_type = 'basis'
-        signal_name = name if name else 'basis_ecorr'
+        signal_name = 'basis_ecorr_' + name if name else 'basis_ecorr'
 
     return EcorrBasisModel
 
 
-def BasisCommonGP(priorFunction, basisFunction, orfFunction, name='common'):
+def BasisCommonGP(priorFunction, basisFunction, orfFunction, name=''):
 
     class BasisCommonGP(base.CommonSignal):
         signal_type = 'common basis'
@@ -180,7 +180,7 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, name='common'):
 
         def __init__(self, psr):
             super(BasisCommonGP, self).__init__(psr)
-            self.name = self.psrname + '_' + name
+            self.name = self.psrname + '_' + self.signal_name
 
             self._bases = basisFunction(psr.name+name, psr=psr)
             params = sum([list(BasisCommonGP._prior._params.values()),
@@ -224,12 +224,13 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, name='common'):
 
 
 def FourierBasisCommonGP(spectrum, orf, components=20,
-                         Tspan=None, name='common'):
+                         Tspan=None, name=''):
 
     basis = utils.createfourierdesignmatrix_red(nmodes=components)
     BaseClass = BasisCommonGP(spectrum, basis, orf, name=name)
 
     class FourierBasisCommonGP(BaseClass):
+        signal_name = 'common_fourier_' + name if name else 'common_fourier'
 
         _Tmin, _Tmax = [], []
 

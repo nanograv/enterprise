@@ -598,24 +598,31 @@ class PTA(object):
 
         return np.sum(p.get_logpdf(params[p.name]) for p in self.params)
 
+    @property
+    def pulsars(self):
+        return [p.psrname for p in self._signalcollections]
+
     def summary(self, print_params=True):
         row = ['Signal Name', 'Signal Class', 'no. Parameters']
-        print("{: <40} {: <20} {: <20}".format(*row))
-        print(''.join(['=']*80))
-        pcount = 0
+        print("{: <40} {: <30} {: <20}".format(*row))
+        print(''.join(['=']*90))
+        cpcount = 0
         for sc in self._signalcollections:
             for sig in sc._signals:
-                pcount += len(sig.param_names)
+                for p in sig.param_names:
+                    if sc.psrname not in p:
+                        cpcount += 1
                 row = [sig.name, sig.__class__.__name__, len(sig.param_names)]
-                print("{: <40} {: <20} {: <20}".format(*row))
+                print("{: <40} {: <30} {: <20}".format(*row))
                 if print_params:
                     print('\n')
                     print('params:')
                     for par in sig.params:
-                        print("{: <80}".format(par))
-                print(''.join(['_']*80))
-        print(''.join(['=']*80))
-        print('Total params: {}'.format(pcount))
+                        print("{: <90}".format(par))
+                print(''.join(['_']*90))
+        print(''.join(['=']*90))
+        print('Common params: {}'.format(cpcount))
+        print('Total params: {}'.format(len(self.param_names)))
         print('Number of pulsars: {}'.format(len(self._signalcollections)))
 
 
@@ -627,6 +634,7 @@ def SignalCollection(metasignals):
         _metasignals = metasignals
 
         def __init__(self, psr):
+            self.psrname = psr.name
             # instantiate all the signals with a pulsar
             self._signals = [metasignal(psr) for metasignal
                              in self._metasignals]
