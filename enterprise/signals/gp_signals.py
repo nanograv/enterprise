@@ -24,10 +24,11 @@ def BasisGP(priorFunction, basisFunction,
     class BasisGP(base.Signal):
         signal_type = 'basis'
         signal_name = name
+        signal_id = name
 
         def __init__(self, psr):
             super(BasisGP, self).__init__(psr)
-            self.name = self.psrname + '_' + self.signal_name
+            self.name = self.psrname + '_' + self.signal_id
             self._do_selection(psr, priorFunction, basisFunction, selection)
 
         def _do_selection(self, psr, priorfn, basisfn, selection):
@@ -102,7 +103,8 @@ def FourierBasisGP(spectrum, components=20,
 
     class FourierBasisGP(BaseClass):
         signal_type = 'basis'
-        signal_name = 'red_noise_' + name if name else 'red_noise'
+        signal_name = 'red noise'
+        signal_id = 'red_noise_' + name if name else 'red_noise'
 
     return FourierBasisGP
 
@@ -112,11 +114,12 @@ def TimingModel(name='linear_timing_model'):
 
     class TimingModel(base.Signal):
         signal_type = 'basis'
-        signal_name = name
+        signal_name = 'linear timing model'
+        signal_id = name
 
         def __init__(self, psr):
             super(TimingModel, self).__init__(psr)
-            self.name = self.psrname + '_' + name
+            self.name = self.psrname + '_' + self.signal_id
             self._params = {}
 
             self._F = psr.Mmat.copy()
@@ -165,7 +168,8 @@ def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
 
     class EcorrBasisModel(BaseClass):
         signal_type = 'basis'
-        signal_name = 'basis_ecorr_' + name if name else 'basis_ecorr'
+        signal_name = 'basis ecorr'
+        signal_id = 'basis_ecorr_' + name if name else 'basis_ecorr'
 
     return EcorrBasisModel
 
@@ -174,13 +178,14 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, name=''):
 
     class BasisCommonGP(base.CommonSignal):
         signal_type = 'common basis'
-        signal_name = name
+        signal_name = 'common'
+        signal_id = name
         _orf = orfFunction(name)
         _prior = priorFunction(name)
 
         def __init__(self, psr):
             super(BasisCommonGP, self).__init__(psr)
-            self.name = self.psrname + '_' + self.signal_name
+            self.name = self.psrname + '_' + self.signal_id
 
             self._bases = basisFunction(psr.name+name, psr=psr)
             params = sum([list(BasisCommonGP._prior._params.values()),
@@ -230,7 +235,7 @@ def FourierBasisCommonGP(spectrum, orf, components=20,
     BaseClass = BasisCommonGP(spectrum, basis, orf, name=name)
 
     class FourierBasisCommonGP(BaseClass):
-        signal_name = 'common_fourier_' + name if name else 'common_fourier'
+        signal_id = 'common_fourier_' + name if name else 'common_fourier'
 
         _Tmin, _Tmax = [], []
 

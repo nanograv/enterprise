@@ -24,10 +24,11 @@ def WhiteNoise(varianceFunction,
     class WhiteNoise(base.Signal):
         signal_type = 'white noise'
         signal_name = name
+        signal_id = name
 
         def __init__(self, psr):
             super(WhiteNoise, self).__init__(psr)
-            self.name = self.psrname + '_' + self.signal_name
+            self.name = self.psrname + '_' + self.signal_id
             self._do_selection(psr, varianceFunction, selection)
 
         def _do_selection(self, psr, vfn, selection):
@@ -72,7 +73,8 @@ def MeasurementNoise(efac=parameter.Uniform(0.5,1.5),
     BaseClass = WhiteNoise(varianceFunction, selection=selection, name=name)
 
     class MeasurementNoise(BaseClass):
-        signal_name = 'efac_' + name if name else 'efac'
+        signal_name = 'efac'
+        signal_id = 'efac_' + name if name else 'efac'
 
     return MeasurementNoise
 
@@ -91,7 +93,8 @@ def EquadNoise(log10_equad=parameter.Uniform(-10,-5),
     BaseClass = WhiteNoise(varianceFunction, selection=selection, name=name)
 
     class EquadNoise(BaseClass):
-        signal_name = 'equad_' + name if name else 'equad'
+        signal_name = 'equad'
+        signal_id = 'equad_' + name if name else 'equad'
 
     return EquadNoise
 
@@ -154,12 +157,13 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
 
     class EcorrKernelNoise(base.Signal):
         signal_type = 'white noise'
-        signal_name = ('_'.join(['ecorr', name, method]) if name else
-                       '_'.join(['ecorr', method]))
+        signal_name = 'ecorr_' + method
+        signal_id = ('_'.join(['ecorr', name, method]) if name else
+                     '_'.join(['ecorr', method]))
 
         def __init__(self, psr):
             super(EcorrKernelNoise, self).__init__(psr)
-            self.name = self.psrname + '_' + self.signal_name
+            self.name = self.psrname + '_' + self.signal_id
 
             sel = selection(psr)
             self._params, self._masks = sel('log10_ecorr', log10_ecorr)
