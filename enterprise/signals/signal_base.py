@@ -616,17 +616,23 @@ class PTA(object):
                     sig_list.append(sig.name)
                     self._signal_dict[sig.name] = sig
                 else:
-                    msg = 'Duplicate signal {}. Please rename'.format(sig.name)
-                    raise ValueError(msg)
+                    msg = 'Duplicate signal {} from objects {} and {}.'
+                    msg += '\nThis functionality was added in v1.1.0 and may'
+                    msg += ' cause post v1.1.0 functionality to break.'
+                    msg += '\nThis may not cause other errors but it is'
+                    msg += ' recommended that you use a custom name for one'
+                    msg += ' of the duplicate signals.\n'
+                    logger.warn(msg.format(
+                        sig.name, sig, self._signal_dict[sig.name]))
 
     @property
     def signals(self):
         """ Return signal dictionary."""
         return self._signal_dict
 
-    def get_signal(self, signal_name):
+    def get_signal(self, name):
         """Returns ``Signal`` instance given the signal name."""
-        return self._signal_dict[signal_name]
+        return self._signal_dict[name]
 
     def summary(self, print_params=True):
         row = ['Signal Name', 'Signal Class', 'no. Parameters']
