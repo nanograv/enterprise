@@ -970,7 +970,7 @@ def cache_call(attrs, limit=2):
                 cache_list.append(key)
                 cache[key] = func(self, params)
                 if len(cache_list) > limit:
-                    del cache[cache_list.pop(0)]
+                    _ = cache.pop(cache_list.pop(0), None)
             return cache[key]
         return wrapper
 
