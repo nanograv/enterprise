@@ -25,9 +25,11 @@ def BasisGP(priorFunction, basisFunction,
     class BasisGP(base.Signal):
         signal_type = 'basis'
         signal_name = name
+        signal_id = name
 
         def __init__(self, psr):
-
+            super(BasisGP, self).__init__(psr)
+            self.name = self.psrname + '_' + self.signal_id
             self._do_selection(psr, priorFunction, basisFunction, selection)
 
         def _do_selection(self, psr, priorfn, basisfn, selection):
@@ -81,8 +83,8 @@ def BasisGP(priorFunction, basisFunction,
             self._construct_basis(params)
             for key, slc in self._slices.items():
                 phislc = self._prior[key](
-                    self._labels[key], params=params) * self._labels[key][0]
-                self._phi = self._phi.set(phislc, slc) 
+                    self._labels[key], params=params)
+                self._phi = self._phi.set(phislc, slc)
             return self._phi
 
         def get_phiinv(self, params):
@@ -93,28 +95,32 @@ def BasisGP(priorFunction, basisFunction,
 
 def FourierBasisGP(spectrum, components=20,
                    selection=Selection(selections.no_selection),
-                   Tspan=None):
+                   Tspan=None, name=''):
     """Convenience function to return a BasisGP class with a
     fourier basis."""
 
     basis = utils.createfourierdesignmatrix_red(nmodes=components, Tspan=Tspan)
-    BaseClass = BasisGP(spectrum, basis, selection=selection)
+    BaseClass = BasisGP(spectrum, basis, selection=selection, name=name)
 
     class FourierBasisGP(BaseClass):
         signal_type = 'basis'
         signal_name = 'red noise'
+        signal_id = 'red_noise_' + name if name else 'red_noise'
 
     return FourierBasisGP
 
 
-def TimingModel():
+def TimingModel(name='linear_timing_model'):
     """Class factory for marginalized linear timing model signals."""
 
     class TimingModel(base.Signal):
         signal_type = 'basis'
         signal_name = 'linear timing model'
+        signal_id = name
 
         def __init__(self, psr):
+            super(TimingModel, self).__init__(psr)
+            self.name = self.psrname + '_' + self.signal_id
             self._params = {}
 
             self._F = psr.Mmat.copy()
@@ -152,30 +158,35 @@ def ecorr_basis_prior(weights, log10_ecorr=-8):
 
 
 def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
-                    selection=Selection(selections.no_selection)):
+                    selection=Selection(selections.no_selection),
+                    name=''):
     """Convienience function to return a BasisGP class with a
     quantized ECORR basis."""
 
     basis = utils.create_quantization_matrix()
     prior = ecorr_basis_prior(log10_ecorr=log10_ecorr)
-    BaseClass = BasisGP(prior, basis, selection=selection)
+    BaseClass = BasisGP(prior, basis, selection=selection, name=name)
 
     class EcorrBasisModel(BaseClass):
         signal_type = 'basis'
         signal_name = 'basis ecorr'
+        signal_id = 'basis_ecorr_' + name if name else 'basis_ecorr'
 
     return EcorrBasisModel
 
 
-def BasisCommonGP(priorFunction, basisFunction, orfFunction, name='common'):
+def BasisCommonGP(priorFunction, basisFunction, orfFunction, name=''):
 
     class BasisCommonGP(base.CommonSignal):
         signal_type = 'common basis'
-        signal_name = name
+        signal_name = 'common'
+        signal_id = name
         _orf = orfFunction(name)
         _prior = priorFunction(name)
 
         def __init__(self, psr):
+            super(BasisCommonGP, self).__init__(psr)
+            self.name = self.psrname + '_' + self.signal_id
 
             self._bases = basisFunction(psr.name+name, psr=psr)
             params = sum([list(BasisCommonGP._prior._params.values()),
@@ -198,14 +209,14 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, name='common'):
         def get_phi(self, params):
             self._construct_basis(params)
             prior = BasisCommonGP._prior(
-                self._labels, params=params) * self._labels[0]
+                self._labels, params=params)
             orf = BasisCommonGP._orf(self._psrpos, self._psrpos, params=params)
             return prior * orf
 
         @classmethod
         def get_phicross(cls, signal1, signal2, params):
             prior = BasisCommonGP._prior(signal1._labels,
-                                         params=params) * signal1._labels[0]
+                                         params=params)
             orf = BasisCommonGP._orf(signal1._psrpos, signal2._psrpos,
                                      params=params)
             return prior * orf
@@ -219,13 +230,14 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, name='common'):
 
 
 def FourierBasisCommonGP(spectrum, orf, components=20,
-                         Tspan=None, name='common'):
+                         Tspan=None, name=''):
 
     basis = utils.createfourierdesignmatrix_red(nmodes=components,
                                                 Tspan=Tspan)
     BaseClass = BasisCommonGP(spectrum, basis, orf, name=name)
 
     class FourierBasisCommonGP(BaseClass):
+        signal_id = 'common_fourier_' + name if name else 'common_fourier'
 
         _Tmin, _Tmax = [], []
 

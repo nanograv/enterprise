@@ -97,8 +97,8 @@ class TestUtils(unittest.TestCase):
         """Check fplus, fcross generation."""
         gwtheta = 1.4
         gwphi = 2.7
-        fplus, fcross = utils.fplus_fcross(self.psr.theta, self.psr.phi,
-                                           gwtheta, gwphi)
+        fplus, fcross, _ = utils.create_gw_antenna_pattern(self.psr.pos,
+                                                           gwtheta, gwphi)
 
         msg1 = 'Fplus value incorrect'
         msg2 = 'Fcross value incorrect'
@@ -141,12 +141,46 @@ class TestUtils(unittest.TestCase):
         kappa = 10/3
         beta = 0.5
         pl = ((10**log10_A)**2 / 12.0 / np.pi**2 *
-              const.fyr**(gamma-3) * f**(-gamma))
+              const.fyr**(gamma-3) * f**(-gamma)*f[0])
         hcf = (10**log10_A * (f / const.fyr) ** ((3-gamma) / 2) /
                (1 + (10**lf0 / f) ** kappa) ** beta)
-        pt = hcf**2/12/np.pi**2/f**3
+        pt = hcf**2/12/np.pi**2/f**3 * f[0]
 
         msg = 'PSD calculation incorrect'
-        assert np.all(utils.powerlaw(f, log10_A, gamma) == pl), msg
-        assert np.all(utils.turnover(f, log10_A, gamma,
-                                     lf0, kappa, beta) == pt), msg
+        assert np.allclose(utils.powerlaw(f, log10_A, gamma), pl), msg
+        assert np.allclose(utils.turnover(f, log10_A, gamma,
+                                          lf0, kappa, beta),pt), msg
+
+    def test_orf(self):
+        """Test ORF functions."""
+        p1 = np.array([0.3, -0.5, 0.7])
+        p2 = np.array([0.9, 0.1, -0.6])
+
+        # test auto terms
+        hd = utils.hd_orf(p1, p1)
+        hd_exp = 1.0
+        dp = utils.dipole_orf(p1, p1)
+        dp_exp = 1.0 + 1e-5
+        mp = utils.monopole_orf(p1, p1)
+        mp_exp = 1.0 + 1e-5
+
+        msg = 'ORF auto term incorrect for {}'
+        keys = ['hd', 'dipole', 'monopole']
+        vals = [(hd, hd_exp), (dp, dp_exp), (mp, mp_exp)]
+        for key, val in zip(keys, vals):
+            assert val[0] == val[1], msg.format(key)
+
+        # test off diagonal terms
+        hd = utils.hd_orf(p1, p2)
+        omc2 = (1 - np.dot(p1, p2)) / 2
+        hd_exp = 1.5 * omc2 * np.log(omc2) - 0.25 * omc2 + 0.5
+        dp = utils.dipole_orf(p1, p2)
+        dp_exp = np.dot(p1, p2)
+        mp = utils.monopole_orf(p1, p2)
+        mp_exp = 1.0
+
+        msg = 'ORF cross term incorrect for {}'
+        keys = ['hd', 'dipole', 'monopole']
+        vals = [(hd, hd_exp), (dp, dp_exp), (mp, mp_exp)]
+        for key, val in zip(keys, vals):
+            assert val[0] == val[1], msg.format(key)

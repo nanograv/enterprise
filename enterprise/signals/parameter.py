@@ -42,6 +42,7 @@ class Parameter(object):
     def __init__(self, name):
         self.name = name
         self.prior = self._prior(name)
+        self.type = self.__class__.__name__.lower()
 
     def get_logpdf(self, value=None, **kwargs):
         if value is None and 'params' in kwargs:

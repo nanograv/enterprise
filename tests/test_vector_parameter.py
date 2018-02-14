@@ -23,7 +23,7 @@ from enterprise.signals.parameter import function as enterprise_function
 
 @enterprise_function
 def free_spectrum(f, log10_rho=None):
-    return np.repeat(10**log10_rho,2) / f[0]
+    return np.repeat(10**log10_rho,2)
 
 
 class TestVectorParameter(unittest.TestCase):

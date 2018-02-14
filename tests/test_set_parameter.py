@@ -173,7 +173,7 @@ class TestSetParameters(unittest.TestCase):
             self.psrs[0].toas, nmodes=20)
 
         # spectrum test
-        phi = utils.powerlaw(f2, log10_A=log10_A, gamma=gamma) * f2[0]
+        phi = utils.powerlaw(f2, log10_A=log10_A, gamma=gamma)
         msg = 'Spectrum incorrect for GP Fourier signal.'
         assert np.all(m.get_phi(params) == phi), msg
 
@@ -262,7 +262,7 @@ class TestSetParameters(unittest.TestCase):
 
             F, f2 = utils.createfourierdesignmatrix_red(psr.toas, nmodes=20)
             phi = utils.powerlaw(f2, log10_A=log10_A[ii],
-                                 gamma=gamma[ii]) * f2[0]
+                                 gamma=gamma[ii])
             phis.append(phi)
 
         # tests

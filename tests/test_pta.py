@@ -23,30 +23,12 @@ import enterprise.signals.signal_base as signal_base
 import enterprise.signals.white_signals as white_signals
 import enterprise.signals.gp_signals as gp_signals
 from enterprise.signals import utils
-from enterprise.signals.parameter import function as enterprise_function
 
 from .enterprise_test_data import datadir
 
+# note function is now defined in enterprise.signals.parameter
 
-@enterprise_function
-def hd_orf(pos1, pos2):
-    if np.all(pos1 == pos2):
-        return 1
-    else:
-        xi = 1 - np.dot(pos1, pos2)
-        omc2 = (1 - np.cos(xi)) / 2
-        return 1.5 * omc2 * np.log(omc2) - 0.25 * omc2 + 0.5
-
-
-@enterprise_function
-def vec_orf(pos1, pos2):
-    if np.all(pos1 == pos2):
-        return 1
-    else:
-        return 0.5 * np.dot(pos1, pos2)
-
-
-@enterprise_function
+@signal_base.function
 def hd_orf_generic(pos1, pos2, a=1.5, b=0.25, c=0.25):
     if np.all(pos1 == pos2):
         return 1
@@ -56,9 +38,9 @@ def hd_orf_generic(pos1, pos2, a=1.5, b=0.25, c=0.25):
         return a * omc2 * np.log(omc2) - b * omc2 + c
 
 
-@enterprise_function
+@signal_base.function
 def hd_powerlaw(f, pos1, pos2, log10_A=-15, gamma=4.3):
-    return utils.powerlaw(f, log10_A, gamma) * hd_orf(pos1, pos2)
+    return utils.powerlaw(f, log10_A, gamma) * utils.hd_orf(pos1, pos2)
 
 
 class TestPTASignals(unittest.TestCase):
@@ -67,18 +49,6 @@ class TestPTASignals(unittest.TestCase):
     def setUpClass(cls):
         """Setup the Pulsar object."""
 
-        #if os.path.isfile(datadir + '/B1855+09.pkl') and \
-        #        os.path.isfile(datadir + '/J1909-3744.pkl'):
-        #    self.psrs = [pickle.load(open(datadir + '/B1855+09.pkl','r')),
-        #                 pickle.load(open(datadir + '/J1909-3744.pkl','r'))]
-        #else:
-        #    self.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
-        #                        datadir + '/B1855+09_NANOGrav_9yv1.tim'),
-        #                 Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
-        #                        datadir + '/J1909-3744_NANOGrav_9yv1.tim')]
-#
-        #    for psr in self.psrs:
-        #        psr.to_pickle(datadir)
         cls.psrs = [Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
                            datadir + '/B1855+09_NANOGrav_9yv1.tim'),
                     Pulsar(datadir + '/J1909-3744_NANOGrav_9yv1.gls.par',
@@ -125,14 +95,14 @@ class TestPTASignals(unittest.TestCase):
         phidiag = np.zeros(nftot)
         phit = np.zeros((nftot, nftot))
 
-        phidiag[:60] = utils.powerlaw(f1, lA1, gamma1) * f1[0]
-        phidiag[:60] += utils.powerlaw(f1, lAc, gammac) * f1[0]
-        phidiag[60:] = utils.powerlaw(f2, lA2, gamma2) * f2[0]
-        phidiag[60:] += utils.powerlaw(f2, lAc, gammac) * f2[0]
+        phidiag[:60] = utils.powerlaw(f1, lA1, gamma1)
+        phidiag[:60] += utils.powerlaw(f1, lAc, gammac)
+        phidiag[60:] = utils.powerlaw(f2, lA2, gamma2)
+        phidiag[60:] += utils.powerlaw(f2, lAc, gammac)
 
         phit[np.diag_indices(nftot)] = phidiag
         orf = hd_orf_generic(self.psrs[0].pos, self.psrs[1].pos, a=a, b=b, c=c)
-        spec = utils.powerlaw(f1, log10_A=lAc, gamma=gammac) * f1[0]
+        spec = utils.powerlaw(f1, log10_A=lAc, gamma=gammac)
         phit[:60, 60:] = np.diag(orf*spec)
         phit[60:, :60] = phit[:60, 60:]
 
@@ -150,8 +120,8 @@ class TestPTASignals(unittest.TestCase):
         pl = utils.powerlaw(log10_A=parameter.Uniform(-16,-13),
                             gamma=parameter.Uniform(1,7))
 
-        orf = hd_orf()
-        vrf = vec_orf()
+        orf = utils.hd_orf()
+        vrf = utils.dipole_orf()
 
         rn = gp_signals.FourierBasisGP(spectrum=pl,
                                        components=30, Tspan=span)
@@ -286,7 +256,7 @@ class TestPTASignals(unittest.TestCase):
 
         pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
                             gamma=parameter.Uniform(1,7))
-        orf = hd_orf()
+        orf = utils.hd_orf()
         rn = gp_signals.FourierBasisGP(spectrum=pl, components=nf1, Tspan=T1)
         crn = gp_signals.FourierBasisCommonGP(spectrum=pl, orf=orf,
                                               components=1, name='gw',
@@ -322,19 +292,19 @@ class TestPTASignals(unittest.TestCase):
         phidiag = np.zeros(nftot)
         phit = np.zeros((nftot, nftot))
 
-        phidiag[:4] = utils.powerlaw(f1, lA1, gamma1) * f1[0]
-        phidiag[:2] += utils.powerlaw(fc, lAc, gammac) * fc[0]
-        phidiag[4:] = utils.powerlaw(f2, lA2, gamma2) * f2[0]
-        phidiag[4:6] += utils.powerlaw(fc, lAc, gammac) * fc[0]
+        phidiag[:4] = utils.powerlaw(f1, lA1, gamma1)
+        phidiag[:2] += utils.powerlaw(fc, lAc, gammac)
+        phidiag[4:] = utils.powerlaw(f2, lA2, gamma2)
+        phidiag[4:6] += utils.powerlaw(fc, lAc, gammac)
 
         phit[np.diag_indices(nftot)] = phidiag
 
         phit[:2, 4:6] = np.diag(hd_powerlaw(fc, self.psrs[0].pos,
                                             self.psrs[1].pos, lAc,
-                                            gammac) * fc[0])
+                                            gammac))
         phit[4:6, :2] = np.diag(hd_powerlaw(fc, self.psrs[0].pos,
                                             self.psrs[1].pos, lAc,
-                                            gammac) * fc[0])
+                                            gammac))
 
         msg = '{} {}'.format(np.diag(phi), np.diag(phit))
         assert np.allclose(phi, phit, rtol=1e-15, atol=1e-17), msg
@@ -342,6 +312,23 @@ class TestPTASignals(unittest.TestCase):
         msg = 'PTA Phi inverse is incorrect {}.'.format(params)
         assert np.allclose(phiinv, np.linalg.inv(phit),
                            rtol=1e-15, atol=1e-17), msg
+
+    def test_summary(self):
+        """ Test summary table."""
+        T1, T3 = 3.16e8, 3.16e8
+        nf1 = 30
+
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
+                            gamma=parameter.Uniform(1,7))
+        orf = utils.hd_orf()
+        rn = gp_signals.FourierBasisGP(spectrum=pl, components=nf1, Tspan=T1)
+        crn = gp_signals.FourierBasisCommonGP(spectrum=pl, orf=orf,
+                                              components=1, name='gw',
+                                              Tspan=T3)
+
+        model = rn + crn
+        pta = model(self.psrs[0]) + model(self.psrs[1])
+        pta.summary()
 
 
 class TestPTASignalsPint(TestPTASignals):

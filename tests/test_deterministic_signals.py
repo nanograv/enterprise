@@ -38,6 +38,35 @@ class TestDeterministicSignals(unittest.TestCase):
         cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
                          datadir + '/B1855+09_NANOGrav_9yv1.tim')
 
+    def test_bwm(self):
+        """Test BWM waveform."""
+        log10_h = parameter.Uniform(-20, -11)('bwm_log10_h')
+        cos_gwtheta = parameter.Uniform(-1, 1)('bwm_cos_gwtheta')
+        gwphi = parameter.Uniform(0, 2*np.pi)('bwm_gwphi')
+        gwpol = parameter.Uniform(0, np.pi)('bwm_gwpol')
+        t0 = parameter.Uniform(53000, 57000)('bwm_t0')
+        bwm_wf = utils.bwm_delay(log10_h=log10_h, cos_gwtheta=cos_gwtheta,
+                                 gwphi=gwphi, gwpol=gwpol, t0=t0)
+        bwm = deterministic_signals.Deterministic(bwm_wf)
+        m = bwm(self.psr)
+
+        # true parameters
+        log10_h = -14
+        cos_gwtheta = 0.5
+        gwphi = 0.5
+        gwpol = 0.0
+        t0 = 55000
+        params = {'bwm_log10_h': log10_h, 'bwm_cos_gwtheta': cos_gwtheta,
+                  'bwm_gwphi': gwphi, 'bwm_gwpol': gwpol, 'bwm_t0': t0}
+
+        d1 = utils.bwm_delay(self.psr.toas, self.psr.pos, log10_h=log10_h,
+                             cos_gwtheta=cos_gwtheta, gwphi=gwphi,
+                             gwpol=gwpol, t0=t0)
+
+        # test
+        msg = 'BWM Delay incorrect'
+        assert np.all(m.get_delay(params) == d1), msg
+
     def test_delay(self):
         """Test deterministic signal no selection."""
         # set up signal and parameters

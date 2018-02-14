@@ -48,7 +48,7 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr htmlcov/
 
 lint: ## check style with flake8
-	flake8 --ignore=E265,E226,E231,E731 enterprise tests
+	flake8 --ignore=E265,E226,E231,E731,E722 enterprise tests
 
 test: ## run tests quickly with the default Python
 
@@ -67,6 +67,7 @@ coverage: ## check code coverage quickly with the default Python
 
 jupyter-docs:
 	jupyter nbconvert --template docs/nb-rst.tpl --to rst docs/_static/notebooks/*.ipynb --output-dir docs/
+	cp -r docs/_static/notebooks/img docs/
 	#jupyter nbconvert --template docs/nb-rst.tpl --to rst docs/_static/notebooks/tutorials/*.ipynb --output-dir docs/tutorials/
 
 docs: ## generate Sphinx HTML documentation, including API docs
