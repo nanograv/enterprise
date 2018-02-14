@@ -64,7 +64,7 @@ def BasisGP(priorFunction, basisFunction,
                     params=params, mask=mask)
 
             nc = np.sum(F.shape[1] for F in basis.values())
-            self._basis = np.zeros((len(self._masks[0]), nc))            
+            self._basis = np.zeros((len(self._masks[0]), nc))
             self._phi = KernelMatrix(nc)
             self._slices = {}
             nctot = 0
