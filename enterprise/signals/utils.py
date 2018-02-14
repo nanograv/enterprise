@@ -7,21 +7,44 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
 import numpy as np
+import scipy.linalg as sl
 from scipy.interpolate import interp1d
 from scipy.integrate import odeint
 from scipy import special as ss
 from pkg_resources import resource_filename, Requirement
+
 import enterprise
 import enterprise.constants as const
+import enterprise.signal_base as signal_base
+
 from enterprise.signals.parameter import function as enterprise_function
 
 
 class KernelMatrix(np.ndarray):
     def __new__(cls, init):
         if isinstance(init, int):
-            return np.zeros(init, 'd').view(cls)
+            ret = np.zeros(init, 'd').view(cls)
         else:
-            return init.view(cls)
+            ret = init.view(cls)
+
+        if ret.ndim == 2:
+            ret._cliques = -1 * np.ones(ret.shape[0])
+            ret._clcount = 0
+
+        return ret
+
+    # see PTA._setcliques
+    def _setcliques(self, idxs):
+        allidx = set(self._cliques[idxs])
+        maxidx = max(allidx)
+
+        if maxidx == -1:
+            self._cliques[idxs] = self._clcount
+            self._clcount = self._clcount + 1
+        else:
+            self._cliques[idxs] = maxidx
+            if len(allidx) > 1:
+                self._cliques[np.in1d(self._cliques,allidx)] = maxidx
 
     def add(self, other, idx):
         if other.ndim == 2 and self.ndim == 1:
@@ -33,7 +56,9 @@ class KernelMatrix(np.ndarray):
             if other.ndim == 1:
                 self[idx, idx] += other
             else:
-                idx = np.idx_(idx,idx)
+                self._setcliques(idx)
+                idx = ((idx, idx) if isinstance(idx, slice)
+                       else (idx[:, None], idx))
                 self[idx] += other
 
         return self
@@ -48,7 +73,9 @@ class KernelMatrix(np.ndarray):
             if other.ndim == 1:
                 self[idx, idx] = other
             else:
-                idx = np.idx_(idx,idx)
+                self._setcliques(idx)
+                idx = ((idx, idx) if isinstance(idx, slice)
+                       else (idx[:, None], idx))
                 self[idx] = other
 
         return self
@@ -62,11 +89,18 @@ class KernelMatrix(np.ndarray):
             else:
                 return inv
         else:
-            cf = sl.cho_factor(self)
-            inv = sl.cho_solve(cf, np.identity(cf[0].shape[0]))
-
+            try:
+                cf = sl.cho_factor(self)
+                inv = sl.cho_solve(cf, np.identity(cf[0].shape[0]))
+                if logdet:
+                    ld = 2.0*np.sum(np.log(np.diag(cf[0])))
+            except np.linalg.LinAlgError:
+                u, s, v = np.linalg.svd(self)
+                inv = np.dot(u/s, u.T)
+                if logdet:
+                    ld = np.sum(np.log(s))
             if logdet:
-                return inv, 2.0*np.sum(np.log(np.diag(cf[0])))
+                return inv, ld
             else:
                 return inv
 

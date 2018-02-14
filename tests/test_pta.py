@@ -26,6 +26,7 @@ from enterprise.signals import utils
 
 from .enterprise_test_data import datadir
 
+
 # note function is now defined in enterprise.signals.parameter
 
 @signal_base.function

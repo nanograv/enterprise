@@ -17,6 +17,7 @@ from enterprise.signals.selections import Selection
 from enterprise.signals.parameter import function as enterprise_function
 from enterprise.signals.utils import KernelMatrix
 
+
 def BasisGP(priorFunction, basisFunction,
             selection=Selection(selections.no_selection),
             name=''):
