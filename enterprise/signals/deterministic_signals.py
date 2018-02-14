@@ -24,8 +24,11 @@ def Deterministic(waveform, selection=Selection(selections.no_selection),
     class Deterministic(base.Signal):
         signal_type = 'deterministic'
         signal_name = name
+        signal_id = name
 
         def __init__(self, psr):
+            super(Deterministic, self).__init__(psr)
+            self.name = self.psrname + '_' + self.signal_id
             self._do_selection(psr, waveform, selection)
 
         def _do_selection(self, psr, waveform, selection):
@@ -66,7 +69,8 @@ def PhysicalEphemerisSignal(
     d_neptune_mass=parameter.Normal(0, 7.96103855e-11)('d_neptune_mass'),
     jup_orb_elements=parameter.Uniform(-0.05,0.05,size=6)('jup_orb_elements'),
     sat_orb_elements=parameter.Uniform(-0.5,0.5,size=6)('sat_orb_elements'),
-    inc_jupiter_orb=True, inc_saturn_orb=False, use_epoch_toas=True):  # noqa: E125,E501
+    inc_jupiter_orb=True, inc_saturn_orb=False, use_epoch_toas=True,
+    name=''):  # noqa: E125,E501
 
     """ Class factory for physical ephemeris model signal.
 
@@ -157,9 +161,11 @@ def PhysicalEphemerisSignal(
                                     sat_orbelxyz=sat_orbelxyz,
                                     sat_mjd=sat_mjd)
 
-    BaseClass = Deterministic(wf, name='phys_ephem')
+    BaseClass = Deterministic(wf, name=name)
 
     class PhysicalEphemerisSignal(BaseClass):
+        signal_name = 'phys_ephem'
+        signal_id = 'phys_ephem_' + name if name else 'phys_ephem'
 
         def __init__(self, psr):
 

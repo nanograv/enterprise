@@ -18,7 +18,7 @@ test_requirements = []
 
 setup(
     name='enterprise',
-    version='0.1.0',
+    version='1.1.0',
     description="ENTERPRISE (Enhanced Numerical Toolbox Enabling a Robust PulsaR Inference SuitE)",
     long_description=readme + '\n\n' + history,
     author="Justin A. Ellis",
@@ -31,7 +31,10 @@ setup(
     package_dir={'enterprise':
                  'enterprise'},
     include_package_data=True,
-    package_data={'enterprise':['datafiles/*', 'datafiles/ephemeris/*']},
+    package_data={'enterprise':['datafiles/*',
+                                'datafiles/ephemeris/*',
+                                'datafiles/ng9/*',
+                                'datafiles/mdc_open1/*']},
     install_requires=requirements,
     license="MIT license",
     zip_safe=False,

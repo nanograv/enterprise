@@ -13,7 +13,62 @@ from scipy import special as ss
 from pkg_resources import resource_filename, Requirement
 import enterprise
 import enterprise.constants as const
-from enterprise.signals import signal_base
+from enterprise.signals.parameter import function as enterprise_function
+
+
+class KernelMatrix(np.ndarray):
+    def __new__(cls, init):
+        if isinstance(init, int):
+            return np.zeros(init, 'd').view(cls)
+        else:
+            return init.view(cls)
+
+    def add(self, other, idx):
+        if other.ndim == 2 and self.ndim == 1:
+            self = KernelMatrix(np.diag(self))
+
+        if self.ndim == 1:
+            self[idx] += other
+        else:
+            if other.ndim == 1:
+                self[idx, idx] += other
+            else:
+                idx = np.idx_(idx,idx)
+                self[idx] += other
+
+        return self
+
+    def set(self, other, idx):
+        if other.ndim == 2 and self.ndim == 1:
+            self = KernelMatrix(np.diag(self))
+
+        if self.ndim == 1:
+            self[idx] = other
+        else:
+            if other.ndim == 1:
+                self[idx, idx] = other
+            else:
+                idx = np.idx_(idx,idx)
+                self[idx] = other
+
+        return self
+
+    def inv(self, logdet=False):
+        if self.ndim == 1:
+            inv = 1.0/self
+
+            if logdet:
+                return inv, np.sum(np.log(self))
+            else:
+                return inv
+        else:
+            cf = sl.cho_factor(self)
+            inv = sl.cho_solve(cf, np.identity(cf[0].shape[0]))
+
+            if logdet:
+                return inv, 2.0*np.sum(np.log(np.diag(cf[0])))
+            else:
+                return inv
 
 
 def create_stabletimingdesignmatrix(designmat, fastDesign=True):
@@ -46,7 +101,7 @@ def create_stabletimingdesignmatrix(designmat, fastDesign=True):
 ######################################
 
 
-@signal_base.function
+@enterprise_function
 def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
                                   logf=False, fmin=None, fmax=None,
                                   pshift=False):
@@ -103,7 +158,7 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
     return F, Ffreqs
 
 
-@signal_base.function
+@enterprise_function
 def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
                                  logf=False, fmin=None, fmax=None):
 
@@ -136,7 +191,7 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
     return F * Dm[:, None], Ffreqs
 
 
-@signal_base.function
+@enterprise_function
 def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
                                   t0=53000*86400, nmodes=30, Tspan=None,
                                   logf=False, fmin=None, fmax=None):
@@ -671,7 +726,7 @@ def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
     return pol * h * heaviside(toas-t0) * (toas-t0)
 
 
-@signal_base.function
+@enterprise_function
 def create_quantization_matrix(toas, dt=1, nmin=2):
     """Create quantization matrix mapping TOAs to observing epochs."""
     isort = np.argsort(toas)
@@ -750,7 +805,7 @@ def powerlaw(f, log10_A=-16, gamma=5):
             const.fyr**(gamma-3) * f**(-gamma) * np.repeat(df, 2))
 
 
-@signal_base.function
+@enterprise_function
 def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10/3, beta=0.5):
     df = np.diff(np.concatenate((np.array([0]), f[::2])))
     hcf = (10**log10_A * (f / const.fyr) ** ((3-gamma) / 2) /
@@ -758,13 +813,34 @@ def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10/3, beta=0.5):
     return hcf**2/12/np.pi**2/f**3*np.repeat(df, 2)
 
 
-@signal_base.function
+# overlap reduction functions
+
+@enterprise_function
 def hd_orf(pos1, pos2):
+    """ Hellings & Downs spatial correlation function."""
     if np.all(pos1 == pos2):
         return 1
     else:
         omc2 = (1 - np.dot(pos1, pos2)) / 2
         return 1.5 * omc2 * np.log(omc2) - 0.25 * omc2 + 0.5
+
+
+@signal_base.function
+def dipole_orf(pos1, pos2):
+    """Dipole spatial correlation function."""
+    if np.all(pos1 == pos2):
+        return 1 + 1e-5
+    else:
+        return np.dot(pos1, pos2)
+
+
+@signal_base.function
+def monopole_orf(pos1, pos2):
+    """Monopole spatial correlation function."""
+    if np.all(pos1 == pos2):
+        return 1.0 + 1e-5
+    else:
+        return 1.0
 
 
 # Physical ephemeris model utility functions
@@ -863,7 +939,7 @@ def dmass(planet, dm_over_Msun):
     return dm_over_Msun * planet
 
 
-@signal_base.function
+@enterprise_function
 def physical_ephem_delay(toas, planetssb, pos_t, frame_drift_rate=0,
                          d_jupiter_mass=0, d_saturn_mass=0, d_uranus_mass=0,
                          d_neptune_mass=0, jup_orb_elements=np.zeros(6),

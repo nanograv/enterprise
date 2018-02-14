@@ -1,12 +1,10 @@
 language: python
-#cache: pip
-dist: precise
+cache: pip
 
 python:
     - "2.7"
     - "3.5"
     - "3.6"
-
 
 before_install:
     - sudo apt-get install gfortran
@@ -27,6 +25,7 @@ install:
     - rm -rf psrsoft-tempo2-*
 
     - sudo apt-get update
+<<<<<<< HEAD
     # We do this conditionally because it saves us some downloading if the
     # version is the same.
     - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
@@ -45,6 +44,10 @@ install:
     # Replace dep1 dep2 ... with your dependencies
     - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy
     - source activate test-environment
+=======
+
+    - pip install numpy==1.13.3
+>>>>>>> master
     - pip install -r requirements.txt
     - pip install -r requirements_dev.txt
     - pip install git+https://github.com/vallis/libstempo.git --install-option="--with-tempo2=$TEMPO2"

@@ -150,3 +150,37 @@ class TestUtils(unittest.TestCase):
         assert np.allclose(utils.powerlaw(f, log10_A, gamma), pl), msg
         assert np.allclose(utils.turnover(f, log10_A, gamma,
                                           lf0, kappa, beta),pt), msg
+
+    def test_orf(self):
+        """Test ORF functions."""
+        p1 = np.array([0.3, -0.5, 0.7])
+        p2 = np.array([0.9, 0.1, -0.6])
+
+        # test auto terms
+        hd = utils.hd_orf(p1, p1)
+        hd_exp = 1.0
+        dp = utils.dipole_orf(p1, p1)
+        dp_exp = 1.0 + 1e-5
+        mp = utils.monopole_orf(p1, p1)
+        mp_exp = 1.0 + 1e-5
+
+        msg = 'ORF auto term incorrect for {}'
+        keys = ['hd', 'dipole', 'monopole']
+        vals = [(hd, hd_exp), (dp, dp_exp), (mp, mp_exp)]
+        for key, val in zip(keys, vals):
+            assert val[0] == val[1], msg.format(key)
+
+        # test off diagonal terms
+        hd = utils.hd_orf(p1, p2)
+        omc2 = (1 - np.dot(p1, p2)) / 2
+        hd_exp = 1.5 * omc2 * np.log(omc2) - 0.25 * omc2 + 0.5
+        dp = utils.dipole_orf(p1, p2)
+        dp_exp = np.dot(p1, p2)
+        mp = utils.monopole_orf(p1, p2)
+        mp_exp = 1.0
+
+        msg = 'ORF cross term incorrect for {}'
+        keys = ['hd', 'dipole', 'monopole']
+        vals = [(hd, hd_exp), (dp, dp_exp), (mp, mp_exp)]
+        for key, val in zip(keys, vals):
+            assert val[0] == val[1], msg.format(key)
