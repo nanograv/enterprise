@@ -312,6 +312,23 @@ class TestPTASignals(unittest.TestCase):
         assert np.allclose(phiinv, np.linalg.inv(phit),
                            rtol=1e-15, atol=1e-17), msg
 
+    def test_summary(self):
+        """ Test summary table."""
+        T1, T3 = 3.16e8, 3.16e8
+        nf1 = 30
+
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
+                            gamma=parameter.Uniform(1,7))
+        orf = utils.hd_orf()
+        rn = gp_signals.FourierBasisGP(spectrum=pl, components=nf1, Tspan=T1)
+        crn = gp_signals.FourierBasisCommonGP(spectrum=pl, orf=orf,
+                                              components=1, name='gw',
+                                              Tspan=T3)
+
+        model = rn + crn
+        pta = model(self.psrs[0]) + model(self.psrs[1])
+        pta.summary()
+
 
 class TestPTASignalsPint(TestPTASignals):
 

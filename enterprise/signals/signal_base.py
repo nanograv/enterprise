@@ -80,6 +80,9 @@ class MetaCollection(type):
 class Signal(object):
     """Base class for Signal objects."""
 
+    def __init__(self, psr):
+        self.psrname = psr.name
+
     @property
     def params(self):
         # return only nonconstant parameters
@@ -212,6 +215,9 @@ class PTA(object):
             self._signalcollections = [init]
 
         self.lnlikelihood = lnlikelihood
+
+        # set signal dictionary
+        self._set_signal_dict()
 
     def __add__(self, other):
         if hasattr(other, '_signalcollections'):
@@ -595,6 +601,66 @@ class PTA(object):
 
         return np.sum(p.get_logpdf(params[p.name]) for p in self.params)
 
+    @property
+    def pulsars(self):
+        return [p.psrname for p in self._signalcollections]
+
+    def _set_signal_dict(self):
+        """ Set signal dictionary"""
+
+        self._signal_dict = {}
+        sig_list = []
+        for ct1, sc in enumerate(self._signalcollections):
+            for ct2, sig in enumerate(sc._signals):
+                if sig.name not in sig_list:
+                    sig_list.append(sig.name)
+                    self._signal_dict[sig.name] = sig
+                else:
+                    msg = 'Duplicate signal {} from objects {} and {}.'
+                    msg += '\nThis functionality was added in v1.1.0 and may'
+                    msg += ' cause post v1.1.0 functionality to break.'
+                    msg += '\nThis may not cause other errors but it is'
+                    msg += ' recommended that you use a custom name for one'
+                    msg += ' of the duplicate signals.\n'
+                    logger.warn(msg.format(
+                        sig.name, sig, self._signal_dict[sig.name]))
+
+    @property
+    def signals(self):
+        """ Return signal dictionary."""
+        return self._signal_dict
+
+    def get_signal(self, name):
+        """Returns ``Signal`` instance given the signal name."""
+        return self._signal_dict[name]
+
+    def summary(self, print_params=True):
+        row = ['Signal Name', 'Signal Class', 'no. Parameters']
+        print("{: <40} {: <30} {: <20}".format(*row))
+        print(''.join(['=']*90))
+        cpcount, copcount = 0, 0
+        for sc in self._signalcollections:
+            for sig in sc._signals:
+                for p in sig.param_names:
+                    if sc.psrname not in p:
+                        cpcount += 1
+                row = [sig.name, sig.__class__.__name__, len(sig.param_names)]
+                print("{: <40} {: <30} {: <20}".format(*row))
+                if print_params:
+                    print('\n')
+                    print('params:')
+                    for par in sig._params.values():
+                        if isinstance(par, ConstantParameter):
+                            copcount += 1
+                        print("{!s: <90}".format(par.__repr__()))
+                print(''.join(['_']*90))
+        print(''.join(['=']*90))
+        print('Total params: {}'.format(len(self.param_names)+copcount))
+        print('Varying params: {}'.format(len(self.param_names)))
+        print('Common params: {}'.format(cpcount))
+        print('Fixed params: {}'.format(copcount))
+        print('Number of pulsars: {}'.format(len(self._signalcollections)))
+
 
 def SignalCollection(metasignals):
     """Class factory for ``SignalCollection`` objects."""
@@ -604,6 +670,7 @@ def SignalCollection(metasignals):
         _metasignals = metasignals
 
         def __init__(self, psr):
+            self.psrname = psr.name
             # instantiate all the signals with a pulsar
             self._signals = [metasignal(psr) for metasignal
                              in self._metasignals]
@@ -903,7 +970,7 @@ def cache_call(attrs, limit=2):
                 cache_list.append(key)
                 cache[key] = func(self, params)
                 if len(cache_list) > limit:
-                    del cache[cache_list.pop(0)]
+                    _ = cache.pop(cache_list.pop(0), None)  # noqa: F841
             return cache[key]
         return wrapper
 
