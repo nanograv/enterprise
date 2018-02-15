@@ -15,9 +15,7 @@ from pkg_resources import resource_filename, Requirement
 
 import enterprise
 import enterprise.constants as const
-import enterprise.signal_base as signal_base
-
-from enterprise.signals.parameter import function as enterprise_function
+from enterprise.signals.parameter import function
 
 
 class KernelMatrix(np.ndarray):
@@ -135,7 +133,7 @@ def create_stabletimingdesignmatrix(designmat, fastDesign=True):
 ######################################
 
 
-@enterprise_function
+@function
 def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
                                   logf=False, fmin=None, fmax=None,
                                   pshift=False):
@@ -192,7 +190,7 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
     return F, Ffreqs
 
 
-@enterprise_function
+@function
 def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
                                  logf=False, fmin=None, fmax=None):
 
@@ -225,7 +223,7 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
     return F * Dm[:, None], Ffreqs
 
 
-@enterprise_function
+@function
 def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
                                   t0=53000*86400, nmodes=30, Tspan=None,
                                   logf=False, fmin=None, fmax=None):
@@ -712,7 +710,7 @@ def create_gw_antenna_pattern(pos, gwtheta, gwphi):
     return fplus, fcross, cosMu
 
 
-@signal_base.function
+@function
 def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
               gwpol=0.0, t0=55000, antenna_pattern_fn=None):
     """
@@ -760,7 +758,7 @@ def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
     return pol * h * heaviside(toas-t0) * (toas-t0)
 
 
-@enterprise_function
+@function
 def create_quantization_matrix(toas, dt=1, nmin=2):
     """Create quantization matrix mapping TOAs to observing epochs."""
     isort = np.argsort(toas)
@@ -832,14 +830,14 @@ def linear_interp_basis(toas, dt=30*86400):
     return M[:, idx], x[idx]
 
 
-@signal_base.function
+@function
 def powerlaw(f, log10_A=-16, gamma=5):
     df = np.diff(np.concatenate((np.array([0]), f[::2])))
     return ((10**log10_A)**2 / 12.0 / np.pi**2 *
             const.fyr**(gamma-3) * f**(-gamma) * np.repeat(df, 2))
 
 
-@enterprise_function
+@function
 def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10/3, beta=0.5):
     df = np.diff(np.concatenate((np.array([0]), f[::2])))
     hcf = (10**log10_A * (f / const.fyr) ** ((3-gamma) / 2) /
@@ -849,7 +847,7 @@ def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10/3, beta=0.5):
 
 # overlap reduction functions
 
-@enterprise_function
+@function
 def hd_orf(pos1, pos2):
     """ Hellings & Downs spatial correlation function."""
     if np.all(pos1 == pos2):
@@ -859,7 +857,7 @@ def hd_orf(pos1, pos2):
         return 1.5 * omc2 * np.log(omc2) - 0.25 * omc2 + 0.5
 
 
-@signal_base.function
+@function
 def dipole_orf(pos1, pos2):
     """Dipole spatial correlation function."""
     if np.all(pos1 == pos2):
@@ -868,7 +866,7 @@ def dipole_orf(pos1, pos2):
         return np.dot(pos1, pos2)
 
 
-@signal_base.function
+@function
 def monopole_orf(pos1, pos2):
     """Monopole spatial correlation function."""
     if np.all(pos1 == pos2):
@@ -973,7 +971,7 @@ def dmass(planet, dm_over_Msun):
     return dm_over_Msun * planet
 
 
-@enterprise_function
+@function
 def physical_ephem_delay(toas, planetssb, pos_t, frame_drift_rate=0,
                          d_jupiter_mass=0, d_saturn_mass=0, d_uranus_mass=0,
                          d_neptune_mass=0, jup_orb_elements=np.zeros(6),

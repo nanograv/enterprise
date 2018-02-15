@@ -45,6 +45,10 @@ class Parameter(object):
         self.type = self.__class__.__name__.lower()
 
     def get_logpdf(self, value=None, **kwargs):
+        if not isinstance(self, Parameter):
+            raise TypeError("You can only call get_logpdf() on an "
+                            "instantiated (named) Parameter.")
+
         if value is None and 'params' in kwargs:
             value = kwargs['params'][self.name]
 
@@ -52,6 +56,10 @@ class Parameter(object):
         return logpdf if self._size is None else np.sum(logpdf)
 
     def get_pdf(self, value=None, **kwargs):
+        if not isinstance(self, Parameter):
+            raise TypeError("You can only call get_pdf() on an "
+                            "instantiated (named) Parameter.")
+
         if value is None and 'params' in kwargs:
             value = kwargs['params'][self.name]
 
@@ -59,6 +67,10 @@ class Parameter(object):
         return pdf if self._size is None else np.prod(pdf)
 
     def sample(self, **kwargs):
+        if not isinstance(self, Parameter):
+            raise TypeError("You can only call sample() on an "
+                            "instantiated (named) Parameter.")
+
         if self._sampler is None:
             raise AttributeError("No sampler was provided for this Parameter.")
         else:
