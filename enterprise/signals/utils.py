@@ -788,6 +788,23 @@ def monopole_orf(pos1, pos2):
         return 1.0
 
 
+@signal_base.function
+def normed_tm_basis(Mmat):
+    norm = np.sqrt(np.sum(Mmat**2, axis=0))
+    return Mmat / norm, np.ones_like(Mmat.shape[1])
+
+
+@signal_base.function
+def svd_tm_basis(Mmat):
+    u, s, v = np.linalg.svd(Mmat, full_matrices=False)
+    return u, np.ones_like(s)
+
+
+@signal_base.function
+def tm_prior(weights):
+    return weights * 1e40
+
+
 # Physical ephemeris model utility functions
 
 t_offset = 55197.0

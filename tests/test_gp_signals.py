@@ -450,21 +450,22 @@ class TestGPSignals(unittest.TestCase):
         M = self.psr.Mmat.copy()
         norm = np.sqrt(np.sum(M**2, axis=0))
         M /= norm
+        params = {}
         msg = 'M matrix incorrect for Timing Model signal.'
-        assert np.allclose(M, tm.get_basis()), msg
+        assert np.allclose(M, tm.get_basis(params)), msg
 
         # Jvec test
         phi = np.ones(self.psr.Mmat.shape[1]) * 1e40
         msg = 'Prior vector incorrect for Timing Model signal.'
-        assert np.all(tm.get_phi() == phi), msg
+        assert np.all(tm.get_phi(params) == phi), msg
 
         # inverse Jvec test
         msg = 'Prior vector inverse incorrect for Timing Model signal.'
-        assert np.all(tm.get_phiinv() == 1/phi), msg
+        assert np.all(tm.get_phiinv(params) == 1/phi), msg
 
         # test shape
         msg = 'M matrix shape incorrect'
-        assert tm.get_basis().shape == self.psr.Mmat.shape, msg
+        assert tm.get_basis(params).shape == self.psr.Mmat.shape, msg
 
     def test_gp_parameter(self):
         """Test GP basis model with parameterized basis."""
