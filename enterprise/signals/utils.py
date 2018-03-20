@@ -797,9 +797,9 @@ def anis_orf(pos1, pos2, params, **kwargs):
     lmax = kwargs['lmax']
 
     psr1_index = [ii for ii in range(len(psrs_pos))
-                     if np.all(psrs_pos[ii] == pos1)][0]
+                  if np.all(psrs_pos[ii] == pos1)][0]
     psr2_index = [ii for ii in range(len(psrs_pos))
-                     if np.all(psrs_pos[ii] == pos2)][0]
+                  if np.all(psrs_pos[ii] == pos2)][0]
 
     clm = np.zeros((lmax+1)**2)
     clm[0] = 2.0*np.sqrt(np.pi)

@@ -3,7 +3,7 @@ from __future__ import division
 import numpy as np
 import healpy as hp
 import math
-import scipy.linalg as sl, scipy.special as ss
+import scipy.special as ss
 
 """
 Script to compute the correlation basis-functions for various anisotropic
@@ -19,16 +19,16 @@ def real_sph_harm(mm, ll, phi, theta):
     """
     The real-valued spherical harmonics.
     """
-    if mm>0:
+    if mm > 0:
         ans = (1./math.sqrt(2)) * \
-                (ss.sph_harm(mm, ll, phi, theta) + \
-                ((-1)**mm) * ss.sph_harm(-mm, ll, phi, theta))
-    elif mm==0:
+            (ss.sph_harm(mm, ll, phi, theta) +
+             ((-1)**mm) * ss.sph_harm(-mm, ll, phi, theta))
+    elif mm == 0:
         ans = ss.sph_harm(0, ll, phi, theta)
-    elif mm<0:
+    elif mm < 0:
         ans = (1./(math.sqrt(2)*complex(0.,1))) * \
-                (ss.sph_harm(-mm, ll, phi, theta) - \
-                ((-1)**mm) * ss.sph_harm(mm, ll, phi, theta))
+            (ss.sph_harm(-mm, ll, phi, theta) -
+             ((-1)**mm) * ss.sph_harm(mm, ll, phi, theta))
 
     return ans.real
 
@@ -37,7 +37,6 @@ def signalResponse_fast(ptheta_a, pphi_a, gwtheta_a, gwphi_a):
     """
     Create the signal response matrix FAST
     """
-    npsrs = len(ptheta_a)
 
     # Create a meshgrid for both phi and theta directions
     gwphi, pphi = np.meshgrid(gwphi_a, pphi_a)
@@ -68,7 +67,9 @@ def createSignalResponse(pphi, ptheta, gwphi, gwtheta):
 
     return F
 
-def createSignalResponse_pol(pphi, ptheta, gwphi, gwtheta, plus=True, norm=True):
+
+def createSignalResponse_pol(pphi, ptheta, gwphi, gwtheta,
+                             plus=True, norm=True):
     """
     Create the signal response matrix. All parameters are assumed to be of the
     same dimensionality.
@@ -82,19 +83,19 @@ def createSignalResponse_pol(pphi, ptheta, gwphi, gwtheta, plus=True, norm=True)
 
     @return:    Signal response matrix of Earth-term
     """
-    # Create the unit-direction vectors. First dimension will be collapsed later
-    # Sign convention of Gair et al. (2014)
-    Omega = np.array([-np.sin(gwtheta)*np.cos(gwphi), \
-                      -np.sin(gwtheta)*np.sin(gwphi), \
+    # Create the unit-direction vectors. First dimension
+    # will be collapsed later. Sign convention of Gair et al. (2014)
+    Omega = np.array([-np.sin(gwtheta)*np.cos(gwphi),
+                      -np.sin(gwtheta)*np.sin(gwphi),
                       -np.cos(gwtheta)])
 
     mhat = np.array([-np.sin(gwphi), np.cos(gwphi), np.zeros(gwphi.shape)])
-    nhat = np.array([-np.cos(gwphi)*np.cos(gwtheta), \
-                     -np.cos(gwtheta)*np.sin(gwphi), \
+    nhat = np.array([-np.cos(gwphi)*np.cos(gwtheta),
+                     -np.cos(gwtheta)*np.sin(gwphi),
                      np.sin(gwtheta)])
 
-    p = np.array([np.cos(pphi)*np.sin(ptheta), \
-                  np.sin(pphi)*np.sin(ptheta), \
+    p = np.array([np.cos(pphi)*np.sin(ptheta),
+                  np.sin(pphi)*np.sin(ptheta),
                   np.cos(ptheta)])
 
     # There is a factor of 3/2 difference between the Hellings & Downs
@@ -111,26 +112,25 @@ def createSignalResponse_pol(pphi, ptheta, gwphi, gwtheta, plus=True, norm=True)
     # al. (2014), with right-handed coordinate system
     if plus:
         # The sum over axis=0 represents an inner-product
-        Fsig = 0.5 * c * (np.sum(nhat * p, axis=0)**2 - np.sum(mhat * p, axis=0)**2) / \
-                (1 - np.sum(Omega * p, axis=0))
+        Fsig = 0.5 * c * (np.sum(nhat * p, axis=0)**2 -
+                          np.sum(mhat * p, axis=0)**2) / \
+            (1 - np.sum(Omega * p, axis=0))
     else:
         # The sum over axis=0 represents an inner-product
         Fsig = c * np.sum(mhat * p, axis=0) * np.sum(nhat * p, axis=0) / \
-                (1 - np.sum(Omega * p, axis=0))
+            (1 - np.sum(Omega * p, axis=0))
 
     return Fsig
-
 
 
 def almFromClm(clm):
     """
     Given an array of clm values, return an array of complex alm valuex
 
-    Note: There is a bug in healpy for the negative m values. This function just
-    takes the imaginary part of the abs(m) alm index.
+    Note: There is a bug in healpy for the negative m values. This function
+    just takes the imaginary part of the abs(m) alm index.
     """
     maxl = int(np.sqrt(len(clm)))-1
-    nclm = len(clm)
 
     nalm = hp.Alm.getsize(maxl)
     alm = np.zeros((nalm), dtype=np.complex128)
@@ -156,8 +156,8 @@ def clmFromAlm(alm):
     """
     Given an array of clm values, return an array of complex alm valuex
 
-    Note: There is a bug in healpy for the negative m values. This function just
-    takes the imaginary part of the abs(m) alm index.
+    Note: There is a bug in healpy for the negative m values. This function
+    just takes the imaginary part of the abs(m) alm index.
     """
     nalm = len(alm)
     maxl = int(np.sqrt(9.0 - 4.0 * (2.0-2.0*nalm))*0.5 - 1.5)   # Really?
@@ -186,7 +186,6 @@ def clmFromAlm(alm):
     return clm
 
 
-
 def mapFromClm_fast(clm, nside):
     """
     Given an array of C_{lm} values, produce a pixel-power-map (non-Nested) for
@@ -205,6 +204,7 @@ def mapFromClm_fast(clm, nside):
     h = hp.alm2map(alm, nside, maxl, verbose=False)
 
     return h
+
 
 def mapFromClm(clm, nside):
     """
@@ -246,7 +246,7 @@ def clmFromMap_fast(h, lmax):
     Use Healpix spherical harmonics for computational efficiency
     """
     alm = hp.sphtfunc.map2alm(h, lmax=lmax)
-    alm[0] = np.sum(h) * np.sqrt(4*np.pi) / len(h)  # Why doesn't healpy do this?
+    alm[0] = np.sum(h) * np.sqrt(4*np.pi) / len(h)
 
     return clmFromAlm(alm)
 
@@ -267,7 +267,7 @@ def clmFromMap(h, lmax):
     nside = hp.npix2nside(npixels)
     pixels = hp.pix2ang(nside, np.arange(npixels), nest=False)
 
-    clm = np.zeros( (lmax+1)**2 )
+    clm = np.zeros((lmax+1)**2)
 
     ind = 0
     for ll in range(lmax+1):
@@ -276,7 +276,6 @@ def clmFromMap(h, lmax):
             ind += 1
 
     return clm * 4 * np.pi / npixels
-
 
 
 def getCov(clm, nside, F_e):
@@ -315,7 +314,6 @@ def anis_basis(psr_locs, lmax, nside=32):
 
     Note: GW directions are in direction of GW propagation
     """
-    npsrs = len(psr_locs)
     pphi = psr_locs[:,0]
     ptheta = psr_locs[:,1]
 
@@ -353,7 +351,6 @@ def orfFromMap_fast(psr_locs, usermap, response=None):
     Note: GW directions are in direction of GW propagation
     """
     if response is None:
-        npsrs = len(psr_locs)
         pphi = psr_locs[:,0]
         ptheta = psr_locs[:,1]
 

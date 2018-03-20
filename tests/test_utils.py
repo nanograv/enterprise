@@ -14,6 +14,7 @@ from tests.enterprise_test_data import datadir
 from enterprise.pulsar import Pulsar
 from enterprise.signals import utils
 import enterprise.constants as const
+from enterprise.signals import anis_coefficients as anis
 
 
 class TestUtils(unittest.TestCase):
@@ -151,12 +152,12 @@ class TestUtils(unittest.TestCase):
         assert np.allclose(utils.turnover(f, log10_A, gamma,
                                           lf0, kappa, beta),pt), msg
 
-    def test_orf():
+    def test_orf(self):
         """Test ORF functions."""
         p1 = np.array([0.3, 0.648, 0.7])
         p2 = np.array([0.2, 0.775, -0.6])
 
-        ## test auto terms
+        # test auto terms
         #
         hd = utils.hd_orf(p1, p1)
         hd_exp = 1.0
@@ -170,18 +171,20 @@ class TestUtils(unittest.TestCase):
         psr_positions = np.array([[1.318116071652818, 2.2142974355881808],
                                   [1.1372584174390601, 0.79539883018414359]])
         anis_basis = anis.anis_basis(psr_positions, lmax=1)
-        anis_orf = round(utils.anis_orf(p1, p1, [0.0,1.0,0.0], anis_basis=anis_basis,
+        anis_orf = round(utils.anis_orf(p1, p1, [0.0,1.0,0.0],
+                                        anis_basis=anis_basis,
                                         psrs_pos=[p1, p2], lmax=1), 3)
         anis_orf_exp = 1.147
         #
 
         msg = 'ORF auto term incorrect for {}'
         keys = ['hd', 'dipole', 'monopole', 'anisotropy']
-        vals = [(hd, hd_exp), (dp, dp_exp), (mp, mp_exp), (anis_orf, anis_orf_exp)]
+        vals = [(hd, hd_exp), (dp, dp_exp), (mp, mp_exp),
+                (anis_orf, anis_orf_exp)]
         for key, val in zip(keys, vals):
             assert val[0] == val[1], msg.format(key)
 
-        ## test off diagonal terms
+        # test off diagonal terms
         #
         hd = utils.hd_orf(p1, p2)
         omc2 = (1 - np.dot(p1, p2)) / 2
@@ -196,13 +199,15 @@ class TestUtils(unittest.TestCase):
         psr_positions = np.array([[1.318116071652818, 2.2142974355881808],
                                   [1.1372584174390601, 0.79539883018414359]])
         anis_basis = anis.anis_basis(psr_positions, lmax=1)
-        anis_orf = round(utils.anis_orf(p1, p2, [0.0,1.0,0.0], anis_basis=anis_basis,
+        anis_orf = round(utils.anis_orf(p1, p2, [0.0,1.0,0.0],
+                                        anis_basis=anis_basis,
                                         psrs_pos=[p1, p2], lmax=1), 3)
         anis_orf_exp = -0.150
         #
 
         msg = 'ORF cross term incorrect for {}'
         keys = ['hd', 'dipole', 'monopole', 'anisotropy']
-        vals = [(hd, hd_exp), (dp, dp_exp), (mp, mp_exp), (anis_orf, anis_orf_exp)]
+        vals = [(hd, hd_exp), (dp, dp_exp), (mp, mp_exp),
+                (anis_orf, anis_orf_exp)]
         for key, val in zip(keys, vals):
             assert val[0] == val[1], msg.format(key)
