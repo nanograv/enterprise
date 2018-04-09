@@ -3,7 +3,7 @@ scipy>=0.18.1
 ephem>=3.7.6.0
 Cython>=0.25.2
 scikit-sparse==0.4.2
-git+https://github.com/nanograv/PINT.git@ea1c3b9f71c06a73d6613d647770b99924f7c9bf
+git+https://github.com/nanograv/PINT.git@1f9ca86ef31d12a561c79cee7c682c89d7b7f85d
 jplephem>=2.6
 setuptools>=38.2.4
 healpy>=1.11.0
