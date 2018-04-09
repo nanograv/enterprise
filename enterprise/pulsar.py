@@ -454,7 +454,7 @@ def Pulsar(*args, **kwargs):
             if clk is None:
                 bipm_version = 'BIPM2015'
             else:
-                bipm_version =  clk.split('(')[1][:-1]
+                bipm_version = clk.split('(')[1][:-1]
             toas = toa.get_TOAs(reltimfile, ephem=ephem, planets=planets,
                                 bipm_version=bipm_version)
             model = mb.get_model(relparfile)
