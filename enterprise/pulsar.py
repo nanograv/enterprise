@@ -451,8 +451,10 @@ def Pulsar(*args, **kwargs):
         if timing_package.lower() == 'pint':
             if ephem is None:
                 ephem = 'DE421'
-            if clk is not None:
-                bipm_version = clk.split('(')[1][:-1]
+            if clk is None:
+                bipm_version = 'BIPM2015'
+            else:
+                bipm_version =  clk.split('(')[1][:-1]
             toas = toa.get_TOAs(reltimfile, ephem=ephem, planets=planets,
                                 bipm_version=bipm_version)
             model = mb.get_model(relparfile)
