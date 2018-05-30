@@ -406,6 +406,7 @@ class Tempo2Pulsar(BasePulsar):
 def Pulsar(*args, **kwargs):
 
     ephem = kwargs.get('ephem', None)
+    clk = kwargs.get('clk', None)
     planets = kwargs.get('planets', True)
     sort = kwargs.get('sort', True)
     drop_t2pulsar = kwargs.get('drop_t2pulsar', True)
@@ -450,7 +451,12 @@ def Pulsar(*args, **kwargs):
         if timing_package.lower() == 'pint':
             if ephem is None:
                 ephem = 'DE421'
-            toas = toa.get_TOAs(reltimfile, ephem=ephem, planets=planets)
+            if clk is None:
+                bipm_version = 'BIPM2015'
+            else:
+                bipm_version = clk.split('(')[1][:-1]
+            toas = toa.get_TOAs(reltimfile, ephem=ephem, planets=planets,
+                                bipm_version=bipm_version)
             model = mb.get_model(relparfile)
             os.chdir(cwd)
             return PintPulsar(toas, model, sort=sort, planets=planets)
@@ -460,7 +466,7 @@ def Pulsar(*args, **kwargs):
             # hack to set maxobs
             maxobs = get_maxobs(reltimfile) + 100
             t2pulsar = t2.tempopulsar(relparfile, reltimfile,
-                                      maxobs=maxobs, ephem=ephem)
+                                      maxobs=maxobs, ephem=ephem, clk=clk)
             os.chdir(cwd)
             return Tempo2Pulsar(t2pulsar, sort=sort,
                                 drop_t2pulsar=drop_t2pulsar,
