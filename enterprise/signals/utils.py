@@ -104,8 +104,9 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
 
 
 @signal_base.function
-def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
-                                 logf=False, fmin=None, fmax=None):
+def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, fRef=1400,
+                                 Tspan=None, logf=False, fmin=None,
+                                 fmax=None):
 
     """
     Construct DM-variation fourier design matrix.
@@ -129,9 +130,10 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
         fmin=fmin, fmax=fmax)
 
     # compute the DM-variation vectors
-    # TODO: should we use a different normalization
-    #Dm = 1.0/(const.DM_K * freqs**2 * 1e12)
-    Dm = (1400/freqs)**2
+    # Current normalization expresses DM signal as a deviation
+    # (in seconds) at fRef (MHz)
+    # https://github.com/nanograv/enterprise/issues/164
+    Dm = (fRef/freqs)**2
 
     return F * Dm[:, None], Ffreqs
 
