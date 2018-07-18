@@ -104,12 +104,12 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
 
 
 @signal_base.function
-def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, fRef=1400,
+def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, fref=1400,
                                  Tspan=None, logf=False, fmin=None,
                                  fmax=None):
 
     """
-    Construct DM-variation fourier design matrix.
+    Construct DM-variation fourier design matrix. Current normalization expresses DM signal as a deviation [seconds] at fref [kHz]
 
     :param toas: vector of time series in seconds
     :param nmodes: number of fourier coefficients to use
@@ -118,7 +118,8 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, fRef=1400,
     :param Tspan: option to some other Tspan
     :param logf: use log frequency spacing
     :param fmin: lower sampling frequency
-    :param fmax: upper sampling frequency
+    :param fmax: upper sampling frequency [MHz]
+    :param fref: reference frequency [kHz]
 
     :return: F: DM-variation fourier design matrix
     :return: f: Sampling frequencies
@@ -130,10 +131,7 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, fRef=1400,
         fmin=fmin, fmax=fmax)
 
     # compute the DM-variation vectors
-    # Current normalization expresses DM signal as a deviation
-    # (in seconds) at fRef (MHz)
-    # https://github.com/nanograv/enterprise/issues/164
-    Dm = (fRef/freqs)**2
+    Dm = (fref/freqs)**2
 
     return F * Dm[:, None], Ffreqs
 
