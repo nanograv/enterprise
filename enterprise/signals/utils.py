@@ -111,7 +111,7 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, fref=1400,
     """
     Construct DM-variation fourier design matrix. Current
     normalization expresses DM signal as a deviation [seconds]
-    at fref [kHz]
+    at fref [MHz]
 
     :param toas: vector of time series in seconds
     :param nmodes: number of fourier coefficients to use
@@ -121,7 +121,7 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, fref=1400,
     :param logf: use log frequency spacing
     :param fmin: lower sampling frequency
     :param fmax: upper sampling frequency [MHz]
-    :param fref: reference frequency [kHz]
+    :param fref: reference frequency [MHz]
 
     :return: F: DM-variation fourier design matrix
     :return: f: Sampling frequencies
