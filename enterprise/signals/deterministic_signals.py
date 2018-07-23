@@ -135,7 +135,7 @@ def PhysicalEphemerisSignal(
         elements as free parameters in model. Default: False
 
     :param use_epoch_toas:
-        Use interprolation from epoch to full TOAs. This option reduces
+        Use interpolation from epoch to full TOAs. This option reduces
         computational cost for large multi-channel TOA data sets.
         Default: True
     """
