@@ -111,41 +111,17 @@ def FourierBasisGP(spectrum, components=20,
     return FourierBasisGP
 
 
-def TimingModel(name='linear_timing_model'):
+def TimingModel(name='linear_timing_model', use_svd=False):
     """Class factory for marginalized linear timing model signals."""
 
-    class TimingModel(base.Signal):
+    basis = utils.svd_tm_basis() if use_svd else utils.normed_tm_basis()
+    prior = utils.tm_prior()
+    BaseClass = BasisGP(prior, basis, name=name)
+
+    class TimingModel(BaseClass):
         signal_type = 'basis'
         signal_name = 'linear timing model'
-        signal_id = name
-
-        def __init__(self, psr):
-            super(TimingModel, self).__init__(psr)
-            self.name = self.psrname + '_' + self.signal_id
-            self._params = {}
-
-            self._F = psr.Mmat.copy()
-
-            norm = np.sqrt(np.sum(self._F**2, axis=0))
-            self._F /= norm
-
-        def get_basis(self, params=None):
-            return self._F
-
-        def get_phi(self, params=None):
-            return np.ones(self._F.shape[1])*1e40
-
-        def get_phiinv(self, params=None):
-            return 1 / self.get_phi(params)
-
-        @property
-        def basis_shape(self):
-            return self._F.shape
-
-        #TODO: this is somewhat of a hack until we get this class more general
-        @property
-        def basis_params(self):
-            return []
+        signal_id = name + '_svd' if use_svd else name
 
     return TimingModel
 

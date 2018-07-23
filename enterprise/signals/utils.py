@@ -875,6 +875,46 @@ def monopole_orf(pos1, pos2):
         return 1.0
 
 
+@function
+def anis_orf(pos1, pos2, params, **kwargs):
+    """Anisotropic GWB spatial correlation function."""
+
+    anis_basis = kwargs['anis_basis']
+    psrs_pos = kwargs['psrs_pos']
+    lmax = kwargs['lmax']
+
+    psr1_index = [ii for ii in range(len(psrs_pos))
+                  if np.all(psrs_pos[ii] == pos1)][0]
+    psr2_index = [ii for ii in range(len(psrs_pos))
+                  if np.all(psrs_pos[ii] == pos2)][0]
+
+    clm = np.zeros((lmax+1)**2)
+    clm[0] = 2.0*np.sqrt(np.pi)
+    if lmax > 0:
+        clm[1:] = params
+
+    return sum(clm[ii]*basis for ii,basis
+               in enumerate(anis_basis[:(lmax+1)**2,
+                                       psr1_index, psr2_index]))
+
+
+@function
+def normed_tm_basis(Mmat):
+    norm = np.sqrt(np.sum(Mmat**2, axis=0))
+    return Mmat / norm, np.ones_like(Mmat.shape[1])
+
+
+@function
+def svd_tm_basis(Mmat):
+    u, s, v = np.linalg.svd(Mmat, full_matrices=False)
+    return u, np.ones_like(s)
+
+
+@function
+def tm_prior(weights):
+    return weights * 1e40
+
+
 # Physical ephemeris model utility functions
 
 t_offset = 55197.0
