@@ -290,6 +290,8 @@ def Function(func, name='', **func_kwargs):
             self._funcs = {}
 
             self.name = '_'.join([n for n in [name, fname] if n])
+
+            self.func_args = inspect.getargspec(func).args
             self.func_kwargs = func_kwargs
 
             # process keyword parameters:
@@ -305,7 +307,7 @@ def Function(func, name='', **func_kwargs):
             # - if they are something else, we will assume they are values,
             #   which we will save in self._defaults
 
-            for kw, arg in func_kwargs.items():
+            for kw, arg in self.func_kwargs.items():
                 if isinstance(arg, type) and issubclass(
                         arg, (Parameter, ConstantParameter)):
 
@@ -358,7 +360,7 @@ def Function(func, name='', **func_kwargs):
             #   them only the parameters they may care about
             # - [if the func itself has default parameters, they may yet
             #   apply if none of the above does]
-            for kw, arg in func_kwargs.items():
+            for kw, arg in self.func_kwargs.items():
                 if kw not in kwargs:
                     if kw in self._params:
                         par = self._params[kw]
@@ -383,8 +385,10 @@ def Function(func, name='', **func_kwargs):
             # clean up parameters that are not meant for `func`
             # keep those required for `selection_func` to work
             # keep also `size` needed by samplers
+
             kwargs = {par: val for par, val in kwargs.items()
-                      if par in func_kwargs or par in ['psr', 'mask', 'size']}
+                      if (par in self.func_kwargs or par in self.func_args
+                          or par in ['psr', 'mask', 'size'])}
 
             return func(*args, **kwargs)
 

@@ -180,9 +180,10 @@ def PhysicalEphemerisSignal(
             if use_epoch_toas:
                 # get quantization matrix and calculate daily average TOAs
                 U, _ = utils.create_quantization_matrix(psr.toas, nmin=1)
-                self.uinds = utils.quant2ind(U)
-                avetoas = np.array([psr.toas[sc].mean() for sc in self.uinds])
-                self._wf[''].add_kwarg(toas=avetoas)
+                self._uinds = utils.quant2ind(U)
+                
+                avetoas = np.array([psr.toas[sc].mean() for sc in self._uinds])
+                self._avetoas = avetoas
 
                 # interpolate ssb planet position vectors to avetoas
                 planetssb = np.zeros((len(avetoas), 9, 3))
@@ -190,24 +191,29 @@ def PhysicalEphemerisSignal(
                     planetssb[:, jj, :] = np.array([
                         np.interp(avetoas, psr.toas, psr.planetssb[:,jj,aa])
                         for aa in range(3)]).T
-                self._wf[''].add_kwarg(planetssb=planetssb)
+                self._planetssb = planetssb
 
                 # Inteprolating the pulsar position vectors onto epoch TOAs
                 pos_t = np.array([np.interp(avetoas, psr.toas, psr.pos_t[:,aa])
                                   for aa in range(3)]).T
-                self._wf[''].add_kwarg(pos_t=pos_t)
+                self._pos_t = pos_t
 
             # initialize delay
             self._delay = np.zeros(len(psr.toas))
 
         @base.cache_call('delay_params')
         def get_delay(self, params):
-            delay = self._wf[''](params=params)
             if use_epoch_toas:
-                for slc, val in zip(self.uinds, delay):
+                delay = self._wf[''](toas=self._avetoas,
+                                     planetssb=self._planetssb,
+                                     pos_t=self._pos_t,
+                                     params=params)
+                
+                for slc, val in zip(self._uinds, delay):
                     self._delay[slc] = val
                 return self._delay
             else:
+                delay = self._wf[''](params=params)
                 return delay
 
     return PhysicalEphemerisSignal
