@@ -63,8 +63,9 @@ class TestPulsar(unittest.TestCase):
 
         msg = 'dmx struct incorrect (spotcheck)'
         assert len(self.psr.dmx) == 72, msg
-        assert self.psr.dmx['DMX_0001']['DMX'] == np.longdouble('0.015161863'), msg
-        assert self.psr.dmx['DMX_0001']['fit'] == True, msg
+        assert (self.psr.dmx['DMX_0001']['DMX'] ==
+                np.longdouble('0.015161863')), msg
+        assert self.psr.dmx['DMX_0001']['fit'], msg
 
     def test_freqs(self):
         """Check frequencies shape."""
@@ -138,7 +139,7 @@ class TestPulsarPint(TestPulsar):
                          datadir + '/B1855+09_NANOGrav_9yv1.tim',
                          ephem='DE430', timing_package='pint')
 
-    # exclude tests pending implementation of .stoas, .dm, .dmx in PintPulsar 
+    # exclude tests pending implementation of .stoas, .dm, .dmx in PintPulsar
 
     def test_stoas(self):
         pass

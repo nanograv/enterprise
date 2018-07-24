@@ -387,8 +387,8 @@ def Function(func, name='', **func_kwargs):
             # keep also `size` needed by samplers
 
             kwargs = {par: val for par, val in kwargs.items()
-                      if (par in self.func_kwargs or par in self.func_args
-                          or par in ['psr', 'mask', 'size'])}
+                      if (par in self.func_kwargs or par in self.func_args or
+                          par in ['psr', 'mask', 'size'])}
 
             return func(*args, **kwargs)
 

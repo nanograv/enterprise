@@ -181,7 +181,7 @@ def PhysicalEphemerisSignal(
                 # get quantization matrix and calculate daily average TOAs
                 U, _ = utils.create_quantization_matrix(psr.toas, nmin=1)
                 self._uinds = utils.quant2ind(U)
-                
+
                 avetoas = np.array([psr.toas[sc].mean() for sc in self._uinds])
                 self._avetoas = avetoas
 
@@ -208,7 +208,7 @@ def PhysicalEphemerisSignal(
                                      planetssb=self._planetssb,
                                      pos_t=self._pos_t,
                                      params=params)
-                
+
                 for slc, val in zip(self._uinds, delay):
                     self._delay[slc] = val
                 return self._delay

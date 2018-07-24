@@ -15,12 +15,12 @@ import unittest
 
 import numpy as np
 
-import enterprise
 from tests.enterprise_test_data import datadir
 from enterprise.pulsar import Pulsar
 
 import enterprise.signals.parameter as esp
 import enterprise.signals.white_signals as esw
+
 
 class TestHierarchicalParameter(unittest.TestCase):
     @classmethod
@@ -30,7 +30,6 @@ class TestHierarchicalParameter(unittest.TestCase):
         # initialize Pulsar class
         cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
                          datadir + '/B1855+09_NANOGrav_9yv1.tim')
-
 
     def test_enterprise_Parameter(self):
         x = esp.Uniform(0,1)
@@ -77,7 +76,9 @@ class TestHierarchicalParameter(unittest.TestCase):
         g1 = g('g1')
 
         assert isinstance(g1,esp.FunctionBase)
-        assert str(g1.params) == '[g1_w:Uniform(pmin=2, pmax=3), g1_z_x:Uniform(pmin=0, pmax=1)]'
+
+        e1 = '[g1_w:Uniform(pmin=2, pmax=3), g1_z_x:Uniform(pmin=0, pmax=1)]'
+        assert (str(g1.params) == e1)
 
         assert g1(2,z=3) == 12
         assert g1(2,w=10,z=3) == 60
@@ -122,10 +123,13 @@ class TestHierarchicalParameter(unittest.TestCase):
         def log10(A=10**-16):
             return math.log10(A)
 
-        fquad = esw.EquadNoise(log10_equad=esp.Function(log10, A=esp.Uniform(10**-17,10**-14)))
+        fquad = esw.EquadNoise(log10_equad=esp.Function(
+            log10, A=esp.Uniform(10**-17,10**-14)))
 
         fquad1 = fquad(self.psr)
 
-        assert str(fquad1.params) == '[B1855+09_log10_equad_A:Uniform(pmin=1e-17, pmax=1e-14)]'
-        assert np.allclose(fquad1.get_ndiag(params={'B1855+09_log10_equad_A': 10**-14})[:3],
-                           np.array([1e-28,1e-28,1e-28]))
+        assert (str(fquad1.params) ==
+                '[B1855+09_log10_equad_A:Uniform(pmin=1e-17, pmax=1e-14)]')
+        assert np.allclose(fquad1.get_ndiag(
+            params={'B1855+09_log10_equad_A': 10**-14})[:3],
+            np.array([1e-28,1e-28,1e-28]))

@@ -216,7 +216,8 @@ class BasePulsar(object):
 
     @property
     def dmx(self):
-        """Return a dictionary of DMX-parameter values and stoa ranges from parfile."""
+        """Return a dictionary of DMX-parameter values and stoa ranges
+        from parfile."""
         return self._dmx
 
     @property
@@ -348,7 +349,8 @@ class Tempo2Pulsar(BasePulsar):
         self.name = str(t2pulsar.name)
 
         self._toas = np.double(t2pulsar.toas()) * 86400
-        self._stoas = np.double(t2pulsar.stoas) * 86400         # saving also stoas (e.g., for DMX comparisons)
+        # saving also stoas (e.g., for DMX comparisons)
+        self._stoas = np.double(t2pulsar.stoas) * 86400
         self._residuals = np.double(t2pulsar.residuals())
         self._toaerrs = np.double(t2pulsar.toaerrs) * 1e-6
         self._designmatrix = np.double(t2pulsar.designmatrix())
