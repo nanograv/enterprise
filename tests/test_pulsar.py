@@ -49,6 +49,24 @@ class TestPulsar(unittest.TestCase):
         msg = 'TOA shape incorrect'
         assert self.psr.toas.shape == (4005,), msg
 
+    def test_stoas(self):
+        """Check STOA shape."""
+
+        msg = 'stoa shape incorrect'
+        assert self.psr.stoas.shape == (4005,), msg
+
+    def test_dm(self):
+        """Check DM/DMX access."""
+
+        msg = 'dm value incorrect'
+        assert self.psr.dm == np.longdouble('13.299393'), msg
+
+        msg = 'dmx struct incorrect (spotcheck)'
+        assert len(self.psr.dmx) == 72, msg
+        assert (self.psr.dmx['DMX_0001']['DMX'] ==
+                np.longdouble('0.015161863')), msg
+        assert self.psr.dmx['DMX_0001']['fit'], msg
+
     def test_freqs(self):
         """Check frequencies shape."""
 
@@ -120,3 +138,11 @@ class TestPulsarPint(TestPulsar):
         cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
                          datadir + '/B1855+09_NANOGrav_9yv1.tim',
                          ephem='DE430', timing_package='pint')
+
+    # exclude tests pending implementation of .stoas, .dm, .dmx in PintPulsar
+
+    def test_stoas(self):
+        pass
+
+    def test_dm(self):
+        pass

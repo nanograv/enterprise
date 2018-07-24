@@ -14,6 +14,8 @@ from enterprise.signals import parameter
 import enterprise.signals.signal_base as base
 from enterprise.signals import selections
 from enterprise.signals.selections import Selection
+from enterprise.signals.parameter import function as enterprise_function
+from enterprise.signals.utils import KernelMatrix
 
 
 def BasisGP(priorFunction, basisFunction,
@@ -64,7 +66,7 @@ def BasisGP(priorFunction, basisFunction,
 
             nc = np.sum(F.shape[1] for F in basis.values())
             self._basis = np.zeros((len(self._masks[0]), nc))
-            self._phi = base.KernelMatrix(nc)
+            self._phi = KernelMatrix(nc)
             self._slices = {}
             nctot = 0
             for key, mask in zip(self._keys, self._masks):
@@ -124,7 +126,7 @@ def TimingModel(name='linear_timing_model', use_svd=False):
     return TimingModel
 
 
-@base.function
+@enterprise_function
 def ecorr_basis_prior(weights, log10_ecorr=-8):
     """Returns the ecorr prior.
     :param weights: A vector or weights for the ecorr prior.
@@ -207,7 +209,8 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, name=''):
 def FourierBasisCommonGP(spectrum, orf, components=20,
                          Tspan=None, name=''):
 
-    basis = utils.createfourierdesignmatrix_red(nmodes=components)
+    basis = utils.createfourierdesignmatrix_red(nmodes=components,
+                                                Tspan=Tspan)
     BaseClass = BasisCommonGP(spectrum, basis, orf, name=name)
 
     class FourierBasisCommonGP(BaseClass):
