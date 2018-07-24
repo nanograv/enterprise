@@ -77,8 +77,7 @@ class TestHierarchicalParameter(unittest.TestCase):
 
         assert isinstance(g1,esp.FunctionBase)
 
-        e1 = '[g1_w:Uniform(pmin=2, pmax=3), g1_z_x:Uniform(pmin=0, pmax=1)]'
-        assert (str(g1.params) == e1)
+        assert (str(g1.params[0]) == 'g1_w:Uniform(pmin=2, pmax=3)')
 
         assert g1(2,z=3) == 12
         assert g1(2,w=10,z=3) == 60
