@@ -285,8 +285,8 @@ class PintPulsar(BasePulsar):
         self._residuals = np.array(resids(toas, model).time_resids.to(u.s),
                                    dtype='float64')
         self._toaerrs = np.array(toas.get_errors().to(u.s), dtype='float64')
-        self._designmatrix = model.designmatrix(toas.table)[0]
-        self._ssbfreqs = np.array(model.barycentric_radio_freq(toas.table),
+        self._designmatrix = model.designmatrix(toas)[0]
+        self._ssbfreqs = np.array(model.barycentric_radio_freq(toas),
                                   dtype='float64')
 
         # fitted parameters
