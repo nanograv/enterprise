@@ -11,10 +11,10 @@ import numpy as np
 
 from enterprise.signals import utils
 from enterprise.signals import parameter
-import enterprise.signals.signal_base as base
+from enterprise.signals import signal_base
 from enterprise.signals import selections
 from enterprise.signals.selections import Selection
-from enterprise.signals.parameter import function as enterprise_function
+from enterprise.signals.parameter import function
 from enterprise.signals.utils import KernelMatrix
 
 
@@ -23,7 +23,7 @@ def BasisGP(priorFunction, basisFunction,
             name=''):
     """Class factory for generic GPs with a basis matrix."""
 
-    class BasisGP(base.Signal):
+    class BasisGP(signal_base.Signal):
         signal_type = 'basis'
         signal_name = name
         signal_id = name
@@ -57,7 +57,7 @@ def BasisGP(priorFunction, basisFunction,
                 ret.extend([pp.name for pp in basis.params])
             return ret
 
-        @base.cache_call('basis_params')
+        @signal_base.cache_call('basis_params')
         def _construct_basis(self, params={}):
             basis, self._labels = {}, {}
             for key, mask in zip(self._keys, self._masks):
@@ -126,7 +126,7 @@ def TimingModel(name='linear_timing_model', use_svd=False):
     return TimingModel
 
 
-@enterprise_function
+@function
 def ecorr_basis_prior(weights, log10_ecorr=-8):
     """Returns the ecorr prior.
     :param weights: A vector or weights for the ecorr prior.
@@ -154,7 +154,7 @@ def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
 
 def BasisCommonGP(priorFunction, basisFunction, orfFunction, name=''):
 
-    class BasisCommonGP(base.CommonSignal):
+    class BasisCommonGP(signal_base.CommonSignal):
         signal_type = 'common basis'
         signal_name = 'common'
         signal_id = name
@@ -175,7 +175,7 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, name=''):
 
             self._psrpos = psr.pos
 
-        @base.cache_call('basis_params')
+        @signal_base.cache_call('basis_params')
         def _construct_basis(self, params={}):
             self._basis, self._labels = self._bases(params=params)
 
@@ -225,7 +225,7 @@ def FourierBasisCommonGP(spectrum, orf, components=20,
                 FourierBasisCommonGP._Tmin.append(psr.toas.min())
                 FourierBasisCommonGP._Tmax.append(psr.toas.max())
 
-        @base.cache_call('basis_params')
+        @signal_base.cache_call('basis_params')
         def _construct_basis(self, params={}):
             span = (Tspan if Tspan is not None else
                     max(FourierBasisCommonGP._Tmax) -

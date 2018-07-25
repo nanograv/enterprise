@@ -105,10 +105,18 @@ class Parameter(object):
 
 
 def UserParameter(prior, sampler=None, size=None):
-    """Class factory for UserParameter, with `prior` given as an Enterprise
-    Function (one argument, the value; arbitrary keyword arguments, which
-    become hyperparameters). Optionally, `sampler` can be given as a regular
-    (not Enterprise function), taking the same keyword parameters as `prior`.
+    """Class factory for UserParameter, implementing Enterprise parameters
+    with arbitrary priors. The prior is specified by way of an Enterprise
+    ``Function`` of the form ``prior(value, [par1, par2])``. Optionally,
+    include ``sampler`` (a function with the same parameters as ``prior``),
+    to allow random sampling of the parameter through
+    ``enterprise.signals.parameter.sample``.
+
+    :param prior:   parameter prior pdf, given as Enterprise ``Function``
+    :param sampler: function returning a randomly sampled parameter according
+                    to prior
+    :param size:    length for vector parameter
+    :return:        ``UserParameter`` class
     """
 
     class UserParameter(Parameter):
@@ -153,7 +161,16 @@ def UniformSampler(pmin, pmax, size=None):
 
 
 def Uniform(pmin, pmax, size=None):
-    """Class factory for Uniform parameters."""
+    """Class factory for Uniform parameters (with pdf(x) ~ 1/[pmax - pmin]
+    inside [pmin,pmax], 0 outside. Handles vectors correctly,
+    if ``pmin`` and ``pmax`` are scalars,
+    or if ``len(size) == len(pmin) == len(pmax)``
+
+    :param pmin: minimum of uniform range
+    :param pmax: maximum of uniform range
+    :param size: length for vector parameter
+    :return:     ``Uniform`` parameter class
+    """
 
     class Uniform(Parameter):
         _size = size
@@ -165,10 +182,7 @@ def Uniform(pmin, pmax, size=None):
 
 
 def NormalPrior(value, mu, sigma):
-    """Prior function for Normal parameters. Note that `sigma` can be a
-    scalar for a 1-d distribution, a vector for multivariate distribution
-    that uses the vector as the sqrt of the diagonal of the covariance
-    matrix, or a matrix giving the covariance directly."""
+    """Prior function for Normal parameters."""
 
     # we let scipy.stats handle parameter errors
     # this code handles vectors correctly, if mu and sigma are scalars,
@@ -199,6 +213,18 @@ def NormalSampler(mu, sigma, size=None):
 
 
 def Normal(mu=0, sigma=1, size=None):
+    """Class factory for Normal parameters (with pdf(x) ~ N(``mu``,``sigma``)).
+    Handles vectors correctly if ``size == len(mu) == len(sigma)``,
+    in which case ``sigma`` is taken as the sqrt of the diagonal
+    of the covariance matrix; ``sigma`` can also be given passed
+    as the ``size`` x ``size`` covariance matrix.
+
+    :param mu:    center of normal distribution
+    :param sigma: standard deviation of normal distribution
+    :param size:  length for vector parameter
+    :return:      ``Normal`` parameter class
+    """
+
     """Class factory for Normal parameters."""
 
     class Normal(Parameter):
@@ -234,7 +260,16 @@ def LinearExpSampler(pmin, pmax, size):
 
 
 def LinearExp(pmin, pmax, size=None):
-    """Class factory for LinearExp parameters (with pdf(x) ~ 10^x)."""
+    """Class factory for LinearExp parameters (with pdf(x) ~ 10^x,
+    and 0 outside [``pmin``,``max``]). Handles vectors correctly
+    if ``pmin`` and ``pmax`` are scalars or if
+    ``size == len(pmin) == len(pmax)``
+
+    :param pmin: minimum of range
+    :param pmax: maximum of range
+    :param size: length for vector parameter (default `None`)
+    :return:     ``LinearExp`` parameter class
+    """
 
     class LinearExp(Parameter):
         _size = size
