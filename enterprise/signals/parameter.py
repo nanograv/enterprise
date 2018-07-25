@@ -108,7 +108,7 @@ def UserParameter(prior, sampler=None, size=None):
     """Class factory for UserParameter, with `prior` given as an Enterprise
     Function (one argument, the value; arbitrary keyword arguments, which
     become hyperparameters). Optionally, `sampler` can be given as a regular
-    (not Enterprise function), taking the same keyword parameters as `prior`.
+    (not Enterprise) function, taking the same keyword parameters as `prior`.
     """
 
     class UserParameter(Parameter):
@@ -245,6 +245,19 @@ def LinearExp(pmin, pmax, size=None):
     return LinearExp
 
 
+def GPCoefficients(size=None):
+    """Class factor for GP coefficients (prior computation is included
+    in likelihood)."""
+
+    class GPCoefficients(Parameter):
+        _size = size
+        _prior = Function(lambda : 1)
+        _sampler = None # MV: TO DO, connect with GP object
+        _typename = _argrepr('GPCoefficients', params='...')
+
+    return GPCoefficients
+
+
 class ConstantParameter(object):
     """Constant Parameter base class."""
 
@@ -268,6 +281,7 @@ class ConstantParameter(object):
 
 def Constant(val=None):
     class Constant(ConstantParameter):
+        # MV: I don't know if this does what it's supposed to...
         value = val
 
     return Constant

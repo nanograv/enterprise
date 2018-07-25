@@ -7,6 +7,9 @@ function matrix and basis prior vector..
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
+import math
+import itertools
+
 import numpy as np
 
 from enterprise.signals import utils
@@ -14,11 +17,12 @@ from enterprise.signals import parameter
 import enterprise.signals.signal_base as base
 from enterprise.signals import selections
 from enterprise.signals.selections import Selection
+
+from enterprise.signals.parameter import Function
 from enterprise.signals.parameter import function as enterprise_function
 from enterprise.signals.utils import KernelMatrix
 
-
-def BasisGP(priorFunction, basisFunction,
+def BasisGP(priorFunction, basisFunction, coefficients=None,
             selection=Selection(selections.no_selection),
             name=''):
     """Class factory for generic GPs with a basis matrix."""
@@ -31,23 +35,32 @@ def BasisGP(priorFunction, basisFunction,
         def __init__(self, psr):
             super(BasisGP, self).__init__(psr)
             self.name = self.psrname + '_' + self.signal_id
-            self._do_selection(psr, priorFunction, basisFunction, selection)
+            self._do_selection(psr, priorFunction, basisFunction,
+                               coefficients, selection)
 
-        def _do_selection(self, psr, priorfn, basisfn, selection):
-
+        def _do_selection(self, psr, priorfn, basisfn, coefficients, selection):
             sel = selection(psr)
+
             self._keys = list(sorted(sel.masks.keys()))
             self._masks = [sel.masks[key] for key in self._keys]
-            self._prior, self._bases, self._params = {}, {}, {}
+            self._prior, self._bases, self._params, self._coefficients = {}, {}, {}, {}
+
             for key, mask in zip(self._keys, self._masks):
                 pnames = [psr.name, name, key]
                 pname = '_'.join([n for n in pnames if n])
+
                 self._prior[key] = priorfn(pname, psr=psr)
                 self._bases[key] = basisfn(pname, psr=psr)
-                params = sum([list(self._prior[key]._params.values()),
-                              list(self._bases[key]._params.values())],[])
-                for param in params:
-                    self._params[param.name] = param
+
+                for par in itertools.chain(self._prior[key]._params.values(),
+                                           self._bases[key]._params.values()):
+                    self._params[par.name] = par
+
+                if coefficients:
+                    cpar = coefficients(pname + '_coefficients')
+
+                    self._coefficients[key] = cpar
+                    self._params[cpar.name] = cpar
 
         @property
         def basis_params(self):
@@ -76,32 +89,82 @@ def BasisGP(priorFunction, basisFunction,
                 self._slices.update({key: slice(nctot, nn+nctot)})
                 nctot += nn
 
-        def get_basis(self, params={}):
-            self._construct_basis(params)
-            return self._basis
+        # this class does different things (and gets different method
+        # definitions) if the user wants it to model GP coefficients
+        # (e.g., for a hierarchical likelihood) or if they do not
+        if coefficients:
+            # MV: should I cache this?
+            def get_logprior(self, params):
+                self._construct_basis(params)
 
-        def get_phi(self, params):
-            self._construct_basis(params)
-            for key, slc in self._slices.items():
-                phislc = self._prior[key](
-                    self._labels[key], params=params)
-                self._phi = self._phi.set(phislc, slc)
-            return self._phi
+                ret = 0
+                for key, slc in self._slices.items():
+                    phi = self._prior[key](self._labels[key], params=params)
 
-        def get_phiinv(self, params):
-            return self.get_phi(params).inv()
+                    par = self._coefficients[key]
+                    # MV: should move this into Parameter and Constant
+                    c = params[par.name] if par.name in params else par.value
+
+                    ret = (ret - 0.5 * np.sum(c * c / phi)
+                               - 0.5 * np.sum(np.log(phi))
+                               - 0.5 * len(phi) * math.log(2*math.pi))
+
+                return ret
+
+            # MV: should I cache this?
+            def get_delay(self, params={}):
+                self._construct_basis(params)
+
+                c = np.zeros(self._basis.shape[1])
+                for key, slc in self._slices.items():
+                    p = self._coefficients[key]
+                    c[slc] = params[p.name] if p.name in params else p.value
+
+                return np.dot(self._basis, c)
+
+            def get_basis(self, params={}):
+                return None
+
+            def get_phi(self, params):
+                return None
+
+            def get_phiinv(self, params):
+                return None
+        else:
+            def get_logprior(self, params):
+                return 0
+
+            def get_delay(self, params={}):
+                return 0            
+
+            def get_basis(self, params={}):
+                self._construct_basis(params)
+
+                return self._basis
+
+            def get_phi(self, params):
+                self._construct_basis(params)
+
+                for key, slc in self._slices.items():
+                    phislc = self._prior[key](
+                        self._labels[key], params=params)
+                    self._phi = self._phi.set(phislc, slc)
+                return self._phi
+
+            def get_phiinv(self, params):
+                return self.get_phi(params).inv()
 
     return BasisGP
 
 
-def FourierBasisGP(spectrum, components=20,
+def FourierBasisGP(spectrum, coefficients=None, components=20,
                    selection=Selection(selections.no_selection),
                    Tspan=None, name=''):
     """Convenience function to return a BasisGP class with a
     fourier basis."""
 
     basis = utils.createfourierdesignmatrix_red(nmodes=components, Tspan=Tspan)
-    BaseClass = BasisGP(spectrum, basis, selection=selection, name=name)
+    BaseClass = BasisGP(spectrum, basis, coefficients, selection=selection, name=name)
 
     class FourierBasisGP(BaseClass):
         signal_type = 'basis'
@@ -111,17 +174,23 @@ def FourierBasisGP(spectrum, components=20,
     return FourierBasisGP
 
 
-def TimingModel(name='linear_timing_model', use_svd=False):
+def TimingModel(coefficients=None, name='linear_timing_model', use_svd=False):
     """Class factory for marginalized linear timing model signals."""
 
     basis = utils.svd_tm_basis() if use_svd else utils.normed_tm_basis()
     prior = utils.tm_prior()
-    BaseClass = BasisGP(prior, basis, name=name)
+    BaseClass = BasisGP(prior, basis, coefficients, name=name)
 
     class TimingModel(BaseClass):
         signal_type = 'basis'
         signal_name = 'linear timing model'
         signal_id = name + '_svd' if use_svd else name
+
+        if coefficients:
+            def get_logprior(self, params):
+                # MV: probably better to avoid this altogether
+                #     than to use 1e40 as in get_phi
+                return 0
 
     return TimingModel
 
@@ -135,14 +204,15 @@ def ecorr_basis_prior(weights, log10_ecorr=-8):
 
 
 def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
+                    coefficients=None,
                     selection=Selection(selections.no_selection),
                     name=''):
-    """Convienience function to return a BasisGP class with a
+    """Convenience function to return a BasisGP class with a
     quantized ECORR basis."""
 
     basis = utils.create_quantization_matrix()
     prior = ecorr_basis_prior(log10_ecorr=log10_ecorr)
-    BaseClass = BasisGP(prior, basis, selection=selection, name=name)
+    BaseClass = BasisGP(prior, basis, coefficients, selection=selection, name=name)
 
     class EcorrBasisModel(BaseClass):
         signal_type = 'basis'

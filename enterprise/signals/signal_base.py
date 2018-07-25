@@ -128,6 +128,11 @@ class Signal(object):
         """
         return None
 
+    def get_logprior(self, params):
+        """Returns the prior associated with a deterministic signal
+        (e.g., a GP in the coefficient representation)."""
+        return 0
+
     def get_delay(self, params):
         """Returns the waveform of a deterministic signal."""
         return 0
@@ -169,6 +174,9 @@ class MarginalizedLogLikelihood(object):
         # map parameter vector if needed
         params = xs if isinstance(xs,dict) else self.pta.map_params(xs)
 
+        # priors associated with delays evaluated as part of the likelihood
+        loglike = self.pta.get_logprior(params)
+
         # phiinvs will be a list or may be a big matrix if spatially
         # correlated signals
         TNrs = self.pta.get_TNr(params)
@@ -177,7 +185,7 @@ class MarginalizedLogLikelihood(object):
                                       method=phiinv_method)
 
         # get -0.5 * (rNr + logdet_N) piece of likelihood
-        loglike = -0.5 * np.sum([l for l in self.pta.get_rNr_logdet(params)])
+        loglike += -0.5 * np.sum([l for l in self.pta.get_rNr_logdet(params)])
 
         # red noise piece
         if self.pta._commonsignals:
@@ -265,6 +273,10 @@ class PTA(object):
 
     def get_ndiag(self, params={}):
         return [signalcollection.get_ndiag(params)
+                for signalcollection in self._signalcollections]
+
+    def get_logprior(self, params):
+        return [signalcollection.get_logprior(params)
                 for signalcollection in self._signalcollections]
 
     def get_delay(self, params={}):
@@ -781,6 +793,10 @@ def SignalCollection(metasignals):
             return sum(ndiag for ndiag in ndiags if ndiag is not None)
 
         @cache_call('delay_params')
+        def get_logprior(self, params):
+            return sum(signal.get_logprior(params) for signal in self._signals)
+
+        @cache_call('delay_params')
         def get_delay(self, params):
             delays = [signal.get_delay(params) for signal in self._signals]
             return sum(delay for delay in delays if delay is not None)
@@ -832,7 +848,18 @@ def SignalCollection(metasignals):
 
 
 def cache_call(attrs, limit=2):
-    """Cache function that allows for subsets of parameters to be keyed."""
+    """This decorator caches the output of a class method that takes
+    a single parameter 'params'. It saves the cache in the instance
+    attributes _cache_<methodname> and _cache_list_<methodname>.
+
+    The cache keys are listed in the class attribute (or attributes)
+    specified in the initial decorator call. For instance, if
+    the decorator is applied as @cache_call('basis_params'), then
+    the parameters listed in self.basis_params (together with their values)
+    will be used as the key.
+
+    The parameter 'limit' specifies the number of entries saved
+    in the cache."""
 
     # convert to list of lists if only one attribute used
     if not isinstance(attrs, list):
