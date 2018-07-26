@@ -9,12 +9,12 @@ from __future__ import (absolute_import, division,
 
 import numpy as np
 
-import enterprise
-from enterprise.signals import selections
+from enterprise import pulsar
 from enterprise.signals import signal_base
 from enterprise.signals import parameter
-from enterprise.signals.selections import Selection
+from enterprise.signals import selections
 from enterprise.signals import utils
+from enterprise.signals.selections import Selection
 
 
 def Deterministic(waveform, selection=Selection(selections.no_selection),

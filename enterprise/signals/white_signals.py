@@ -11,10 +11,10 @@ import scipy.sparse
 
 from enterprise.signals import signal_base
 from enterprise.signals import parameter
-from enterprise.signals import utils
 from enterprise.signals import selections
-from enterprise.signals.selections import Selection
+from enterprise.signals import utils
 from enterprise.signals.parameter import function
+from enterprise.signals.selections import Selection
 
 
 def WhiteNoise(varianceFunction,
