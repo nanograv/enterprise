@@ -9,8 +9,8 @@ from __future__ import (absolute_import, division,
 import numpy as np
 import scipy.sparse
 
+from enterprise.signals import signal_base
 from enterprise.signals import parameter
-import enterprise.signals.signal_base as base
 from enterprise.signals import utils
 from enterprise.signals import selections
 from enterprise.signals.selections import Selection
@@ -22,7 +22,7 @@ def WhiteNoise(varianceFunction,
                name=''):
     """ Class factory for generic white noise signals."""
 
-    class WhiteNoise(base.Signal):
+    class WhiteNoise(signal_base.Signal):
         signal_type = 'white noise'
         signal_name = name
         signal_id = name
@@ -50,12 +50,12 @@ def WhiteNoise(varianceFunction,
             """Get any varying ndiag parameters."""
             return [pp.name for pp in self.params]
 
-        @base.cache_call('ndiag_params')
+        @signal_base.cache_call('ndiag_params')
         def get_ndiag(self, params):
             ret = 0
             for key, mask in zip(self._keys, self._masks):
                 ret += self._ndiag[key](params=params) * mask
-            return base.ndarray_alt(ret)
+            return signal_base.ndarray_alt(ret)
 
     return WhiteNoise
 
@@ -156,7 +156,7 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
         msg = 'EcorrKernelNoise does not support method: {}'.format(method)
         raise TypeError(msg)
 
-    class EcorrKernelNoise(base.Signal):
+    class EcorrKernelNoise(signal_base.Signal):
         signal_type = 'white noise'
         signal_name = 'ecorr_' + method
         signal_id = ('_'.join(['ecorr', name, method]) if name else
@@ -195,7 +195,7 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
             """Get any varying ndiag parameters."""
             return [pp.name for pp in self.params]
 
-        @base.cache_call('ndiag_params')
+        @signal_base.cache_call('ndiag_params')
         def get_ndiag(self, params):
             if method == 'sherman-morrison':
                 return self._get_ndiag_sherman_morrison(params)
@@ -214,7 +214,7 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
                 for slc in slices:
                     if slc.stop - slc.start > 1:
                         Ns[slc, slc] = 1.0
-            self._Ns = base.csc_matrix_alt(Ns)
+            self._Ns = signal_base.csc_matrix_alt(Ns)
 
         def _get_ndiag_sparse(self, params):
             for p in self._params:
@@ -225,7 +225,7 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
 
         def _get_ndiag_sherman_morrison(self, params):
             slices, jvec = self._get_jvecs(params)
-            return base.ShermanMorrison(jvec, slices)
+            return signal_base.ShermanMorrison(jvec, slices)
 
         def _get_ndiag_block(self, params):
             slices, jvec = self._get_jvecs(params)
@@ -233,7 +233,7 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
             for jv, slc in zip(jvec, slices):
                 nb = slc.stop - slc.start
                 blocks.append(np.ones((nb, nb))*jv)
-            return base.BlockMatrix(blocks, slices)
+            return signal_base.BlockMatrix(blocks, slices)
 
         def _get_jvecs(self, params):
             slices = sum([self._slices[key] for key in
