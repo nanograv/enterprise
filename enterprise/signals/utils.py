@@ -8,9 +8,9 @@ from __future__ import (absolute_import, division,
 
 import numpy as np
 import scipy.linalg as sl
+import scipy.special as ss
 from scipy.interpolate import interp1d
 from scipy.integrate import odeint
-from scipy import special as ss
 from pkg_resources import resource_filename, Requirement
 
 import enterprise

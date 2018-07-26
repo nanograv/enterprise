@@ -225,8 +225,6 @@ def Normal(mu=0, sigma=1, size=None):
     :return:      ``Normal`` parameter class
     """
 
-    """Class factory for Normal parameters."""
-
     class Normal(Parameter):
         _size = size
         _prior = Function(NormalPrior, mu=mu, sigma=sigma)
@@ -302,6 +300,9 @@ class ConstantParameter(object):
 
 
 def Constant(val=None):
+    """Class factory for Constant parameters.  Leave ``val=None`` to set
+    value later, for example with ``signal_base.PTA.set_default_params()``.
+    """
     class Constant(ConstantParameter):
         value = val
 

@@ -18,10 +18,10 @@ from enterprise.signals import parameter
 from enterprise.signals import gp_signals
 from enterprise.signals import white_signals
 from enterprise.signals import signal_base
-from enterprise.signals.parameter import function as enterprise_function
+from enterprise.signals.parameter import function
 
 
-@enterprise_function
+@function
 def free_spectrum(f, log10_rho=None):
     return np.repeat(10**log10_rho,2)
 
