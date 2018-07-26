@@ -18,10 +18,10 @@ import numpy as np
 
 from enterprise.pulsar import Pulsar
 
-import enterprise.signals.parameter as parameter
-import enterprise.signals.signal_base as signal_base
-import enterprise.signals.white_signals as white_signals
-import enterprise.signals.gp_signals as gp_signals
+from enterprise.signals import parameter
+from enterprise.signals import signal_base
+from enterprise.signals import white_signals
+from enterprise.signals import gp_signals
 from enterprise.signals import utils
 
 from .enterprise_test_data import datadir

@@ -18,8 +18,8 @@ from enterprise.pulsar import Pulsar
 from enterprise.signals import parameter
 from enterprise.signals import selections
 from enterprise.signals.selections import Selection
-import enterprise.signals.white_signals as ws
-import enterprise.signals.gp_signals as gp
+from enterprise.signals import white_signals
+from enterprise.signals import gp_signals
 from enterprise.signals import utils
 
 
@@ -71,7 +71,7 @@ class TestWhiteSignals(unittest.TestCase):
         """Test that efac signal returns correct covariance."""
         # set up signal and parameters
         efac = parameter.Uniform(0.1, 5)
-        ef = ws.MeasurementNoise(efac=efac)
+        ef = white_signals.MeasurementNoise(efac=efac)
         efm = ef(self.psr)
 
         # parameters
@@ -90,7 +90,7 @@ class TestWhiteSignals(unittest.TestCase):
         # set up signal and parameters
         efac = parameter.Uniform(0.1, 5)
         selection = Selection(selections.by_backend)
-        ef = ws.MeasurementNoise(efac=efac, selection=selection)
+        ef = white_signals.MeasurementNoise(efac=efac, selection=selection)
         efm = ef(self.psr)
 
         # parameters
@@ -115,7 +115,7 @@ class TestWhiteSignals(unittest.TestCase):
         """Test that equad signal returns correct covariance."""
         # set up signal and parameters
         equad = parameter.Uniform(-10, -5)
-        eq = ws.EquadNoise(log10_equad=equad)
+        eq = white_signals.EquadNoise(log10_equad=equad)
         eqm = eq(self.psr)
 
         # parameters
@@ -134,7 +134,7 @@ class TestWhiteSignals(unittest.TestCase):
         # set up signal and parameters
         equad = parameter.Uniform(-10, -5)
         selection = Selection(selections.by_backend)
-        eq = ws.EquadNoise(log10_equad=equad, selection=selection)
+        eq = white_signals.EquadNoise(log10_equad=equad, selection=selection)
         eqm = eq(self.psr)
 
         # parameters
@@ -161,9 +161,9 @@ class TestWhiteSignals(unittest.TestCase):
         """
         # set up signals
         efac = parameter.Uniform(0.1, 5)
-        ef = ws.MeasurementNoise(efac=efac)
+        ef = white_signals.MeasurementNoise(efac=efac)
         equad = parameter.Uniform(-10, -5)
-        eq = ws.EquadNoise(log10_equad=equad)
+        eq = white_signals.EquadNoise(log10_equad=equad)
         s = ef + eq
         m = s(self.psr)
 
@@ -189,8 +189,8 @@ class TestWhiteSignals(unittest.TestCase):
 
         efac = parameter.Uniform(0.1, 5)
         equad = parameter.Uniform(-10, -5)
-        ef = ws.MeasurementNoise(efac=efac, selection=selection)
-        eq = ws.EquadNoise(log10_equad=equad, selection=selection)
+        ef = white_signals.MeasurementNoise(efac=efac, selection=selection)
+        eq = white_signals.EquadNoise(log10_equad=equad, selection=selection)
         s = ef + eq
         m = s(self.psr)
 
@@ -255,10 +255,11 @@ class TestWhiteSignals(unittest.TestCase):
 
         efac = parameter.Uniform(0.1, 5)
         ecorr = parameter.Uniform(-10, -5)
-        ef = ws.MeasurementNoise(efac=efac, selection=selection)
-        ec = ws.EcorrKernelNoise(log10_ecorr=ecorr, selection=selection,
-                                 method=method)
-        tm = gp.TimingModel()
+        ef = white_signals.MeasurementNoise(efac=efac, selection=selection)
+        ec = white_signals.EcorrKernelNoise(log10_ecorr=ecorr,
+                                            selection=selection,
+                                            method=method)
+        tm = gp_signals.TimingModel()
         s = ef + ec + tm
         m = s(self.psr)
 
@@ -338,10 +339,11 @@ class TestWhiteSignals(unittest.TestCase):
 
         efac = parameter.Uniform(0.1, 5)
         ecorr = parameter.Uniform(-10, -5)
-        ef = ws.MeasurementNoise(efac=efac)
-        ec = ws.EcorrKernelNoise(log10_ecorr=ecorr, selection=selection,
-                                 method=method)
-        tm = gp.TimingModel()
+        ef = white_signals.MeasurementNoise(efac=efac)
+        ec = white_signals.EcorrKernelNoise(log10_ecorr=ecorr,
+                                            selection=selection,
+                                            method=method)
+        tm = gp_signals.TimingModel()
         s = ef + ec + tm
         m = s(self.ipsr)
 
