@@ -19,11 +19,11 @@ from enterprise.signals import parameter
 from enterprise.signals import selections
 from enterprise.signals.selections import Selection
 from enterprise.signals import deterministic_signals
-from enterprise.signals.parameter import function as enterprise_function
+from enterprise.signals.parameter import function
 from enterprise.signals import utils
 
 
-@enterprise_function
+@function
 def sine_wave(toas, log10_A=-7, log10_f=-8, phase=0.0):
     return 10**log10_A * np.sin(2*np.pi*toas*10**log10_f + phase)
 

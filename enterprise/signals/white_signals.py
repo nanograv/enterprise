@@ -14,7 +14,7 @@ import enterprise.signals.signal_base as base
 from enterprise.signals import utils
 from enterprise.signals import selections
 from enterprise.signals.selections import Selection
-from enterprise.signals.parameter import function as enterprise_function
+from enterprise.signals.parameter import function
 
 
 def WhiteNoise(varianceFunction,
@@ -60,7 +60,7 @@ def WhiteNoise(varianceFunction,
     return WhiteNoise
 
 
-@enterprise_function
+@function
 def efac_ndiag(toaerrs, efac=1.0):
     return efac**2 * toaerrs**2
 
@@ -80,7 +80,7 @@ def MeasurementNoise(efac=parameter.Uniform(0.5,1.5),
     return MeasurementNoise
 
 
-@enterprise_function
+@function
 def equad_ndiag(toas, log10_equad=-8):
     return np.ones_like(toas) * 10**(2*log10_equad)
 
