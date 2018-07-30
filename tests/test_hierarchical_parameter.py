@@ -10,7 +10,6 @@ Tests for hierarchical parameter functionality
 
 from __future__ import division
 
-import math
 import unittest
 
 import numpy as np
@@ -111,7 +110,7 @@ class TestHierarchicalParameter(unittest.TestCase):
                            np.array([1e-16,4e-16,9e-16]))
 
         def log10(A=10**-16):
-            return math.log10(A)
+            return np.log10(A)
 
         log10f = parameter.Function(log10,
                                     A=parameter.Uniform(10**-17,10**-14))
@@ -133,7 +132,7 @@ class TestHierarchicalParameter(unittest.TestCase):
             return (10**log10_A) * f**2
 
         def log10(A=10**-16):
-            return math.log10(A)
+            return np.log10(A)
 
         fquad = white_signals.EquadNoise(log10_equad=parameter.Function(
             log10, A=parameter.Uniform(10**-17,10**-14)))
