@@ -201,7 +201,11 @@ class MarginalizedLogLikelihood(object):
 
             loglike += 0.5*(np.dot(TNr, expval) - logdet_sigma - logdet_phi)
         else:
-            for TNr, TNT, (phiinv, logdet_phi) in zip(TNrs, TNTs, phiinvs):
+            for TNr, TNT, pl in zip(TNrs, TNTs, phiinvs):
+                if TNr is None:
+                    continue
+
+                phiinv, logdet_phi = pl
                 Sigma = TNT + (np.diag(phiinv) if phiinv.ndim == 1 else phiinv)
 
                 try:
@@ -772,10 +776,13 @@ def SignalCollection(metasignals):
                     idx[signal] = list(np.arange(cc, cc+nf))
                     cc += nf
 
-            ncol = len(np.unique(sum(idx.values(), [])))
-            nrow = len(Fmatlist[0])
-            return ({key: np.array(idx[key]) for key in idx.keys()},
-                    np.zeros((nrow, ncol)))
+            if not idx:
+                return {}, None
+            else:
+                ncol = len(np.unique(sum(idx.values(), [])))
+                nrow = len(Fmatlist[0])
+                return ({key: np.array(idx[key]) for key in idx.keys()},
+                        np.zeros((nrow, ncol)))
 
         # goofy way to cache _idx
         def __getattr__(self, par):
@@ -792,7 +799,8 @@ def SignalCollection(metasignals):
             ndiags = [signal.get_ndiag(params) for signal in self._signals]
             return sum(ndiag for ndiag in ndiags if ndiag is not None)
 
-        @cache_call('delay_params')
+        # MV disabling this cache that does not seem to work at the moment
+        # @cache_call('delay_params')
         def get_logprior(self, params):
             return sum(signal.get_logprior(params) for signal in self._signals)
 
@@ -817,6 +825,9 @@ def SignalCollection(metasignals):
 
         # returns a KernelMatrix object
         def get_phi(self, params):
+            if self._Fmat is None:
+                return None
+
             phi = KernelMatrix(self._Fmat.shape[1])
 
             for signal in self._signals:
@@ -827,15 +838,19 @@ def SignalCollection(metasignals):
 
         @cache_call(['basis_params', 'white_params', 'delay_params'])
         def get_TNr(self, params):
-            Nvec = self.get_ndiag(params)
             T = self.get_basis(params)
+            if T is None:
+                return None
+            Nvec = self.get_ndiag(params)
             res = self.get_detres(params)
             return Nvec.solve(res, left_array=T)
 
         @cache_call(['basis_params', 'white_params'])
         def get_TNT(self, params):
-            Nvec = self.get_ndiag(params)
             T = self.get_basis(params)
+            if T is None:
+                return None
+            Nvec = self.get_ndiag(params)
             return Nvec.solve(T, left_array=T)
 
         @cache_call(['white_params', 'delay_params'])

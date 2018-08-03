@@ -171,7 +171,7 @@ def FourierBasisGP(spectrum, coefficients=None, components=20,
     class FourierBasisGP(BaseClass):
         signal_type = 'basis'
         signal_name = 'red noise'
-        signal_id = 'red_noise_' + name if name else 'red_noise'
+        signal_id = name if name else 'red_noise'
 
     return FourierBasisGP
 
