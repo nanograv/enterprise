@@ -9,19 +9,19 @@ from __future__ import (absolute_import, division,
 
 import numpy as np
 
-import enterprise
-import enterprise.signals.signal_base as base
-from enterprise.signals import selections
+from enterprise import pulsar
+from enterprise.signals import signal_base
 from enterprise.signals import parameter
-from enterprise.signals.selections import Selection
+from enterprise.signals import selections
 from enterprise.signals import utils
+from enterprise.signals.selections import Selection
 
 
 def Deterministic(waveform, selection=Selection(selections.no_selection),
                   name=''):
     """Class factory for generic deterministic signals."""
 
-    class Deterministic(base.Signal):
+    class Deterministic(signal_base.Signal):
         signal_type = 'deterministic'
         signal_name = name
         signal_id = name
@@ -51,7 +51,7 @@ def Deterministic(waveform, selection=Selection(selections.no_selection),
             """Get any varying ndiag parameters."""
             return [pp.name for pp in self.params]
 
-        @base.cache_call('delay_params')
+        @signal_base.cache_call('delay_params')
         def get_delay(self, params):
             """Return signal delay."""
             for key, mask in zip(self._keys, self._masks):
@@ -170,7 +170,7 @@ def PhysicalEphemerisSignal(
         def __init__(self, psr):
 
             # not available for PINT yet
-            if isinstance(psr, enterprise.pulsar.PintPulsar):
+            if isinstance(psr, pulsar.PintPulsar):
                 msg = 'Physical Ephemeris model is not compatible with PINT '
                 msg += 'at this time.'
                 raise NotImplementedError(msg)
@@ -201,7 +201,7 @@ def PhysicalEphemerisSignal(
             # initialize delay
             self._delay = np.zeros(len(psr.toas))
 
-        @base.cache_call('delay_params')
+        @signal_base.cache_call('delay_params')
         def get_delay(self, params):
             if use_epoch_toas:
                 delay = self._wf[''](toas=self._avetoas,

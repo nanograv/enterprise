@@ -12,11 +12,13 @@ import itertools
 
 import numpy as np
 
-from enterprise.signals import utils
-from enterprise.signals import parameter
 from enterprise.signals import signal_base
+from enterprise.signals import parameter
 from enterprise.signals import selections
+from enterprise.signals import utils
+from enterprise.signals.parameter import function
 from enterprise.signals.selections import Selection
+from enterprise.signals.utils import KernelMatrix
 
 from enterprise.signals.parameter import function
 from enterprise.signals.parameter import Function
