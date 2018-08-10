@@ -18,6 +18,46 @@ import enterprise.constants as const
 from enterprise.signals.parameter import function
 
 
+def get_coefficients(pta,params):
+    # the [0] to follow select the first pulsar in the PTA...
+    
+    wave = pta.get_delay(params=params)[0]
+    
+    Nvec = pta.get_ndiag(params)[0]
+    phiinv = pta.get_phiinv(params, logdet=False)[0]
+    T = pta.get_basis(params)[0]
+
+    d = pta.get_TNr(params)[0]
+    TNT = pta.get_TNT(params)[0]
+    
+    Sigma = TNT + (np.diag(phiinv) if phiinv.ndim == 1 else phiinv)
+    
+    try:
+        u, s, _ = sl.svd(Sigma)
+        mn = np.dot(u, np.dot(u.T, d)/s)
+        Li = u * np.sqrt(1/s)
+    except np.linalg.LinAlgError:
+        Q, R = sl.qr(Sigma)
+        Sigi = sl.solve(R, Q.T)
+        mn = np.dot(Sigi, d)
+        u, s, _ = sl.svd(Sigi)
+        Li = u * np.sqrt(1/s)
+
+    b = mn + np.dot(Li, np.random.randn(Li.shape[0]))
+    
+    sc = pta._signalcollections[0]
+    pardict, ntot = {}, 0
+    for sig in sc._signals:
+        if sig.signal_type == 'basis':
+            nb = sig.get_basis(params=params).shape[1]
+            pardict[sig.name + '_coefficients'] = b[ntot:nb+ntot]
+            ntot += nb
+    
+    pardict.update(params)
+    
+    return pardict
+
+
 class KernelMatrix(np.ndarray):
     def __new__(cls, init):
         if isinstance(init, int):
