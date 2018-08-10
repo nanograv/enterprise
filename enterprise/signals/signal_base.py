@@ -163,9 +163,18 @@ class CommonSignal(Signal):
         return None
 
 
-class MarginalizedLogLikelihood(object):
-    def __init__(self, pta):
+def MarginalizedLogLikelihood(pta):
+    return LogLikelihood(pta)
+
+
+def HierarchicalLogLikelihood(pta):
+    return LogLikelihood(pta, detprior=True)
+
+
+class LogLikelihood(object):
+    def __init__(self, pta, detprior=False):
         self.pta = pta
+        self.detprior = detprior
 
     def _make_sigma(self, TNTs, phiinv):
         return sps.block_diag(TNTs,'csc') + sps.csc_matrix(phiinv)
@@ -175,7 +184,7 @@ class MarginalizedLogLikelihood(object):
         params = xs if isinstance(xs,dict) else self.pta.map_params(xs)
 
         # priors associated with delays evaluated as part of the likelihood
-        loglike = self.pta.get_logprior(params)
+        loglike = np.sum(self.pta.get_logprior(params)) if self.detprior else 0
 
         # phiinvs will be a list or may be a big matrix if spatially
         # correlated signals
@@ -712,8 +721,11 @@ def SignalCollection(metasignals):
                 if signal.signal_type == 'white noise':
                     self.white_params.extend(signal.ndiag_params)
                 elif signal.signal_type in ['basis', 'common basis']:
+                    # to support GP coefficients, and yet do the right thing
+                    # for common GPs, which do not have coefficients yet
+                    self.delay_params.extend(getattr(signal,'delay_params',[]))
                     self.basis_params.extend(signal.basis_params)
-                elif signal.signal_type == 'deterministic':
+                elif signal.signal_type in ['deterministic']:
                     self.delay_params.extend(signal.delay_params)
                 else:
                     msg = '{} signal type not recognized! Caching '.format(
@@ -799,8 +811,7 @@ def SignalCollection(metasignals):
             ndiags = [signal.get_ndiag(params) for signal in self._signals]
             return sum(ndiag for ndiag in ndiags if ndiag is not None)
 
-        # MV disabling this cache that does not seem to work at the moment
-        # @cache_call('delay_params')
+        @cache_call('delay_params')
         def get_logprior(self, params):
             return sum(signal.get_logprior(params) for signal in self._signals)
 

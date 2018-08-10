@@ -95,7 +95,7 @@ def BasisGP(priorFunction, basisFunction, coefficients=None,
         # definitions) if the user wants it to model GP coefficients
         # (e.g., for a hierarchical likelihood) or if they do not
         if coefficients:
-            # MV: should I cache this?
+            @signal_base.cache_call('delay_params')
             def get_logprior(self, params):
                 self._construct_basis(params)
 
@@ -108,12 +108,18 @@ def BasisGP(priorFunction, basisFunction, coefficients=None,
                     c = params[par.name] if par.name in params else par.value
 
                     ret = (ret - 0.5 * np.sum(c * c / phi)
-                               - 0.5 * np.sum(np.log(phi))
-                               - 0.5 * len(phi) * math.log(2*math.pi))
+                               - 0.5 * np.sum(np.log(phi)))
+                               # - 0.5 * len(phi) * math.log(2*math.pi))
+                               # not included in signal_base likelihood
 
                 return ret
 
-            # MV: should I cache this?
+            # MV: could assign this to a data member at initialization
+            @property
+            def delay_params(self):
+                return [pp.name for pp in self.params if '_coefficients' in pp.name]
+
+            @signal_base.cache_call(['basis_params','delay_params'])
             def get_delay(self, params={}):
                 self._construct_basis(params)
 
@@ -135,6 +141,10 @@ def BasisGP(priorFunction, basisFunction, coefficients=None,
         else:
             def get_logprior(self, params):
                 return 0
+
+            @property
+            def delay_params(self):
+                return []
 
             def get_delay(self, params={}):
                 return 0            
@@ -161,7 +171,7 @@ def BasisGP(priorFunction, basisFunction, coefficients=None,
 
 def FourierBasisGP(spectrum, coefficients=None, components=20,
                    selection=Selection(selections.no_selection),
-                   Tspan=None, name=''):
+                   Tspan=None, name='red_noise'):
     """Convenience function to return a BasisGP class with a
     fourier basis."""
 
@@ -171,7 +181,7 @@ def FourierBasisGP(spectrum, coefficients=None, components=20,
     class FourierBasisGP(BaseClass):
         signal_type = 'basis'
         signal_name = 'red noise'
-        signal_id = name if name else 'red_noise'
+        signal_id = name
 
     return FourierBasisGP
 
@@ -208,7 +218,7 @@ def ecorr_basis_prior(weights, log10_ecorr=-8):
 def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
                     coefficients=None,
                     selection=Selection(selections.no_selection),
-                    name=''):
+                    name='basis_ecorr'):
     """Convenience function to return a BasisGP class with a
     quantized ECORR basis."""
 
@@ -219,7 +229,7 @@ def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
     class EcorrBasisModel(BaseClass):
         signal_type = 'basis'
         signal_name = 'basis ecorr'
-        signal_id = 'basis_ecorr_' + name if name else 'basis_ecorr'
+        signal_id = name
 
     return EcorrBasisModel
 
