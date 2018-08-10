@@ -941,7 +941,10 @@ def anis_orf(pos1, pos2, params, **kwargs):
 @function
 def normed_tm_basis(Mmat):
     norm = np.sqrt(np.sum(Mmat**2, axis=0))
-    return Mmat / norm, np.ones_like(Mmat.shape[1])
+    nmat = Mmat / norm
+    nmat[:,norm == 0] = 0
+
+    return nmat, np.ones_like(Mmat.shape[1])
 
 
 @function
