@@ -186,10 +186,16 @@ def FourierBasisGP(spectrum, coefficients=None, components=20,
     return FourierBasisGP
 
 
-def TimingModel(coefficients=None, name='linear_timing_model', use_svd=False):
+def TimingModel(coefficients=None, name='linear_timing_model', use_svd=False, unnormed=False):
     """Class factory for marginalized linear timing model signals."""
 
-    basis = utils.svd_tm_basis() if use_svd else utils.normed_tm_basis()
+    if use_svd:
+        basis = utils.svd_tm_basis()
+    elif unnormed:
+        basis = utils.unnormed_tm_basis()            
+    else:
+        basis = utils.normed_tm_basis()
+
     prior = utils.tm_prior()
     BaseClass = BasisGP(prior, basis, coefficients, name=name)
 
