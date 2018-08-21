@@ -128,10 +128,10 @@ class Signal(object):
         """
         return None
 
-    def get_logprior(self, params):
-        """Returns the prior associated with a deterministic signal
-        (e.g., a GP in the coefficient representation)."""
-        return 0
+    # def get_logprior(self, params):
+    #     """Returns the prior associated with a deterministic signal
+    #     (e.g., a GP in the coefficient representation)."""
+    #     return 0
 
     def get_delay(self, params):
         """Returns the waveform of a deterministic signal."""
@@ -168,13 +168,12 @@ def MarginalizedLogLikelihood(pta):
 
 
 def HierarchicalLogLikelihood(pta):
-    return LogLikelihood(pta, detprior=True)
+    return LogLikelihood(pta)
 
 
 class LogLikelihood(object):
-    def __init__(self, pta, detprior=False):
+    def __init__(self, pta):
         self.pta = pta
-        self.detprior = detprior
 
     def _make_sigma(self, TNTs, phiinv):
         return sps.block_diag(TNTs,'csc') + sps.csc_matrix(phiinv)
@@ -183,8 +182,9 @@ class LogLikelihood(object):
         # map parameter vector if needed
         params = xs if isinstance(xs,dict) else self.pta.map_params(xs)
 
+        loglike = 0
         # priors associated with delays evaluated as part of the likelihood
-        loglike = np.sum(self.pta.get_logprior(params)) if self.detprior else 0
+        # loglike = np.sum(self.pta.get_logprior(params)) if self.detprior else 0
 
         # phiinvs will be a list or may be a big matrix if spatially
         # correlated signals
@@ -268,6 +268,10 @@ class PTA(object):
                 ret.append(p.name)
         return ret
 
+    @property
+    def pulsarmodels(self):
+        return self._signalcollections 
+
     def get_TNr(self, params):
         return [signalcollection.get_TNr(params) for signalcollection
                 in self._signalcollections]
@@ -288,9 +292,9 @@ class PTA(object):
         return [signalcollection.get_ndiag(params)
                 for signalcollection in self._signalcollections]
 
-    def get_logprior(self, params):
-        return [signalcollection.get_logprior(params)
-                for signalcollection in self._signalcollections]
+    # def get_logprior(self, params):
+    #     return [signalcollection.get_logprior(params)
+    #             for signalcollection in self._signalcollections]
 
     def get_delay(self, params={}):
         return [signalcollection.get_delay(params)
@@ -750,6 +754,10 @@ def SignalCollection(metasignals):
                     ret.append(p.name)
             return ret
 
+        @property
+        def signals(self):
+            return self._signals
+
         def set_default_params(self, params):
             for signal in self._signals:
                 signal.set_default_params(params)
@@ -811,9 +819,9 @@ def SignalCollection(metasignals):
             ndiags = [signal.get_ndiag(params) for signal in self._signals]
             return sum(ndiag for ndiag in ndiags if ndiag is not None)
 
-        @cache_call('delay_params')
-        def get_logprior(self, params):
-            return sum(signal.get_logprior(params) for signal in self._signals)
+        # @cache_call('delay_params')
+        # def get_logprior(self, params):
+        #     return sum(signal.get_logprior(params) for signal in self._signals)
 
         @cache_call('delay_params')
         def get_delay(self, params):

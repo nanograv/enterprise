@@ -944,8 +944,10 @@ def unnormed_tm_basis(Mmat):
 
 
 @function
-def normed_tm_basis(Mmat):
-    norm = np.sqrt(np.sum(Mmat**2, axis=0))
+def normed_tm_basis(Mmat, norm=None):
+    if norm is None:
+        norm = np.sqrt(np.sum(Mmat**2, axis=0))
+
     nmat = Mmat / norm
     nmat[:,norm == 0] = 0
 

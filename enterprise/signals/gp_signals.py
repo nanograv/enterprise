@@ -9,6 +9,7 @@ from __future__ import (absolute_import, division,
 
 import math
 import itertools
+import functools
 
 import numpy as np
 
@@ -24,7 +25,7 @@ from enterprise.signals.parameter import function
 from enterprise.signals.parameter import Function
 from enterprise.signals.utils import KernelMatrix
 
-def BasisGP(priorFunction, basisFunction, coefficients=None,
+def BasisGP(priorFunction, basisFunction, coefficients=False,
             selection=Selection(selections.no_selection),
             name=''):
     """Class factory for generic GPs with a basis matrix."""
@@ -58,11 +59,33 @@ def BasisGP(priorFunction, basisFunction, coefficients=None,
                                            self._bases[key]._params.values()):
                     self._params[par.name] = par
 
-                if coefficients:
-                    cpar = coefficients(pname + '_coefficients')
+            if coefficients:
+                # we can only create GPCoefficients parameters if the basis
+                # can be constructed with default arguments (and does not change size)
+                self._construct_basis()
+
+                for key in self._keys:
+                    pname = '_'.join([n for n in [psr.name, name, key] if n])
+
+                    priorargs = {par.name: self._params[par.name]
+                                 for par in itertools.chain(self._prior[key]._params.values(),
+                                                            self._bases[key]._params.values())}
+                    
+                    logprior = parameter.Function(functools.partial(self._get_coefficient_logprior, key),
+                                                  **priorargs)
+                    
+                    size = self._slices[key].stop - self._slices[key].start
+
+                    cpar = parameter.GPCoefficients(logprior=logprior, size=size)(pname + '_coefficients')
 
                     self._coefficients[key] = cpar
                     self._params[cpar.name] = cpar
+
+            #   if coefficients:
+            #       cpar = coefficients(pname + '_coefficients')
+            #
+            #       self._coefficients[key] = cpar
+            #       self._params[cpar.name] = cpar
 
         @property
         def basis_params(self):
@@ -95,24 +118,32 @@ def BasisGP(priorFunction, basisFunction, coefficients=None,
         # definitions) if the user wants it to model GP coefficients
         # (e.g., for a hierarchical likelihood) or if they do not
         if coefficients:
-            @signal_base.cache_call('delay_params')
-            def get_logprior(self, params):
+            def _get_coefficient_logprior(self, key, c, **params):
                 self._construct_basis(params)
 
-                ret = 0
-                for key, slc in self._slices.items():
-                    phi = self._prior[key](self._labels[key], params=params)
+                phi = self._prior[key](self._labels[key], params=params)
+                return -0.5 * np.sum(c * c / phi) - 0.5 * np.sum(np.log(phi))
 
-                    par = self._coefficients[key]
-                    # MV: should move this into Parameter and Constant
-                    c = params[par.name] if par.name in params else par.value
-
-                    ret = (ret - 0.5 * np.sum(c * c / phi)
-                               - 0.5 * np.sum(np.log(phi)))
-                               # - 0.5 * len(phi) * math.log(2*math.pi))
-                               # not included in signal_base likelihood
-
-                return ret
+            # the GP coefficient prior is now a standard parameter prior
+            #
+            # @signal_base.cache_call('delay_params')
+            # def get_logprior(self, params):
+            #     self._construct_basis(params)
+            # 
+            #     ret = 0
+            #     for key, slc in self._slices.items():
+            #         phi = self._prior[key](self._labels[key], params=params)
+            # 
+            #         par = self._coefficients[key]
+            #         # MV: should move this into Parameter and Constant
+            #         c = params[par.name] if par.name in params else par.value
+            # 
+            #         ret = (ret - 0.5 * np.sum(c * c / phi)
+            #                    - 0.5 * np.sum(np.log(phi)))
+            #                    # - 0.5 * len(phi) * math.log(2*math.pi))
+            #                    # not included in signal_base likelihood
+            # 
+            #     return ret
 
             # MV: could assign this to a data member at initialization
             @property
@@ -139,8 +170,8 @@ def BasisGP(priorFunction, basisFunction, coefficients=None,
             def get_phiinv(self, params):
                 return None
         else:
-            def get_logprior(self, params):
-                return 0
+            # def get_logprior(self, params):
+            #     return 0
 
             @property
             def delay_params(self):
@@ -169,7 +200,7 @@ def BasisGP(priorFunction, basisFunction, coefficients=None,
     return BasisGP
 
 
-def FourierBasisGP(spectrum, coefficients=None, components=20,
+def FourierBasisGP(spectrum, coefficients=False, components=20,
                    selection=Selection(selections.no_selection),
                    Tspan=None, name='red_noise'):
     """Convenience function to return a BasisGP class with a
@@ -186,15 +217,19 @@ def FourierBasisGP(spectrum, coefficients=None, components=20,
     return FourierBasisGP
 
 
-def TimingModel(coefficients=None, name='linear_timing_model', use_svd=False, unnormed=False):
+def TimingModel(coefficients=False, name='linear_timing_model', use_svd=False, normed=True):
     """Class factory for marginalized linear timing model signals."""
 
-    if use_svd:
-        basis = utils.svd_tm_basis()
-    elif unnormed:
-        basis = utils.unnormed_tm_basis()            
-    else:
+    if normed is True:
         basis = utils.normed_tm_basis()
+    elif isinstance(normed,np.ndarray):
+        basis = utils.normed_tm_basis(norm=normed)
+    elif use_svd is True:
+        if normed is not True:
+            raise ValueError("use_svd == True is incompatible with normed != True")
+        basis = utils.svd_tm_basis()
+    else:
+        basis = utils.unnormed_tm_basis()
 
     prior = utils.tm_prior()
     BaseClass = BasisGP(prior, basis, coefficients, name=name)
@@ -205,10 +240,13 @@ def TimingModel(coefficients=None, name='linear_timing_model', use_svd=False, un
         signal_id = name + '_svd' if use_svd else name
 
         if coefficients:
-            def get_logprior(self, params):
+            def _get_coefficient_logprior(self, key, c, **params):
                 # MV: probably better to avoid this altogether
                 #     than to use 1e40 as in get_phi
                 return 0
+
+            # def get_logprior(self, params):
+            #     return 0
 
     return TimingModel
 
@@ -222,7 +260,7 @@ def ecorr_basis_prior(weights, log10_ecorr=-8):
 
 
 def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
-                    coefficients=None,
+                    coefficients=False,
                     selection=Selection(selections.no_selection),
                     name='basis_ecorr'):
     """Convenience function to return a BasisGP class with a
