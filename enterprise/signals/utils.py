@@ -49,7 +49,7 @@ def create_stabletimingdesignmatrix(designmat, fastDesign=True):
 @signal_base.function
 def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
                                   logf=False, fmin=None, fmax=None,
-                                  pshift=False):
+                                  pshift=False, modes=None):
     """
     Construct fourier design matrix from eq 11 of Lentati et al, 2013
     :param toas: vector of time series in seconds
@@ -60,17 +60,18 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
     :param fmin: lower sampling frequency
     :param fmax: upper sampling frequency
     :param pshift: option to add random phase shift
+    :param modes: option to provide explicit list or array of sampling frequencies
     :return: F: fourier design matrix
     :return: f: Sampling frequencies
     """
 
-    N = len(toas)
-    F = np.zeros((N, 2 * nmodes))
-
     T = Tspan if Tspan is not None else toas.max() - toas.min()
 
     # define sampling frequencies
-    if fmin is None and fmax is None and not logf:
+    if modes is not None:
+        nmodes = len(modes)
+        f = modes
+    elif fmin is None and fmax is None and not logf:
         # make sure partially overlapping sets of modes
         # have identical frequencies
         f = 1.0 * np.arange(1, nmodes + 1) / T
@@ -94,6 +95,9 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
 
     Ffreqs = np.repeat(f, 2)
 
+    N = len(toas)
+    F = np.zeros((N, 2 * nmodes))
+
     # The sine/cosine modes
     F[:,::2] = np.sin(2*np.pi*toas[:,None]*f[None,:] +
                       ranphase[None,:])
@@ -105,7 +109,8 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
 
 @signal_base.function
 def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
-                                 logf=False, fmin=None, fmax=None):
+                                 pshift=False, logf=False, fmin=None,
+                                 fmax=None, modes=None):
 
     """
     Construct DM-variation fourier design matrix.
@@ -126,7 +131,7 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
     # get base fourier design matrix and frequencies
     F, Ffreqs = createfourierdesignmatrix_red(
         toas, nmodes=nmodes, Tspan=Tspan, logf=logf,
-        fmin=fmin, fmax=fmax)
+        fmin=fmin, fmax=fmax, pshift=pshift, modes=modes)
 
     # compute the DM-variation vectors
     # TODO: should we use a different normalization
