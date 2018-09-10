@@ -248,24 +248,21 @@ class TestGPSignals(unittest.TestCase):
     def test_fourier_red_user_freq_array(self):
         """Test that red noise signal returns correct values with user defined
         frequency array."""
-        #Calculate time span for user defined frequencies.
-        Tspan = self.psr.toas.max() - self.psr.toas.min()
-        freqs = np.linspace(1/Tspan, 30/Tspan, 30)
-
-        # set up signal parameter
-        pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
-                            gamma=parameter.Uniform(1,7))
-        rn = gs.FourierBasisGP(spectrum=pl, modes=freqs)
-        rnm = rn(self.psr)
-
-        # parameters
+        # set parameters
         log10_A, gamma = -14.5, 4.33
         params = {'B1855+09_log10_A': log10_A,
                   'B1855+09_gamma': gamma}
 
-        # basis matrix test
         F, f2 = utils.createfourierdesignmatrix_red(
             self.psr.toas, nmodes=30)
+
+        # set up signal model. use list of frequencies to make basis
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
+                            gamma=parameter.Uniform(1,7))
+        rn = gs.FourierBasisGP(spectrum=pl, modes=f2[::2])
+        rnm = rn(self.psr)
+
+        # basis matrix test
         msg = 'F matrix incorrect for GP Fourier signal.'
         assert np.allclose(F, rnm.get_basis(params)), msg
 
