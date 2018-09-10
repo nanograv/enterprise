@@ -60,7 +60,8 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
     :param fmin: lower sampling frequency
     :param fmax: upper sampling frequency
     :param pshift: option to add random phase shift
-    :param modes: option to provide explicit list or array of sampling frequencies
+    :param modes: option to provide explicit list or array of
+                  sampling frequencies
     :return: F: fourier design matrix
     :return: f: Sampling frequencies
     """
