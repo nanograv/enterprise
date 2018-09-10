@@ -94,11 +94,12 @@ def BasisGP(priorFunction, basisFunction,
 
 def FourierBasisGP(spectrum, components=20,
                    selection=Selection(selections.no_selection),
-                   Tspan=None, name=''):
+                   Tspan=None, modes=None, name=''):
     """Convenience function to return a BasisGP class with a
     fourier basis."""
 
-    basis = utils.createfourierdesignmatrix_red(nmodes=components, Tspan=Tspan)
+    basis = utils.createfourierdesignmatrix_red(nmodes=components, 
+                                                Tspan=Tspan, modes=modes)
     BaseClass = BasisGP(spectrum, basis, selection=selection, name=name)
 
     class FourierBasisGP(BaseClass):
