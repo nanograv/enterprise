@@ -145,7 +145,7 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
 @signal_base.function
 def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
                                   t0=53000*86400, nmodes=30, Tspan=None,
-                                  logf=False, fmin=None, fmax=None):
+                                  logf=False, fmin=None, fmax=None, modes=None):
     """
     Construct fourier design matrix with gaussian envelope.
 
@@ -168,7 +168,7 @@ def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
     # get base fourier design matrix and frequencies
     F, Ffreqs = createfourierdesignmatrix_red(
         toas, nmodes=nmodes, Tspan=Tspan, logf=logf,
-        fmin=fmin, fmax=fmax)
+        fmin=fmin, fmax=fmax, modes=modes)
 
     # compute gaussian envelope
     A = 10**log10_Amp
@@ -179,7 +179,7 @@ def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
 
 def createfourierdesignmatrix_eph(t, nmodes, phi, theta, freq=False,
                                   Tspan=None, logf=False, fmin=None,
-                                  fmax=None):
+                                  fmax=None, modes=None):
 
     """
     Construct ephemeris fourier design matrix.
@@ -200,18 +200,16 @@ def createfourierdesignmatrix_eph(t, nmodes, phi, theta, freq=False,
     :return: f: Sampling frequencies (if freq=True)
     """
 
-    N = len(t)
-    Fx = np.zeros((N, 2*nmodes))
-    Fy = np.zeros((N, 2*nmodes))
-    Fz = np.zeros((N, 2*nmodes))
-
     if Tspan is not None:
         T = Tspan
     else:
         T = t.max() - t.min()
 
     # define sampling frequencies
-    if fmin is not None and fmax is not None:
+    if modes is not None:
+        nmodes = len(modes)
+        f = modes
+    elif fmin is not None and fmax is not None:
         f = np.linspace(fmin, fmax, nmodes)
     else:
         f = np.linspace(1 / T, nmodes / T, nmodes)
@@ -226,6 +224,11 @@ def createfourierdesignmatrix_eph(t, nmodes, phi, theta, freq=False,
     x = np.sin(theta)*np.cos(phi)
     y = np.sin(theta)*np.sin(phi)
     z = np.cos(theta)
+
+    N = len(t)
+    Fx = np.zeros((N, 2*nmodes))
+    Fy = np.zeros((N, 2*nmodes))
+    Fz = np.zeros((N, 2*nmodes))
 
     # The sine/cosine modes
     Fx[:,::2] = np.sin(2*np.pi*t[:,None]*f[None,:])
