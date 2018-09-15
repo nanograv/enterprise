@@ -145,7 +145,8 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
 @signal_base.function
 def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
                                   t0=53000*86400, nmodes=30, Tspan=None,
-                                  logf=False, fmin=None, fmax=None, modes=None):
+                                  logf=False, fmin=None, fmax=None,
+                                  modes=None):
     """
     Construct fourier design matrix with gaussian envelope.
 
