@@ -62,6 +62,7 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
     :param pshift: option to add random phase shift
     :param modes: option to provide explicit list or array of
                   sampling frequencies
+
     :return: F: fourier design matrix
     :return: f: Sampling frequencies
     """
@@ -124,6 +125,9 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
     :param logf: use log frequency spacing
     :param fmin: lower sampling frequency
     :param fmax: upper sampling frequency
+    :param pshift: option to add random phase shift
+    :param modes: option to provide explicit list or array of
+                  sampling frequencies
 
     :return: F: DM-variation fourier design matrix
     :return: f: Sampling frequencies
@@ -161,6 +165,8 @@ def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
     :param log10_Amp: log10 of the Amplitude [s]
     :param t0: mean of gaussian envelope [s]
     :param log10_Q: log10 of standard deviation of gaussian envelope [days]
+    :param modes: option to provide explicit list or array of
+                  sampling frequencies
 
     :return: F: fourier design matrix with gaussian envelope
     :return: f: Sampling frequencies
@@ -194,6 +200,8 @@ def createfourierdesignmatrix_eph(t, nmodes, phi, theta, freq=False,
     :param logf: use log frequency spacing
     :param fmin: lower sampling frequency
     :param fmax: upper sampling frequency
+    :param modes: option to provide explicit list or array of
+                  sampling frequencies
 
     :return: Fx: x-axis ephemeris fourier design matrix
     :return: Fy: y-axis ephemeris fourier design matrix
