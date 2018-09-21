@@ -18,7 +18,7 @@ import enterprise.constants as const
 from enterprise.signals.parameter import function
 
 
-def get_coefficients(pta,params):
+def get_coefficients(pta,params,n=None):
     # the [0] to follow select the first pulsar in the PTA...
     
     wave = pta.get_delay(params=params)[0]
@@ -43,19 +43,23 @@ def get_coefficients(pta,params):
         u, s, _ = sl.svd(Sigi)
         Li = u * np.sqrt(1/s)
 
-    b = mn + np.dot(Li, np.random.randn(Li.shape[0]))
-    
-    sc = pta._signalcollections[0]
-    pardict, ntot = {}, 0
-    for sig in sc._signals:
-        if sig.signal_type == 'basis':
-            nb = sig.get_basis(params=params).shape[1]
-            pardict[sig.name + '_coefficients'] = b[ntot:nb+ntot]
-            ntot += nb
-    
-    pardict.update(params)
-    
-    return pardict
+    ret = []
+    for i in range(1 if n is None else n):
+        b = mn + np.dot(Li, np.random.randn(Li.shape[0]))
+        
+        sc = pta._signalcollections[0]
+        pardict, ntot = {}, 0
+        for sig in sc._signals:
+            if sig.signal_type == 'basis':
+                nb = sig.get_basis(params=params).shape[1]
+                pardict[sig.name + '_coefficients'] = b[ntot:nb+ntot]
+                ntot += nb
+        
+        pardict.update(params)
+        ret.append(pardict)
+    ret = ret[0] if n is None else ret
+
+    return ret
 
 
 class KernelMatrix(np.ndarray):
