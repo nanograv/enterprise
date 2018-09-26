@@ -84,12 +84,6 @@ def BasisGP(priorFunction, basisFunction, coefficients=False,
                     self._coefficients[key] = cpar
                     self._params[cpar.name] = cpar
 
-            #   if coefficients:
-            #       cpar = coefficients(pname + '_coefficients')
-            #
-            #       self._coefficients[key] = cpar
-            #       self._params[cpar.name] = cpar
-
         @property
         def basis_params(self):
             """Get any varying basis parameters."""
@@ -156,9 +150,6 @@ def BasisGP(priorFunction, basisFunction, coefficients=False,
             def get_phiinv(self, params):
                 return None
         else:
-            # def get_logprior(self, params):
-            #     return 0
-
             @property
             def delay_params(self):
                 return []
@@ -234,9 +225,6 @@ def TimingModel(coefficients=False, name='linear_timing_model',
                 # MV: probably better to avoid this altogether
                 #     than to use 1e40 as in get_phi
                 return 0
-
-            # def get_logprior(self, params):
-            #     return 0
 
     return TimingModel
 

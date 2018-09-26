@@ -128,11 +128,6 @@ class Signal(object):
         """
         return None
 
-    # def get_logprior(self, params):
-    #     """Returns the prior associated with a deterministic signal
-    #     (e.g., a GP in the coefficient representation)."""
-    #     return 0
-
     def get_delay(self, params):
         """Returns the waveform of a deterministic signal."""
         return 0
@@ -175,8 +170,6 @@ class LogLikelihood(object):
         params = xs if isinstance(xs,dict) else self.pta.map_params(xs)
 
         loglike = 0
-        # priors associated with delays evaluated as part of the likelihood
-        # loglike=np.sum(self.pta.get_logprior(params)) if self.detprior else 0
 
         # phiinvs will be a list or may be a big matrix if spatially
         # correlated signals
@@ -283,10 +276,6 @@ class PTA(object):
     def get_ndiag(self, params={}):
         return [signalcollection.get_ndiag(params)
                 for signalcollection in self._signalcollections]
-
-    # def get_logprior(self, params):
-    #     return [signalcollection.get_logprior(params)
-    #             for signalcollection in self._signalcollections]
 
     def get_delay(self, params={}):
         return [signalcollection.get_delay(params)
@@ -810,10 +799,6 @@ def SignalCollection(metasignals):
         def get_ndiag(self, params):
             ndiags = [signal.get_ndiag(params) for signal in self._signals]
             return sum(ndiag for ndiag in ndiags if ndiag is not None)
-
-        # @cache_call('delay_params')
-        # def get_logprior(self, params):
-        #   return sum(signal.get_logprior(params) for signal in self._signals)
 
         @cache_call('delay_params')
         def get_delay(self, params):
