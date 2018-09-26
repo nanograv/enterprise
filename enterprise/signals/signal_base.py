@@ -184,7 +184,7 @@ class LogLikelihood(object):
 
         loglike = 0
         # priors associated with delays evaluated as part of the likelihood
-        # loglike = np.sum(self.pta.get_logprior(params)) if self.detprior else 0
+        # loglike=np.sum(self.pta.get_logprior(params)) if self.detprior else 0
 
         # phiinvs will be a list or may be a big matrix if spatially
         # correlated signals
@@ -270,7 +270,7 @@ class PTA(object):
 
     @property
     def pulsarmodels(self):
-        return self._signalcollections 
+        return self._signalcollections
 
     def get_TNr(self, params):
         return [signalcollection.get_TNr(params) for signalcollection
@@ -821,7 +821,7 @@ def SignalCollection(metasignals):
 
         # @cache_call('delay_params')
         # def get_logprior(self, params):
-        #     return sum(signal.get_logprior(params) for signal in self._signals)
+        #   return sum(signal.get_logprior(params) for signal in self._signals)
 
         @cache_call('delay_params')
         def get_delay(self, params):

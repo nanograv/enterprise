@@ -38,19 +38,19 @@ def _sample(parlist, parvalues):
 
 
 class Parameter(object):
-    # instances will need to define _size, _prior (of _logprior, but not both), and _typename
-    # thus this class is technically abstract
+    # instances will need to define _size, _prior (of _logprior, but not both),
+    # and _typename thus this class is technically abstract
 
     def __init__(self, name):
         self.name = name
 
-        # either _prior or _logprior can 
         if hasattr(self,'_prior'):
             self.prior = self._prior(name)
         elif hasattr(self,'_logprior'):
             self.logprior = self._logprior(name)
         else:
-            raise AttributeError("Parameter classes need to define _prior, or _logprior.")
+            msg = "Parameter classes need to define _prior, or _logprior."
+            raise AttributeError(msg)
 
         self.type = self.__class__.__name__.lower()
 
@@ -64,7 +64,7 @@ class Parameter(object):
 
         if hasattr(self,'prior'):
             logpdf = np.log(self.prior(value, **kwargs))
-        else:            
+        else:
             logpdf = self.logprior(value, **kwargs)
 
         return logpdf if self._size is None else np.sum(logpdf)
@@ -116,7 +116,7 @@ class Parameter(object):
             args.update(self.prior._funcs)
         else:
             args = self.logprior._params.copy()
-            args.update(self.logprior._funcs)        
+            args.update(self.logprior._funcs)
 
         typename = self._typename.format(**args)
         array = '' if self._size is None else '[{}]'.format(self._size)
@@ -136,7 +136,7 @@ def GPCoefficients(logprior, size):
     class GPCoefficients(Parameter):
         _size = size
         _logprior = logprior
-        _sampler = None # MV: TO DO, connect with GP object
+        _sampler = None  # MV: TO DO, connect with GP object
         _typename = 'GPCoefficients'
 
     return GPCoefficients
@@ -159,8 +159,10 @@ def UserParameter(prior=None, logprior=None, sampler=None, size=None):
 
     class UserParameter(Parameter):
         _size = size
-        if prior is not None: _prior = prior
-        if logprior is not None: _logprior = logprior
+        if prior is not None:
+            _prior = prior
+        if logprior is not None:
+            _logprior = logprior
         _sampler = None if sampler is None else staticmethod(sampler)
         _typename = 'UserParameter'
 

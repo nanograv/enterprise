@@ -25,7 +25,6 @@ from enterprise.signals import utils
 
 @signal_base.function
 def create_quant_matrix(toas, dt=1):
-
     U, _ = utils.create_quantization_matrix(toas, dt=dt, nmin=1)
     avetoas = np.array([toas[idx.astype(bool)].mean() for idx in U.T])
     # return value slightly different than 1 to get around ECORR columns
@@ -58,7 +57,7 @@ class TestGPSignals(unittest.TestCase):
 
         # parameters
         ecorr = -6.4
-        params = {'B1855+09_log10_ecorr': ecorr}
+        params = {'B1855+09_basis_ecorr_log10_ecorr': ecorr}
 
         # basis matrix test
         U = utils.create_quantization_matrix(self.psr.toas)[0]
@@ -89,10 +88,10 @@ class TestGPSignals(unittest.TestCase):
 
         # parameters
         ecorrs = [-6.1, -6.2, -6.3, -6.4]
-        params = {'B1855+09_430_ASP_log10_ecorr': ecorrs[0],
-                  'B1855+09_430_PUPPI_log10_ecorr': ecorrs[1],
-                  'B1855+09_L-wide_ASP_log10_ecorr': ecorrs[2],
-                  'B1855+09_L-wide_PUPPI_log10_ecorr': ecorrs[3]}
+        params = {'B1855+09_basis_ecorr_430_ASP_log10_ecorr': ecorrs[0],
+                  'B1855+09_basis_ecorr_430_PUPPI_log10_ecorr': ecorrs[1],
+                  'B1855+09_basis_ecorr_L-wide_ASP_log10_ecorr': ecorrs[2],
+                  'B1855+09_basis_ecorr_L-wide_PUPPI_log10_ecorr': ecorrs[3]}
 
         # get the basis
         bflags = self.psr.backend_flags
@@ -224,8 +223,8 @@ class TestGPSignals(unittest.TestCase):
 
         # parameters
         log10_A, gamma = -14.5, 4.33
-        params = {'B1855+09_log10_A': log10_A,
-                  'B1855+09_gamma': gamma}
+        params = {'B1855+09_red_noise_log10_A': log10_A,
+                  'B1855+09_red_noise_gamma': gamma}
 
         # basis matrix test
         F, f2 = utils.createfourierdesignmatrix_red(
@@ -251,8 +250,8 @@ class TestGPSignals(unittest.TestCase):
         frequency array."""
         # set parameters
         log10_A, gamma = -14.5, 4.33
-        params = {'B1855+09_log10_A': log10_A,
-                  'B1855+09_gamma': gamma}
+        params = {'B1855+09_red_noise_log10_A': log10_A,
+                  'B1855+09_red_noise_gamma': gamma}
 
         F, f2 = utils.createfourierdesignmatrix_red(
             self.psr.toas, nmodes=30)
@@ -260,7 +259,7 @@ class TestGPSignals(unittest.TestCase):
         # set up signal model. use list of frequencies to make basis
         pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
                             gamma=parameter.Uniform(1,7))
-        rn = gs.FourierBasisGP(spectrum=pl, modes=f2[::2])
+        rn = gp_signals.FourierBasisGP(spectrum=pl, modes=f2[::2])
         rnm = rn(self.psr)
 
         # basis matrix test
@@ -293,14 +292,14 @@ class TestGPSignals(unittest.TestCase):
         # parameters
         log10_As = [-14, -14.4, -15, -14.8]
         gammas = [2.3, 4.4, 1.8, 5.6]
-        params = {'B1855+09_430_ASP_gamma': gammas[0],
-                  'B1855+09_430_PUPPI_gamma': gammas[1],
-                  'B1855+09_L-wide_ASP_gamma': gammas[2],
-                  'B1855+09_L-wide_PUPPI_gamma': gammas[3],
-                  'B1855+09_430_ASP_log10_A': log10_As[0],
-                  'B1855+09_430_PUPPI_log10_A': log10_As[1],
-                  'B1855+09_L-wide_ASP_log10_A': log10_As[2],
-                  'B1855+09_L-wide_PUPPI_log10_A': log10_As[3]}
+        params = {'B1855+09_red_noise_430_ASP_gamma': gammas[0],
+                  'B1855+09_red_noise_430_PUPPI_gamma': gammas[1],
+                  'B1855+09_red_noise_L-wide_ASP_gamma': gammas[2],
+                  'B1855+09_red_noise_L-wide_PUPPI_gamma': gammas[3],
+                  'B1855+09_red_noise_430_ASP_log10_A': log10_As[0],
+                  'B1855+09_red_noise_430_PUPPI_log10_A': log10_As[1],
+                  'B1855+09_red_noise_L-wide_ASP_log10_A': log10_As[2],
+                  'B1855+09_red_noise_L-wide_PUPPI_log10_A': log10_As[3]}
 
         # get the basis
         bflags = self.psr.backend_flags
@@ -349,8 +348,8 @@ class TestGPSignals(unittest.TestCase):
         # parameters
         log10_A, gamma = -14.5, 4.33
         log10_Ac, gammac = -15.5, 1.33
-        params = {'B1855+09_log10_A': log10_A,
-                  'B1855+09_gamma': gamma,
+        params = {'B1855+09_red_noise_log10_A': log10_A,
+                  'B1855+09_red_noise_gamma': gamma,
                   'log10_Agw': log10_Ac,
                   'gamma_gw': gammac}
 
@@ -414,14 +413,14 @@ class TestGPSignals(unittest.TestCase):
         log10_As = [-14, -14.4, -15, -14.8]
         gammas = [2.3, 4.4, 1.8, 5.6]
         log10_Ac, gammac = -15.5, 1.33
-        params = {'B1855+09_430_ASP_gamma': gammas[0],
-                  'B1855+09_430_PUPPI_gamma': gammas[1],
-                  'B1855+09_L-wide_ASP_gamma': gammas[2],
-                  'B1855+09_L-wide_PUPPI_gamma': gammas[3],
-                  'B1855+09_430_ASP_log10_A': log10_As[0],
-                  'B1855+09_430_PUPPI_log10_A': log10_As[1],
-                  'B1855+09_L-wide_ASP_log10_A': log10_As[2],
-                  'B1855+09_L-wide_PUPPI_log10_A': log10_As[3],
+        params = {'B1855+09_red_noise_430_ASP_gamma': gammas[0],
+                  'B1855+09_red_noise_430_PUPPI_gamma': gammas[1],
+                  'B1855+09_red_noise_L-wide_ASP_gamma': gammas[2],
+                  'B1855+09_red_noise_L-wide_PUPPI_gamma': gammas[3],
+                  'B1855+09_red_noise_430_ASP_log10_A': log10_As[0],
+                  'B1855+09_red_noise_430_PUPPI_log10_A': log10_As[1],
+                  'B1855+09_red_noise_L-wide_ASP_log10_A': log10_As[2],
+                  'B1855+09_red_noise_L-wide_PUPPI_log10_A': log10_As[3],
                   'log10_Agw': log10_Ac,
                   'gamma_gw': gammac}
 
@@ -589,9 +588,9 @@ class TestGPSignals(unittest.TestCase):
         ecorr = -6.4
         log10_A, gamma = -14.5, 4.33
         log10_lam, log10_sigma = 7.4, -6.4
-        params = {'B1855+09_log10_ecorr': ecorr,
-                  'B1855+09_log10_A': log10_A,
-                  'B1855+09_gamma': gamma,
+        params = {'B1855+09_basis_ecorr_log10_ecorr': ecorr,
+                  'B1855+09_red_noise_log10_A': log10_A,
+                  'B1855+09_red_noise_gamma': gamma,
                   'B1855+09_se_log10_lam': log10_lam,
                   'B1855+09_se_log10_sigma': log10_sigma}
 
