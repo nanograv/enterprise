@@ -136,7 +136,7 @@ def create_stabletimingdesignmatrix(designmat, fastDesign=True):
 @function
 def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
                                   logf=False, fmin=None, fmax=None,
-                                  pshift=False):
+                                  pshift=False, modes=None):
     """
     Construct fourier design matrix from eq 11 of Lentati et al, 2013
     :param toas: vector of time series in seconds
@@ -147,17 +147,20 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
     :param fmin: lower sampling frequency
     :param fmax: upper sampling frequency
     :param pshift: option to add random phase shift
+    :param modes: option to provide explicit list or array of
+                  sampling frequencies
+
     :return: F: fourier design matrix
     :return: f: Sampling frequencies
     """
 
-    N = len(toas)
-    F = np.zeros((N, 2 * nmodes))
-
     T = Tspan if Tspan is not None else toas.max() - toas.min()
 
     # define sampling frequencies
-    if fmin is None and fmax is None and not logf:
+    if modes is not None:
+        nmodes = len(modes)
+        f = modes
+    elif fmin is None and fmax is None and not logf:
         # make sure partially overlapping sets of modes
         # have identical frequencies
         f = 1.0 * np.arange(1, nmodes + 1) / T
@@ -181,6 +184,9 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
 
     Ffreqs = np.repeat(f, 2)
 
+    N = len(toas)
+    F = np.zeros((N, 2 * nmodes))
+
     # The sine/cosine modes
     F[:,::2] = np.sin(2*np.pi*toas[:,None]*f[None,:] +
                       ranphase[None,:])
@@ -192,7 +198,8 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
 
 @function
 def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
-                                 logf=False, fmin=None, fmax=None):
+                                 pshift=False, logf=False, fmin=None,
+                                 fmax=None, modes=None):
 
     """
     Construct DM-variation fourier design matrix.
@@ -205,6 +212,9 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
     :param logf: use log frequency spacing
     :param fmin: lower sampling frequency
     :param fmax: upper sampling frequency
+    :param pshift: option to add random phase shift
+    :param modes: option to provide explicit list or array of
+                  sampling frequencies
 
     :return: F: DM-variation fourier design matrix
     :return: f: Sampling frequencies
@@ -213,7 +223,7 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
     # get base fourier design matrix and frequencies
     F, Ffreqs = createfourierdesignmatrix_red(
         toas, nmodes=nmodes, Tspan=Tspan, logf=logf,
-        fmin=fmin, fmax=fmax)
+        fmin=fmin, fmax=fmax, pshift=pshift, modes=modes)
 
     # compute the DM-variation vectors
     # TODO: should we use a different normalization
@@ -226,7 +236,8 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
 @function
 def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
                                   t0=53000*86400, nmodes=30, Tspan=None,
-                                  logf=False, fmin=None, fmax=None):
+                                  logf=False, fmin=None, fmax=None,
+                                  modes=None):
     """
     Construct fourier design matrix with gaussian envelope.
 
@@ -241,6 +252,8 @@ def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
     :param log10_Amp: log10 of the Amplitude [s]
     :param t0: mean of gaussian envelope [s]
     :param log10_Q: log10 of standard deviation of gaussian envelope [days]
+    :param modes: option to provide explicit list or array of
+                  sampling frequencies
 
     :return: F: fourier design matrix with gaussian envelope
     :return: f: Sampling frequencies
@@ -249,7 +262,7 @@ def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
     # get base fourier design matrix and frequencies
     F, Ffreqs = createfourierdesignmatrix_red(
         toas, nmodes=nmodes, Tspan=Tspan, logf=logf,
-        fmin=fmin, fmax=fmax)
+        fmin=fmin, fmax=fmax, modes=modes)
 
     # compute gaussian envelope
     A = 10**log10_Amp
@@ -260,7 +273,7 @@ def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
 
 def createfourierdesignmatrix_eph(t, nmodes, phi, theta, freq=False,
                                   Tspan=None, logf=False, fmin=None,
-                                  fmax=None):
+                                  fmax=None, modes=None):
 
     """
     Construct ephemeris fourier design matrix.
@@ -274,6 +287,8 @@ def createfourierdesignmatrix_eph(t, nmodes, phi, theta, freq=False,
     :param logf: use log frequency spacing
     :param fmin: lower sampling frequency
     :param fmax: upper sampling frequency
+    :param modes: option to provide explicit list or array of
+                  sampling frequencies
 
     :return: Fx: x-axis ephemeris fourier design matrix
     :return: Fy: y-axis ephemeris fourier design matrix
@@ -281,18 +296,16 @@ def createfourierdesignmatrix_eph(t, nmodes, phi, theta, freq=False,
     :return: f: Sampling frequencies (if freq=True)
     """
 
-    N = len(t)
-    Fx = np.zeros((N, 2*nmodes))
-    Fy = np.zeros((N, 2*nmodes))
-    Fz = np.zeros((N, 2*nmodes))
-
     if Tspan is not None:
         T = Tspan
     else:
         T = t.max() - t.min()
 
     # define sampling frequencies
-    if fmin is not None and fmax is not None:
+    if modes is not None:
+        nmodes = len(modes)
+        f = modes
+    elif fmin is not None and fmax is not None:
         f = np.linspace(fmin, fmax, nmodes)
     else:
         f = np.linspace(1 / T, nmodes / T, nmodes)
@@ -307,6 +320,11 @@ def createfourierdesignmatrix_eph(t, nmodes, phi, theta, freq=False,
     x = np.sin(theta)*np.cos(phi)
     y = np.sin(theta)*np.sin(phi)
     z = np.cos(theta)
+
+    N = len(t)
+    Fx = np.zeros((N, 2*nmodes))
+    Fy = np.zeros((N, 2*nmodes))
+    Fz = np.zeros((N, 2*nmodes))
 
     # The sine/cosine modes
     Fx[:,::2] = np.sin(2*np.pi*t[:,None]*f[None,:])
