@@ -7,6 +7,7 @@ function matrix and basis prior vector..
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
+import math
 import itertools
 import functools
 
@@ -124,28 +125,10 @@ def BasisGP(priorFunction, basisFunction, coefficients=False,
                 self._construct_basis(params)
 
                 phi = self._prior[key](self._labels[key], params=params)
-                return -0.5 * np.sum(c * c / phi) - 0.5 * np.sum(np.log(phi))
-
-            # the GP coefficient prior is now a standard parameter prior
-            #
-            # @signal_base.cache_call('delay_params')
-            # def get_logprior(self, params):
-            #     self._construct_basis(params)
-            #
-            #     ret = 0
-            #     for key, slc in self._slices.items():
-            #         phi = self._prior[key](self._labels[key], params=params)
-            #
-            #         par = self._coefficients[key]
-            #         # MV: should move this into Parameter and Constant
-            #         c = params[par.name] if par.name in params else par.value
-            #
-            #         ret = (ret - 0.5 * np.sum(c * c / phi)
-            #                    - 0.5 * np.sum(np.log(phi)))
-            #                    # - 0.5 * len(phi) * math.log(2*math.pi))
-            #                    # not included in signal_base likelihood
-            #
-            #     return ret
+                return (-0.5 * np.sum(c * c / phi) -
+                        0.5 * np.sum(np.log(phi)) -
+                        0.5 * len(phi) * np.log(2*math.pi))
+                # note: (2*pi)^(n/2) is not in signal_base likelihood
 
             # MV: could assign this to a data member at initialization
             @property

@@ -130,7 +130,7 @@ class Parameter(object):
 
 
 def GPCoefficients(logprior, size):
-    """Class factor for GP coefficients, which are usually created
+    """Class factory for GP coefficients, which are usually created
     inside gp_signals.BasisGP."""
 
     class GPCoefficients(Parameter):

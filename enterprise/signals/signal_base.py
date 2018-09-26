@@ -163,14 +163,6 @@ class CommonSignal(Signal):
         return None
 
 
-def MarginalizedLogLikelihood(pta):
-    return LogLikelihood(pta)
-
-
-def HierarchicalLogLikelihood(pta):
-    return LogLikelihood(pta)
-
-
 class LogLikelihood(object):
     def __init__(self, pta):
         self.pta = pta
@@ -232,7 +224,7 @@ class LogLikelihood(object):
 
 
 class PTA(object):
-    def __init__(self, init, lnlikelihood=MarginalizedLogLikelihood):
+    def __init__(self, init, lnlikelihood=LogLikelihood):
         if isinstance(init, collections.Sequence):
             self._signalcollections = list(init)
         else:
