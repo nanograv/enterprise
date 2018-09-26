@@ -18,7 +18,6 @@ from enterprise.pulsar import Pulsar
 from enterprise.signals import parameter
 from enterprise.signals import selections
 from enterprise.signals.selections import Selection
-from enterprise.signals import signal_base
 from enterprise.signals import white_signals
 from enterprise.signals import gp_signals
 from enterprise.signals import utils
@@ -90,7 +89,7 @@ class TestSetParameters(unittest.TestCase):
         ec = white_signals.EcorrKernelNoise(log10_ecorr=ecorr,
                                             selection=selection)
 
-        pl = signal_base.Function(utils.powerlaw, log10_A=log10_A, gamma=gamma)
+        pl = utils.powerlaw(log10_A=log10_A, gamma=gamma)
         rn = gp_signals.FourierBasisGP(pl)
 
         s = ef + eq + ec + rn
@@ -205,7 +204,7 @@ class TestSetParameters(unittest.TestCase):
         ec = white_signals.EcorrKernelNoise(log10_ecorr=ecorr,
                                             selection=selection)
 
-        pl = signal_base.Function(utils.powerlaw, log10_A=log10_A, gamma=gamma)
+        pl = utils.powerlaw(log10_A=log10_A, gamma=gamma)
         rn = gp_signals.FourierBasisGP(pl)
 
         s = ef + eq + ec + rn

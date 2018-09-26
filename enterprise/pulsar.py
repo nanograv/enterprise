@@ -180,6 +180,11 @@ class BasePulsar(object):
         return self._toas[self._isort]
 
     @property
+    def stoas(self):
+        """Return array of observatory TOAs in seconds."""
+        return self._stoas[self._isort]
+
+    @property
     def residuals(self):
         """Return array of residuals in seconds."""
         return self._residuals[self._isort]
@@ -203,6 +208,17 @@ class BasePulsar(object):
     def pdist(self):
         """Return tuple of pulsar distance and uncertainty in kpc."""
         return self._pdist
+
+    @property
+    def dm(self):
+        """Return DM parameter from parfile."""
+        return self._dm
+
+    @property
+    def dmx(self):
+        """Return a dictionary of DMX-parameter values and stoa ranges
+        from parfile."""
+        return self._dmx
 
     @property
     def flags(self):
@@ -270,8 +286,8 @@ class PintPulsar(BasePulsar):
         self._residuals = np.array(resids(toas, model).time_resids.to(u.s),
                                    dtype='float64')
         self._toaerrs = np.array(toas.get_errors().to(u.s), dtype='float64')
-        self._designmatrix = model.designmatrix(toas.table)[0]
-        self._ssbfreqs = np.array(model.barycentric_radio_freq(toas.table),
+        self._designmatrix = model.designmatrix(toas)[0]
+        self._ssbfreqs = np.array(model.barycentric_radio_freq(toas),
                                   dtype='float64')
 
         # fitted parameters
@@ -333,6 +349,8 @@ class Tempo2Pulsar(BasePulsar):
         self.name = str(t2pulsar.name)
 
         self._toas = np.double(t2pulsar.toas()) * 86400
+        # saving also stoas (e.g., for DMX comparisons)
+        self._stoas = np.double(t2pulsar.stoas) * 86400
         self._residuals = np.double(t2pulsar.residuals())
         self._toaerrs = np.double(t2pulsar.toaerrs) * 1e-6
         self._designmatrix = np.double(t2pulsar.designmatrix())
@@ -354,6 +372,9 @@ class Tempo2Pulsar(BasePulsar):
         self._pos = self._get_pos()
         self._planetssb = self._get_planetssb(t2pulsar)
 
+        # gather DM/DMX information if available
+        self._set_dm(t2pulsar)
+
         self._pos_t = t2pulsar.psrPos.copy()
         if 'ELONG' and 'ELAT' in np.concatenate((t2pulsar.pars(which='fit'),
                                                  t2pulsar.pars(which='set'))):
@@ -363,6 +384,23 @@ class Tempo2Pulsar(BasePulsar):
 
         if drop_t2pulsar:
             del self.t2pulsar
+
+    # gather DM/DMX information if available
+    def _set_dm(self, t2pulsar):
+        pars = t2pulsar.pars(which='set')
+
+        if 'DM' in pars:
+            self._dm = t2pulsar['DM'].val
+
+        dmx = {par: {'DMX': t2pulsar[par].val,
+                     'DMXerr': t2pulsar[par].err,
+                     'DMXR1': t2pulsar[par[:3] + 'R1' + par[3:]].val,
+                     'DMXR2': t2pulsar[par[:3] + 'R2' + par[3:]].val,
+                     'fit': par in pars}
+               for par in pars if 'DMX_' in par}
+
+        if dmx:
+            self._dmx = dmx
 
     def _get_radec(self, t2pulsar):
         if 'RAJ' in np.concatenate((t2pulsar.pars(which='fit'),

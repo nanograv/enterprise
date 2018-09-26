@@ -7,13 +7,100 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
 import numpy as np
+import scipy.linalg as sl
+import scipy.special as ss
 from scipy.interpolate import interp1d
 from scipy.integrate import odeint
-from scipy import special as ss
 from pkg_resources import resource_filename, Requirement
+
 import enterprise
 import enterprise.constants as const
-from enterprise.signals import signal_base
+from enterprise.signals.parameter import function
+
+
+class KernelMatrix(np.ndarray):
+    def __new__(cls, init):
+        if isinstance(init, int):
+            ret = np.zeros(init, 'd').view(cls)
+        else:
+            ret = init.view(cls)
+
+        if ret.ndim == 2:
+            ret._cliques = -1 * np.ones(ret.shape[0])
+            ret._clcount = 0
+
+        return ret
+
+    # see PTA._setcliques
+    def _setcliques(self, idxs):
+        allidx = set(self._cliques[idxs])
+        maxidx = max(allidx)
+
+        if maxidx == -1:
+            self._cliques[idxs] = self._clcount
+            self._clcount = self._clcount + 1
+        else:
+            self._cliques[idxs] = maxidx
+            if len(allidx) > 1:
+                self._cliques[np.in1d(self._cliques,allidx)] = maxidx
+
+    def add(self, other, idx):
+        if other.ndim == 2 and self.ndim == 1:
+            self = KernelMatrix(np.diag(self))
+
+        if self.ndim == 1:
+            self[idx] += other
+        else:
+            if other.ndim == 1:
+                self[idx, idx] += other
+            else:
+                self._setcliques(idx)
+                idx = ((idx, idx) if isinstance(idx, slice)
+                       else (idx[:, None], idx))
+                self[idx] += other
+
+        return self
+
+    def set(self, other, idx):
+        if other.ndim == 2 and self.ndim == 1:
+            self = KernelMatrix(np.diag(self))
+
+        if self.ndim == 1:
+            self[idx] = other
+        else:
+            if other.ndim == 1:
+                self[idx, idx] = other
+            else:
+                self._setcliques(idx)
+                idx = ((idx, idx) if isinstance(idx, slice)
+                       else (idx[:, None], idx))
+                self[idx] = other
+
+        return self
+
+    def inv(self, logdet=False):
+        if self.ndim == 1:
+            inv = 1.0/self
+
+            if logdet:
+                return inv, np.sum(np.log(self))
+            else:
+                return inv
+        else:
+            try:
+                cf = sl.cho_factor(self)
+                inv = sl.cho_solve(cf, np.identity(cf[0].shape[0]))
+                if logdet:
+                    ld = 2.0*np.sum(np.log(np.diag(cf[0])))
+            except np.linalg.LinAlgError:
+                u, s, v = np.linalg.svd(self)
+                inv = np.dot(u/s, u.T)
+                if logdet:
+                    ld = np.sum(np.log(s))
+            if logdet:
+                return inv, ld
+            else:
+                return inv
 
 
 def create_stabletimingdesignmatrix(designmat, fastDesign=True):
@@ -46,7 +133,7 @@ def create_stabletimingdesignmatrix(designmat, fastDesign=True):
 ######################################
 
 
-@signal_base.function
+@function
 def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
                                   logf=False, fmin=None, fmax=None,
                                   pshift=False, modes=None):
@@ -109,7 +196,7 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
     return F, Ffreqs
 
 
-@signal_base.function
+@function
 def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
                                  pshift=False, logf=False, fmin=None,
                                  fmax=None, modes=None):
@@ -146,7 +233,7 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
     return F * Dm[:, None], Ffreqs
 
 
-@signal_base.function
+@function
 def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
                                   t0=53000*86400, nmodes=30, Tspan=None,
                                   logf=False, fmin=None, fmax=None,
@@ -641,7 +728,7 @@ def create_gw_antenna_pattern(pos, gwtheta, gwphi):
     return fplus, fcross, cosMu
 
 
-@signal_base.function
+@function
 def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
               gwpol=0.0, t0=55000, antenna_pattern_fn=None):
     """
@@ -689,7 +776,7 @@ def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
     return pol * h * heaviside(toas-t0) * (toas-t0)
 
 
-@signal_base.function
+@function
 def create_quantization_matrix(toas, dt=1, nmin=2):
     """Create quantization matrix mapping TOAs to observing epochs."""
     isort = np.argsort(toas)
@@ -761,14 +848,14 @@ def linear_interp_basis(toas, dt=30*86400):
     return M[:, idx], x[idx]
 
 
-@signal_base.function
+@function
 def powerlaw(f, log10_A=-16, gamma=5):
     df = np.diff(np.concatenate((np.array([0]), f[::2])))
     return ((10**log10_A)**2 / 12.0 / np.pi**2 *
             const.fyr**(gamma-3) * f**(-gamma) * np.repeat(df, 2))
 
 
-@signal_base.function
+@function
 def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10/3, beta=0.5):
     df = np.diff(np.concatenate((np.array([0]), f[::2])))
     hcf = (10**log10_A * (f / const.fyr) ** ((3-gamma) / 2) /
@@ -778,7 +865,7 @@ def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10/3, beta=0.5):
 
 # overlap reduction functions
 
-@signal_base.function
+@function
 def hd_orf(pos1, pos2):
     """ Hellings & Downs spatial correlation function."""
     if np.all(pos1 == pos2):
@@ -788,7 +875,7 @@ def hd_orf(pos1, pos2):
         return 1.5 * omc2 * np.log(omc2) - 0.25 * omc2 + 0.5
 
 
-@signal_base.function
+@function
 def dipole_orf(pos1, pos2):
     """Dipole spatial correlation function."""
     if np.all(pos1 == pos2):
@@ -797,7 +884,7 @@ def dipole_orf(pos1, pos2):
         return np.dot(pos1, pos2)
 
 
-@signal_base.function
+@function
 def monopole_orf(pos1, pos2):
     """Monopole spatial correlation function."""
     if np.all(pos1 == pos2):
@@ -806,7 +893,7 @@ def monopole_orf(pos1, pos2):
         return 1.0
 
 
-@signal_base.function
+@function
 def anis_orf(pos1, pos2, params, **kwargs):
     """Anisotropic GWB spatial correlation function."""
 
@@ -829,19 +916,19 @@ def anis_orf(pos1, pos2, params, **kwargs):
                                        psr1_index, psr2_index]))
 
 
-@signal_base.function
+@function
 def normed_tm_basis(Mmat):
     norm = np.sqrt(np.sum(Mmat**2, axis=0))
     return Mmat / norm, np.ones_like(Mmat.shape[1])
 
 
-@signal_base.function
+@function
 def svd_tm_basis(Mmat):
     u, s, v = np.linalg.svd(Mmat, full_matrices=False)
     return u, np.ones_like(s)
 
 
-@signal_base.function
+@function
 def tm_prior(weights):
     return weights * 1e40
 
@@ -942,7 +1029,7 @@ def dmass(planet, dm_over_Msun):
     return dm_over_Msun * planet
 
 
-@signal_base.function
+@function
 def physical_ephem_delay(toas, planetssb, pos_t, frame_drift_rate=0,
                          d_jupiter_mass=0, d_saturn_mass=0, d_uranus_mass=0,
                          d_neptune_mass=0, jup_orb_elements=np.zeros(6),

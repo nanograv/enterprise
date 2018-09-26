@@ -18,7 +18,7 @@ from enterprise.pulsar import Pulsar
 from enterprise.signals import parameter
 from enterprise.signals import selections
 from enterprise.signals.selections import Selection
-import enterprise.signals.gp_signals as gs
+from enterprise.signals import gp_signals
 from enterprise.signals import signal_base
 from enterprise.signals import utils
 
@@ -53,7 +53,7 @@ class TestGPSignals(unittest.TestCase):
         """Test that ecorr signal returns correct values."""
         # set up signal parameter
         ecorr = parameter.Uniform(-10, -5)
-        ec = gs.EcorrBasisModel(log10_ecorr=ecorr)
+        ec = gp_signals.EcorrBasisModel(log10_ecorr=ecorr)
         ecm = ec(self.psr)
 
         # parameters
@@ -83,7 +83,8 @@ class TestGPSignals(unittest.TestCase):
         # set up signal parameter
         ecorr = parameter.Uniform(-10, -5)
         selection = Selection(selections.by_backend)
-        ec = gs.EcorrBasisModel(log10_ecorr=ecorr, selection=selection)
+        ec = gp_signals.EcorrBasisModel(log10_ecorr=ecorr,
+                                        selection=selection)
         ecm = ec(self.psr)
 
         # parameters
@@ -133,7 +134,7 @@ class TestGPSignals(unittest.TestCase):
         log10_lam = parameter.Uniform(np.log10(86400), np.log10(1500*86400))
         basis = create_quant_matrix(dt=7*86400)
         prior = se_kernel(log10_sigma=log10_sigma, log10_lam=log10_lam)
-        se = gs.BasisGP(prior, basis, name='se')
+        se = gp_signals.BasisGP(prior, basis, name='se')
 
         sem = se(self.psr)
 
@@ -165,7 +166,7 @@ class TestGPSignals(unittest.TestCase):
         basis = create_quant_matrix(dt=7*86400)
         prior = se_kernel(log10_sigma=log10_sigma, log10_lam=log10_lam)
 
-        se = gs.BasisGP(prior, basis, selection=selection, name='se')
+        se = gp_signals.BasisGP(prior, basis, selection=selection, name='se')
         sem = se(self.psr)
 
         # parameters
@@ -218,7 +219,7 @@ class TestGPSignals(unittest.TestCase):
         # set up signal parameter
         pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
                             gamma=parameter.Uniform(1,7))
-        rn = gs.FourierBasisGP(spectrum=pl, components=30)
+        rn = gp_signals.FourierBasisGP(spectrum=pl, components=30)
         rnm = rn(self.psr)
 
         # parameters
@@ -259,7 +260,7 @@ class TestGPSignals(unittest.TestCase):
         # set up signal model. use list of frequencies to make basis
         pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
                             gamma=parameter.Uniform(1,7))
-        rn = gs.FourierBasisGP(spectrum=pl, modes=f2[::2])
+        rn = gp_signals.FourierBasisGP(spectrum=pl, modes=f2[::2])
         rnm = rn(self.psr)
 
         # basis matrix test
@@ -285,7 +286,8 @@ class TestGPSignals(unittest.TestCase):
         pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
                             gamma=parameter.Uniform(1,7))
         selection = Selection(selections.by_backend)
-        rn = gs.FourierBasisGP(spectrum=pl, components=30, selection=selection)
+        rn = gp_signals.FourierBasisGP(spectrum=pl, components=30,
+                                       selection=selection)
         rnm = rn(self.psr)
 
         # parameters
@@ -359,8 +361,10 @@ class TestGPSignals(unittest.TestCase):
 
         for (nf1, nf2, T1, T2) in tpars:
 
-            rn = gs.FourierBasisGP(spectrum=pl, components=nf1, Tspan=T1)
-            crn = gs.FourierBasisGP(spectrum=cpl, components=nf2, Tspan=T2)
+            rn = gp_signals.FourierBasisGP(spectrum=pl, components=nf1,
+                                           Tspan=T1)
+            crn = gp_signals.FourierBasisGP(spectrum=cpl, components=nf2,
+                                            Tspan=T2)
             s = rn + crn
             rnm = s(self.psr)
 
@@ -429,9 +433,10 @@ class TestGPSignals(unittest.TestCase):
 
         for (nf1, nf2, T1, T2) in tpars:
 
-            rn = gs.FourierBasisGP(spectrum=pl, components=nf1, Tspan=T1,
-                                   selection=selection)
-            crn = gs.FourierBasisGP(spectrum=cpl, components=nf2, Tspan=T2)
+            rn = gp_signals.FourierBasisGP(spectrum=pl, components=nf1,
+                                           Tspan=T1, selection=selection)
+            crn = gp_signals.FourierBasisGP(spectrum=cpl, components=nf2,
+                                            Tspan=T2)
             s = rn + crn
             rnm = s(self.psr)
 
@@ -477,7 +482,7 @@ class TestGPSignals(unittest.TestCase):
     def test_gp_timing_model(self):
         """Test that the timing model signal returns correct values."""
         # set up signal parameter
-        ts = gs.TimingModel()
+        ts = gp_signals.TimingModel()
         tm = ts(self.psr)
 
         # basis matrix test
@@ -513,8 +518,8 @@ class TestGPSignals(unittest.TestCase):
 
         basis_red = utils.createfourierdesignmatrix_red()
 
-        rn_env = gs.BasisGP(pl, basis_env, name='env')
-        rn = gs.BasisGP(pl, basis_red)
+        rn_env = gp_signals.BasisGP(pl, basis_env, name='env')
+        rn = gp_signals.BasisGP(pl, basis_red)
         s = rn_env + rn
         m = s(self.psr)
 
@@ -563,19 +568,19 @@ class TestGPSignals(unittest.TestCase):
         """Test for combining different signals."""
         # set up signal parameter
         ecorr = parameter.Uniform(-10, -5)
-        ec = gs.EcorrBasisModel(log10_ecorr=ecorr)
+        ec = gp_signals.EcorrBasisModel(log10_ecorr=ecorr)
 
         pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
                             gamma=parameter.Uniform(1,7))
-        rn = gs.FourierBasisGP(spectrum=pl, components=30)
+        rn = gp_signals.FourierBasisGP(spectrum=pl, components=30)
 
         log10_sigma = parameter.Uniform(-10, -5)
         log10_lam = parameter.Uniform(np.log10(86400), np.log10(1500*86400))
         basis = create_quant_matrix(dt=7*86400)
         prior = se_kernel(log10_sigma=log10_sigma, log10_lam=log10_lam)
-        se = gs.BasisGP(prior, basis, name='se')
+        se = gp_signals.BasisGP(prior, basis, name='se')
 
-        ts = gs.TimingModel()
+        ts = gp_signals.TimingModel()
 
         s = ec + rn + ts + se
         m = s(self.psr)

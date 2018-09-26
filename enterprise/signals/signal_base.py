@@ -8,8 +8,6 @@ from __future__ import (absolute_import, division,
 
 import collections
 import itertools
-import inspect
-import functools
 
 import six
 
@@ -18,8 +16,13 @@ import scipy.sparse as sps
 import scipy.linalg as sl
 
 
-from enterprise.signals.parameter import ConstantParameter, Parameter
-from enterprise.signals.selections import selection_func
+from enterprise.signals.parameter import ConstantParameter
+from enterprise.signals.utils import KernelMatrix
+
+# these are defined in parameter.py, but currently imported
+# in various places from signal_base.py
+from enterprise.signals.parameter import function  # noqa: F401
+from enterprise.signals.parameter import Function  # noqa: F401
 
 import logging
 logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s',
@@ -121,7 +124,7 @@ class Signal(object):
     def get_ndiag(self, params):
         """Returns the diagonal of the white noise vector `N`.
 
-        This method also supports block diagaonal sparse matrices.
+        This method also supports block diagonal sparse matrices.
         """
         return None
 
@@ -134,7 +137,7 @@ class Signal(object):
         return None
 
     def get_phi(self, params):
-        """Returns a diagonal covaraince matrix of the basis amplitudes."""
+        """Returns a diagonal covariance matrix of the basis amplitudes."""
         return None
 
     def get_phiinv(self, params):
@@ -599,7 +602,7 @@ class PTA(object):
         # map parameter vector if needed
         params = xs if isinstance(xs,dict) else self.map_params(xs)
 
-        return np.sum(p.get_logpdf(params[p.name]) for p in self.params)
+        return np.sum(p.get_logpdf(params=params) for p in self.params)
 
     @property
     def pulsars(self):
@@ -744,6 +747,7 @@ def SignalCollection(metasignals):
                     for i, column in enumerate(Fmat.T):
                         colhash = hash(column.tostring())
                         try:
+                            # should handle collisions?
                             j = hashlist.index(colhash)
                             idx[signal].append(j)
                         except ValueError:
@@ -795,11 +799,14 @@ def SignalCollection(metasignals):
         def get_phiinv(self, params):
             return self.get_phi(params).inv()
 
+        # returns a KernelMatrix object
         def get_phi(self, params):
             phi = KernelMatrix(self._Fmat.shape[1])
+
             for signal in self._signals:
                 if signal in self._idx:
                     phi = phi.add(signal.get_phi(params), self._idx[signal])
+
             return phi
 
         @cache_call(['basis_params', 'white_params', 'delay_params'])
@@ -822,111 +829,6 @@ def SignalCollection(metasignals):
             return Nvec.solve(res, left_array=res, logdet=True)
 
     return SignalCollection
-
-
-def Function(func, name='', **func_kwargs):
-    fname = name
-
-    class Function(object):
-        def __init__(self, name, psr=None):
-            self._func = selection_func(func)
-            self._psr = psr
-
-            self._params = {}
-            self._defaults = {}
-
-            # divide keyword parameters into those that are Parameter classes,
-            # Parameter instances (useful for global parameters),
-            # and something else (which we will assume is a value)
-            for kw, arg in func_kwargs.items():
-                if isinstance(arg, type) and issubclass(
-                        arg, (Parameter, ConstantParameter)):
-                    # parameter name template
-                    # pname_[signalname_][fname_]parname
-                    pnames = [name, fname, kw]
-                    par = arg('_'.join([n for n in pnames if n]))
-                    self._params[kw] = par
-                elif isinstance(arg, (Parameter, ConstantParameter)):
-                    self._params[kw] = arg
-                else:
-                    self._defaults[kw] = arg
-
-        def __call__(self, *args, **kwargs):
-            # order of parameter resolution:
-            # - parameter given in kwargs
-            # - named sampling parameter in self._params, if given in params
-            #   or if it has a value
-            # - parameter given as constant in Function definition
-            # - default value for keyword parameter in func definition
-
-            # trick to get positional arguments before params kwarg
-            params = kwargs.get('params',{})
-            if 'params' in kwargs:
-                del kwargs['params']
-
-            for kw, arg in func_kwargs.items():
-                if kw not in kwargs and kw in self._params:
-                    par = self._params[kw]
-
-                    if par.name in params:
-                        kwargs[kw] = params[par.name]
-                    elif hasattr(par, 'value'):
-                        kwargs[kw] = par.value
-
-            for kw, arg in self._defaults.items():
-                if kw not in kwargs:
-                    kwargs[kw] = arg
-
-            if self._psr is not None and 'psr' not in kwargs:
-                kwargs['psr'] = self._psr
-            return self._func(*args, **kwargs)
-
-        def add_kwarg(self, **kwargs):
-            self._defaults.update(kwargs)
-
-        @property
-        def params(self):
-            # if we extract the ConstantParameter value above, we would not
-            # need a special case here
-            return [par for par in self._params.values() if not
-                    isinstance(par, ConstantParameter)]
-
-    return Function
-
-
-def get_funcargs(func):
-    """Convienience function to get args and kwargs of any function."""
-    argspec = inspect.getargspec(func)
-    if argspec.defaults is None:
-        args = argspec.args
-        kwargs = []
-    else:
-        args = argspec.args[:(len(argspec.args)-len(argspec.defaults))]
-        kwargs = argspec.args[-len(argspec.defaults):]
-
-    return args, kwargs
-
-
-def function(func):
-    """Decorator for Function."""
-
-    funcargs, _ = get_funcargs(func)
-
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        fargs = {funcargs[ct]: val for ct, val in
-                 enumerate(args[:len(funcargs)])}
-        fargs.update(kwargs)
-        if not np.all([fa in fargs.keys() for fa in funcargs]):
-            return Function(func, **kwargs)
-        for kw, arg in kwargs.items():
-            if ((isinstance(arg, type) and issubclass(
-                arg, (Parameter, ConstantParameter))) or isinstance(
-                    arg, (Parameter, ConstantParameter))):
-                return Function(func, **kwargs)
-        return func(*args, **kwargs)
-
-    return wrapper
 
 
 def cache_call(attrs, limit=2):
@@ -975,91 +877,6 @@ def cache_call(attrs, limit=2):
         return wrapper
 
     return cache_decorator
-
-
-class KernelMatrix(np.ndarray):
-    def __new__(cls, init):
-        if isinstance(init, int):
-            ret = np.zeros(init, 'd').view(cls)
-        else:
-            ret = init.view(cls)
-
-        if ret.ndim == 2:
-            ret._cliques = -1 * np.ones(ret.shape[0])
-            ret._clcount = 0
-
-        return ret
-
-    # see PTA._setcliques
-    def _setcliques(self, idxs):
-        allidx = set(self._cliques[idxs])
-        maxidx = max(allidx)
-
-        if maxidx == -1:
-            self._cliques[idxs] = self._clcount
-            self._clcount = self._clcount + 1
-        else:
-            self._cliques[idxs] = maxidx
-            if len(allidx) > 1:
-                self._cliques[np.in1d(self._cliques,allidx)] = maxidx
-
-    def add(self, other, idx):
-        if other.ndim == 2 and self.ndim == 1:
-            self = KernelMatrix(np.diag(self))
-
-        if self.ndim == 1:
-            self[idx] += other
-        else:
-            if other.ndim == 1:
-                self[idx, idx] += other
-            else:
-                self._setcliques(idx)
-                idx = ((idx, idx) if isinstance(idx, slice)
-                       else (idx[:, None], idx))
-                self[idx] += other
-
-        return self
-
-    def set(self, other, idx):
-        if other.ndim == 2 and self.ndim == 1:
-            self = KernelMatrix(np.diag(self))
-
-        if self.ndim == 1:
-            self[idx] = other
-        else:
-            if other.ndim == 1:
-                self[idx, idx] = other
-            else:
-                self._setcliques(idx)
-                idx = ((idx, idx) if isinstance(idx, slice)
-                       else (idx[:, None], idx))
-                self[idx] = other
-
-        return self
-
-    def inv(self, logdet=False):
-        if self.ndim == 1:
-            inv = 1.0/self
-
-            if logdet:
-                return inv, np.sum(np.log(self))
-            else:
-                return inv
-        else:
-            try:
-                cf = sl.cho_factor(self)
-                inv = sl.cho_solve(cf, np.identity(cf[0].shape[0]))
-                if logdet:
-                    ld = 2.0*np.sum(np.log(np.diag(cf[0])))
-            except np.linalg.LinAlgError:
-                u, s, v = np.linalg.svd(self)
-                inv = np.dot(u/s, u.T)
-                if logdet:
-                    ld = np.sum(np.log(s))
-            if logdet:
-                return inv, ld
-            else:
-                return inv
 
 
 class csc_matrix_alt(sps.csc_matrix):

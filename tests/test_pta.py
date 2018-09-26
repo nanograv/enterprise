@@ -18,14 +18,16 @@ import numpy as np
 
 from enterprise.pulsar import Pulsar
 
-import enterprise.signals.parameter as parameter
-import enterprise.signals.signal_base as signal_base
-import enterprise.signals.white_signals as white_signals
-import enterprise.signals.gp_signals as gp_signals
+from enterprise.signals import parameter
+from enterprise.signals import signal_base
+from enterprise.signals import white_signals
+from enterprise.signals import gp_signals
 from enterprise.signals import utils
 
 from .enterprise_test_data import datadir
 
+
+# note function is now defined in enterprise.signals.parameter
 
 @signal_base.function
 def hd_orf_generic(pos1, pos2, a=1.5, b=0.25, c=0.25):
@@ -143,7 +145,7 @@ class TestPTASignals(unittest.TestCase):
 
         pta = signal_base.PTA([model(psr) for psr in self.psrs])
 
-        ps = {p.name: float(p.sample()) for p in pta.params}
+        ps = parameter.sample(pta.params)
 
         phi = pta.get_phi(ps)
         ldp = np.linalg.slogdet(phi)[1]
@@ -151,7 +153,8 @@ class TestPTASignals(unittest.TestCase):
         inv1, ld1 = pta.get_phiinv(ps,method='cliques', logdet=True)
         inv2, ld2 = pta.get_phiinv(ps,method='partition', logdet=True)
         inv3, ld3 = pta.get_phiinv(ps,method='sparse', logdet=True)
-        inv3 = inv3.toarray()
+        if not isinstance(inv3,np.ndarray):
+            inv3 = inv3.toarray()
 
         for ld in [ld1, ld2, ld3]:
             msg = "Wrong phi log determinant for two common processes"
@@ -171,7 +174,7 @@ class TestPTASignals(unittest.TestCase):
 
         pta = signal_base.PTA([model(psr) for psr in self.psrs])
 
-        ps = {p.name: float(p.sample()) for p in pta.params}
+        ps = parameter.sample(pta.params)
 
         phi = pta.get_phi(ps)
         ldp = np.linalg.slogdet(phi)[1]
@@ -179,7 +182,8 @@ class TestPTASignals(unittest.TestCase):
         inv1, ld1 = pta.get_phiinv(ps,method='cliques', logdet=True)
         inv2, ld2 = pta.get_phiinv(ps,method='partition', logdet=True)
         inv3, ld3 = pta.get_phiinv(ps,method='sparse', logdet=True)
-        inv3 = inv3.toarray()
+        if not isinstance(inv3,np.ndarray):
+            inv3 = inv3.toarray()
 
         for ld in [ld1, ld2, ld3]:
             msg = "Wrong phi log determinant for two common processes"
@@ -199,7 +203,7 @@ class TestPTASignals(unittest.TestCase):
 
         pta = signal_base.PTA([model(psr) for psr in self.psrs])
 
-        ps = {p.name: float(p.sample()) for p in pta.params}
+        ps = parameter.sample(pta.params)
 
         phi = pta.get_phi(ps)
         ldp = np.linalg.slogdet(phi)[1]
@@ -227,7 +231,7 @@ class TestPTASignals(unittest.TestCase):
 
         pta = signal_base.PTA([model(psr) for psr in self.psrs])
 
-        ps = {p.name: float(p.sample()) for p in pta.params}
+        ps = parameter.sample(pta.params)
 
         phi = pta.get_phi(ps)
         ldp = np.linalg.slogdet(phi)[1]
