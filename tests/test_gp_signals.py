@@ -260,7 +260,7 @@ class TestGPSignals(unittest.TestCase):
         # set up signal model. use list of frequencies to make basis
         pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
                             gamma=parameter.Uniform(1,7))
-        rn = gs.FourierBasisGP(spectrum=pl, modes=f2[::2])
+        rn = gp_signals.FourierBasisGP(spectrum=pl, modes=f2[::2])
         rnm = rn(self.psr)
 
         # basis matrix test
