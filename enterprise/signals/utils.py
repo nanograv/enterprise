@@ -19,47 +19,47 @@ from enterprise.signals.parameter import function
 
 
 def get_coefficients(pta,params,n=None):
-    # the [0] to follow select the first pulsar in the PTA...
-
-    # wave = pta.get_delay(params=params)[0]
-
-    # Nvec = pta.get_ndiag(params)[0]
-    phiinv = pta.get_phiinv(params, logdet=False)[0]
-    # T = pta.get_basis(params)[0]
-
-    d = pta.get_TNr(params)[0]
-    TNT = pta.get_TNT(params)[0]
-
-    Sigma = TNT + (np.diag(phiinv) if phiinv.ndim == 1 else phiinv)
-
-    try:
-        u, s, _ = sl.svd(Sigma)
-        mn = np.dot(u, np.dot(u.T, d)/s)
-        Li = u * np.sqrt(1/s)
-    except np.linalg.LinAlgError:
-        Q, R = sl.qr(Sigma)
-        Sigi = sl.solve(R, Q.T)
-        mn = np.dot(Sigi, d)
-        u, s, _ = sl.svd(Sigi)
-        Li = u * np.sqrt(1/s)
+    if n is None:
+        n = 1
 
     ret = []
-    for i in range(1 if n is None else n):
-        b = mn + np.dot(Li, np.random.randn(Li.shape[0]))
 
-        sc = pta._signalcollections[0]
-        pardict, ntot = {}, 0
-        for sig in sc._signals:
-            if sig.signal_type == 'basis':
-                nb = sig.get_basis(params=params).shape[1]
-                pardict[sig.name + '_coefficients'] = b[ntot:nb+ntot]
-                ntot += nb
+    phiinvs = pta.get_phiinv(params, logdet=False)
+    ds = pta.get_TNr(params)
+    TNTs = pta.get_TNT(params)
 
-        pardict.update(params)
-        ret.append(pardict)
-    ret = ret[0] if n is None else ret
+    for i, model in enumerate(pta.pulsarmodels):
+        phiinv, d, TNT = phiinvs[i], ds[i], TNTs[i]
 
-    return ret
+        Sigma = TNT + (np.diag(phiinv) if phiinv.ndim == 1 else phiinv)
+
+        try:
+            u, s, _ = sl.svd(Sigma)
+            mn = np.dot(u, np.dot(u.T, d)/s)
+            Li = u * np.sqrt(1/s)
+        except np.linalg.LinAlgError:
+            Q, R = sl.qr(Sigma)
+            Sigi = sl.solve(R, Q.T)
+            mn = np.dot(Sigi, d)
+            u, s, _ = sl.svd(Sigi)
+            Li = u * np.sqrt(1/s)
+
+        for i in range(n):
+            b = mn + np.dot(Li, np.random.randn(Li.shape[0]))
+
+            pardict, ntot = {}, 0
+            for sig in model._signals:
+                if sig.signal_type == 'basis':
+                    nb = sig.get_basis(params=params).shape[1]
+                    pardict[sig.name + '_coefficients'] = b[ntot:nb+ntot]
+                    ntot += nb
+
+            if len(ret) <= i:
+                ret.append(params.copy())
+
+            ret[i].update(pardict)
+
+    return ret[0] if n is 1 else ret
 
 
 class KernelMatrix(np.ndarray):

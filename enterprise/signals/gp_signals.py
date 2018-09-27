@@ -202,7 +202,7 @@ def TimingModel(coefficients=False, name='linear_timing_model',
 
     if normed is True:
         basis = utils.normed_tm_basis()
-    elif isinstance(normed,np.ndarray):
+    elif isinstance(normed, np.ndarray):
         basis = utils.normed_tm_basis(norm=normed)
     elif use_svd is True:
         if normed is not True:
