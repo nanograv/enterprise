@@ -315,76 +315,52 @@ def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
     return F * env[:, None], Ffreqs
 
 
+@function
+def createfourierdesignmatrix_ephem(toas, pos, nmodes=30, Tspan=None):
+    """
+    Construct ephemeris perturbation Fourier design matrix and frequencies.
+    The matrix contains nmodes*6 columns, ordered as by frequency first,
+    Cartesian coordinate second:
+
+    sin(f0) [x], sin(f0) [y], sin(f0) [z],
+    cos(f0) [x], cos(f0) [y], cos(f0) [z],
+    sin(f1) [x], sin(f1) [y], sin(f1) [z], ...
+
+    The corresponding frequency vector repeats every entry six times.
+    This design matrix should be used with monopole_orf and with
+    a powerlaw that specifies components=6.
+
+    :param toas: vector of time series in seconds
+    :param pos: pulsar position as Cartesian vector
+    :param nmodes: number of Fourier coefficients
+    :param Tspan: Tspan used to define Fourier bins
+
+    :return: F: Fourier design matrix of shape (len(toas),6*nmodes)
+    :return: f: Sampling frequencies (6*nmodes)
+    """
+
+    F0, F0f = createfourierdesignmatrix_red(
+        toas, nmodes=nmodes, Tspan=Tspan)
+
+    F1 = np.zeros((len(toas),nmodes,2,3), 'd')
+    F1[:,:,0,:] = F0[:,0::2,np.newaxis]
+    F1[:,:,1,:] = F0[:,1::2,np.newaxis]
+
+    # verify this is the scalar product we want
+    F1 *= pos
+
+    F1f = np.zeros((nmodes,2,3), 'd')
+    F1f[:,:,:] = F0f[::2,np.newaxis,np.newaxis]
+
+    return F1.reshape((len(toas),nmodes*6)), F1f.reshape((nmodes*6,))
+
+
 def createfourierdesignmatrix_eph(t, nmodes, phi, theta, freq=False,
                                   Tspan=None, logf=False, fmin=None,
                                   fmax=None, modes=None):
-
-    """
-    Construct ephemeris fourier design matrix.
-
-    :param t: vector of time series in seconds
-    :param nmodes: number of fourier coefficients to use
-    :param phi: azimuthal coordinate of pulsar
-    :param theta: polar coordinate of pulsar
-    :param freq: option to output frequencies
-    :param Tspan: option to some other Tspan
-    :param logf: use log frequency spacing
-    :param fmin: lower sampling frequency
-    :param fmax: upper sampling frequency
-    :param modes: option to provide explicit list or array of
-                  sampling frequencies
-
-    :return: Fx: x-axis ephemeris fourier design matrix
-    :return: Fy: y-axis ephemeris fourier design matrix
-    :return: Fz: z-axis ephemeris fourier design matrix
-    :return: f: Sampling frequencies (if freq=True)
-    """
-
-    if Tspan is not None:
-        T = Tspan
-    else:
-        T = t.max() - t.min()
-
-    # define sampling frequencies
-    if modes is not None:
-        nmodes = len(modes)
-        f = modes
-    elif fmin is not None and fmax is not None:
-        f = np.linspace(fmin, fmax, nmodes)
-    else:
-        f = np.linspace(1 / T, nmodes / T, nmodes)
-    if logf:
-        f = np.logspace(np.log10(1 / T), np.log10(nmodes / T), nmodes)
-
-    Ffreqs = np.zeros(2 * nmodes)
-    Ffreqs[0::2] = f
-    Ffreqs[1::2] = f
-
-    # define the pulsar position vector
-    x = np.sin(theta)*np.cos(phi)
-    y = np.sin(theta)*np.sin(phi)
-    z = np.cos(theta)
-
-    N = len(t)
-    Fx = np.zeros((N, 2*nmodes))
-    Fy = np.zeros((N, 2*nmodes))
-    Fz = np.zeros((N, 2*nmodes))
-
-    # The sine/cosine modes
-    Fx[:,::2] = np.sin(2*np.pi*t[:,None]*f[None,:])
-    Fx[:,1::2] = np.cos(2*np.pi*t[:,None]*f[None,:])
-
-    Fy = Fx.copy()
-    Fz = Fx.copy()
-
-    Fx *= x
-    Fy *= y
-    Fz *= z
-
-    if freq:
-        return Fx, Fy, Fz, Ffreqs
-    else:
-        return Fx, Fy, Fz
+    raise NotImplementedError(
+        "createfourierdesignmatrix_eph was removed, " +
+        "and replaced with createfourierdesignmatrix_ephem")
 
 
 ###################################
@@ -893,10 +869,10 @@ def linear_interp_basis(toas, dt=30*86400):
 
 
 @function
-def powerlaw(f, log10_A=-16, gamma=5):
-    df = np.diff(np.concatenate((np.array([0]), f[::2])))
+def powerlaw(f, log10_A=-16, gamma=5, components=2):
+    df = np.diff(np.concatenate((np.array([0]), f[::components])))
     return ((10**log10_A)**2 / 12.0 / np.pi**2 *
-            const.fyr**(gamma-3) * f**(-gamma) * np.repeat(df, 2))
+            const.fyr**(gamma-3) * f**(-gamma) * np.repeat(df, components))
 
 
 @function

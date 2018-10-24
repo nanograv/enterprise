@@ -338,3 +338,12 @@ def FourierBasisCommonGP(spectrum, orf, components=20,
             self._basis, self._labels = self._bases(params=params, Tspan=span)
 
     return FourierBasisCommonGP
+
+
+# for simplicity, we currently do not handle Tspan automatically
+def FourierBasisCommonGP_ephem(spectrum, components, Tspan, name='ephem_gp'):
+    basis = utils.createfourierdesignmatrix_ephem(nmodes=components,
+                                                  Tspan=Tspan)
+    orf = utils.monopole_orf()
+
+    return BasisCommonGP(spectrum, basis, orf, name=name)
