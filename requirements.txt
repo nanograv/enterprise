@@ -1,8 +1,8 @@
-numpy>=1.14.1,<1.15.3
+numpy==1.15.2
 scipy>=1.1.0
 ephem>=3.7.6.0
 Cython>=0.25.2
-scikit-sparse==0.4.2
+scikit-sparse==0.4.3
 git+https://github.com/nanograv/PINT.git
 jplephem>=2.6
 setuptools>=38.2.4
