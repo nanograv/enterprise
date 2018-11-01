@@ -24,7 +24,6 @@ install:
 
     - sudo apt-get update
 
-    - pip install numpy==1.13.3
     - pip install -r requirements.txt
     - pip install -r requirements_dev.txt
     - pip install git+https://github.com/vallis/libstempo.git --install-option="--with-tempo2=$TEMPO2"
