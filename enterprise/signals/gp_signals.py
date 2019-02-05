@@ -22,7 +22,7 @@ from enterprise.signals.selections import Selection
 from enterprise.signals.utils import KernelMatrix
 
 
-def BasisGP(priorFunction, basisFunction, coefficients=False,
+def BasisGP(priorFunction, basisFunction, coefficients=False, combine=True,
             selection=Selection(selections.no_selection),
             name=''):
     """Class factory for generic GPs with a basis matrix."""
@@ -31,6 +31,8 @@ def BasisGP(priorFunction, basisFunction, coefficients=False,
         signal_type = 'basis'
         signal_name = name
         signal_id = name
+
+        basis_combine = combine
 
         def __init__(self, psr):
             super(BasisGP, self).__init__(psr)
@@ -79,7 +81,7 @@ def BasisGP(priorFunction, basisFunction, coefficients=False,
                     size = self._slices[key].stop - self._slices[key].start
 
                     cpar = parameter.GPCoefficients(
-                        logprior=logprior,size=size)(pname + '_coefficients')
+                        logprior=logprior, size=size)(pname + '_coefficients')
 
                     self._coefficients[key] = cpar
                     self._params[cpar.name] = cpar
@@ -130,7 +132,7 @@ def BasisGP(priorFunction, basisFunction, coefficients=False,
                 return [pp.name for pp in self.params
                         if '_coefficients' in pp.name]
 
-            @signal_base.cache_call(['basis_params','delay_params'])
+            @signal_base.cache_call(['basis_params', 'delay_params'])
             def get_delay(self, params={}):
                 self._construct_basis(params)
 
@@ -177,7 +179,7 @@ def BasisGP(priorFunction, basisFunction, coefficients=False,
     return BasisGP
 
 
-def FourierBasisGP(spectrum, coefficients=False, components=20,
+def FourierBasisGP(spectrum, coefficients=False, combine=True, components=20,
                    selection=Selection(selections.no_selection),
                    Tspan=None, modes=None, name='red_noise'):
     """Convenience function to return a BasisGP class with a
@@ -185,8 +187,8 @@ def FourierBasisGP(spectrum, coefficients=False, components=20,
 
     basis = utils.createfourierdesignmatrix_red(nmodes=components,
                                                 Tspan=Tspan, modes=modes)
-    BaseClass = BasisGP(spectrum, basis, coefficients,
-                        selection=selection, name=name)
+    BaseClass = BasisGP(spectrum, basis, coefficients=coefficients,
+                        combine=combine, selection=selection, name=name)
 
     class FourierBasisGP(BaseClass):
         signal_type = 'basis'
@@ -213,7 +215,7 @@ def TimingModel(coefficients=False, name='linear_timing_model',
         basis = utils.unnormed_tm_basis()
 
     prior = utils.tm_prior()
-    BaseClass = BasisGP(prior, basis, coefficients, name=name)
+    BaseClass = BasisGP(prior, basis, coefficients=coefficients, name=name)
 
     class TimingModel(BaseClass):
         signal_type = 'basis'
@@ -246,7 +248,7 @@ def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
 
     basis = utils.create_quantization_matrix()
     prior = ecorr_basis_prior(log10_ecorr=log10_ecorr)
-    BaseClass = BasisGP(prior, basis, coefficients,
+    BaseClass = BasisGP(prior, basis, coefficients=coefficients,
                         selection=selection, name=name)
 
     class EcorrBasisModel(BaseClass):
@@ -263,6 +265,9 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, name=''):
         signal_type = 'common basis'
         signal_name = 'common'
         signal_id = name
+
+        basis_combine = True
+
         _orf = orfFunction(name)
         _prior = priorFunction(name)
 
