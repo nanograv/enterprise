@@ -7,8 +7,10 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
 import numpy as np
+
 import scipy.linalg as sl
 import scipy.special as ss
+
 from scipy.interpolate import interp1d
 from scipy.integrate import odeint
 from pkg_resources import resource_filename, Requirement
@@ -23,46 +25,89 @@ def get_coefficients(pta,params,n=1,phiinv_method='cliques'):
 
     TNrs = pta.get_TNr(params)
     TNTs = pta.get_TNT(params)
-    phiinvs = pta.get_phiinv(params, logdet=False, method=phiinv_method)
+    phiinvs = pta.get_phiinv(params, logdet=False,
+                             method=phiinv_method)
 
-    for i, model in enumerate(pta.pulsarmodels):
-        phiinv, d, TNT = phiinvs[i], TNrs[i], TNTs[i]
+    # ...repeated code in the two if branches... refactor at will!
+    if pta._commonsignals:
+        Sigma = sl.block_diag(*TNTs) + phiinvs
+        TNr = np.concatenate(TNrs)
 
-        Sigma = TNT + (np.diag(phiinv) if phiinv.ndim == 1 else phiinv)
+        u, s, _ = sl.svd(Sigma)
+        mn = np.dot(u, np.dot(u.T, TNr)/s)
+        Li = u * np.sqrt(1/s)
 
-        try:
-            u, s, _ = sl.svd(Sigma)
-            mn = np.dot(u, np.dot(u.T, d)/s)
-            Li = u * np.sqrt(1/s)
-        except np.linalg.LinAlgError:
-            Q, R = sl.qr(Sigma)
-            Sigi = sl.solve(R, Q.T)
-            mn = np.dot(Sigi, d)
-            u, s, _ = sl.svd(Sigi)
-            Li = u * np.sqrt(1/s)
+        # this is inefficient! can we do it with the sparse cholesky?
+        # it should go something like this (except we should not be
+        # taking the inverse of Sigma directly)
+        #
+        # Sigma = sps.block_diag(TNTs,'csc') + sps.csc_matrix(phiinvs)
+        # TNr = np.concatenate(TNrs)
+        # mn = cholesky(Sigma)(TNr)
+        # Li = scipy.linalg.cholesky(scipy.linalg.inv(Sigma))
 
         for j in range(n):
             b = mn + np.dot(Li, np.random.randn(Li.shape[0]))
 
             pardict, ntot = {}, 0
-            for sig in model._signals:
-                if sig.signal_type == 'basis':
-                    nb = sig.get_basis(params=params).shape[1]
+            for i, model in enumerate(pta.pulsarmodels):
+                for sig in model._signals:
+                    if sig.signal_type in ['basis', 'common basis']:
+                        nb = sig.get_basis(params=params).shape[1]
 
-                    if nb + ntot > len(b):
-                        raise IndexError("Missing some parameters! "
-                                         "You need to disable GP "
-                                         "basis column reuse.")
+                        if nb + ntot > len(b):
+                            raise IndexError("Missing some parameters! "
+                                             "You need to disable GP "
+                                             "basis column reuse.")
 
-                    pardict[sig.name + '_coefficients'] = b[ntot:nb+ntot]
-                    ntot += nb
+                        pardict[sig.name + '_coefficients'] = b[ntot:nb+ntot]
+                        ntot += nb
 
             if len(ret) <= j:
                 ret.append(params.copy())
 
             ret[j].update(pardict)
 
-    return ret[0] if n is 1 else ret
+        return ret[0] if n is 1 else ret
+    else:
+        for i, model in enumerate(pta.pulsarmodels):
+            phiinv, d, TNT = phiinvs[i], TNrs[i], TNTs[i]
+
+            Sigma = TNT + (np.diag(phiinv) if phiinv.ndim == 1 else phiinv)
+
+            try:
+                u, s, _ = sl.svd(Sigma)
+                mn = np.dot(u, np.dot(u.T, d)/s)
+                Li = u * np.sqrt(1/s)
+            except np.linalg.LinAlgError:
+                Q, R = sl.qr(Sigma)
+                Sigi = sl.solve(R, Q.T)
+                mn = np.dot(Sigi, d)
+                u, s, _ = sl.svd(Sigi)
+                Li = u * np.sqrt(1/s)
+
+            for j in range(n):
+                b = mn + np.dot(Li, np.random.randn(Li.shape[0]))
+
+                pardict, ntot = {}, 0
+                for sig in model._signals:
+                    if sig.signal_type == 'basis':
+                        nb = sig.get_basis(params=params).shape[1]
+
+                        if nb + ntot > len(b):
+                            raise IndexError("Missing some parameters! "
+                                             "You need to disable GP "
+                                             "basis column reuse.")
+
+                        pardict[sig.name + '_coefficients'] = b[ntot:nb+ntot]
+                        ntot += nb
+
+                if len(ret) <= j:
+                    ret.append(params.copy())
+
+                ret[j].update(pardict)
+
+        return ret[0] if n is 1 else ret
 
 
 class KernelMatrix(np.ndarray):

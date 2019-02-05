@@ -309,9 +309,13 @@ class PTA(object):
             for signalcollection in self._signalcollections:
                 # TODO: need a better signal that a
                 # signalcollection provides a basis
+
                 if signalcollection._Fmat is not None:
                     for signal in signalcollection._signals:
-                        if isinstance(signal, CommonSignal):
+                        # if the CommonSignal is coefficient based we don't
+                        # need to worry about it for get_phi and get_phiinv
+                        if (isinstance(signal, CommonSignal) and
+                                not getattr(signal, '_coefficients', {})):
                             commonsignals[signal.__class__][signal] = \
                                 signalcollection
 
