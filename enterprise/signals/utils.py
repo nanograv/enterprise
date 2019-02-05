@@ -10,6 +10,7 @@ import numpy as np
 
 import scipy.linalg as sl
 import scipy.special as ss
+import scipy.sparse as sps
 
 from scipy.interpolate import interp1d
 from scipy.integrate import odeint
@@ -19,8 +20,14 @@ import enterprise
 import enterprise.constants as const
 from enterprise.signals.parameter import function
 
+try:
+    from sksparse.cholmod import cholesky
+except:
+    print("You'll need sksparse for get_coefficients() with common signals!")
 
-def get_coefficients(pta,params,n=1,phiinv_method='cliques'):
+
+def get_coefficients(pta,params,n=1,phiinv_method='cliques',
+                     common_sparse=False):
     ret = []
 
     TNrs = pta.get_TNr(params)
@@ -30,21 +37,20 @@ def get_coefficients(pta,params,n=1,phiinv_method='cliques'):
 
     # ...repeated code in the two if branches... refactor at will!
     if pta._commonsignals:
-        Sigma = sl.block_diag(*TNTs) + phiinvs
-        TNr = np.concatenate(TNrs)
+        if common_sparse:
+            Sigma = sps.block_diag(TNTs,'csc') + sps.csc_matrix(phiinvs)
+            TNr = np.concatenate(TNrs)
 
-        u, s, _ = sl.svd(Sigma)
-        mn = np.dot(u, np.dot(u.T, TNr)/s)
-        Li = u * np.sqrt(1/s)
+            ch = cholesky(Sigma)
+            mn = ch(TNr)
+            Li = sps.linalg.inv(ch.L()).toarray()
+        else:
+            Sigma = sl.block_diag(*TNTs) + phiinvs
+            TNr = np.concatenate(TNrs)
 
-        # this is inefficient! can we do it with the sparse cholesky?
-        # it should go something like this (except we should not be
-        # taking the inverse of Sigma directly)
-        #
-        # Sigma = sps.block_diag(TNTs,'csc') + sps.csc_matrix(phiinvs)
-        # TNr = np.concatenate(TNrs)
-        # mn = cholesky(Sigma)(TNr)
-        # Li = scipy.linalg.cholesky(scipy.linalg.inv(Sigma))
+            u, s, _ = sl.svd(Sigma)
+            mn = np.dot(u, np.dot(u.T, TNr)/s)
+            Li = u * np.sqrt(1/s)
 
         for j in range(n):
             b = mn + np.dot(Li, np.random.randn(Li.shape[0]))
