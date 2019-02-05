@@ -265,6 +265,9 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, name=''):
         signal_type = 'common basis'
         signal_name = 'common'
         signal_id = name
+
+        basis_combine = True
+
         _orf = orfFunction(name)
         _prior = priorFunction(name)
 
