@@ -763,11 +763,11 @@ def SignalCollection(metasignals):
 
                     for i, column in enumerate(Fmat.T):
                         colhash = hash(column.tostring())
-                        try:
-                            # should handle collisions?
+
+                        if signal.basis_combine and colhash in hashlist:
                             j = hashlist.index(colhash)
                             idx[signal].append(j)
-                        except ValueError:
+                        else:
                             idx[signal].append(cc)
                             Fmatlist.append(column)
                             hashlist.append(colhash)
