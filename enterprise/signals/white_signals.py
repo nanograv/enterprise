@@ -62,8 +62,6 @@ def WhiteNoise(varianceFunction,
 
 @function
 def efac_ndiag(toaerrs, efac=1.0):
-    if efac is None:
-        efac=1.0
     return efac**2 * toaerrs**2
 
 
