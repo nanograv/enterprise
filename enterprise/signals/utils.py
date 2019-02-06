@@ -18,18 +18,15 @@ import enterprise.constants as const
 from enterprise.signals.parameter import function
 
 
-def get_coefficients(pta,params,n=None):
-    if n is None:
-        n = 1
-
+def get_coefficients(pta,params,n=1,phiinv_method='cliques'):
     ret = []
 
-    phiinvs = pta.get_phiinv(params, logdet=False)
-    ds = pta.get_TNr(params)
+    TNrs = pta.get_TNr(params)
     TNTs = pta.get_TNT(params)
+    phiinvs = pta.get_phiinv(params, logdet=False, method=phiinv_method)
 
     for i, model in enumerate(pta.pulsarmodels):
-        phiinv, d, TNT = phiinvs[i], ds[i], TNTs[i]
+        phiinv, d, TNT = phiinvs[i], TNrs[i], TNTs[i]
 
         Sigma = TNT + (np.diag(phiinv) if phiinv.ndim == 1 else phiinv)
 
@@ -44,20 +41,26 @@ def get_coefficients(pta,params,n=None):
             u, s, _ = sl.svd(Sigi)
             Li = u * np.sqrt(1/s)
 
-        for i in range(n):
+        for j in range(n):
             b = mn + np.dot(Li, np.random.randn(Li.shape[0]))
 
             pardict, ntot = {}, 0
             for sig in model._signals:
                 if sig.signal_type == 'basis':
                     nb = sig.get_basis(params=params).shape[1]
+
+                    if nb + ntot > len(b):
+                        raise IndexError("Missing some parameters! "
+                                         "You need to disable GP "
+                                         "basis column reuse.")
+
                     pardict[sig.name + '_coefficients'] = b[ntot:nb+ntot]
                     ntot += nb
 
-            if len(ret) <= i:
+            if len(ret) <= j:
                 ret.append(params.copy())
 
-            ret[i].update(pardict)
+            ret[j].update(pardict)
 
     return ret[0] if n is 1 else ret
 
@@ -887,7 +890,7 @@ def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10/3, beta=0.5):
 
 @function
 def hd_orf(pos1, pos2):
-    """ Hellings & Downs spatial correlation function."""
+    """Hellings & Downs spatial correlation function."""
     if np.all(pos1 == pos2):
         return 1
     else:

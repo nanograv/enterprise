@@ -72,7 +72,8 @@ def PhysicalEphemerisSignal(
     inc_jupiter_orb=True, inc_saturn_orb=False, use_epoch_toas=True,
     name=''):  # noqa: E125,E501
 
-    """ Class factory for physical ephemeris model signal.
+    """
+    Class factory for physical ephemeris model signal.
 
     This function implements a physically motivated ephemeris delay model.
     It is parameterized by an overall frame drift rate, masses of gas giants,
@@ -193,7 +194,7 @@ def PhysicalEphemerisSignal(
                         for aa in range(3)]).T
                 self._planetssb = planetssb
 
-                # Inteprolating the pulsar position vectors onto epoch TOAs
+                # Interpolating the pulsar position vectors onto epoch TOAs
                 pos_t = np.array([np.interp(avetoas, psr.toas, psr.pos_t[:,aa])
                                   for aa in range(3)]).T
                 self._pos_t = pos_t
