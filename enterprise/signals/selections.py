@@ -92,8 +92,6 @@ def cut_half(toas):
 def by_band(flags):
     """Selection function to split by PPTA frequency band under -B flag"""
     flagvals = np.unique(flags['B'])
-    flagvals[flagvals=="40CM"] = "4050CM" #Group 40CM and 50CM bands
-    flagvals[flagvals=="50CM"] = "4050CM"
     return {flagval: flags['B'] == flagval for flagval in flagvals}
 
 def by_backend(backend_flags):
