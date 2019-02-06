@@ -89,10 +89,12 @@ def cut_half(toas):
     midpoint = (toas.max() + toas.min()) / 2
     return dict(zip(['t1', 't2'], [toas <= midpoint, toas > midpoint]))
 
+
 def by_band(flags):
     """Selection function to split by PPTA frequency band under -B flag"""
     flagvals = np.unique(flags['B'])
     return {flagval: flags['B'] == flagval for flagval in flagvals}
+
 
 def by_backend(backend_flags):
     """Selection function to split by backend flags."""
