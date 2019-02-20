@@ -369,7 +369,7 @@ def Function(func, name='', **func_kwargs):
 
             self.name = '_'.join([n for n in [name, fname] if n])
 
-            self.func_args = inspect.getargspec(func).args
+            self.func_args = inspect.getfullargspec(func).args
             self.func_kwargs = func_kwargs
 
             # process keyword parameters:
@@ -489,7 +489,7 @@ def Function(func, name='', **func_kwargs):
 
 def get_funcargs(func):
     """Convenience function to get args and kwargs of any function."""
-    argspec = inspect.getargspec(func)
+    argspec = inspect.getfullargspec(func)
 
     if argspec.defaults is None:
         args = argspec.args

@@ -19,7 +19,7 @@ def call_me_maybe(obj):
 
 
 def selection_func(func):
-    funcargs = inspect.getargspec(func).args
+    funcargs = inspect.getfullargspec(func).args
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
