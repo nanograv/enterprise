@@ -77,8 +77,10 @@ class TestPTASignals(unittest.TestCase):
 
         params = {'gw_log10_A': lAc, 'gw_gamma': gammac,
                   'gw_a': a, 'gw_b':b, 'gw_c':c,
-                  'B1855+09_log10_A': lA1, 'B1855+09_gamma': gamma1,
-                  'J1909-3744_log10_A': lA2, 'J1909-3744_gamma': gamma2}
+                  'B1855+09_red_noise_log10_A': lA1,
+                  'B1855+09_red_noise_gamma': gamma1,
+                  'J1909-3744_red_noise_log10_A': lA2,
+                  'J1909-3744_red_noise_gamma': gamma2}
 
         phi = pta.get_phi(params)
         phiinv = pta.get_phiinv(params)
@@ -273,8 +275,10 @@ class TestPTASignals(unittest.TestCase):
         lAc, gammac = -13.1, 1e-15
 
         params = {'gw_log10_A': lAc, 'gw_gamma': gammac,
-                  'B1855+09_log10_A': lA1, 'B1855+09_gamma': gamma1,
-                  'J1909-3744_log10_A': lA2, 'J1909-3744_gamma': gamma2}
+                  'B1855+09_red_noise_log10_A': lA1,
+                  'B1855+09_red_noise_gamma': gamma1,
+                  'J1909-3744_red_noise_log10_A': lA2,
+                  'J1909-3744_red_noise_gamma': gamma2}
 
         phi = pta.get_phi(params)
         phiinv = pta.get_phiinv(params)
