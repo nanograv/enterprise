@@ -31,17 +31,27 @@ def _sample(parlist, parvalues):
 
     for par in parlist:
         if par not in parvalues:
+            # sample hyperpars for this par, skip parameter itself
             parvalues.update(sample(par.params[1:]))
+
             parvalues[par.name] = par.sample(params=parvalues)
 
 
 class Parameter(object):
-    # instances will need to define _size, _prior, and _typename
-    # thus this class is technically abstract
+    # instances will need to define _size, _prior (of _logprior, but not both),
+    # and _typename thus this class is technically abstract
 
     def __init__(self, name):
         self.name = name
-        self.prior = self._prior(name)
+
+        if hasattr(self,'_prior'):
+            self.prior = self._prior(name)
+        elif hasattr(self,'_logprior'):
+            self.logprior = self._logprior(name)
+        else:
+            msg = "Parameter classes need to define _prior, or _logprior."
+            raise AttributeError(msg)
+
         self.type = self.__class__.__name__.lower()
 
     def get_logpdf(self, value=None, **kwargs):
@@ -52,7 +62,11 @@ class Parameter(object):
         if value is None and 'params' in kwargs:
             value = kwargs['params'][self.name]
 
-        logpdf = np.log(self.prior(value, **kwargs))
+        if hasattr(self,'prior'):
+            logpdf = np.log(self.prior(value, **kwargs))
+        else:
+            logpdf = self.logprior(value, **kwargs)
+
         return logpdf if self._size is None else np.sum(logpdf)
 
     def get_pdf(self, value=None, **kwargs):
@@ -63,7 +77,11 @@ class Parameter(object):
         if value is None and 'params' in kwargs:
             value = kwargs['params'][self.name]
 
-        pdf = self.prior(value, **kwargs)
+        if hasattr(self,'prior'):
+            pdf = self.prior(value, **kwargs)
+        else:
+            pdf = np.exp(self.logprior(value, **kwargs))
+
         return pdf if self._size is None else np.prod(pdf)
 
     def sample(self, **kwargs):
@@ -86,12 +104,19 @@ class Parameter(object):
 
     @property
     def params(self):
-        return [self] + [par for par in self.prior.params
+        priorparams = (self.prior.params if hasattr(self,'prior')
+                       else self.logprior.params)
+
+        return [self] + [par for par in priorparams
                          if not isinstance(par, ConstantParameter)]
 
     def __repr__(self):
-        args = self.prior._params.copy()
-        args.update(self.prior._funcs)
+        if hasattr(self,'prior'):
+            args = self.prior._params.copy()
+            args.update(self.prior._funcs)
+        else:
+            args = self.logprior._params.copy()
+            args.update(self.logprior._funcs)
 
         typename = self._typename.format(**args)
         array = '' if self._size is None else '[{}]'.format(self._size)
@@ -104,7 +129,20 @@ class Parameter(object):
         return self
 
 
-def UserParameter(prior, sampler=None, size=None):
+def GPCoefficients(logprior, size):
+    """Class factory for GP coefficients, which are usually created
+    inside gp_signals.BasisGP."""
+
+    class GPCoefficients(Parameter):
+        _size = size
+        _logprior = logprior
+        _sampler = None  # MV: TO DO, connect with GP object
+        _typename = 'GPCoefficients'
+
+    return GPCoefficients
+
+
+def UserParameter(prior=None, logprior=None, sampler=None, size=None):
     """Class factory for UserParameter, implementing Enterprise parameters
     with arbitrary priors. The prior is specified by way of an Enterprise
     ``Function`` of the form ``prior(value, [par1, par2])``. Optionally,
@@ -121,7 +159,10 @@ def UserParameter(prior, sampler=None, size=None):
 
     class UserParameter(Parameter):
         _size = size
-        _prior = prior
+        if prior is not None:
+            _prior = prior
+        if logprior is not None:
+            _logprior = logprior
         _sampler = None if sampler is None else staticmethod(sampler)
         _typename = 'UserParameter'
 
@@ -304,6 +345,7 @@ def Constant(val=None):
     value later, for example with ``signal_base.PTA.set_default_params()``.
     """
     class Constant(ConstantParameter):
+        # MV: I don't know if this does what it's supposed to...
         value = val
 
     return Constant

@@ -158,7 +158,7 @@ class CommonSignal(Signal):
         return None
 
 
-class MarginalizedLogLikelihood(object):
+class LogLikelihood(object):
     def __init__(self, pta):
         self.pta = pta
 
@@ -169,6 +169,8 @@ class MarginalizedLogLikelihood(object):
         # map parameter vector if needed
         params = xs if isinstance(xs,dict) else self.pta.map_params(xs)
 
+        loglike = 0
+
         # phiinvs will be a list or may be a big matrix if spatially
         # correlated signals
         TNrs = self.pta.get_TNr(params)
@@ -177,7 +179,7 @@ class MarginalizedLogLikelihood(object):
                                       method=phiinv_method)
 
         # get -0.5 * (rNr + logdet_N) piece of likelihood
-        loglike = -0.5 * np.sum([l for l in self.pta.get_rNr_logdet(params)])
+        loglike += -0.5 * np.sum([l for l in self.pta.get_rNr_logdet(params)])
 
         # red noise piece
         if self.pta._commonsignals:
@@ -193,7 +195,11 @@ class MarginalizedLogLikelihood(object):
 
             loglike += 0.5*(np.dot(TNr, expval) - logdet_sigma - logdet_phi)
         else:
-            for TNr, TNT, (phiinv, logdet_phi) in zip(TNrs, TNTs, phiinvs):
+            for TNr, TNT, pl in zip(TNrs, TNTs, phiinvs):
+                if TNr is None:
+                    continue
+
+                phiinv, logdet_phi = pl
                 Sigma = TNT + (np.diag(phiinv) if phiinv.ndim == 1 else phiinv)
 
                 try:
@@ -211,7 +217,7 @@ class MarginalizedLogLikelihood(object):
 
 
 class PTA(object):
-    def __init__(self, init, lnlikelihood=MarginalizedLogLikelihood):
+    def __init__(self, init, lnlikelihood=LogLikelihood):
         if isinstance(init, collections.Sequence):
             self._signalcollections = list(init)
         else:
@@ -246,6 +252,10 @@ class PTA(object):
             else:
                 ret.append(p.name)
         return ret
+
+    @property
+    def pulsarmodels(self):
+        return self._signalcollections
 
     def get_TNr(self, params):
         return [signalcollection.get_TNr(params) for signalcollection
@@ -696,8 +706,11 @@ def SignalCollection(metasignals):
                 if signal.signal_type == 'white noise':
                     self.white_params.extend(signal.ndiag_params)
                 elif signal.signal_type in ['basis', 'common basis']:
+                    # to support GP coefficients, and yet do the right thing
+                    # for common GPs, which do not have coefficients yet
+                    self.delay_params.extend(getattr(signal,'delay_params',[]))
                     self.basis_params.extend(signal.basis_params)
-                elif signal.signal_type == 'deterministic':
+                elif signal.signal_type in ['deterministic']:
                     self.delay_params.extend(signal.delay_params)
                 else:
                     msg = '{} signal type not recognized! Caching '.format(
@@ -721,6 +734,10 @@ def SignalCollection(metasignals):
                 else:
                     ret.append(p.name)
             return ret
+
+        @property
+        def signals(self):
+            return self._signals
 
         def set_default_params(self, params):
             for signal in self._signals:
@@ -746,11 +763,11 @@ def SignalCollection(metasignals):
 
                     for i, column in enumerate(Fmat.T):
                         colhash = hash(column.tostring())
-                        try:
-                            # should handle collisions?
+
+                        if signal.basis_combine and colhash in hashlist:
                             j = hashlist.index(colhash)
                             idx[signal].append(j)
-                        except ValueError:
+                        else:
                             idx[signal].append(cc)
                             Fmatlist.append(column)
                             hashlist.append(colhash)
@@ -760,10 +777,13 @@ def SignalCollection(metasignals):
                     idx[signal] = list(np.arange(cc, cc+nf))
                     cc += nf
 
-            ncol = len(np.unique(sum(idx.values(), [])))
-            nrow = len(Fmatlist[0])
-            return ({key: np.array(idx[key]) for key in idx.keys()},
-                    np.zeros((nrow, ncol)))
+            if not idx:
+                return {}, None
+            else:
+                ncol = len(np.unique(sum(idx.values(), [])))
+                nrow = len(Fmatlist[0])
+                return ({key: np.array(idx[key]) for key in idx.keys()},
+                        np.zeros((nrow, ncol)))
 
         # goofy way to cache _idx
         def __getattr__(self, par):
@@ -801,6 +821,9 @@ def SignalCollection(metasignals):
 
         # returns a KernelMatrix object
         def get_phi(self, params):
+            if self._Fmat is None:
+                return None
+
             phi = KernelMatrix(self._Fmat.shape[1])
 
             for signal in self._signals:
@@ -811,15 +834,19 @@ def SignalCollection(metasignals):
 
         @cache_call(['basis_params', 'white_params', 'delay_params'])
         def get_TNr(self, params):
-            Nvec = self.get_ndiag(params)
             T = self.get_basis(params)
+            if T is None:
+                return None
+            Nvec = self.get_ndiag(params)
             res = self.get_detres(params)
             return Nvec.solve(res, left_array=T)
 
         @cache_call(['basis_params', 'white_params'])
         def get_TNT(self, params):
-            Nvec = self.get_ndiag(params)
             T = self.get_basis(params)
+            if T is None:
+                return None
+            Nvec = self.get_ndiag(params)
             return Nvec.solve(T, left_array=T)
 
         @cache_call(['white_params', 'delay_params'])
@@ -832,7 +859,18 @@ def SignalCollection(metasignals):
 
 
 def cache_call(attrs, limit=2):
-    """Cache function that allows for subsets of parameters to be keyed."""
+    """This decorator caches the output of a class method that takes
+    a single parameter 'params'. It saves the cache in the instance
+    attributes _cache_<methodname> and _cache_list_<methodname>.
+
+    The cache keys are listed in the class attribute (or attributes)
+    specified in the initial decorator call. For instance, if
+    the decorator is applied as @cache_call('basis_params'), then
+    the parameters listed in self.basis_params (together with their values)
+    will be used as the key.
+
+    The parameter 'limit' specifies the number of entries saved
+    in the cache."""
 
     # convert to list of lists if only one attribute used
     if not isinstance(attrs, list):
