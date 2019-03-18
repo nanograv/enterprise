@@ -18,7 +18,6 @@ from enterprise.pulsar import Pulsar
 from enterprise.signals import parameter
 from enterprise.signals import selections
 from enterprise.signals.selections import Selection
-from enterprise.signals import signal_base
 from enterprise.signals import white_signals
 from enterprise.signals import gp_signals
 from enterprise.signals import utils
@@ -41,10 +40,10 @@ def get_noise_from_pal2(noisefile):
             par = 'log10_ecorr'
             flag = ln[0].split('jitter_q-')[-1]
         elif 'RN-Amplitude' in line:
-            par = 'log10_A'
+            par = 'red_noise_log10_A'
             flag = ''
         elif 'RN-spectral-index' in line:
-            par = 'gamma'
+            par = 'red_noise_gamma'
             flag = ''
         else:
             break
@@ -90,7 +89,7 @@ class TestSetParameters(unittest.TestCase):
         ec = white_signals.EcorrKernelNoise(log10_ecorr=ecorr,
                                             selection=selection)
 
-        pl = signal_base.Function(utils.powerlaw, log10_A=log10_A, gamma=gamma)
+        pl = utils.powerlaw(log10_A=log10_A, gamma=gamma)
         rn = gp_signals.FourierBasisGP(pl)
 
         s = ef + eq + ec + rn
@@ -106,8 +105,8 @@ class TestSetParameters(unittest.TestCase):
                   if 'equad' in key]
         ecorrs = [params[key] for key in sorted(params.keys())
                   if 'ecorr' in key]
-        log10_A = params['B1855+09_log10_A']
-        gamma = params['B1855+09_gamma']
+        log10_A = params['B1855+09_red_noise_log10_A']
+        gamma = params['B1855+09_red_noise_gamma']
 
         # correct value
         flags = ['430_ASP', '430_PUPPI', 'L-wide_ASP', 'L-wide_PUPPI']
@@ -205,7 +204,7 @@ class TestSetParameters(unittest.TestCase):
         ec = white_signals.EcorrKernelNoise(log10_ecorr=ecorr,
                                             selection=selection)
 
-        pl = signal_base.Function(utils.powerlaw, log10_A=log10_A, gamma=gamma)
+        pl = utils.powerlaw(log10_A=log10_A, gamma=gamma)
         rn = gp_signals.FourierBasisGP(pl)
 
         s = ef + eq + ec + rn
@@ -223,8 +222,8 @@ class TestSetParameters(unittest.TestCase):
                            if 'equad' in key and pname in key])
             ecorrs.append([params[key] for key in sorted(params.keys())
                            if 'ecorr' in key and pname in key])
-            log10_A.append(params['{}_log10_A'.format(pname)])
-            gamma.append(params['{}_gamma'.format(pname)])
+            log10_A.append(params['{}_red_noise_log10_A'.format(pname)])
+            gamma.append(params['{}_red_noise_gamma'.format(pname)])
 
         # correct value
         tflags = [sorted(list(np.unique(p.backend_flags))) for p in self.psrs]

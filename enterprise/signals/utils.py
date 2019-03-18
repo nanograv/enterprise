@@ -7,13 +7,147 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
 import numpy as np
+import scipy.linalg as sl
+import scipy.special as ss
 from scipy.interpolate import interp1d
 from scipy.integrate import odeint
-from scipy import special as ss
 from pkg_resources import resource_filename, Requirement
+
 import enterprise
 import enterprise.constants as const
-from enterprise.signals import signal_base
+from enterprise.signals.parameter import function
+
+
+def get_coefficients(pta,params,n=1,phiinv_method='cliques'):
+    ret = []
+
+    TNrs = pta.get_TNr(params)
+    TNTs = pta.get_TNT(params)
+    phiinvs = pta.get_phiinv(params, logdet=False, method=phiinv_method)
+
+    for i, model in enumerate(pta.pulsarmodels):
+        phiinv, d, TNT = phiinvs[i], TNrs[i], TNTs[i]
+
+        Sigma = TNT + (np.diag(phiinv) if phiinv.ndim == 1 else phiinv)
+
+        try:
+            u, s, _ = sl.svd(Sigma)
+            mn = np.dot(u, np.dot(u.T, d)/s)
+            Li = u * np.sqrt(1/s)
+        except np.linalg.LinAlgError:
+            Q, R = sl.qr(Sigma)
+            Sigi = sl.solve(R, Q.T)
+            mn = np.dot(Sigi, d)
+            u, s, _ = sl.svd(Sigi)
+            Li = u * np.sqrt(1/s)
+
+        for j in range(n):
+            b = mn + np.dot(Li, np.random.randn(Li.shape[0]))
+
+            pardict, ntot = {}, 0
+            for sig in model._signals:
+                if sig.signal_type == 'basis':
+                    nb = sig.get_basis(params=params).shape[1]
+
+                    if nb + ntot > len(b):
+                        raise IndexError("Missing some parameters! "
+                                         "You need to disable GP "
+                                         "basis column reuse.")
+
+                    pardict[sig.name + '_coefficients'] = b[ntot:nb+ntot]
+                    ntot += nb
+
+            if len(ret) <= j:
+                ret.append(params.copy())
+
+            ret[j].update(pardict)
+
+    return ret[0] if n is 1 else ret
+
+
+class KernelMatrix(np.ndarray):
+    def __new__(cls, init):
+        if isinstance(init, int):
+            ret = np.zeros(init, 'd').view(cls)
+        else:
+            ret = init.view(cls)
+
+        if ret.ndim == 2:
+            ret._cliques = -1 * np.ones(ret.shape[0])
+            ret._clcount = 0
+
+        return ret
+
+    # see PTA._setcliques
+    def _setcliques(self, idxs):
+        allidx = set(self._cliques[idxs])
+        maxidx = max(allidx)
+
+        if maxidx == -1:
+            self._cliques[idxs] = self._clcount
+            self._clcount = self._clcount + 1
+        else:
+            self._cliques[idxs] = maxidx
+            if len(allidx) > 1:
+                self._cliques[np.in1d(self._cliques,allidx)] = maxidx
+
+    def add(self, other, idx):
+        if other.ndim == 2 and self.ndim == 1:
+            self = KernelMatrix(np.diag(self))
+
+        if self.ndim == 1:
+            self[idx] += other
+        else:
+            if other.ndim == 1:
+                self[idx, idx] += other
+            else:
+                self._setcliques(idx)
+                idx = ((idx, idx) if isinstance(idx, slice)
+                       else (idx[:, None], idx))
+                self[idx] += other
+
+        return self
+
+    def set(self, other, idx):
+        if other.ndim == 2 and self.ndim == 1:
+            self = KernelMatrix(np.diag(self))
+
+        if self.ndim == 1:
+            self[idx] = other
+        else:
+            if other.ndim == 1:
+                self[idx, idx] = other
+            else:
+                self._setcliques(idx)
+                idx = ((idx, idx) if isinstance(idx, slice)
+                       else (idx[:, None], idx))
+                self[idx] = other
+
+        return self
+
+    def inv(self, logdet=False):
+        if self.ndim == 1:
+            inv = 1.0/self
+
+            if logdet:
+                return inv, np.sum(np.log(self))
+            else:
+                return inv
+        else:
+            try:
+                cf = sl.cho_factor(self)
+                inv = sl.cho_solve(cf, np.identity(cf[0].shape[0]))
+                if logdet:
+                    ld = 2.0*np.sum(np.log(np.diag(cf[0])))
+            except np.linalg.LinAlgError:
+                u, s, v = np.linalg.svd(self)
+                inv = np.dot(u/s, u.T)
+                if logdet:
+                    ld = np.sum(np.log(s))
+            if logdet:
+                return inv, ld
+            else:
+                return inv
 
 
 def create_stabletimingdesignmatrix(designmat, fastDesign=True):
@@ -46,10 +180,10 @@ def create_stabletimingdesignmatrix(designmat, fastDesign=True):
 ######################################
 
 
-@signal_base.function
+@function
 def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
                                   logf=False, fmin=None, fmax=None,
-                                  pshift=False):
+                                  pshift=False, modes=None):
     """
     Construct fourier design matrix from eq 11 of Lentati et al, 2013
     :param toas: vector of time series in seconds
@@ -60,17 +194,20 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
     :param fmin: lower sampling frequency
     :param fmax: upper sampling frequency
     :param pshift: option to add random phase shift
+    :param modes: option to provide explicit list or array of
+                  sampling frequencies
+
     :return: F: fourier design matrix
     :return: f: Sampling frequencies
     """
 
-    N = len(toas)
-    F = np.zeros((N, 2 * nmodes))
-
     T = Tspan if Tspan is not None else toas.max() - toas.min()
 
     # define sampling frequencies
-    if fmin is None and fmax is None and not logf:
+    if modes is not None:
+        nmodes = len(modes)
+        f = modes
+    elif fmin is None and fmax is None and not logf:
         # make sure partially overlapping sets of modes
         # have identical frequencies
         f = 1.0 * np.arange(1, nmodes + 1) / T
@@ -94,6 +231,9 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
 
     Ffreqs = np.repeat(f, 2)
 
+    N = len(toas)
+    F = np.zeros((N, 2 * nmodes))
+
     # The sine/cosine modes
     F[:,::2] = np.sin(2*np.pi*toas[:,None]*f[None,:] +
                       ranphase[None,:])
@@ -103,25 +243,26 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
     return F, Ffreqs
 
 
-@signal_base.function
-def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, fref=1400,
-                                 Tspan=None, logf=False, fmin=None,
-                                 fmax=None):
-
+@function
+def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
+                                 pshift=False, fref=1400, logf=False,
+                                 fmin=None, fmax=None, modes=None):
     """
     Construct DM-variation fourier design matrix. Current
     normalization expresses DM signal as a deviation [seconds]
     at fref [MHz]
 
     :param toas: vector of time series in seconds
-    :param nmodes: number of fourier coefficients to use
     :param freqs: radio frequencies of observations [MHz]
-    :param freq: option to output frequencies
+    :param nmodes: number of fourier coefficients to use
     :param Tspan: option to some other Tspan
+    :param pshift: option to add random phase shift
+    :param fref: reference frequency [MHz]
     :param logf: use log frequency spacing
     :param fmin: lower sampling frequency
-    :param fmax: upper sampling frequency [MHz]
-    :param fref: reference frequency [MHz]
+    :param fmax: upper sampling frequency
+    :param modes: option to provide explicit list or array of
+                  sampling frequencies
 
     :return: F: DM-variation fourier design matrix
     :return: f: Sampling frequencies
@@ -130,7 +271,7 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, fref=1400,
     # get base fourier design matrix and frequencies
     F, Ffreqs = createfourierdesignmatrix_red(
         toas, nmodes=nmodes, Tspan=Tspan, logf=logf,
-        fmin=fmin, fmax=fmax)
+        fmin=fmin, fmax=fmax, pshift=pshift, modes=modes)
 
     # compute the DM-variation vectors
     Dm = (fref/freqs)**2
@@ -138,10 +279,11 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, fref=1400,
     return F * Dm[:, None], Ffreqs
 
 
-@signal_base.function
+@function
 def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
                                   t0=53000*86400, nmodes=30, Tspan=None,
-                                  logf=False, fmin=None, fmax=None):
+                                  logf=False, fmin=None, fmax=None,
+                                  modes=None):
     """
     Construct fourier design matrix with gaussian envelope.
 
@@ -156,6 +298,8 @@ def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
     :param log10_Amp: log10 of the Amplitude [s]
     :param t0: mean of gaussian envelope [s]
     :param log10_Q: log10 of standard deviation of gaussian envelope [days]
+    :param modes: option to provide explicit list or array of
+                  sampling frequencies
 
     :return: F: fourier design matrix with gaussian envelope
     :return: f: Sampling frequencies
@@ -164,7 +308,7 @@ def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
     # get base fourier design matrix and frequencies
     F, Ffreqs = createfourierdesignmatrix_red(
         toas, nmodes=nmodes, Tspan=Tspan, logf=logf,
-        fmin=fmin, fmax=fmax)
+        fmin=fmin, fmax=fmax, modes=modes)
 
     # compute gaussian envelope
     A = 10**log10_Amp
@@ -173,71 +317,52 @@ def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
     return F * env[:, None], Ffreqs
 
 
+@function
+def createfourierdesignmatrix_ephem(toas, pos, nmodes=30, Tspan=None):
+    """
+    Construct ephemeris perturbation Fourier design matrix and frequencies.
+    The matrix contains nmodes*6 columns, ordered as by frequency first,
+    Cartesian coordinate second:
+
+    sin(f0) [x], sin(f0) [y], sin(f0) [z],
+    cos(f0) [x], cos(f0) [y], cos(f0) [z],
+    sin(f1) [x], sin(f1) [y], sin(f1) [z], ...
+
+    The corresponding frequency vector repeats every entry six times.
+    This design matrix should be used with monopole_orf and with
+    a powerlaw that specifies components=6.
+
+    :param toas: vector of time series in seconds
+    :param pos: pulsar position as Cartesian vector
+    :param nmodes: number of Fourier coefficients
+    :param Tspan: Tspan used to define Fourier bins
+
+    :return: F: Fourier design matrix of shape (len(toas),6*nmodes)
+    :return: f: Sampling frequencies (6*nmodes)
+    """
+
+    F0, F0f = createfourierdesignmatrix_red(
+        toas, nmodes=nmodes, Tspan=Tspan)
+
+    F1 = np.zeros((len(toas),nmodes,2,3), 'd')
+    F1[:,:,0,:] = F0[:,0::2,np.newaxis]
+    F1[:,:,1,:] = F0[:,1::2,np.newaxis]
+
+    # verify this is the scalar product we want
+    F1 *= pos
+
+    F1f = np.zeros((nmodes,2,3), 'd')
+    F1f[:,:,:] = F0f[::2,np.newaxis,np.newaxis]
+
+    return F1.reshape((len(toas),nmodes*6)), F1f.reshape((nmodes*6,))
+
+
 def createfourierdesignmatrix_eph(t, nmodes, phi, theta, freq=False,
                                   Tspan=None, logf=False, fmin=None,
-                                  fmax=None):
-
-    """
-    Construct ephemeris fourier design matrix.
-
-    :param t: vector of time series in seconds
-    :param nmodes: number of fourier coefficients to use
-    :param phi: azimuthal coordinate of pulsar
-    :param theta: polar coordinate of pulsar
-    :param freq: option to output frequencies
-    :param Tspan: option to some other Tspan
-    :param logf: use log frequency spacing
-    :param fmin: lower sampling frequency
-    :param fmax: upper sampling frequency
-
-    :return: Fx: x-axis ephemeris fourier design matrix
-    :return: Fy: y-axis ephemeris fourier design matrix
-    :return: Fz: z-axis ephemeris fourier design matrix
-    :return: f: Sampling frequencies (if freq=True)
-    """
-
-    N = len(t)
-    Fx = np.zeros((N, 2*nmodes))
-    Fy = np.zeros((N, 2*nmodes))
-    Fz = np.zeros((N, 2*nmodes))
-
-    if Tspan is not None:
-        T = Tspan
-    else:
-        T = t.max() - t.min()
-
-    # define sampling frequencies
-    if fmin is not None and fmax is not None:
-        f = np.linspace(fmin, fmax, nmodes)
-    else:
-        f = np.linspace(1 / T, nmodes / T, nmodes)
-    if logf:
-        f = np.logspace(np.log10(1 / T), np.log10(nmodes / T), nmodes)
-
-    Ffreqs = np.zeros(2 * nmodes)
-    Ffreqs[0::2] = f
-    Ffreqs[1::2] = f
-
-    # define the pulsar position vector
-    x = np.sin(theta)*np.cos(phi)
-    y = np.sin(theta)*np.sin(phi)
-    z = np.cos(theta)
-
-    # The sine/cosine modes
-    Fx[:,::2] = np.sin(2*np.pi*t[:,None]*f[None,:])
-    Fx[:,1::2] = np.cos(2*np.pi*t[:,None]*f[None,:])
-
-    Fy = Fx.copy()
-    Fz = Fx.copy()
-
-    Fx *= x
-    Fy *= y
-    Fz *= z
-
-    if freq:
-        return Fx, Fy, Fz, Ffreqs
-    else:
-        return Fx, Fy, Fz
+                                  fmax=None, modes=None):
+    raise NotImplementedError(
+        "createfourierdesignmatrix_eph was removed, " +
+        "and replaced with createfourierdesignmatrix_ephem")
 
 
 ###################################
@@ -625,7 +750,7 @@ def create_gw_antenna_pattern(pos, gwtheta, gwphi):
     return fplus, fcross, cosMu
 
 
-@signal_base.function
+@function
 def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
               gwpol=0.0, t0=55000, antenna_pattern_fn=None):
     """
@@ -673,7 +798,7 @@ def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
     return pol * h * heaviside(toas-t0) * (toas-t0)
 
 
-@signal_base.function
+@function
 def create_quantization_matrix(toas, dt=1, nmin=2):
     """Create quantization matrix mapping TOAs to observing epochs."""
     isort = np.argsort(toas)
@@ -745,14 +870,14 @@ def linear_interp_basis(toas, dt=30*86400):
     return M[:, idx], x[idx]
 
 
-@signal_base.function
-def powerlaw(f, log10_A=-16, gamma=5):
-    df = np.diff(np.concatenate((np.array([0]), f[::2])))
+@function
+def powerlaw(f, log10_A=-16, gamma=5, components=2):
+    df = np.diff(np.concatenate((np.array([0]), f[::components])))
     return ((10**log10_A)**2 / 12.0 / np.pi**2 *
-            const.fyr**(gamma-3) * f**(-gamma) * np.repeat(df, 2))
+            const.fyr**(gamma-3) * f**(-gamma) * np.repeat(df, components))
 
 
-@signal_base.function
+@function
 def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10/3, beta=0.5):
     df = np.diff(np.concatenate((np.array([0]), f[::2])))
     hcf = (10**log10_A * (f / const.fyr) ** ((3-gamma) / 2) /
@@ -762,9 +887,9 @@ def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10/3, beta=0.5):
 
 # overlap reduction functions
 
-@signal_base.function
+@function
 def hd_orf(pos1, pos2):
-    """ Hellings & Downs spatial correlation function."""
+    """Hellings & Downs spatial correlation function."""
     if np.all(pos1 == pos2):
         return 1
     else:
@@ -772,7 +897,7 @@ def hd_orf(pos1, pos2):
         return 1.5 * omc2 * np.log(omc2) - 0.25 * omc2 + 0.5
 
 
-@signal_base.function
+@function
 def dipole_orf(pos1, pos2):
     """Dipole spatial correlation function."""
     if np.all(pos1 == pos2):
@@ -781,7 +906,7 @@ def dipole_orf(pos1, pos2):
         return np.dot(pos1, pos2)
 
 
-@signal_base.function
+@function
 def monopole_orf(pos1, pos2):
     """Monopole spatial correlation function."""
     if np.all(pos1 == pos2):
@@ -790,7 +915,7 @@ def monopole_orf(pos1, pos2):
         return 1.0
 
 
-@signal_base.function
+@function
 def anis_orf(pos1, pos2, params, **kwargs):
     """Anisotropic GWB spatial correlation function."""
 
@@ -813,19 +938,29 @@ def anis_orf(pos1, pos2, params, **kwargs):
                                        psr1_index, psr2_index]))
 
 
-@signal_base.function
-def normed_tm_basis(Mmat):
-    norm = np.sqrt(np.sum(Mmat**2, axis=0))
-    return Mmat / norm, np.ones_like(Mmat.shape[1])
+@function
+def unnormed_tm_basis(Mmat):
+    return Mmat, np.ones_like(Mmat.shape[1])
 
 
-@signal_base.function
+@function
+def normed_tm_basis(Mmat, norm=None):
+    if norm is None:
+        norm = np.sqrt(np.sum(Mmat**2, axis=0))
+
+    nmat = Mmat / norm
+    nmat[:,norm == 0] = 0
+
+    return nmat, np.ones_like(Mmat.shape[1])
+
+
+@function
 def svd_tm_basis(Mmat):
     u, s, v = np.linalg.svd(Mmat, full_matrices=False)
     return u, np.ones_like(s)
 
 
-@signal_base.function
+@function
 def tm_prior(weights):
     return weights * 1e40
 
@@ -926,7 +1061,7 @@ def dmass(planet, dm_over_Msun):
     return dm_over_Msun * planet
 
 
-@signal_base.function
+@function
 def physical_ephem_delay(toas, planetssb, pos_t, frame_drift_rate=0,
                          d_jupiter_mass=0, d_saturn_mass=0, d_uranus_mass=0,
                          d_neptune_mass=0, jup_orb_elements=np.zeros(6),

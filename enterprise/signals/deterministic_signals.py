@@ -9,19 +9,19 @@ from __future__ import (absolute_import, division,
 
 import numpy as np
 
-import enterprise
-import enterprise.signals.signal_base as base
-from enterprise.signals import selections
+from enterprise import pulsar
+from enterprise.signals import signal_base
 from enterprise.signals import parameter
-from enterprise.signals.selections import Selection
+from enterprise.signals import selections
 from enterprise.signals import utils
+from enterprise.signals.selections import Selection
 
 
 def Deterministic(waveform, selection=Selection(selections.no_selection),
                   name=''):
     """Class factory for generic deterministic signals."""
 
-    class Deterministic(base.Signal):
+    class Deterministic(signal_base.Signal):
         signal_type = 'deterministic'
         signal_name = name
         signal_id = name
@@ -51,7 +51,7 @@ def Deterministic(waveform, selection=Selection(selections.no_selection),
             """Get any varying ndiag parameters."""
             return [pp.name for pp in self.params]
 
-        @base.cache_call('delay_params')
+        @signal_base.cache_call('delay_params')
         def get_delay(self, params):
             """Return signal delay."""
             for key, mask in zip(self._keys, self._masks):
@@ -72,7 +72,8 @@ def PhysicalEphemerisSignal(
     inc_jupiter_orb=True, inc_saturn_orb=False, use_epoch_toas=True,
     name=''):  # noqa: E125,E501
 
-    """ Class factory for physical ephemeris model signal.
+    """
+    Class factory for physical ephemeris model signal.
 
     This function implements a physically motivated ephemeris delay model.
     It is parameterized by an overall frame drift rate, masses of gas giants,
@@ -135,7 +136,7 @@ def PhysicalEphemerisSignal(
         elements as free parameters in model. Default: False
 
     :param use_epoch_toas:
-        Use interprolation from epoch to full TOAs. This option reduces
+        Use interpolation from epoch to full TOAs. This option reduces
         computational cost for large multi-channel TOA data sets.
         Default: True
     """
@@ -170,7 +171,7 @@ def PhysicalEphemerisSignal(
         def __init__(self, psr):
 
             # not available for PINT yet
-            if isinstance(psr, enterprise.pulsar.PintPulsar):
+            if isinstance(psr, pulsar.PintPulsar):
                 msg = 'Physical Ephemeris model is not compatible with PINT '
                 msg += 'at this time.'
                 raise NotImplementedError(msg)
@@ -180,9 +181,10 @@ def PhysicalEphemerisSignal(
             if use_epoch_toas:
                 # get quantization matrix and calculate daily average TOAs
                 U, _ = utils.create_quantization_matrix(psr.toas, nmin=1)
-                self.uinds = utils.quant2ind(U)
-                avetoas = np.array([psr.toas[sc].mean() for sc in self.uinds])
-                self._wf[''].add_kwarg(toas=avetoas)
+                self._uinds = utils.quant2ind(U)
+
+                avetoas = np.array([psr.toas[sc].mean() for sc in self._uinds])
+                self._avetoas = avetoas
 
                 # interpolate ssb planet position vectors to avetoas
                 planetssb = np.zeros((len(avetoas), 9, 3))
@@ -190,24 +192,29 @@ def PhysicalEphemerisSignal(
                     planetssb[:, jj, :] = np.array([
                         np.interp(avetoas, psr.toas, psr.planetssb[:,jj,aa])
                         for aa in range(3)]).T
-                self._wf[''].add_kwarg(planetssb=planetssb)
+                self._planetssb = planetssb
 
-                # Inteprolating the pulsar position vectors onto epoch TOAs
+                # Interpolating the pulsar position vectors onto epoch TOAs
                 pos_t = np.array([np.interp(avetoas, psr.toas, psr.pos_t[:,aa])
                                   for aa in range(3)]).T
-                self._wf[''].add_kwarg(pos_t=pos_t)
+                self._pos_t = pos_t
 
             # initialize delay
             self._delay = np.zeros(len(psr.toas))
 
-        @base.cache_call('delay_params')
+        @signal_base.cache_call('delay_params')
         def get_delay(self, params):
-            delay = self._wf[''](params=params)
             if use_epoch_toas:
-                for slc, val in zip(self.uinds, delay):
+                delay = self._wf[''](toas=self._avetoas,
+                                     planetssb=self._planetssb,
+                                     pos_t=self._pos_t,
+                                     params=params)
+
+                for slc, val in zip(self._uinds, delay):
                     self._delay[slc] = val
                 return self._delay
             else:
+                delay = self._wf[''](params=params)
                 return delay
 
     return PhysicalEphemerisSignal

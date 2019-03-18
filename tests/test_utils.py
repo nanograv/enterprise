@@ -26,15 +26,15 @@ class TestUtils(unittest.TestCase):
         # initialize Pulsar class
         cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
                          datadir + '/B1855+09_NANOGrav_9yv1.tim')
+
         cls.F, _ = utils.createfourierdesignmatrix_red(
             cls.psr.toas, nmodes=30)
+
         cls.Fdm, _ = utils.createfourierdesignmatrix_dm(
-            cls.psr.toas,freqs=cls.psr.freqs, nmodes=30)
-        tmp = utils.createfourierdesignmatrix_eph(t=cls.psr.toas,
-                                                  phi=cls.psr.phi,
-                                                  theta=cls.psr.theta,
-                                                  nmodes=30)
-        cls.Fx, cls.Fy, cls.Fz = tmp
+            cls.psr.toas, freqs=cls.psr.freqs, nmodes=30)
+
+        cls.Feph, cls.feph = utils.createfourierdesignmatrix_ephem(
+            cls.psr.toas, cls.psr.pos, nmodes=30)
 
         cls.Mm = utils.create_stabletimingdesignmatrix(cls.psr.Mmat)
 
@@ -56,23 +56,24 @@ class TestUtils(unittest.TestCase):
         msg = 'DM-variation Fourier design matrix shape incorrect'
         assert self.Fdm.shape == (4005, 2 * nf), msg
 
-    def test_createfourierdesignmatrix_ephx(self, nf=30):
+    def test_createfourierdesignmatrix_ephem(self, nf=30):
         """Check x-axis ephemeris Fourier design matrix shape."""
 
-        msg = 'Ephemeris x-axis Fourier design matrix shape incorrect'
-        assert self.Fx.shape == (4005, 2 * nf), msg
+        F1, F1f = self.Feph, self.feph
 
-    def test_createfourierdesignmatrix_ephy(self, nf=30):
-        """Check y-axis ephemeris Fourier design matrix shape."""
+        msg = 'Ephemeris Fourier design matrix shape incorrect'
+        assert F1.shape == (4005, 6 * nf), msg
 
-        msg = 'Ephemeris y-axis Fourier design matrix shape incorrect'
-        assert self.Fy.shape == (4005, 2 * nf), msg
+        msg = 'Ephemeris Fourier design matrix values incorrect'
+        assert np.allclose(F1[:,0::3]**2 + F1[:,1::3]**2 + F1[:,2::3]**2,
+                           (F1[:,0::3]/self.psr.pos[0])**2), msg
 
-    def test_createfourierdesignmatrix_ephz(self, nf=30):
-        """Check z-axis ephemeris Fourier design matrix shape."""
+        msg = 'Ephemeris frequencies vector shape incorrect'
+        assert F1f.shape == (6*nf,), msg
 
-        msg = 'Ephemeris z-axis Fourier design matrix shape incorrect'
-        assert self.Fz.shape == (4005, 2 * nf), msg
+        msg = 'Ephemeris frequencies vector values incorrect'
+        assert np.all(F1f[::6] == F1f[5::6]), msg
+        assert np.allclose(np.diff(F1f[:-6:6] - F1f[6::6]),0), msg
 
     def test_ecc_cw_waveform(self):
         """Check eccentric wafeform generation."""

@@ -18,9 +18,10 @@ from enterprise.signals import parameter
 from enterprise.signals import gp_signals
 from enterprise.signals import white_signals
 from enterprise.signals import signal_base
+from enterprise.signals.parameter import function
 
 
-@signal_base.function
+@function
 def free_spectrum(f, log10_rho=None):
     return np.repeat(10**log10_rho,2)
 
@@ -45,7 +46,7 @@ class TestVectorParameter(unittest.TestCase):
 
         # test free-spectrum parameters
         lrho = np.array([-15.5, -16, -14.5])
-        params = {'B1855+09_log10_rho': lrho}
+        params = {'B1855+09_red_noise_log10_rho': lrho}
 
         # test
         msg = 'Phi incorrect'
@@ -53,8 +54,9 @@ class TestVectorParameter(unittest.TestCase):
 
         # test signal level parameter names
         msg = 'Incorrect parameter names'
-        pnames = [u'B1855+09_log10_rho_0', u'B1855+09_log10_rho_1',
-                  u'B1855+09_log10_rho_2']
+        pnames = [u'B1855+09_red_noise_log10_rho_0',
+                  u'B1855+09_red_noise_log10_rho_1',
+                  u'B1855+09_red_noise_log10_rho_2']
         assert rnm.param_names == pnames
 
     def test_vector_parameter_like(self):
@@ -80,7 +82,7 @@ class TestVectorParameter(unittest.TestCase):
 
         # parameters
         xs = np.hstack(p.sample() for p in pta.params)
-        params = {'B1855+09_log10_rho': xs[1:],
+        params = {'B1855+09_red_noise_log10_rho': xs[1:],
                   'B1855+09_efac': xs[0]}
 
         # test log likelihood
@@ -98,9 +100,9 @@ class TestVectorParameter(unittest.TestCase):
 
         # test PTA level parameter names
         pnames = [u'B1855+09_efac',
-                  u'B1855+09_log10_rho_0',
-                  u'B1855+09_log10_rho_1',
-                  u'B1855+09_log10_rho_2']
+                  u'B1855+09_red_noise_log10_rho_0',
+                  u'B1855+09_red_noise_log10_rho_1',
+                  u'B1855+09_red_noise_log10_rho_2']
         msg = 'Incorrect parameter names'
         assert pta.param_names == pnames
 

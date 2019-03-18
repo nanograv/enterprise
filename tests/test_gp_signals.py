@@ -18,14 +18,13 @@ from enterprise.pulsar import Pulsar
 from enterprise.signals import parameter
 from enterprise.signals import selections
 from enterprise.signals.selections import Selection
-import enterprise.signals.gp_signals as gs
+from enterprise.signals import gp_signals
 from enterprise.signals import signal_base
 from enterprise.signals import utils
 
 
 @signal_base.function
 def create_quant_matrix(toas, dt=1):
-
     U, _ = utils.create_quantization_matrix(toas, dt=dt, nmin=1)
     avetoas = np.array([toas[idx.astype(bool)].mean() for idx in U.T])
     # return value slightly different than 1 to get around ECORR columns
@@ -53,12 +52,12 @@ class TestGPSignals(unittest.TestCase):
         """Test that ecorr signal returns correct values."""
         # set up signal parameter
         ecorr = parameter.Uniform(-10, -5)
-        ec = gs.EcorrBasisModel(log10_ecorr=ecorr)
+        ec = gp_signals.EcorrBasisModel(log10_ecorr=ecorr)
         ecm = ec(self.psr)
 
         # parameters
         ecorr = -6.4
-        params = {'B1855+09_log10_ecorr': ecorr}
+        params = {'B1855+09_basis_ecorr_log10_ecorr': ecorr}
 
         # basis matrix test
         U = utils.create_quantization_matrix(self.psr.toas)[0]
@@ -83,15 +82,16 @@ class TestGPSignals(unittest.TestCase):
         # set up signal parameter
         ecorr = parameter.Uniform(-10, -5)
         selection = Selection(selections.by_backend)
-        ec = gs.EcorrBasisModel(log10_ecorr=ecorr, selection=selection)
+        ec = gp_signals.EcorrBasisModel(log10_ecorr=ecorr,
+                                        selection=selection)
         ecm = ec(self.psr)
 
         # parameters
         ecorrs = [-6.1, -6.2, -6.3, -6.4]
-        params = {'B1855+09_430_ASP_log10_ecorr': ecorrs[0],
-                  'B1855+09_430_PUPPI_log10_ecorr': ecorrs[1],
-                  'B1855+09_L-wide_ASP_log10_ecorr': ecorrs[2],
-                  'B1855+09_L-wide_PUPPI_log10_ecorr': ecorrs[3]}
+        params = {'B1855+09_basis_ecorr_430_ASP_log10_ecorr': ecorrs[0],
+                  'B1855+09_basis_ecorr_430_PUPPI_log10_ecorr': ecorrs[1],
+                  'B1855+09_basis_ecorr_L-wide_ASP_log10_ecorr': ecorrs[2],
+                  'B1855+09_basis_ecorr_L-wide_PUPPI_log10_ecorr': ecorrs[3]}
 
         # get the basis
         bflags = self.psr.backend_flags
@@ -133,7 +133,7 @@ class TestGPSignals(unittest.TestCase):
         log10_lam = parameter.Uniform(np.log10(86400), np.log10(1500*86400))
         basis = create_quant_matrix(dt=7*86400)
         prior = se_kernel(log10_sigma=log10_sigma, log10_lam=log10_lam)
-        se = gs.BasisGP(prior, basis, name='se')
+        se = gp_signals.BasisGP(prior, basis, name='se')
 
         sem = se(self.psr)
 
@@ -165,7 +165,7 @@ class TestGPSignals(unittest.TestCase):
         basis = create_quant_matrix(dt=7*86400)
         prior = se_kernel(log10_sigma=log10_sigma, log10_lam=log10_lam)
 
-        se = gs.BasisGP(prior, basis, selection=selection, name='se')
+        se = gp_signals.BasisGP(prior, basis, selection=selection, name='se')
         sem = se(self.psr)
 
         # parameters
@@ -218,17 +218,51 @@ class TestGPSignals(unittest.TestCase):
         # set up signal parameter
         pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
                             gamma=parameter.Uniform(1,7))
-        rn = gs.FourierBasisGP(spectrum=pl, components=30)
+        rn = gp_signals.FourierBasisGP(spectrum=pl, components=30)
         rnm = rn(self.psr)
 
         # parameters
         log10_A, gamma = -14.5, 4.33
-        params = {'B1855+09_log10_A': log10_A,
-                  'B1855+09_gamma': gamma}
+        params = {'B1855+09_red_noise_log10_A': log10_A,
+                  'B1855+09_red_noise_gamma': gamma}
 
         # basis matrix test
         F, f2 = utils.createfourierdesignmatrix_red(
             self.psr.toas, nmodes=30)
+        msg = 'F matrix incorrect for GP Fourier signal.'
+        assert np.allclose(F, rnm.get_basis(params)), msg
+
+        # spectrum test
+        phi = utils.powerlaw(f2, log10_A=log10_A, gamma=gamma)
+        msg = 'Spectrum incorrect for GP Fourier signal.'
+        assert np.all(rnm.get_phi(params) == phi), msg
+
+        # inverse spectrum test
+        msg = 'Spectrum inverse incorrect for GP Fourier signal.'
+        assert np.all(rnm.get_phiinv(params) == 1/phi), msg
+
+        # test shape
+        msg = 'F matrix shape incorrect'
+        assert rnm.get_basis(params).shape == F.shape, msg
+
+    def test_fourier_red_user_freq_array(self):
+        """Test that red noise signal returns correct values with user defined
+        frequency array."""
+        # set parameters
+        log10_A, gamma = -14.5, 4.33
+        params = {'B1855+09_red_noise_log10_A': log10_A,
+                  'B1855+09_red_noise_gamma': gamma}
+
+        F, f2 = utils.createfourierdesignmatrix_red(
+            self.psr.toas, nmodes=30)
+
+        # set up signal model. use list of frequencies to make basis
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
+                            gamma=parameter.Uniform(1,7))
+        rn = gp_signals.FourierBasisGP(spectrum=pl, modes=f2[::2])
+        rnm = rn(self.psr)
+
+        # basis matrix test
         msg = 'F matrix incorrect for GP Fourier signal.'
         assert np.allclose(F, rnm.get_basis(params)), msg
 
@@ -251,20 +285,21 @@ class TestGPSignals(unittest.TestCase):
         pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
                             gamma=parameter.Uniform(1,7))
         selection = Selection(selections.by_backend)
-        rn = gs.FourierBasisGP(spectrum=pl, components=30, selection=selection)
+        rn = gp_signals.FourierBasisGP(spectrum=pl, components=30,
+                                       selection=selection)
         rnm = rn(self.psr)
 
         # parameters
         log10_As = [-14, -14.4, -15, -14.8]
         gammas = [2.3, 4.4, 1.8, 5.6]
-        params = {'B1855+09_430_ASP_gamma': gammas[0],
-                  'B1855+09_430_PUPPI_gamma': gammas[1],
-                  'B1855+09_L-wide_ASP_gamma': gammas[2],
-                  'B1855+09_L-wide_PUPPI_gamma': gammas[3],
-                  'B1855+09_430_ASP_log10_A': log10_As[0],
-                  'B1855+09_430_PUPPI_log10_A': log10_As[1],
-                  'B1855+09_L-wide_ASP_log10_A': log10_As[2],
-                  'B1855+09_L-wide_PUPPI_log10_A': log10_As[3]}
+        params = {'B1855+09_red_noise_430_ASP_gamma': gammas[0],
+                  'B1855+09_red_noise_430_PUPPI_gamma': gammas[1],
+                  'B1855+09_red_noise_L-wide_ASP_gamma': gammas[2],
+                  'B1855+09_red_noise_L-wide_PUPPI_gamma': gammas[3],
+                  'B1855+09_red_noise_430_ASP_log10_A': log10_As[0],
+                  'B1855+09_red_noise_430_PUPPI_log10_A': log10_As[1],
+                  'B1855+09_red_noise_L-wide_ASP_log10_A': log10_As[2],
+                  'B1855+09_red_noise_L-wide_PUPPI_log10_A': log10_As[3]}
 
         # get the basis
         bflags = self.psr.backend_flags
@@ -313,8 +348,8 @@ class TestGPSignals(unittest.TestCase):
         # parameters
         log10_A, gamma = -14.5, 4.33
         log10_Ac, gammac = -15.5, 1.33
-        params = {'B1855+09_log10_A': log10_A,
-                  'B1855+09_gamma': gamma,
+        params = {'B1855+09_red_noise_log10_A': log10_A,
+                  'B1855+09_red_noise_gamma': gamma,
                   'log10_Agw': log10_Ac,
                   'gamma_gw': gammac}
 
@@ -325,8 +360,10 @@ class TestGPSignals(unittest.TestCase):
 
         for (nf1, nf2, T1, T2) in tpars:
 
-            rn = gs.FourierBasisGP(spectrum=pl, components=nf1, Tspan=T1)
-            crn = gs.FourierBasisGP(spectrum=cpl, components=nf2, Tspan=T2)
+            rn = gp_signals.FourierBasisGP(spectrum=pl, components=nf1,
+                                           Tspan=T1)
+            crn = gp_signals.FourierBasisGP(spectrum=cpl, components=nf2,
+                                            Tspan=T2)
             s = rn + crn
             rnm = s(self.psr)
 
@@ -376,14 +413,14 @@ class TestGPSignals(unittest.TestCase):
         log10_As = [-14, -14.4, -15, -14.8]
         gammas = [2.3, 4.4, 1.8, 5.6]
         log10_Ac, gammac = -15.5, 1.33
-        params = {'B1855+09_430_ASP_gamma': gammas[0],
-                  'B1855+09_430_PUPPI_gamma': gammas[1],
-                  'B1855+09_L-wide_ASP_gamma': gammas[2],
-                  'B1855+09_L-wide_PUPPI_gamma': gammas[3],
-                  'B1855+09_430_ASP_log10_A': log10_As[0],
-                  'B1855+09_430_PUPPI_log10_A': log10_As[1],
-                  'B1855+09_L-wide_ASP_log10_A': log10_As[2],
-                  'B1855+09_L-wide_PUPPI_log10_A': log10_As[3],
+        params = {'B1855+09_red_noise_430_ASP_gamma': gammas[0],
+                  'B1855+09_red_noise_430_PUPPI_gamma': gammas[1],
+                  'B1855+09_red_noise_L-wide_ASP_gamma': gammas[2],
+                  'B1855+09_red_noise_L-wide_PUPPI_gamma': gammas[3],
+                  'B1855+09_red_noise_430_ASP_log10_A': log10_As[0],
+                  'B1855+09_red_noise_430_PUPPI_log10_A': log10_As[1],
+                  'B1855+09_red_noise_L-wide_ASP_log10_A': log10_As[2],
+                  'B1855+09_red_noise_L-wide_PUPPI_log10_A': log10_As[3],
                   'log10_Agw': log10_Ac,
                   'gamma_gw': gammac}
 
@@ -395,9 +432,10 @@ class TestGPSignals(unittest.TestCase):
 
         for (nf1, nf2, T1, T2) in tpars:
 
-            rn = gs.FourierBasisGP(spectrum=pl, components=nf1, Tspan=T1,
-                                   selection=selection)
-            crn = gs.FourierBasisGP(spectrum=cpl, components=nf2, Tspan=T2)
+            rn = gp_signals.FourierBasisGP(spectrum=pl, components=nf1,
+                                           Tspan=T1, selection=selection)
+            crn = gp_signals.FourierBasisGP(spectrum=cpl, components=nf2,
+                                            Tspan=T2)
             s = rn + crn
             rnm = s(self.psr)
 
@@ -443,7 +481,7 @@ class TestGPSignals(unittest.TestCase):
     def test_gp_timing_model(self):
         """Test that the timing model signal returns correct values."""
         # set up signal parameter
-        ts = gs.TimingModel()
+        ts = gp_signals.TimingModel()
         tm = ts(self.psr)
 
         # basis matrix test
@@ -479,8 +517,8 @@ class TestGPSignals(unittest.TestCase):
 
         basis_red = utils.createfourierdesignmatrix_red()
 
-        rn_env = gs.BasisGP(pl, basis_env, name='env')
-        rn = gs.BasisGP(pl, basis_red)
+        rn_env = gp_signals.BasisGP(pl, basis_env, name='env')
+        rn = gp_signals.BasisGP(pl, basis_red)
         s = rn_env + rn
         m = s(self.psr)
 
@@ -529,19 +567,19 @@ class TestGPSignals(unittest.TestCase):
         """Test for combining different signals."""
         # set up signal parameter
         ecorr = parameter.Uniform(-10, -5)
-        ec = gs.EcorrBasisModel(log10_ecorr=ecorr)
+        ec = gp_signals.EcorrBasisModel(log10_ecorr=ecorr)
 
         pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
                             gamma=parameter.Uniform(1,7))
-        rn = gs.FourierBasisGP(spectrum=pl, components=30)
+        rn = gp_signals.FourierBasisGP(spectrum=pl, components=30)
 
         log10_sigma = parameter.Uniform(-10, -5)
         log10_lam = parameter.Uniform(np.log10(86400), np.log10(1500*86400))
         basis = create_quant_matrix(dt=7*86400)
         prior = se_kernel(log10_sigma=log10_sigma, log10_lam=log10_lam)
-        se = gs.BasisGP(prior, basis, name='se')
+        se = gp_signals.BasisGP(prior, basis, name='se')
 
-        ts = gs.TimingModel()
+        ts = gp_signals.TimingModel()
 
         s = ec + rn + ts + se
         m = s(self.psr)
@@ -550,9 +588,9 @@ class TestGPSignals(unittest.TestCase):
         ecorr = -6.4
         log10_A, gamma = -14.5, 4.33
         log10_lam, log10_sigma = 7.4, -6.4
-        params = {'B1855+09_log10_ecorr': ecorr,
-                  'B1855+09_log10_A': log10_A,
-                  'B1855+09_gamma': gamma,
+        params = {'B1855+09_basis_ecorr_log10_ecorr': ecorr,
+                  'B1855+09_red_noise_log10_A': log10_A,
+                  'B1855+09_red_noise_gamma': gamma,
                   'B1855+09_se_log10_lam': log10_lam,
                   'B1855+09_se_log10_sigma': log10_sigma}
 

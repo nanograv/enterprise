@@ -26,7 +26,6 @@ from enterprise.signals import utils
 
 @signal_base.function
 def create_quant_matrix(toas, dt=1):
-
     U, _ = utils.create_quantization_matrix(toas, dt=dt, nmin=1)
     avetoas = np.array([toas[idx.astype(bool)].mean() for idx in U.T])
     # return value slightly different than 1 to get around ECORR columns
@@ -57,10 +56,10 @@ def get_noise_from_pal2(noisefile):
             par = 'log10_ecorr'
             flag = ln[0].split('jitter_q-')[-1]
         elif 'RN-Amplitude' in line:
-            par = 'log10_A'
+            par = 'red_noise_log10_A'
             flag = ''
         elif 'RN-spectral-index' in line:
-            par = 'gamma'
+            par = 'red_noise_gamma'
             flag = ''
         else:
             break
@@ -169,8 +168,8 @@ class TestLikelihood(unittest.TestCase):
                            if 'equad' in key and pname in key])
             ecorrs.append([params[key] for key in sorted(params.keys())
                            if 'ecorr' in key and pname in key])
-            log10_A.append(params['{}_log10_A'.format(pname)])
-            gamma.append(params['{}_gamma'.format(pname)])
+            log10_A.append(params['{}_red_noise_log10_A'.format(pname)])
+            gamma.append(params['{}_red_noise_gamma'.format(pname)])
             lsig.append(params['{}_se_log10_sigma'.format(pname)])
             llam.append(params['{}_se_log10_lam'.format(pname)])
         GW_gamma = 4.33
@@ -313,11 +312,20 @@ class TestLikelihood(unittest.TestCase):
         pta1 = signal_base.PTA([m(p) for p in self.psrs])
         pta2 = signal_base.PTA([m2(p) for p in self.psrs])
 
-        params = {p.name: p.sample() for p in pta1.params}
+        params = parameter.sample(pta1.params)
+        l1 = pta1.get_lnlikelihood(params)
+
+        # need to translate some names for EcorrBasis
+        basis_params = {}
+        for parname, parval in params.items():
+            if 'log10_ecorr' in parname:
+                toks = parname.split('_')
+                basisname = toks[0] + '_basis_ecorr_' + '_'.join(toks[1:])
+                basis_params[basisname] = parval
+        params.update(basis_params)
+        l2 = pta2.get_lnlikelihood(params)
 
         msg = 'Likelihood mismatch between ECORR methods'
-        l1 = pta1.get_lnlikelihood(params)
-        l2 = pta2.get_lnlikelihood(params)
         assert np.allclose(l1, l2), msg
 
 
