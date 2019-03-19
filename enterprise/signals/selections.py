@@ -96,10 +96,26 @@ def by_band(flags):
     return {flagval: flags['B'] == flagval for flagval in flagvals}
 
 
+def by_legacy(flags):
+    """Selection function to split by PPTA frequency band under -B flag"""
+    flagvals = np.unique(flags['legacy'])
+    return {flagval: flags['legacy'] == flagval for flagval in flagvals}
+
+
 def by_backend(backend_flags):
     """Selection function to split by backend flags."""
     flagvals = np.unique(backend_flags)
     return {flagval: backend_flags == flagval for flagval in flagvals}
+
+
+def single_band(flags, band_val):
+    """Selection function to choose a single PPTA band (-B flag)"""
+    return {band_val: flags['B'] == band_val}
+
+
+def single_backend(backend_flags, backend_val):
+    """Selection function for a single backend"""
+    return {backend_val: backend_flags == backend_val}
 
 
 def nanograv_backends(backend_flags):
