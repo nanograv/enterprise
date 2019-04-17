@@ -188,8 +188,11 @@ class LogLikelihood(object):
             Sigma = self._make_sigma(TNTs, phiinv)
             TNr = np.concatenate(TNrs)
 
-            cf = cholesky(Sigma)
-            expval = cf(TNr)
+            try:
+                cf = cholesky(Sigma)
+                expval = cf(TNr)
+            except:
+                return -np.inf
 
             logdet_sigma = cf.logdet()
 
