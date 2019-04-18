@@ -673,18 +673,19 @@ class PTA(object):
             summary += "{: <40} {: <30} {: <20}\n".format(*row)
             if print_params:
                 summary += '\n'
-                    summary += 'params:\n'
-                    for par in sig._params.values():
-                        if isinstance(par, ConstantParameter):
-                            copcount += 1
-                        summary += "{!s: <90}\n".format(par.__repr__())
-                summary += '_'*90 + '\n'
+                summary += 'params:\n'
+                for par in sig._params.values():
+                    if isinstance(par, ConstantParameter):
+                        copcount += 1
+                    summary += "{!s: <90}\n".format(par.__repr__())
+            summary += '_'*90 + '\n'
         summary += '='*90 + '\n'
         summary += 'Total params: {}\n'.format(len(self.param_names)+copcount)
         summary += 'Varying params: {}\n'.format(len(self.param_names))
         summary += 'Common params: {}\n'.format(cpcount)
         summary += 'Fixed params: {}\n'.format(copcount)
-        summary += 'Number of pulsars: {}\n'.format(len(self._signalcollections))
+        summary += 'Number of pulsars: {}\n'\
+                    .format(len(self._signalcollections))
         if to_stdout:
             print(summary)
         else:
