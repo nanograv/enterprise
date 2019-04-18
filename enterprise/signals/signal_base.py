@@ -652,7 +652,7 @@ class PTA(object):
 
     def summary(self, include_params=True, to_stdout=False):
         """generate summary string for PTA model
-        
+
         :param include_params: [bool]
             list all parameters for each signal
         :param to_stdout: [bool]
@@ -667,10 +667,10 @@ class PTA(object):
         for sc in self._signalcollections:
             for sig in sc._signals:
                 for p in sig.param_names:
-                   if sc.psrname not in p:
-                       cpcount += 1
-              row = [sig.name, sig.__class__.__name__, len(sig.param_names)]
-              summary += "{: <40} {: <30} {: <20}\n".format(*row)
+                    if sc.psrname not in p:
+                        cpcount += 1
+             row = [sig.name, sig.__class__.__name__, len(sig.param_names)]
+             summary += "{: <40} {: <30} {: <20}\n".format(*row)
              if print_params:
                  summary += '\n'
                     summary += 'params:\n'
