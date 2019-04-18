@@ -245,21 +245,22 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
 
 @function
 def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
-                                 pshift=False, logf=False, fmin=None,
-                                 fmax=None, modes=None):
-
+                                 pshift=False, fref=1400, logf=False,
+                                 fmin=None, fmax=None, modes=None):
     """
-    Construct DM-variation fourier design matrix.
+    Construct DM-variation fourier design matrix. Current
+    normalization expresses DM signal as a deviation [seconds]
+    at fref [MHz]
 
     :param toas: vector of time series in seconds
-    :param nmodes: number of fourier coefficients to use
     :param freqs: radio frequencies of observations [MHz]
-    :param freq: option to output frequencies
+    :param nmodes: number of fourier coefficients to use
     :param Tspan: option to some other Tspan
+    :param pshift: option to add random phase shift
+    :param fref: reference frequency [MHz]
     :param logf: use log frequency spacing
     :param fmin: lower sampling frequency
     :param fmax: upper sampling frequency
-    :param pshift: option to add random phase shift
     :param modes: option to provide explicit list or array of
                   sampling frequencies
 
@@ -273,9 +274,7 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
         fmin=fmin, fmax=fmax, pshift=pshift, modes=modes)
 
     # compute the DM-variation vectors
-    # TODO: should we use a different normalization
-    #Dm = 1.0/(const.DM_K * freqs**2 * 1e12)
-    Dm = (1400/freqs)**2
+    Dm = (fref/freqs)**2
 
     return F * Dm[:, None], Ffreqs
 
