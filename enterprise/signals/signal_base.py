@@ -650,32 +650,46 @@ class PTA(object):
         """Returns ``Signal`` instance given the signal name."""
         return self._signal_dict[name]
 
-    def summary(self, print_params=True):
+    def summary(self, include_params=True, to_stdout=False):
+        """generate summary string for PTA model
+        
+        :param include_params: [bool]
+            list all parameters for each signal
+        :param to_stdout: [bool]
+            print summary to `stdout` instead of returning it
+        :return: [string]
+        """
+        summary = ''
         row = ['Signal Name', 'Signal Class', 'no. Parameters']
-        print("{: <40} {: <30} {: <20}".format(*row))
-        print(''.join(['=']*90))
+        summary += "{: <40} {: <30} {: <20}\n".format(*row)
+        summary += '='*90 + '\n'
         cpcount, copcount = 0, 0
         for sc in self._signalcollections:
             for sig in sc._signals:
                 for p in sig.param_names:
-                    if sc.psrname not in p:
-                        cpcount += 1
-                row = [sig.name, sig.__class__.__name__, len(sig.param_names)]
-                print("{: <40} {: <30} {: <20}".format(*row))
-                if print_params:
-                    print('\n')
-                    print('params:')
+                   if sc.psrname not in p:
+                       cpcount += 1
+              row = [sig.name, sig.__class__.__name__, len(sig.param_names)]
+              summary += "{: <40} {: <30} {: <20}\n".format(*row)
+             if print_params:
+                 summary += '\n'
+                    summary += 'params:\n'
                     for par in sig._params.values():
                         if isinstance(par, ConstantParameter):
                             copcount += 1
-                        print("{!s: <90}".format(par.__repr__()))
-                print(''.join(['_']*90))
-        print(''.join(['=']*90))
-        print('Total params: {}'.format(len(self.param_names)+copcount))
-        print('Varying params: {}'.format(len(self.param_names)))
-        print('Common params: {}'.format(cpcount))
-        print('Fixed params: {}'.format(copcount))
-        print('Number of pulsars: {}'.format(len(self._signalcollections)))
+                        summary += "{!s: <90}\n".format(par.__repr__())
+                summary += '_'*90 + '\n'
+        summary += '='*90 + '\n'
+        summary += 'Total params: {}\n'.format(len(self.param_names)+copcount)
+        summary += 'Varying params: {}\n'.format(len(self.param_names))
+        summary += 'Common params: {}\n'.format(cpcount)
+        summary += 'Fixed params: {}\n'.format(copcount)
+        summary += 'Number of pulsars: {}\n'.format(len(self._signalcollections))
+        if to_stdout:
+            print(summary)
+        else:
+            return summary
+       
 
 
 def SignalCollection(metasignals):
