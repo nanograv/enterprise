@@ -669,16 +669,16 @@ class PTA(object):
                 for p in sig.param_names:
                     if sc.psrname not in p:
                         cpcount += 1
-            row = [sig.name, sig.__class__.__name__, len(sig.param_names)]
-            summary += "{: <40} {: <30} {: <20}\n".format(*row)
-            if print_params:
-                summary += '\n'
-                summary += 'params:\n'
-                for par in sig._params.values():
-                    if isinstance(par, ConstantParameter):
-                        copcount += 1
-                    summary += "{!s: <90}\n".format(par.__repr__())
-            summary += '_'*90 + '\n'
+                row = [sig.name, sig.__class__.__name__, len(sig.param_names)]
+                summary += "{: <40} {: <30} {: <20}\n".format(*row)
+                if print_params:
+                    summary += '\n'
+                    summary += 'params:\n'
+                    for par in sig._params.values():
+                        if isinstance(par, ConstantParameter):
+                            copcount += 1
+                        summary += "{!s: <90}\n".format(par.__repr__())
+                summary += '_'*90 + '\n'
         summary += '='*90 + '\n'
         summary += 'Total params: {}\n'.format(len(self.param_names)+copcount)
         summary += 'Varying params: {}\n'.format(len(self.param_names))
