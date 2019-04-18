@@ -669,10 +669,10 @@ class PTA(object):
                 for p in sig.param_names:
                     if sc.psrname not in p:
                         cpcount += 1
-             row = [sig.name, sig.__class__.__name__, len(sig.param_names)]
-             summary += "{: <40} {: <30} {: <20}\n".format(*row)
-             if print_params:
-                 summary += '\n'
+            row = [sig.name, sig.__class__.__name__, len(sig.param_names)]
+            summary += "{: <40} {: <30} {: <20}\n".format(*row)
+            if print_params:
+                summary += '\n'
                     summary += 'params:\n'
                     for par in sig._params.values():
                         if isinstance(par, ConstantParameter):
@@ -689,7 +689,6 @@ class PTA(object):
             print(summary)
         else:
             return summary
-       
 
 
 def SignalCollection(metasignals):
