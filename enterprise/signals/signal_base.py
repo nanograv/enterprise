@@ -671,7 +671,7 @@ class PTA(object):
                         cpcount += 1
                 row = [sig.name, sig.__class__.__name__, len(sig.param_names)]
                 summary += "{: <40} {: <30} {: <20}\n".format(*row)
-                if print_params:
+                if include_params:
                     summary += '\n'
                     summary += 'params:\n'
                     for par in sig._params.values():
