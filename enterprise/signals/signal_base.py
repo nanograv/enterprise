@@ -685,7 +685,7 @@ class PTA(object):
         summary += 'Common params: {}\n'.format(cpcount)
         summary += 'Fixed params: {}\n'.format(copcount)
         summary += 'Number of pulsars: {}\n'\
-                    .format(len(self._signalcollections))
+                   .format(len(self._signalcollections))
         if to_stdout:
             print(summary)
         else:
