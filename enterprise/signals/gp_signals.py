@@ -120,11 +120,19 @@ def BasisGP(priorFunction, basisFunction, coefficients=False, combine=True,
             def _get_coefficient_logprior(self, key, c, **params):
                 self._construct_basis(params)
 
-                phi = self._prior[key](self._labels[key], params=params)
-                return (-0.5 * np.sum(c * c / phi) -
-                        0.5 * np.sum(np.log(phi)) -
-                        0.5 * len(phi) * np.log(2*math.pi))
-                # note: (2*pi)^(n/2) is not in signal_base likelihood
+                phi = self._prior[key](self._labels[key],params=params)
+
+                if phi.ndim == 1:
+                    return (-0.5 * np.sum(c * c / phi) -
+                            0.5 * np.sum(np.log(phi)) -
+                            0.5 * len(phi) * np.log(2*math.pi))
+                    # note: (2*pi)^(n/2) is not in signal_base likelihood
+                else:
+                    # TO DO: this code could be embedded in KernelMatrix 
+                    phiinv, logdet = KernelMatrix(phi).inv(logdet=True)
+                    return (-0.5 * np.dot(c,np.dot(phiinv,c)) -
+                            0.5 * logdet -
+                            0.5 * phi.shape[0] * np.log(2*math.pi))
 
             # MV: could assign this to a data member at initialization
             @property
