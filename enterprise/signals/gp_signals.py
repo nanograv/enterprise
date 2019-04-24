@@ -128,7 +128,7 @@ def BasisGP(priorFunction, basisFunction, coefficients=False, combine=True,
                             0.5 * len(phi) * np.log(2*math.pi))
                     # note: (2*pi)^(n/2) is not in signal_base likelihood
                 else:
-                    # TO DO: this code could be embedded in KernelMatrix 
+                    # TO DO: this code could be embedded in KernelMatrix
                     phiinv, logdet = KernelMatrix(phi).inv(logdet=True)
                     return (-0.5 * np.dot(c,np.dot(phiinv,c)) -
                             0.5 * logdet -

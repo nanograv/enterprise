@@ -165,7 +165,7 @@ class LogLikelihood(object):
     def _make_sigma(self, TNTs, phiinv):
         return sps.block_diag(TNTs,'csc') + sps.csc_matrix(phiinv)
 
-    def __call__(self, xs, phiinv_method='partition'):
+    def __call__(self, xs, phiinv_method='cliques'):
         # map parameter vector if needed
         params = xs if isinstance(xs,dict) else self.pta.map_params(xs)
 
@@ -409,6 +409,11 @@ class PTA(object):
                                                len(csdict),
                                                len(csdict)),'d')
 
+                        if crossdiag.ndim == 2:
+                            raise NotImplementedError(
+                                "get_phiinv with method='partition' does not "
+                                "support dense phi matrices.")
+
                         invert[:,i,j] += crossdiag
                         invert[:,j,i] += crossdiag
 
@@ -599,9 +604,12 @@ class PTA(object):
                     block1, idx1 = slices[csc1], csc1._idx[cs1]
                     block2, idx2 = slices[csc2], csc2._idx[cs2]
 
-                    Phi[block1,block2][idx1,idx2] += crossdiag
-                    Phi[block2,block1][idx2,idx1] += crossdiag
-
+                    if crossdiag.ndim == 1:
+                        Phi[block1,block2][idx1,idx2] += crossdiag
+                        Phi[block2,block1][idx2,idx1] += crossdiag
+                    else:
+                        Phi[block1,block2][np.ix_(idx1,idx2)] += crossdiag
+                        Phi[block2,block1][np.ix_(idx2,idx1)] += crossdiag
             return Phi
         else:
             return phis
@@ -615,9 +623,10 @@ class PTA(object):
             ct += n
         return ret
 
-    def get_lnprior(self, xs):
+    def get_lnprior(self, params):
         # map parameter vector if needed
-        params = xs if isinstance(xs,dict) else self.map_params(xs)
+        params = (params if isinstance(params, dict)
+                  else self.map_params(params))
 
         return np.sum(p.get_logpdf(params=params) for p in self.params)
 
@@ -999,7 +1008,6 @@ class ndarray_alt(np.ndarray):
 
 
 class BlockMatrix(object):
-
     def __init__(self, blocks, slices, nvec=0):
         self._blocks = blocks
         self._slices = slices
