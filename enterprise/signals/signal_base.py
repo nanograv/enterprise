@@ -875,7 +875,7 @@ def SignalCollection(metasignals):
     return SignalCollection
 
 
-def cache_call(attrs, limit=2):
+def cache_call(attrs, limit=1):
     """This decorator caches the output of a class method that takes
     a single parameter 'params'. It saves the cache in the instance
     attributes _cache_<methodname> and _cache_list_<methodname>.
