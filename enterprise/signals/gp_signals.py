@@ -432,3 +432,46 @@ def FourierBasisCommonGP_ephem(spectrum, components, Tspan, name='ephem_gp'):
     orf = utils.monopole_orf()
 
     return BasisCommonGP(spectrum, basis, orf, name=name)
+
+
+def FourierBasisCommonGP_physicalephem(frame_drift_rate=1e-9,
+                                       d_jupiter_mass=1.54976690e-11,
+                                       d_saturn_mass=8.17306184e-12,
+                                       d_uranus_mass=5.71923361e-11,
+                                       d_neptune_mass=7.96103855e-11,
+                                       jup_orb_elements=0.05,
+                                       sat_orb_elements=0.5,
+                                       coefficients=False,
+                                       name='physicalephem_gp'):
+    """
+    Class factory for physical ephemeris corrections as a common GP.
+    Individual perturbations can be excluded by setting the corresponding
+    prior sigma to None.
+
+    :param frame_drift_rate: Gaussian sigma for frame drift rate
+    :param d_jupiter_mass:   Gaussian sigma for Jupiter mass perturbation
+    :param d_saturn_mass:    Gaussian sigma for Saturn mass perturbation
+    :param d_uranus_mass:    Gaussian sigma for Uranus mass perturbation
+    :param d_neptune_mass:   Gaussian sigma for Neptune mass perturbation
+    :param jup_orb_elements: Gaussian sigma for Jupiter orbital elem. perturb.
+    :param sat_orb_elements: Gaussian sigma for Saturn orbital elem. perturb.
+    :param coefficients:     if True, treat GP coefficients as enterprise
+                             parameters; if False, marginalize over them
+
+    :return: BasisCommonGP representing ephemeris perturbations
+    """
+
+    basis = utils.createfourierdesignmatrix_physicalephem(
+        frame_drift_rate=frame_drift_rate,
+        d_jupiter_mass=d_jupiter_mass,
+        d_saturn_mass=d_saturn_mass,
+        d_uranus_mass=d_uranus_mass,
+        d_neptune_mass=d_neptune_mass,
+        jup_orb_elements=jup_orb_elements,
+        sat_orb_elements=sat_orb_elements)
+
+    spectrum = utils.physicalephem_spectrum()
+    orf = utils.monopole_orf()
+
+    return BasisCommonGP(spectrum, basis, orf,
+                         coefficients=coefficients, name=name)

@@ -20,6 +20,7 @@ from enterprise.signals import selections
 from enterprise.signals.selections import Selection
 from enterprise.signals import white_signals
 from enterprise.signals import gp_signals
+from enterprise.signals import deterministic_signals
 from enterprise.signals import signal_base
 from enterprise.signals import utils
 
@@ -50,6 +51,55 @@ class TestGPCoefficients(unittest.TestCase):
 
         cls.psr2 = Pulsar(datadir + '/B1937+21_NANOGrav_9yv1.gls.par',
                           datadir + '/B1937+21_NANOGrav_9yv1.tim')
+
+    def test_ephemeris(self):
+        """Test physical-ephemeris delay, made three ways: from marginalized
+        GP, from coefficient-based GP, from deterministic model."""
+
+        ef = white_signals.MeasurementNoise(efac=parameter.Uniform(0.1, 5.0))
+
+        eph = gp_signals.FourierBasisCommonGP_physicalephem(
+            sat_orb_elements=None)
+
+        ephc = gp_signals.FourierBasisCommonGP_physicalephem(
+            sat_orb_elements=None, coefficients=True)
+
+        ephd = deterministic_signals.PhysicalEphemerisSignal(
+            inc_saturn_orb=False)
+
+        model = ef + eph
+        modelc = ef + ephc
+        modeld = ef + ephd
+
+        pta = signal_base.PTA([model(self.psr), model(self.psr2)])
+        ptac = signal_base.PTA([modelc(self.psr), modelc(self.psr2)])
+        ptad = signal_base.PTA([modeld(self.psr), modeld(self.psr2)])
+
+        cf = 1e-3 * np.random.randn(11)
+
+        bs = pta.get_basis()
+        da = [np.dot(bs[0], cf), np.dot(bs[1], cf)]
+
+        params = {'B1855+09_efac': 1, 'B1937+21_efac': 1,
+                  'B1855+09_physicalephem_gp_coefficients': cf,
+                  'B1937+21_physicalephem_gp_coefficients': cf}
+        db = ptac.get_delay(params=params)
+
+        dparams = {'B1855+09_efac': 1, 'B1937+21_efac': 1,
+                   'frame_drift_rate': cf[0],
+                   'd_jupiter_mass': cf[1], 'd_saturn_mass': cf[2],
+                   'd_uranus_mass': cf[3], 'd_neptune_mass': cf[4],
+                   'jup_orb_elements': cf[5:]}
+        dc = ptad.get_delay(params=dparams)
+
+        msg = "Reconstructed ephemeris signals differ!"
+
+        assert np.allclose(da[0], db[0]), msg
+        assert np.allclose(da[1], db[1]), msg
+
+        # we don't expect an exact match since we are linearizing
+        assert np.allclose(da[0], dc[0], atol=1e-3), msg
+        assert np.allclose(da[1], dc[1], atol=1e-3), msg
 
     def test_common_red_noise(self):
         """Test of a coefficient-based common GP."""

@@ -610,6 +610,7 @@ class PTA(object):
                     else:
                         Phi[block1,block2][np.ix_(idx1,idx2)] += crossdiag
                         Phi[block2,block1][np.ix_(idx2,idx1)] += crossdiag
+
             return Phi
         else:
             return phis

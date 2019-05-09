@@ -1113,6 +1113,71 @@ def dmass(planet, dm_over_Msun):
 
 
 @function
+def physicalephem_spectrum(sigmas):
+    # note the creative use of the "labels" (the very sigmas, not frequencies)
+    return sigmas**2
+
+
+@function
+def createfourierdesignmatrix_physicalephem(toas, planetssb, pos_t,
+                                            frame_drift_rate=1e-9,
+                                            d_jupiter_mass=1.54976690e-11,
+                                            d_saturn_mass=8.17306184e-12,
+                                            d_uranus_mass=5.71923361e-11,
+                                            d_neptune_mass=7.96103855e-11,
+                                            jup_orb_elements=0.05,
+                                            sat_orb_elements=0.5):
+    """
+    Construct physical ephemeris perturbation design matrix and 'frequencies'.
+    Parameters can be excluded by setting the corresponding prior sigma to None
+
+    :param toas:             vector of time series in seconds
+    :param pos:              pulsar position as Cartesian vector
+    :param frame_drift_rate: normal sigma for frame drift rate
+    :param d_jupiter_mass:   normal sigma for Jupiter mass perturbation
+    :param d_saturn_mass:    normal sigma for Saturn mass perturbation
+    :param d_uranus_mass:    normal sigma for Uranus mass perturbation
+    :param d_neptune_mass:   normal sigma for Neptune mass perturbation
+    :param jup_orb_elements: normal sigma for Jupiter orbital elem. perturb.
+    :param sat_orb_elements: normal sigma for Saturn orbital elem. perturb.
+
+    :return: F: Fourier design matrix of shape (len(toas), nvecs)
+    :return: sigmas: Phi sigmas (nvecs, to be passed to physicalephem_spectrum)
+    """
+
+    # Jupiter + Saturn orbit definitions that we pass to physical_ephem_delay
+    oa = {'inc_jupiter_orb': True, 'inc_saturn_orb': True}
+    oa['jup_mjd'], oa['jup_orbelxyz'], oa['sat_mjd'], oa['sat_orbelxyz'] = \
+        get_planet_orbital_elements()
+
+    dpar = 1e-3  # may need finessing
+    Fl, Phil = [], []
+
+    for parname in ['frame_drift_rate',
+                    'd_jupiter_mass', 'd_saturn_mass',
+                    'd_uranus_mass', 'd_neptune_mass',
+                    'jup_orb_elements', 'sat_orb_elements']:
+
+        ppar = locals()[parname]
+        if ppar:
+            if parname not in ['jup_orb_elements', 'sat_orb_elements']:
+                # need to normalize?
+                Fl.append(physical_ephem_delay(toas, planetssb, pos_t,
+                                               **{parname: dpar})/dpar)
+                Phil.append(ppar)
+            else:
+                for i in range(6):
+                    c = np.zeros(6)
+                    c[i] = dpar
+
+                    Fl.append(physical_ephem_delay(toas, planetssb, pos_t,
+                                                   **{parname: c}, **oa)/dpar)
+                    Phil.append(ppar)
+
+    return np.array(Fl).T.copy(), np.array(Phil)
+
+
+@function
 def physical_ephem_delay(toas, planetssb, pos_t, frame_drift_rate=0,
                          d_jupiter_mass=0, d_saturn_mass=0, d_uranus_mass=0,
                          d_neptune_mass=0, jup_orb_elements=np.zeros(6),
