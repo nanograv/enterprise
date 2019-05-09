@@ -283,7 +283,7 @@ class TestGPCoefficientsPint(TestGPCoefficients):
         cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
                          datadir + '/B1855+09_NANOGrav_9yv1.tim',
                          ephem='DE430', timing_package='pint')
-    
+
     def test_ephemeris(self):
         # skipping ephemeris with PINT
         pass
