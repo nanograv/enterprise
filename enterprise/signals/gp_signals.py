@@ -393,14 +393,15 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction,
 
 
 def FourierBasisCommonGP(spectrum, orf, coefficients=False, combine=True,
-                         components=20, Tspan=None, name='common_fourier'):
+                         components=20, Tspan=None, modes=None,
+                         name='common_fourier'):
 
     if coefficients and Tspan is None:
         raise ValueError("With coefficients=True, FourierBasisCommonGP " +
                          "requires that you specify Tspan explicitly.")
 
     basis = utils.createfourierdesignmatrix_red(nmodes=components,
-                                                Tspan=Tspan)
+                                                Tspan=Tspan, modes=modes)
     BaseClass = BasisCommonGP(spectrum, basis, orf,
                               coefficients=coefficients, combine=combine,
                               name=name)
