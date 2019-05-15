@@ -120,11 +120,19 @@ def BasisGP(priorFunction, basisFunction, coefficients=False, combine=True,
             def _get_coefficient_logprior(self, key, c, **params):
                 self._construct_basis(params)
 
-                phi = self._prior[key](self._labels[key], params=params)
-                return (-0.5 * np.sum(c * c / phi) -
-                        0.5 * np.sum(np.log(phi)) -
-                        0.5 * len(phi) * np.log(2*math.pi))
-                # note: (2*pi)^(n/2) is not in signal_base likelihood
+                phi = self._prior[key](self._labels[key],params=params)
+
+                if phi.ndim == 1:
+                    return (-0.5 * np.sum(c * c / phi) -
+                            0.5 * np.sum(np.log(phi)) -
+                            0.5 * len(phi) * np.log(2*math.pi))
+                    # note: (2*pi)^(n/2) is not in signal_base likelihood
+                else:
+                    # TO DO: this code could be embedded in KernelMatrix
+                    phiinv, logdet = KernelMatrix(phi).inv(logdet=True)
+                    return (-0.5 * np.dot(c,np.dot(phiinv,c)) -
+                            0.5 * logdet -
+                            0.5 * phi.shape[0] * np.log(2*math.pi))
 
             # MV: could assign this to a data member at initialization
             @property
@@ -259,14 +267,15 @@ def EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5),
     return EcorrBasisModel
 
 
-def BasisCommonGP(priorFunction, basisFunction, orfFunction, name=''):
+def BasisCommonGP(priorFunction, basisFunction, orfFunction,
+                  coefficients=False, combine=True, name=''):
 
     class BasisCommonGP(signal_base.CommonSignal):
         signal_type = 'common basis'
         signal_name = 'common'
         signal_id = name
 
-        basis_combine = True
+        basis_combine = combine
 
         _orf = orfFunction(name)
         _prior = priorFunction(name)
@@ -275,57 +284,128 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, name=''):
             super(BasisCommonGP, self).__init__(psr)
             self.name = self.psrname + '_' + self.signal_id
 
-            self._bases = basisFunction(psr.name+name, psr=psr)
-            params = sum([list(BasisCommonGP._prior._params.values()),
-                          list(BasisCommonGP._orf._params.values()),
-                          list(self._bases._params.values())], [])
-            self._params = {}
-            for param in params:
-                self._params[param.name] = param
+            pname = '_'.join([psr.name, name])
+            self._bases = basisFunction(pname, psr=psr)
+
+            self._params, self._coefficients = {}, {}
+
+            for par in itertools.chain(self._prior._params.values(),
+                                       self._orf._params.values(),
+                                       self._bases._params.values()):
+                self._params[par.name] = par
 
             self._psrpos = psr.pos
 
-        @signal_base.cache_call('basis_params')
-        def _construct_basis(self, params={}):
-            self._basis, self._labels = self._bases(params=params)
+            if coefficients:
+                self._construct_basis()
 
-        def get_basis(self, params={}):
-            self._construct_basis(params)
-            return self._basis
+                chain = itertools.chain(self._prior._params.values(),
+                                        self._orf._params.values(),
+                                        self._bases._params.values())
+                priorargs = {par.name: self._params[par.name]
+                             for par in chain}
 
-        def get_phi(self, params):
-            self._construct_basis(params)
-            prior = BasisCommonGP._prior(
-                self._labels, params=params)
-            orf = BasisCommonGP._orf(self._psrpos, self._psrpos, params=params)
-            return prior * orf
+                logprior = parameter.Function(
+                    self._get_coefficient_logprior,
+                    **priorargs)
 
-        @classmethod
-        def get_phicross(cls, signal1, signal2, params):
-            prior = BasisCommonGP._prior(signal1._labels,
-                                         params=params)
-            orf = BasisCommonGP._orf(signal1._psrpos, signal2._psrpos,
-                                     params=params)
-            return prior * orf
+                size = self._basis.shape[1]
+
+                cpar = parameter.GPCoefficients(
+                    logprior=logprior, size=size)(pname + '_coefficients')
+
+                self._coefficients[''] = cpar
+                self._params[cpar.name] = cpar
 
         @property
         def basis_params(self):
             """Get any varying basis parameters."""
             return [pp.name for pp in self._bases.params]
 
+        @signal_base.cache_call('basis_params')
+        def _construct_basis(self, params={}):
+            self._basis, self._labels = self._bases(params=params)
+
+        if coefficients:
+            def _get_coefficient_logprior(self, c, **params):
+                # MV: for correlated GPs, the prior needs to use
+                #     the coefficients for all GPs together;
+                #     this may require parameter groups
+
+                raise NotImplementedError("Need to implement common prior " +
+                                          "for BasisCommonGP coefficients")
+
+            @property
+            def delay_params(self):
+                return [pp.name for pp in self.params
+                        if '_coefficients' in pp.name]
+
+            @signal_base.cache_call(['basis_params', 'delay_params'])
+            def get_delay(self, params={}):
+                self._construct_basis(params)
+
+                p = self._coefficients['']
+                c = params[p.name] if p.name in params else p.value
+                return np.dot(self._basis, c)
+
+            def get_basis(self, params={}):
+                return None
+
+            def get_phi(self, params):
+                return None
+
+            def get_phicross(cls, signal1, signal2, params):
+                return None
+
+            def get_phiinv(self, params):
+                return None
+        else:
+            @property
+            def delay_params(self):
+                return []
+
+            def get_delay(self, params={}):
+                return 0
+
+            def get_basis(self, params={}):
+                self._construct_basis(params)
+
+                return self._basis
+
+            def get_phi(self, params):
+                self._construct_basis(params)
+
+                prior = BasisCommonGP._prior(self._labels, params=params)
+                orf = BasisCommonGP._orf(self._psrpos, self._psrpos,
+                                         params=params)
+
+                return prior * orf
+
+            @classmethod
+            def get_phicross(cls, signal1, signal2, params):
+                prior = BasisCommonGP._prior(signal1._labels, params=params)
+                orf = BasisCommonGP._orf(signal1._psrpos, signal2._psrpos,
+                                         params=params)
+
+                return prior * orf
+
     return BasisCommonGP
 
 
-def FourierBasisCommonGP(spectrum, orf, components=20,
-                         Tspan=None, name=''):
+def FourierBasisCommonGP(spectrum, orf, coefficients=False, combine=True,
+                         components=20, Tspan=None, name='common_fourier'):
+
+    if coefficients and Tspan is None:
+        raise ValueError("With coefficients=True, FourierBasisCommonGP " +
+                         "requires that you specify Tspan explicitly.")
 
     basis = utils.createfourierdesignmatrix_red(nmodes=components,
                                                 Tspan=Tspan)
-    BaseClass = BasisCommonGP(spectrum, basis, orf, name=name)
+    BaseClass = BasisCommonGP(spectrum, basis, orf,
+                              coefficients=coefficients, combine=combine,
+                              name=name)
 
     class FourierBasisCommonGP(BaseClass):
-        signal_id = 'common_fourier_' + name if name else 'common_fourier'
-
         _Tmin, _Tmax = [], []
 
         def __init__(self, psr):
@@ -352,3 +432,46 @@ def FourierBasisCommonGP_ephem(spectrum, components, Tspan, name='ephem_gp'):
     orf = utils.monopole_orf()
 
     return BasisCommonGP(spectrum, basis, orf, name=name)
+
+
+def FourierBasisCommonGP_physicalephem(frame_drift_rate=1e-9,
+                                       d_jupiter_mass=1.54976690e-11,
+                                       d_saturn_mass=8.17306184e-12,
+                                       d_uranus_mass=5.71923361e-11,
+                                       d_neptune_mass=7.96103855e-11,
+                                       jup_orb_elements=0.05,
+                                       sat_orb_elements=0.5,
+                                       coefficients=False,
+                                       name='physicalephem_gp'):
+    """
+    Class factory for physical ephemeris corrections as a common GP.
+    Individual perturbations can be excluded by setting the corresponding
+    prior sigma to None.
+
+    :param frame_drift_rate: Gaussian sigma for frame drift rate
+    :param d_jupiter_mass:   Gaussian sigma for Jupiter mass perturbation
+    :param d_saturn_mass:    Gaussian sigma for Saturn mass perturbation
+    :param d_uranus_mass:    Gaussian sigma for Uranus mass perturbation
+    :param d_neptune_mass:   Gaussian sigma for Neptune mass perturbation
+    :param jup_orb_elements: Gaussian sigma for Jupiter orbital elem. perturb.
+    :param sat_orb_elements: Gaussian sigma for Saturn orbital elem. perturb.
+    :param coefficients:     if True, treat GP coefficients as enterprise
+                             parameters; if False, marginalize over them
+
+    :return: BasisCommonGP representing ephemeris perturbations
+    """
+
+    basis = utils.createfourierdesignmatrix_physicalephem(
+        frame_drift_rate=frame_drift_rate,
+        d_jupiter_mass=d_jupiter_mass,
+        d_saturn_mass=d_saturn_mass,
+        d_uranus_mass=d_uranus_mass,
+        d_neptune_mass=d_neptune_mass,
+        jup_orb_elements=jup_orb_elements,
+        sat_orb_elements=sat_orb_elements)
+
+    spectrum = utils.physicalephem_spectrum()
+    orf = utils.monopole_orf()
+
+    return BasisCommonGP(spectrum, basis, orf,
+                         coefficients=coefficients, name=name)

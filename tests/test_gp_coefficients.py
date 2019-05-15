@@ -20,6 +20,7 @@ from enterprise.signals import selections
 from enterprise.signals.selections import Selection
 from enterprise.signals import white_signals
 from enterprise.signals import gp_signals
+from enterprise.signals import deterministic_signals
 from enterprise.signals import signal_base
 from enterprise.signals import utils
 
@@ -40,7 +41,6 @@ def se_kernel(etoas, log10_sigma=-7, log10_lam=np.log10(30*86400)):
 
 
 class TestGPCoefficients(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         """Setup the Pulsar object."""
@@ -48,6 +48,114 @@ class TestGPCoefficients(unittest.TestCase):
         # initialize Pulsar class
         cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
                          datadir + '/B1855+09_NANOGrav_9yv1.tim')
+
+        cls.psr2 = Pulsar(datadir + '/B1937+21_NANOGrav_9yv1.gls.par',
+                          datadir + '/B1937+21_NANOGrav_9yv1.tim')
+
+    def test_ephemeris(self):
+        """Test physical-ephemeris delay, made three ways: from marginalized
+        GP, from coefficient-based GP, from deterministic model."""
+
+        ef = white_signals.MeasurementNoise(efac=parameter.Uniform(0.1, 5.0))
+
+        eph = gp_signals.FourierBasisCommonGP_physicalephem(
+            sat_orb_elements=None)
+
+        ephc = gp_signals.FourierBasisCommonGP_physicalephem(
+            sat_orb_elements=None, coefficients=True)
+
+        ephd = deterministic_signals.PhysicalEphemerisSignal(
+            inc_saturn_orb=False)
+
+        model = ef + eph
+        modelc = ef + ephc
+        modeld = ef + ephd
+
+        pta = signal_base.PTA([model(self.psr), model(self.psr2)])
+        ptac = signal_base.PTA([modelc(self.psr), modelc(self.psr2)])
+        ptad = signal_base.PTA([modeld(self.psr), modeld(self.psr2)])
+
+        cf = 1e-3 * np.random.randn(11)
+        cf[0] = 1e-5  # this is more sensitive to linearity
+
+        bs = pta.get_basis()
+        da = [np.dot(bs[0], cf), np.dot(bs[1], cf)]
+
+        params = {'B1855+09_efac': 1, 'B1937+21_efac': 1,
+                  'B1855+09_physicalephem_gp_coefficients': cf,
+                  'B1937+21_physicalephem_gp_coefficients': cf}
+        db = ptac.get_delay(params=params)
+
+        dparams = {'B1855+09_efac': 1, 'B1937+21_efac': 1,
+                   'frame_drift_rate': cf[0],
+                   'd_jupiter_mass': cf[1], 'd_saturn_mass': cf[2],
+                   'd_uranus_mass': cf[3], 'd_neptune_mass': cf[4],
+                   'jup_orb_elements': cf[5:]}
+        dc = ptad.get_delay(params=dparams)
+
+        msg = "Reconstructed ephemeris signals differ!"
+
+        assert np.allclose(da[0], db[0]), msg
+        assert np.allclose(da[1], db[1]), msg
+
+        # we don't expect an exact match since we are linearizing
+        assert np.allclose(da[0], dc[0], atol=1e-3), msg
+        assert np.allclose(da[1], dc[1], atol=1e-3), msg
+
+    def test_common_red_noise(self):
+        """Test of a coefficient-based common GP."""
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
+                            gamma=parameter.Uniform(1,7))
+
+        ef = white_signals.MeasurementNoise(efac=parameter.Uniform(0.1, 5.0))
+
+        Tspan = (max(self.psr.toas.max(), self.psr2.toas.max()) -
+                 min(self.psr.toas.max(), self.psr2.toas.max()))
+
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
+                            gamma=parameter.Uniform(1,7))
+
+        rn = gp_signals.FourierBasisCommonGP(spectrum=pl, orf=utils.hd_orf(),
+                                             components=20, Tspan=Tspan)
+
+        model = ef + rn
+
+        rnc = gp_signals.FourierBasisCommonGP(spectrum=pl, orf=utils.hd_orf(),
+                                              components=20, Tspan=Tspan,
+                                              coefficients=True)
+
+        modelc = ef + rnc
+
+        pta = signal_base.PTA([model(self.psr), model(self.psr2)])
+        ptac = signal_base.PTA([modelc(self.psr), modelc(self.psr2)])
+
+        params = {'B1855+09_efac': 1.0,
+                  'B1937+21_efac': 1.0,
+                  'common_fourier_gamma': 5,
+                  'common_fourier_log10_A': -15}
+
+        # get GP delays in two different ways
+
+        cf, cf2 = np.random.randn(40), np.random.randn(40)
+
+        bs = pta.get_basis(params)
+        da = [np.dot(bs[0], cf), np.dot(bs[1], cf2)]
+
+        params.update({'B1855+09_common_fourier_coefficients': cf,
+                       'B1937+21_common_fourier_coefficients': cf2})
+
+        db = ptac.get_delay(params)
+
+        msg = 'Implicit and explicit GP delays are different.'
+        assert np.allclose(da[0], db[0]), msg
+        assert np.allclose(da[1], db[1]), msg
+
+        cpar = [p for p in ptac.params if 'coefficients' in p.name]
+
+        def shouldfail():
+            return cpar[0].get_logpdf(params)
+
+        self.assertRaises(NotImplementedError, shouldfail)
 
     def test_fourier_red_noise(self):
         """Test that implicit and explicit GP delays are the same."""
@@ -176,3 +284,7 @@ class TestGPCoefficientsPint(TestGPCoefficients):
         cls.psr = Pulsar(datadir + '/B1855+09_NANOGrav_9yv1.gls.par',
                          datadir + '/B1855+09_NANOGrav_9yv1.tim',
                          ephem='DE430', timing_package='pint')
+
+    def test_ephemeris(self):
+        # skipping ephemeris with PINT
+        pass

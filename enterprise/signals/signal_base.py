@@ -165,7 +165,7 @@ class LogLikelihood(object):
     def _make_sigma(self, TNTs, phiinv):
         return sps.block_diag(TNTs,'csc') + sps.csc_matrix(phiinv)
 
-    def __call__(self, xs, phiinv_method='partition'):
+    def __call__(self, xs, phiinv_method='cliques'):
         # map parameter vector if needed
         params = xs if isinstance(xs,dict) else self.pta.map_params(xs)
 
@@ -312,9 +312,13 @@ class PTA(object):
             for signalcollection in self._signalcollections:
                 # TODO: need a better signal that a
                 # signalcollection provides a basis
+
                 if signalcollection._Fmat is not None:
                     for signal in signalcollection._signals:
-                        if isinstance(signal, CommonSignal):
+                        # if the CommonSignal is coefficient based we don't
+                        # need to worry about it for get_phi and get_phiinv
+                        if (isinstance(signal, CommonSignal) and
+                                not getattr(signal, '_coefficients', {})):
                             commonsignals[signal.__class__][signal] = \
                                 signalcollection
 
@@ -404,6 +408,11 @@ class PTA(object):
                             invert = np.zeros((len(crossdiag),
                                                len(csdict),
                                                len(csdict)),'d')
+
+                        if crossdiag.ndim == 2:
+                            raise NotImplementedError(
+                                "get_phiinv with method='partition' does not "
+                                "support dense phi matrices.")
 
                         invert[:,i,j] += crossdiag
                         invert[:,j,i] += crossdiag
@@ -595,8 +604,12 @@ class PTA(object):
                     block1, idx1 = slices[csc1], csc1._idx[cs1]
                     block2, idx2 = slices[csc2], csc2._idx[cs2]
 
-                    Phi[block1,block2][idx1,idx2] += crossdiag
-                    Phi[block2,block1][idx2,idx1] += crossdiag
+                    if crossdiag.ndim == 1:
+                        Phi[block1,block2][idx1,idx2] += crossdiag
+                        Phi[block2,block1][idx2,idx1] += crossdiag
+                    else:
+                        Phi[block1,block2][np.ix_(idx1,idx2)] += crossdiag
+                        Phi[block2,block1][np.ix_(idx2,idx1)] += crossdiag
 
             return Phi
         else:
@@ -611,9 +624,10 @@ class PTA(object):
             ct += n
         return ret
 
-    def get_lnprior(self, xs):
+    def get_lnprior(self, params):
         # map parameter vector if needed
-        params = xs if isinstance(xs,dict) else self.map_params(xs)
+        params = (params if isinstance(params, dict)
+                  else self.map_params(params))
 
         return np.sum(p.get_logpdf(params=params) for p in self.params)
 
@@ -995,7 +1009,6 @@ class ndarray_alt(np.ndarray):
 
 
 class BlockMatrix(object):
-
     def __init__(self, blocks, slices, nvec=0):
         self._blocks = blocks
         self._slices = slices
