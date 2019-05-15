@@ -165,7 +165,7 @@ class LogLikelihood(object):
     def _make_sigma(self, TNTs, phiinv):
         return sps.block_diag(TNTs,'csc') + sps.csc_matrix(phiinv)
 
-    def __call__(self, xs, phiinv_method='partition'):
+    def __call__(self, xs, phiinv_method='cliques'):
         # map parameter vector if needed
         params = xs if isinstance(xs,dict) else self.pta.map_params(xs)
 
@@ -188,8 +188,11 @@ class LogLikelihood(object):
             Sigma = self._make_sigma(TNTs, phiinv)
             TNr = np.concatenate(TNrs)
 
-            cf = cholesky(Sigma)
-            expval = cf(TNr)
+            try:
+                cf = cholesky(Sigma)
+                expval = cf(TNr)
+            except:
+                return -np.inf
 
             logdet_sigma = cf.logdet()
 
@@ -309,9 +312,13 @@ class PTA(object):
             for signalcollection in self._signalcollections:
                 # TODO: need a better signal that a
                 # signalcollection provides a basis
+
                 if signalcollection._Fmat is not None:
                     for signal in signalcollection._signals:
-                        if isinstance(signal, CommonSignal):
+                        # if the CommonSignal is coefficient based we don't
+                        # need to worry about it for get_phi and get_phiinv
+                        if (isinstance(signal, CommonSignal) and
+                                not getattr(signal, '_coefficients', {})):
                             commonsignals[signal.__class__][signal] = \
                                 signalcollection
 
@@ -401,6 +408,11 @@ class PTA(object):
                             invert = np.zeros((len(crossdiag),
                                                len(csdict),
                                                len(csdict)),'d')
+
+                        if crossdiag.ndim == 2:
+                            raise NotImplementedError(
+                                "get_phiinv with method='partition' does not "
+                                "support dense phi matrices.")
 
                         invert[:,i,j] += crossdiag
                         invert[:,j,i] += crossdiag
@@ -592,8 +604,12 @@ class PTA(object):
                     block1, idx1 = slices[csc1], csc1._idx[cs1]
                     block2, idx2 = slices[csc2], csc2._idx[cs2]
 
-                    Phi[block1,block2][idx1,idx2] += crossdiag
-                    Phi[block2,block1][idx2,idx1] += crossdiag
+                    if crossdiag.ndim == 1:
+                        Phi[block1,block2][idx1,idx2] += crossdiag
+                        Phi[block2,block1][idx2,idx1] += crossdiag
+                    else:
+                        Phi[block1,block2][np.ix_(idx1,idx2)] += crossdiag
+                        Phi[block2,block1][np.ix_(idx2,idx1)] += crossdiag
 
             return Phi
         else:
@@ -608,9 +624,10 @@ class PTA(object):
             ct += n
         return ret
 
-    def get_lnprior(self, xs):
+    def get_lnprior(self, params):
         # map parameter vector if needed
-        params = xs if isinstance(xs,dict) else self.map_params(xs)
+        params = (params if isinstance(params, dict)
+                  else self.map_params(params))
 
         return np.sum(p.get_logpdf(params=params) for p in self.params)
 
@@ -647,10 +664,19 @@ class PTA(object):
         """Returns ``Signal`` instance given the signal name."""
         return self._signal_dict[name]
 
-    def summary(self, print_params=True):
+    def summary(self, include_params=True, to_stdout=False):
+        """generate summary string for PTA model
+
+        :param include_params: [bool]
+            list all parameters for each signal
+        :param to_stdout: [bool]
+            print summary to `stdout` instead of returning it
+        :return: [string]
+        """
+        summary = ''
         row = ['Signal Name', 'Signal Class', 'no. Parameters']
-        print("{: <40} {: <30} {: <20}".format(*row))
-        print(''.join(['=']*90))
+        summary += "{: <40} {: <30} {: <20}\n".format(*row)
+        summary += '='*90 + '\n'
         cpcount, copcount = 0, 0
         for sc in self._signalcollections:
             for sig in sc._signals:
@@ -658,21 +684,26 @@ class PTA(object):
                     if sc.psrname not in p:
                         cpcount += 1
                 row = [sig.name, sig.__class__.__name__, len(sig.param_names)]
-                print("{: <40} {: <30} {: <20}".format(*row))
-                if print_params:
-                    print('\n')
-                    print('params:')
+                summary += "{: <40} {: <30} {: <20}\n".format(*row)
+                if include_params:
+                    summary += '\n'
+                    summary += 'params:\n'
                     for par in sig._params.values():
                         if isinstance(par, ConstantParameter):
                             copcount += 1
-                        print("{!s: <90}".format(par.__repr__()))
-                print(''.join(['_']*90))
-        print(''.join(['=']*90))
-        print('Total params: {}'.format(len(self.param_names)+copcount))
-        print('Varying params: {}'.format(len(self.param_names)))
-        print('Common params: {}'.format(cpcount))
-        print('Fixed params: {}'.format(copcount))
-        print('Number of pulsars: {}'.format(len(self._signalcollections)))
+                        summary += "{!s: <90}\n".format(par.__repr__())
+                summary += '_'*90 + '\n'
+        summary += '='*90 + '\n'
+        summary += 'Total params: {}\n'.format(len(self.param_names)+copcount)
+        summary += 'Varying params: {}\n'.format(len(self.param_names))
+        summary += 'Common params: {}\n'.format(cpcount)
+        summary += 'Fixed params: {}\n'.format(copcount)
+        summary += 'Number of pulsars: {}\n'\
+                   .format(len(self._signalcollections))
+        if to_stdout:
+            print(summary)
+        else:
+            return summary
 
 
 def SignalCollection(metasignals):
@@ -978,7 +1009,6 @@ class ndarray_alt(np.ndarray):
 
 
 class BlockMatrix(object):
-
     def __init__(self, blocks, slices, nvec=0):
         self._blocks = blocks
         self._slices = slices

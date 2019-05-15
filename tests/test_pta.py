@@ -335,7 +335,7 @@ class TestPTASignals(unittest.TestCase):
 
         model = rn + crn
         pta = model(self.psrs[0]) + model(self.psrs[1])
-        pta.summary()
+        pta.summary(to_stdout=True)
 
 
 class TestPTASignalsPint(TestPTASignals):
