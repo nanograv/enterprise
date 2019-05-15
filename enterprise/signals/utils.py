@@ -1150,7 +1150,7 @@ def createfourierdesignmatrix_physicalephem(toas, planetssb, pos_t,
     oa['jup_mjd'], oa['jup_orbelxyz'], oa['sat_mjd'], oa['sat_orbelxyz'] = \
         get_planet_orbital_elements()
 
-    dpar = 1e-3  # may need finessing
+    dpar = 1e-5  # may need finessing
     Fl, Phil = [], []
 
     for parname in ['frame_drift_rate',

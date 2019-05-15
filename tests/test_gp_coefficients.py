@@ -76,6 +76,7 @@ class TestGPCoefficients(unittest.TestCase):
         ptad = signal_base.PTA([modeld(self.psr), modeld(self.psr2)])
 
         cf = 1e-3 * np.random.randn(11)
+        cf[0] = 1e-5  # this is more sensitive to linearity
 
         bs = pta.get_basis()
         da = [np.dot(bs[0], cf), np.dot(bs[1], cf)]
