@@ -391,13 +391,10 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction,
 
     return BasisCommonGP
 
-<<<<<<< HEAD
 
-=======
-  
->>>>>>> 80fd05851600e6bdfac02eddd159c1472d14d3cc
 def FourierBasisCommonGP(spectrum, orf, coefficients=False, combine=True,
-                         components=20, Tspan=None, modes=None, name='common_fourier'):
+                         components=20, Tspan=None, modes=None,
+                         name='common_fourier'):
 
     if coefficients and Tspan is None:
         raise ValueError("With coefficients=True, FourierBasisCommonGP " +
@@ -408,11 +405,7 @@ def FourierBasisCommonGP(spectrum, orf, coefficients=False, combine=True,
     BaseClass = BasisCommonGP(spectrum, basis, orf,
                               coefficients=coefficients, combine=combine,
                               name=name)
-<<<<<<< HEAD
 
-=======
-    
->>>>>>> 80fd05851600e6bdfac02eddd159c1472d14d3cc
     class FourierBasisCommonGP(BaseClass):
         _Tmin, _Tmax = [], []
 
