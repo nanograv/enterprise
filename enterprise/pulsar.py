@@ -20,7 +20,7 @@ except:
 try:
     import libstempo as t2
 except ImportError:
-    print('ERROR: Must have libstempo package installed!')
+    print('Ooh, no libstempo?')
     t2 = None
 
 try:
@@ -34,6 +34,10 @@ except ImportError:
     pint = None
 
 import astropy.units as u
+
+if pint is None and t2 is None:
+    err_msg = 'Must have either PINT or libstempo timing package installed'
+    raise ImportError(err_msg)
 
 
 def get_maxobs(timfile):
@@ -450,11 +454,12 @@ def Pulsar(*args, **kwargs):
     drop_t2pulsar = kwargs.get('drop_t2pulsar', True)
     timing_package = kwargs.get('timing_package', 'tempo2')
 
-    if pint:
+    if pint is not None:
         toas = list(filter(lambda x: isinstance(x, toa.TOAs), args))
         model = list(filter(lambda x: isinstance(x, TimingModel), args))
 
-    t2pulsar = list(filter(lambda x: isinstance(x, t2.tempopulsar), args))
+    if t2 is not None:
+        t2pulsar = list(filter(lambda x: isinstance(x, t2.tempopulsar), args))
 
     parfile = list(filter(lambda x: isinstance(x, str) and
                           x.split('.')[-1] == 'par', args))
