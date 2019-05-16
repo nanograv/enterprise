@@ -33,12 +33,11 @@ except ImportError:
     print('No PINT? Meh...')
     pint = None
 
+import astropy.units as u
+
 if pint is None and t2 is None:
     err_msg = 'Must have either PINT or libstempo timing package installed'
     raise ImportError(err_msg)
-
-import astropy.units as u
-
 
 def get_maxobs(timfile):
     """Utility function to return number of lines in tim file.
