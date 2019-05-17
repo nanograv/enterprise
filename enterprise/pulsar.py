@@ -39,6 +39,11 @@ if pint is None and t2 is None:
     err_msg = 'Must have either PINT or libstempo timing package installed'
     raise ImportError(err_msg)
 
+import logging
+logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s',
+                    level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 def get_maxobs(timfile):
     """Utility function to return number of lines in tim file.
@@ -79,11 +84,10 @@ class BasePulsar(object):
             pdist = tuple(pdict.get(self.name, (1.0, 0.2)))
 
         if pdist == (1.0, 0.2):
-            # TODO: should use logging here
             msg = 'WARNING: Could not find pulsar distance for '
             msg += 'PSR {0}.'.format(self.name)
             msg += ' Setting value to 1 with 20% uncertainty.'
-            print(msg)
+            logger.warning(msg)
         return pdist
 
     def _get_radec_from_ecliptic(self, elong, elat):
@@ -100,12 +104,11 @@ class BasePulsar(object):
             raj = np.double(eq.ra)
             decj = np.double(eq.dec)
 
-        # TODO: should use logging here
         except TypeError:
             msg = 'WARNING: Cannot fine sky location coordinates '
             msg += 'for PSR {0}. '.format(self.name)
             msg += 'Setting values to 0.0'
-            print(msg)
+            logger.warning(msg)
             raj = 0.0
             decj = 0.0
 
