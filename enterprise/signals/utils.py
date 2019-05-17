@@ -1155,7 +1155,7 @@ def createfourierdesignmatrix_physicalephem(toas, planetssb, pos_t,
     (oa['jup_mjd'], oa['jup_orbelxyz'],
      oa['sat_mjd'], oa['sat_orbelxyz'],
      oa['jup_dyn_mjd'], oa['jup_dyn_orbelxyz'],
-     oa['jupsun_dyn_mjd'], oa['jupsun_dyn_orbelxyz') = \
+     oa['jupsun_dyn_mjd'], oa['jupsun_dyn_orbelxyz']) = \
         get_planet_orbital_elements()
 
     dpar = 1e-5  # may need finessing
@@ -1226,17 +1226,17 @@ def physical_ephem_delay(toas, planetssb, pos_t, frame_drift_rate=0,
         if dynamic:
             if inc_jupiter_orb:
                 # jupter orbital element perturbations
-                jup_perturb_tmp =  np.einsum('i,ijk->jk',
-                                             jup_dyn_orb_elements,
-                                             jup_dyn_orbelxyz)
+                jup_perturb_tmp = np.einsum('i,ijk->jk',
+                                            jup_dyn_orb_elements,
+                                            jup_dyn_orbelxyz)
                 earth += np.array([np.interp(mjd, jup_dyn_mjd,
                                              jup_perturb_tmp[:,aa])
                                    for aa in range(3)]).T
             elif inc_jupitersun_orb:
                 # jupter-sun orbital element perturbations
-                jupsun_perturb_tmp =  np.einsum('i,ijk->jk',
-                                                jupsun_dyn_orb_elements,
-                                                jupsun_dyn_orbelxyz)
+                jupsun_perturb_tmp = np.einsum('i,ijk->jk',
+                                               jupsun_dyn_orb_elements,
+                                            jupsun_dyn_orbelxyz)
                 earth += np.array([np.interp(mjd, jupsun_dyn_mjd,
                                              jupsun_perturb_tmp[:,aa])
                                    for aa in range(3)]).T
