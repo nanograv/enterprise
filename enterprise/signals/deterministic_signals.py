@@ -69,7 +69,12 @@ def PhysicalEphemerisSignal(
     d_neptune_mass=parameter.Normal(0, 7.96103855e-11)('d_neptune_mass'),
     jup_orb_elements=parameter.Uniform(-0.05,0.05,size=6)('jup_orb_elements'),
     sat_orb_elements=parameter.Uniform(-0.5,0.5,size=6)('sat_orb_elements'),
-    inc_jupiter_orb=True, inc_saturn_orb=False, use_epoch_toas=True,
+    jup_dyn_orb_elements=parameter.Uniform(-1e-4,1e-4,
+                                           size=6)('jup_orb_elements'),
+    jupsun_dyn_orb_elements=parameter.Uniform(-1e-4,1e-4,
+                                          size=12)('jupsun_orb_elements'),
+    dynamic=False, inc_jupiter_orb=True, inc_saturn_orb=False,
+    inc_jupitersun_orb=False, use_epoch_toas=True,
     name=''):  # noqa: E125,E501
 
     """
@@ -127,6 +132,17 @@ def PhysicalEphemerisSignal(
 
         Default prior is Uniform(-0.5, 0.5) for each element.
 
+    :param jup_dyn_orb_elements:
+        Amplitudes of PCA basis of jupiter dynamic position and velocity.
+
+        Default prior is Uniform(-1e-4, 1e-4) for each element.
+
+    :param jupsun_dyn_orb_elements:
+        Amplitudes of PCA basis of jupiter and Sun dynamic position and
+        velocity
+
+        Default prior is Uniform(-1e-4, 1e-4) for each element.
+
     :param inc_jupiter_orb:
         Boolean indicating whether or not to include jupiter's orbital
         elements as free parameters in model. Default: True
@@ -135,32 +151,61 @@ def PhysicalEphemerisSignal(
         Boolean indicating whether or not to include saturn's orbital
         elements as free parameters in model. Default: False
 
+    :param inc_jupitersun_orb:
+        Boolean indicating whether or not to include Jupiter's and Sun's
+        orbital elements as free parameters in model. Default: False
+
+    :param dynamic:
+        Boolean indicating whether or not to model the physical ephemeris
+        perturbation using dynamic partials. Default: False
+
     :param use_epoch_toas:
         Use interpolation from epoch to full TOAs. This option reduces
         computational cost for large multi-channel TOA data sets.
         Default: True
     """
 
+    # turn off jupiter orbital element parameters if not including in signal
+    if not inc_jupiter_orb:
+        jup_orb_elements = np.zeros(6)
+        jup_dyn_orb_elements = np.zeros(6)
+
+    # turn off jupiter-sun orbital element parameters if
+    # not including in signal
+    if not inc_jupitersun_orb:
+        jupsun_dyn_orb_elements = np.zeros(12)
+
     # turn off saturn orbital element parameters if not including in signal
     if not inc_saturn_orb:
         sat_orb_elements = np.zeros(6)
 
     # define waveform
-    jup_mjd, jup_orbelxyz, sat_mjd, sat_orbelxyz = (
-        utils.get_planet_orbital_elements())
-    wf = utils.physical_ephem_delay(frame_drift_rate=frame_drift_rate,
-                                    d_jupiter_mass=d_jupiter_mass,
-                                    d_saturn_mass=d_saturn_mass,
-                                    d_uranus_mass=d_uranus_mass,
-                                    d_neptune_mass=d_neptune_mass,
-                                    jup_orb_elements=jup_orb_elements,
-                                    sat_orb_elements=sat_orb_elements,
-                                    inc_jupiter_orb=inc_jupiter_orb,
-                                    jup_orbelxyz=jup_orbelxyz,
-                                    jup_mjd=jup_mjd,
-                                    inc_saturn_orb=inc_saturn_orb,
-                                    sat_orbelxyz=sat_orbelxyz,
-                                    sat_mjd=sat_mjd)
+    (jup_mjd, jup_orbelxyz, sat_mjd,
+        sat_orbelxyz, jup_dyn_mjd,
+        jup_dyn_orbelxyz, jupsun_dyn_mjd,
+        jupsun_dyn_orbelxyz) = utils.get_planet_orbital_elements()
+    wf = utils.physical_ephem_delay(
+        frame_drift_rate=frame_drift_rate,
+        d_jupiter_mass=d_jupiter_mass,
+        d_saturn_mass=d_saturn_mass,
+        d_uranus_mass=d_uranus_mass,
+        d_neptune_mass=d_neptune_mass,
+        dynamic=dynamic,
+        jup_orb_elements=jup_orb_elements,
+        jup_dyn_orb_elements=jup_dyn_orb_elements,
+        jupsun_dyn_orb_elements=jupsun_dyn_orb_elements,
+        sat_orb_elements=sat_orb_elements,
+        inc_jupiter_orb=inc_jupiter_orb,
+        inc_jupitersun_orb=inc_jupitersun_orb,
+        inc_saturn_orb=inc_saturn_orb,
+        jup_orbelxyz=jup_orbelxyz,
+        jup_mjd=jup_mjd,
+        sat_orbelxyz=sat_orbelxyz,
+        sat_mjd=sat_mjd,
+        jup_dyn_orbelxyz=jup_dyn_orbelxyz,
+        jup_dyn_mjd=jup_dyn_mjd,
+        jupsun_dyn_orbelxyz=jupsun_dyn_orbelxyz,
+        jupsun_dyn_mjd=jupsun_dyn_mjd)
 
     BaseClass = Deterministic(wf, name=name)
 

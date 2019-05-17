@@ -1032,7 +1032,12 @@ def get_planet_orbital_elements():
     jup_orbelxyz = np.load(dpath + 'jupiter-orbel-xyz-svd.npy')
     sat_mjd = np.load(dpath + 'saturn-orbel-mjd.npy')
     sat_orbelxyz = np.load(dpath + 'saturn-orbel-xyz-svd.npy')
-    return jup_mjd, jup_orbelxyz, sat_mjd, sat_orbelxyz
+    jup_dyn_mjd = np.load(dpath + 'jupiter-dynamic-mjd.npy')
+    jup_dyn_orbelxyz = np.load(dpath + 'jupiter-dynamic-xyz.npy')
+    jupsun_dyn_mjd = np.load(dpath + 'jupitersun-dynamic-mjd.npy')
+    jupsun_dyn_orbelxyz = np.load(dpath + 'jupitersun-dynamic-xyz.npy')
+    return (jup_mjd, jup_orbelxyz, sat_mjd, sat_orbelxyz, jup_dyn_mjd,
+            jup_dyn_orbelxyz, jupsun_dyn_mjd, jupsun_dyn_orbelxyz)
 
 
 def ecl2eq_vec(x):
@@ -1147,7 +1152,10 @@ def createfourierdesignmatrix_physicalephem(toas, planetssb, pos_t,
 
     # Jupiter + Saturn orbit definitions that we pass to physical_ephem_delay
     oa = {'inc_jupiter_orb': True, 'inc_saturn_orb': True}
-    oa['jup_mjd'], oa['jup_orbelxyz'], oa['sat_mjd'], oa['sat_orbelxyz'] = \
+    (oa['jup_mjd'], oa['jup_orbelxyz'],
+     oa['sat_mjd'], oa['sat_orbelxyz'],
+     oa['jup_dyn_mjd'], oa['jup_dyn_orbelxyz'],
+     oa['jupsun_dyn_mjd'], oa['jupsun_dyn_orbelxyz']) = \
         get_planet_orbital_elements()
 
     dpar = 1e-5  # may need finessing
@@ -1180,10 +1188,19 @@ def createfourierdesignmatrix_physicalephem(toas, planetssb, pos_t,
 @function
 def physical_ephem_delay(toas, planetssb, pos_t, frame_drift_rate=0,
                          d_jupiter_mass=0, d_saturn_mass=0, d_uranus_mass=0,
-                         d_neptune_mass=0, jup_orb_elements=np.zeros(6),
-                         sat_orb_elements=np.zeros(6), inc_jupiter_orb=False,
-                         jup_orbelxyz=None, jup_mjd=None, inc_saturn_orb=False,
-                         sat_orbelxyz=None, sat_mjd=None, equatorial=True):
+                         d_neptune_mass=0, dynamic=False,
+                         inc_jupiter_orb=False,
+                         inc_saturn_orb=False,
+                         inc_jupitersun_orb=False,
+                         jup_orb_elements=np.zeros(6),
+                         jup_orbelxyz=None, jup_mjd=None,
+                         jup_dyn_orb_elements=np.zeros(6),
+                         jup_dyn_orbelxyz=None, jup_dyn_mjd=None,
+                         sat_orb_elements=np.zeros(6),
+                         sat_orbelxyz=None, sat_mjd=None,
+                         jupsun_dyn_orb_elements=np.zeros(12),
+                         jupsun_dyn_orbelxyz=None, jupsun_dyn_mjd=None,
+                         equatorial=True):
 
         # convert toas to MJD
         mjd = toas / 86400
@@ -1206,18 +1223,38 @@ def physical_ephem_delay(toas, planetssb, pos_t, frame_drift_rate=0,
             earth += dmass(planet, dm)
 
         # jupter orbital element perturbations
-        if inc_jupiter_orb:
-            jup_perturb_tmp = 0.0009547918983127075 * np.einsum(
-                'i,ijk->jk', jup_orb_elements, jup_orbelxyz)
-            earth += np.array([np.interp(mjd, jup_mjd, jup_perturb_tmp[:,aa])
-                               for aa in range(3)]).T
+        if dynamic:
+            if inc_jupiter_orb:
+                # jupter orbital element perturbations
+                jup_perturb_tmp = np.einsum('i,ijk->jk',
+                                            jup_dyn_orb_elements,
+                                            jup_dyn_orbelxyz)
+                earth += np.array([np.interp(mjd, jup_dyn_mjd,
+                                             jup_perturb_tmp[:,aa])
+                                   for aa in range(3)]).T
+            elif inc_jupitersun_orb:
+                # jupter-sun orbital element perturbations
+                jupsun_perturb_tmp = np.einsum('i,ijk->jk',
+                                               jupsun_dyn_orb_elements,
+                                               jupsun_dyn_orbelxyz)
+                earth += np.array([np.interp(mjd, jupsun_dyn_mjd,
+                                             jupsun_perturb_tmp[:,aa])
+                                   for aa in range(3)]).T
+        else:
+            if inc_jupiter_orb:
+                jup_perturb_tmp = 0.0009547918983127075 * np.einsum(
+                    'i,ijk->jk', jup_orb_elements, jup_orbelxyz)
+                earth += np.array([np.interp(mjd, jup_mjd,
+                                             jup_perturb_tmp[:,aa])
+                                   for aa in range(3)]).T
 
-        # saturn orbital element perturbations
-        if inc_saturn_orb:
-            sat_perturb_tmp = 0.00028588567008942334 * np.einsum(
-                'i,ijk->jk', sat_orb_elements, sat_orbelxyz)
-            earth += np.array([np.interp(mjd, sat_mjd, sat_perturb_tmp[:,aa])
-                               for aa in range(3)]).T
+            # saturn orbital element perturbations
+            if inc_saturn_orb:
+                sat_perturb_tmp = 0.00028588567008942334 * np.einsum(
+                    'i,ijk->jk', sat_orb_elements, sat_orbelxyz)
+                earth += np.array([np.interp(mjd, sat_mjd,
+                                             sat_perturb_tmp[:,aa])
+                                   for aa in range(3)]).T
 
         # construct the true geocenter to barycenter roemer
         tmp_roemer = np.einsum('ij,ij->i', planetssb[:, 2, :3], pos_t)
