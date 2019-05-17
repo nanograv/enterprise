@@ -17,7 +17,7 @@ enterprise
 .. image:: https://coveralls.io/repos/github/nanograv/enterprise/badge.svg?branch=master
     :target: https://coveralls.io/github/nanograv/enterprise?branch=master
     
-.. image:: https://img.shields.io/badge/python-2.7%2C%203.5%2C%203.6-blue.svg
+.. image:: https://img.shields.io/badge/python-3.5%2C%203.6%2C%203.7-blue.svg
 
 
 ENTERPRISE (Enhanced Numerical Toolbox Enabling a Robust PulsaR Inference SuitE)
