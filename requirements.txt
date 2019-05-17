@@ -1,9 +1,9 @@
-numpy>=1.15.0
+numpy>=1.17.0
 scipy>=1.2.0
 ephem>=3.7.6.0
 Cython>=0.25.2
+jplephem>=2.6
+setuptools>=40.0.0
+healpy>=1.11.0
 scikit-sparse>=0.4.2 --no-binary scikit-sparse
 git+https://github.com/nanograv/PINT.git
-jplephem>=2.6
-setuptools>=38.2.4
-healpy>=1.11.0
