@@ -1178,8 +1178,13 @@ def createfourierdesignmatrix_physicalephem(toas, planetssb, pos_t,
                     c = np.zeros(6)
                     c[i] = dpar
 
+                    #Fl.append(physical_ephem_delay(toas, planetssb, pos_t,
+                    #                               **{parname: c}, **oa)/dpar)
+                    kwarg_dict = {parname: c}
+                    kwarg_dict.update(oa)
                     Fl.append(physical_ephem_delay(toas, planetssb, pos_t,
-                                                   **{parname: c}, **oa)/dpar)
+                                                   **kwarg_dict)/dpar)
+
                     Phil.append(ppar)
 
     return np.array(Fl).T.copy(), np.array(Phil)
