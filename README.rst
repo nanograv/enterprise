@@ -24,6 +24,7 @@ ENTERPRISE (Enhanced Numerical Toolbox Enabling a Robust PulsaR Inference SuitE)
 is a pulsar timing analysis code, aimed at noise analysis, gravitational-wave
 searches, and timing model analysis.
 
+* Note: `enterprise >= 2.0` does not support `Python2.7`.  You must use `Python >= 3.5`.
 
 * Free software: MIT license
 * Documentation: https://enterprise.readthedocs.io.
