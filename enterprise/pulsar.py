@@ -468,7 +468,7 @@ def Pulsar(*args, **kwargs):
 
     if pint and toas and model:
         return PintPulsar(toas[0], model[0], sort=sort, planets=planets)
-    elif t2pulsar:
+    elif t2 and t2pulsar:
         return Tempo2Pulsar(t2pulsar[0], sort=sort,
                             drop_t2pulsar=drop_t2pulsar,
                             planets=planets)
