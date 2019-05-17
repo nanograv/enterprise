@@ -6,4 +6,4 @@ jplephem==2.6
 setuptools>=40.0.0
 healpy==1.12.0
 scikit-sparse==0.4.2 --no-binary scikit-sparse
--e git+https://github.com/nanograv/PINT.git
+-e git+https://github.com/nanograv/PINT.git#egg=PINT
