@@ -1152,7 +1152,10 @@ def createfourierdesignmatrix_physicalephem(toas, planetssb, pos_t,
 
     # Jupiter + Saturn orbit definitions that we pass to physical_ephem_delay
     oa = {'inc_jupiter_orb': True, 'inc_saturn_orb': True}
-    oa['jup_mjd'], oa['jup_orbelxyz'], oa['sat_mjd'], oa['sat_orbelxyz'] = \
+    (oa['jup_mjd'], oa['jup_orbelxyz'],
+     oa['sat_mjd'], oa['sat_orbelxyz'],
+     oa['jup_dyn_mjd'], oa['jup_dyn_orbelxyz'],
+     oa['jupsun_dyn_mjd'], oa['jupsun_dyn_orbelxyz') = \
         get_planet_orbital_elements()
 
     dpar = 1e-5  # may need finessing
