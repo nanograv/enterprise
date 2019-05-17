@@ -7,8 +7,11 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
 import numpy as np
+
 import scipy.linalg as sl
 import scipy.special as ss
+import scipy.sparse as sps
+
 from scipy.interpolate import interp1d
 from scipy.integrate import odeint
 from pkg_resources import resource_filename, Requirement
@@ -17,52 +20,100 @@ import enterprise
 import enterprise.constants as const
 from enterprise.signals.parameter import function
 
+try:
+    from sksparse.cholmod import cholesky
+except:
+    print("You'll need sksparse for get_coefficients() with common signals!")
 
-def get_coefficients(pta,params,n=1,phiinv_method='cliques'):
+
+def get_coefficients(pta,params,n=1,phiinv_method='cliques',
+                     common_sparse=False):
     ret = []
 
     TNrs = pta.get_TNr(params)
     TNTs = pta.get_TNT(params)
-    phiinvs = pta.get_phiinv(params, logdet=False, method=phiinv_method)
+    phiinvs = pta.get_phiinv(params, logdet=False,
+                             method=phiinv_method)
 
-    for i, model in enumerate(pta.pulsarmodels):
-        phiinv, d, TNT = phiinvs[i], TNrs[i], TNTs[i]
+    # ...repeated code in the two if branches... refactor at will!
+    if pta._commonsignals:
+        if common_sparse:
+            Sigma = sps.block_diag(TNTs,'csc') + sps.csc_matrix(phiinvs)
+            TNr = np.concatenate(TNrs)
 
-        Sigma = TNT + (np.diag(phiinv) if phiinv.ndim == 1 else phiinv)
+            ch = cholesky(Sigma)
+            mn = ch(TNr)
+            Li = sps.linalg.inv(ch.L()).toarray()
+        else:
+            Sigma = sl.block_diag(*TNTs) + phiinvs
+            TNr = np.concatenate(TNrs)
 
-        try:
             u, s, _ = sl.svd(Sigma)
-            mn = np.dot(u, np.dot(u.T, d)/s)
-            Li = u * np.sqrt(1/s)
-        except np.linalg.LinAlgError:
-            Q, R = sl.qr(Sigma)
-            Sigi = sl.solve(R, Q.T)
-            mn = np.dot(Sigi, d)
-            u, s, _ = sl.svd(Sigi)
+            mn = np.dot(u, np.dot(u.T, TNr)/s)
             Li = u * np.sqrt(1/s)
 
         for j in range(n):
             b = mn + np.dot(Li, np.random.randn(Li.shape[0]))
 
             pardict, ntot = {}, 0
-            for sig in model._signals:
-                if sig.signal_type == 'basis':
-                    nb = sig.get_basis(params=params).shape[1]
+            for i, model in enumerate(pta.pulsarmodels):
+                for sig in model._signals:
+                    if sig.signal_type in ['basis', 'common basis']:
+                        nb = sig.get_basis(params=params).shape[1]
 
-                    if nb + ntot > len(b):
-                        raise IndexError("Missing some parameters! "
-                                         "You need to disable GP "
-                                         "basis column reuse.")
+                        if nb + ntot > len(b):
+                            raise IndexError("Missing some parameters! "
+                                             "You need to disable GP "
+                                             "basis column reuse.")
 
-                    pardict[sig.name + '_coefficients'] = b[ntot:nb+ntot]
-                    ntot += nb
+                        pardict[sig.name + '_coefficients'] = b[ntot:nb+ntot]
+                        ntot += nb
 
             if len(ret) <= j:
                 ret.append(params.copy())
 
             ret[j].update(pardict)
 
-    return ret[0] if n is 1 else ret
+        return ret[0] if n is 1 else ret
+    else:
+        for i, model in enumerate(pta.pulsarmodels):
+            phiinv, d, TNT = phiinvs[i], TNrs[i], TNTs[i]
+
+            Sigma = TNT + (np.diag(phiinv) if phiinv.ndim == 1 else phiinv)
+
+            try:
+                u, s, _ = sl.svd(Sigma)
+                mn = np.dot(u, np.dot(u.T, d)/s)
+                Li = u * np.sqrt(1/s)
+            except np.linalg.LinAlgError:
+                Q, R = sl.qr(Sigma)
+                Sigi = sl.solve(R, Q.T)
+                mn = np.dot(Sigi, d)
+                u, s, _ = sl.svd(Sigi)
+                Li = u * np.sqrt(1/s)
+
+            for j in range(n):
+                b = mn + np.dot(Li, np.random.randn(Li.shape[0]))
+
+                pardict, ntot = {}, 0
+                for sig in model._signals:
+                    if sig.signal_type == 'basis':
+                        nb = sig.get_basis(params=params).shape[1]
+
+                        if nb + ntot > len(b):
+                            raise IndexError("Missing some parameters! "
+                                             "You need to disable GP "
+                                             "basis column reuse.")
+
+                        pardict[sig.name + '_coefficients'] = b[ntot:nb+ntot]
+                        ntot += nb
+
+                if len(ret) <= j:
+                    ret.append(params.copy())
+
+                ret[j].update(pardict)
+
+        return ret[0] if n is 1 else ret
 
 
 class KernelMatrix(np.ndarray):
@@ -981,7 +1032,12 @@ def get_planet_orbital_elements():
     jup_orbelxyz = np.load(dpath + 'jupiter-orbel-xyz-svd.npy')
     sat_mjd = np.load(dpath + 'saturn-orbel-mjd.npy')
     sat_orbelxyz = np.load(dpath + 'saturn-orbel-xyz-svd.npy')
-    return jup_mjd, jup_orbelxyz, sat_mjd, sat_orbelxyz
+    jup_dyn_mjd = np.load(dpath + 'jupiter-dynamic-mjd.npy')
+    jup_dyn_orbelxyz = np.load(dpath + 'jupiter-dynamic-xyz.npy')
+    jupsun_dyn_mjd = np.load(dpath + 'jupitersun-dynamic-mjd.npy')
+    jupsun_dyn_orbelxyz = np.load(dpath + 'jupitersun-dynamic-xyz.npy')
+    return (jup_mjd, jup_orbelxyz, sat_mjd, sat_orbelxyz, jup_dyn_mjd,
+            jup_dyn_orbelxyz, jupsun_dyn_mjd, jupsun_dyn_orbelxyz)
 
 
 def ecl2eq_vec(x):
@@ -1062,12 +1118,89 @@ def dmass(planet, dm_over_Msun):
 
 
 @function
+def physicalephem_spectrum(sigmas):
+    # note the creative use of the "labels" (the very sigmas, not frequencies)
+    return sigmas**2
+
+
+@function
+def createfourierdesignmatrix_physicalephem(toas, planetssb, pos_t,
+                                            frame_drift_rate=1e-9,
+                                            d_jupiter_mass=1.54976690e-11,
+                                            d_saturn_mass=8.17306184e-12,
+                                            d_uranus_mass=5.71923361e-11,
+                                            d_neptune_mass=7.96103855e-11,
+                                            jup_orb_elements=0.05,
+                                            sat_orb_elements=0.5):
+    """
+    Construct physical ephemeris perturbation design matrix and 'frequencies'.
+    Parameters can be excluded by setting the corresponding prior sigma to None
+
+    :param toas:             vector of time series in seconds
+    :param pos:              pulsar position as Cartesian vector
+    :param frame_drift_rate: normal sigma for frame drift rate
+    :param d_jupiter_mass:   normal sigma for Jupiter mass perturbation
+    :param d_saturn_mass:    normal sigma for Saturn mass perturbation
+    :param d_uranus_mass:    normal sigma for Uranus mass perturbation
+    :param d_neptune_mass:   normal sigma for Neptune mass perturbation
+    :param jup_orb_elements: normal sigma for Jupiter orbital elem. perturb.
+    :param sat_orb_elements: normal sigma for Saturn orbital elem. perturb.
+
+    :return: F: Fourier design matrix of shape (len(toas), nvecs)
+    :return: sigmas: Phi sigmas (nvecs, to be passed to physicalephem_spectrum)
+    """
+
+    # Jupiter + Saturn orbit definitions that we pass to physical_ephem_delay
+    oa = {'inc_jupiter_orb': True, 'inc_saturn_orb': True}
+    (oa['jup_mjd'], oa['jup_orbelxyz'],
+     oa['sat_mjd'], oa['sat_orbelxyz'],
+     oa['jup_dyn_mjd'], oa['jup_dyn_orbelxyz'],
+     oa['jupsun_dyn_mjd'], oa['jupsun_dyn_orbelxyz']) = \
+        get_planet_orbital_elements()
+
+    dpar = 1e-5  # may need finessing
+    Fl, Phil = [], []
+
+    for parname in ['frame_drift_rate',
+                    'd_jupiter_mass', 'd_saturn_mass',
+                    'd_uranus_mass', 'd_neptune_mass',
+                    'jup_orb_elements', 'sat_orb_elements']:
+
+        ppar = locals()[parname]
+        if ppar:
+            if parname not in ['jup_orb_elements', 'sat_orb_elements']:
+                # need to normalize?
+                Fl.append(physical_ephem_delay(toas, planetssb, pos_t,
+                                               **{parname: dpar})/dpar)
+                Phil.append(ppar)
+            else:
+                for i in range(6):
+                    c = np.zeros(6)
+                    c[i] = dpar
+
+                    Fl.append(physical_ephem_delay(toas, planetssb, pos_t,
+                                                   **{parname: c}, **oa)/dpar)
+                    Phil.append(ppar)
+
+    return np.array(Fl).T.copy(), np.array(Phil)
+
+
+@function
 def physical_ephem_delay(toas, planetssb, pos_t, frame_drift_rate=0,
                          d_jupiter_mass=0, d_saturn_mass=0, d_uranus_mass=0,
-                         d_neptune_mass=0, jup_orb_elements=np.zeros(6),
-                         sat_orb_elements=np.zeros(6), inc_jupiter_orb=False,
-                         jup_orbelxyz=None, jup_mjd=None, inc_saturn_orb=False,
-                         sat_orbelxyz=None, sat_mjd=None, equatorial=True):
+                         d_neptune_mass=0, dynamic=False,
+                         inc_jupiter_orb=False,
+                         inc_saturn_orb=False,
+                         inc_jupitersun_orb=False,
+                         jup_orb_elements=np.zeros(6),
+                         jup_orbelxyz=None, jup_mjd=None,
+                         jup_dyn_orb_elements=np.zeros(6),
+                         jup_dyn_orbelxyz=None, jup_dyn_mjd=None,
+                         sat_orb_elements=np.zeros(6),
+                         sat_orbelxyz=None, sat_mjd=None,
+                         jupsun_dyn_orb_elements=np.zeros(12),
+                         jupsun_dyn_orbelxyz=None, jupsun_dyn_mjd=None,
+                         equatorial=True):
 
         # convert toas to MJD
         mjd = toas / 86400
@@ -1090,18 +1223,38 @@ def physical_ephem_delay(toas, planetssb, pos_t, frame_drift_rate=0,
             earth += dmass(planet, dm)
 
         # jupter orbital element perturbations
-        if inc_jupiter_orb:
-            jup_perturb_tmp = 0.0009547918983127075 * np.einsum(
-                'i,ijk->jk', jup_orb_elements, jup_orbelxyz)
-            earth += np.array([np.interp(mjd, jup_mjd, jup_perturb_tmp[:,aa])
-                               for aa in range(3)]).T
+        if dynamic:
+            if inc_jupiter_orb:
+                # jupter orbital element perturbations
+                jup_perturb_tmp = np.einsum('i,ijk->jk',
+                                            jup_dyn_orb_elements,
+                                            jup_dyn_orbelxyz)
+                earth += np.array([np.interp(mjd, jup_dyn_mjd,
+                                             jup_perturb_tmp[:,aa])
+                                   for aa in range(3)]).T
+            elif inc_jupitersun_orb:
+                # jupter-sun orbital element perturbations
+                jupsun_perturb_tmp = np.einsum('i,ijk->jk',
+                                               jupsun_dyn_orb_elements,
+                                               jupsun_dyn_orbelxyz)
+                earth += np.array([np.interp(mjd, jupsun_dyn_mjd,
+                                             jupsun_perturb_tmp[:,aa])
+                                   for aa in range(3)]).T
+        else:
+            if inc_jupiter_orb:
+                jup_perturb_tmp = 0.0009547918983127075 * np.einsum(
+                    'i,ijk->jk', jup_orb_elements, jup_orbelxyz)
+                earth += np.array([np.interp(mjd, jup_mjd,
+                                             jup_perturb_tmp[:,aa])
+                                   for aa in range(3)]).T
 
-        # saturn orbital element perturbations
-        if inc_saturn_orb:
-            sat_perturb_tmp = 0.00028588567008942334 * np.einsum(
-                'i,ijk->jk', sat_orb_elements, sat_orbelxyz)
-            earth += np.array([np.interp(mjd, sat_mjd, sat_perturb_tmp[:,aa])
-                               for aa in range(3)]).T
+            # saturn orbital element perturbations
+            if inc_saturn_orb:
+                sat_perturb_tmp = 0.00028588567008942334 * np.einsum(
+                    'i,ijk->jk', sat_orb_elements, sat_orbelxyz)
+                earth += np.array([np.interp(mjd, sat_mjd,
+                                             sat_perturb_tmp[:,aa])
+                                   for aa in range(3)]).T
 
         # construct the true geocenter to barycenter roemer
         tmp_roemer = np.einsum('ij,ij->i', planetssb[:, 2, :3], pos_t)
