@@ -12,6 +12,11 @@ import os
 import json
 from enterprise.signals import utils
 
+import logging
+logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s',
+                    level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 try:
     import cPickle as pickle
 except:
@@ -38,11 +43,6 @@ import astropy.units as u
 if pint is None and t2 is None:
     err_msg = 'Must have either PINT or libstempo timing package installed'
     raise ImportError(err_msg)
-
-import logging
-logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s',
-                    level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 def get_maxobs(timfile):
