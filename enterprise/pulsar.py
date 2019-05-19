@@ -5,17 +5,13 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
-import logging
-logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s',
-                    level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 import enterprise
 import numpy as np
 from ephem import Ecliptic, Equatorial
 import os
 import json
 from enterprise.signals import utils
+import logging
 
 try:
     import cPickle as pickle
@@ -43,6 +39,10 @@ import astropy.units as u
 if pint is None and t2 is None:
     err_msg = 'Must have either PINT or libstempo timing package installed'
     raise ImportError(err_msg)
+
+logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s',
+                    level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def get_maxobs(timfile):
