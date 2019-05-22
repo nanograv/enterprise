@@ -108,9 +108,12 @@ def by_backend(backend_flags):
     return {flagval: backend_flags == flagval for flagval in flagvals}
 
 
-def by_frequencies(freqs):
-    """Selection function to split by frequency bands, as in Lindley et al. (2016)"""
-    return dict(zip([‘band1’, ‘band2’, ‘band3’], [freqs <= 1000, freqs>1000 & freqs<=2000, freqs > 2000]))
+def by_frequency(freqs):
+    """Selection function to split by frequency bands"""
+    return dict(zip([‘low_freq’, ‘mid_freq’, ‘high_freq’],
+                    [freqs <= 1000,
+                     np.asarray(freqs>1000)*np.asarray(freqs<=2000),
+                     freqs > 2000]))
 
 
 def single_band(flags, band_val=None):
