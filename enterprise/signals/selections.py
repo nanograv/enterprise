@@ -110,7 +110,7 @@ def by_backend(backend_flags):
 
 def by_frequency(freqs):
     """Selection function to split by frequency bands"""
-    return dict(zip([‘low_freq’, ‘mid_freq’, ‘high_freq’],
+    return dict(zip(['low_freq', 'mid_freq', 'high_freq'],
                     [freqs <= 1000,
                      np.asarray(freqs>1000)*np.asarray(freqs<=2000),
                      freqs > 2000]))
