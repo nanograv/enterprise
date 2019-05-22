@@ -108,6 +108,11 @@ def by_backend(backend_flags):
     return {flagval: backend_flags == flagval for flagval in flagvals}
 
 
+def by_frequencies(freqs):
+    """Selection function to split by frequency bands, as in Lindley et al. (2016)"""
+    return dict(zip([‘band1’, ‘band2’, ‘band3’], [freqs <= 1000, freqs>1000 & freqs<=2000, freqs > 2000]))
+
+
 def single_band(flags, band_val=None):
     """Selection function to choose a single PPTA band (-B flag)"""
     return {band_val: flags['B'] == band_val}
