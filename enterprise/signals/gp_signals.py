@@ -10,6 +10,7 @@ from __future__ import (absolute_import, division,
 import math
 import itertools
 import functools
+import platform
 
 import numpy as np
 
@@ -21,6 +22,12 @@ from enterprise.signals.parameter import function
 from enterprise.signals.selections import Selection
 from enterprise.signals.utils import KernelMatrix
 
+pyv3 = platform.python_version().split('.')[0] == '3'
+
+import logging
+logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s',
+                    level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def BasisGP(priorFunction, basisFunction, coefficients=False, combine=True,
             selection=Selection(selections.no_selection),
@@ -39,6 +46,9 @@ def BasisGP(priorFunction, basisFunction, coefficients=False, combine=True,
             self.name = self.psrname + '_' + self.signal_id
             self._do_selection(psr, priorFunction, basisFunction,
                                coefficients, selection)
+            if coefficients and not pyv3:
+                msg = 'GP coefficients compatible only with Python 3'
+                logger.warning(msg)
 
         def _do_selection(self, psr, priorfn, basisfn, coefficients,
                           selection):
@@ -60,7 +70,7 @@ def BasisGP(priorFunction, basisFunction, coefficients=False, combine=True,
                                            self._bases[key]._params.values()):
                     self._params[par.name] = par
 
-            if coefficients:
+            if coefficients and pyv3:
                 # we can only create GPCoefficients parameters if the basis
                 # can be constructed with default arguments
                 # (and does not change size)
@@ -116,7 +126,7 @@ def BasisGP(priorFunction, basisFunction, coefficients=False, combine=True,
         # this class does different things (and gets different method
         # definitions) if the user wants it to model GP coefficients
         # (e.g., for a hierarchical likelihood) or if they do not
-        if coefficients:
+        if coefficients and pyv3:
             def _get_coefficient_logprior(self, key, c, **params):
                 self._construct_basis(params)
 
@@ -230,7 +240,7 @@ def TimingModel(coefficients=False, name='linear_timing_model',
         signal_name = 'linear timing model'
         signal_id = name + '_svd' if use_svd else name
 
-        if coefficients:
+        if coefficients and pyv3:
             def _get_coefficient_logprior(self, key, c, **params):
                 # MV: probably better to avoid this altogether
                 #     than to use 1e40 as in get_phi
@@ -296,7 +306,7 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction,
 
             self._psrpos = psr.pos
 
-            if coefficients:
+            if coefficients and pyv3:
                 self._construct_basis()
 
                 chain = itertools.chain(self._prior._params.values(),
@@ -326,7 +336,7 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction,
         def _construct_basis(self, params={}):
             self._basis, self._labels = self._bases(params=params)
 
-        if coefficients:
+        if coefficients and pyv3:
             def _get_coefficient_logprior(self, c, **params):
                 # MV: for correlated GPs, the prior needs to use
                 #     the coefficients for all GPs together;
