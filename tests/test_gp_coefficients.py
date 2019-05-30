@@ -13,6 +13,7 @@ import math
 import unittest
 import numpy as np
 import platform
+import logging
 
 from tests.enterprise_test_data import datadir
 from enterprise.pulsar import Pulsar
@@ -27,10 +28,10 @@ from enterprise.signals import utils
 
 pyv3 = platform.python_version().split('.')[0] == '3'
 
-import logging
 logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s',
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 @signal_base.function
 def create_quant_matrix(toas, dt=1):
@@ -65,10 +66,12 @@ class TestGPCoefficients(unittest.TestCase):
         pass
     else:
         def test_ephemeris(self):
-            """Test physical-ephemeris delay, made three ways: from marginalized
-            GP, from coefficient-based GP, from deterministic model."""
+            """Test physical-ephemeris delay, made three ways: from
+            marginalized GP, from coefficient-based GP, from
+            deterministic model."""
 
-            ef = white_signals.MeasurementNoise(efac=parameter.Uniform(0.1, 5.0))
+            ef = white_signals.MeasurementNoise(
+                efac=parameter.Uniform(0.1, 5.0))
 
             eph = gp_signals.FourierBasisCommonGP_physicalephem(
                 sat_orb_elements=None)
@@ -119,7 +122,8 @@ class TestGPCoefficients(unittest.TestCase):
             pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
                                 gamma=parameter.Uniform(1,7))
 
-            ef = white_signals.MeasurementNoise(efac=parameter.Uniform(0.1, 5.0))
+            ef = white_signals.MeasurementNoise(
+                efac=parameter.Uniform(0.1, 5.0))
 
             Tspan = (max(self.psr.toas.max(), self.psr2.toas.max()) -
                      min(self.psr.toas.max(), self.psr2.toas.max()))
@@ -127,12 +131,14 @@ class TestGPCoefficients(unittest.TestCase):
             pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
                                 gamma=parameter.Uniform(1,7))
 
-            rn = gp_signals.FourierBasisCommonGP(spectrum=pl, orf=utils.hd_orf(),
+            rn = gp_signals.FourierBasisCommonGP(spectrum=pl,
+                                                 orf=utils.hd_orf(),
                                                  components=20, Tspan=Tspan)
 
             model = ef + rn
 
-            rnc = gp_signals.FourierBasisCommonGP(spectrum=pl, orf=utils.hd_orf(),
+            rnc = gp_signals.FourierBasisCommonGP(spectrum=pl,
+                                                  orf=utils.hd_orf(),
                                                   components=20, Tspan=Tspan,
                                                   coefficients=True)
 
@@ -227,7 +233,8 @@ class TestGPCoefficients(unittest.TestCase):
             params = {'B1855+09_basis_ecorr_430_ASP_log10_ecorr': ecorrs[0],
                       'B1855+09_basis_ecorr_430_PUPPI_log10_ecorr': ecorrs[1],
                       'B1855+09_basis_ecorr_L-wide_ASP_log10_ecorr': ecorrs[2],
-                      'B1855+09_basis_ecorr_L-wide_PUPPI_log10_ecorr': ecorrs[3]}
+                      'B1855+09_basis_ecorr_L-wide_PUPPI_log10_ecorr':
+                          ecorrs[3]}
 
             fmat = ecm.get_basis(params)
             cf = 1e-6 * np.random.randn(fmat.shape[1])
@@ -243,9 +250,11 @@ class TestGPCoefficients(unittest.TestCase):
 
         def test_formalism(self):
             # create marginalized model
-            ef = white_signals.MeasurementNoise(efac=parameter.Uniform(0.1, 5.0))
+            ef = white_signals.MeasurementNoise(
+                efac=parameter.Uniform(0.1, 5.0))
             tm = gp_signals.TimingModel()
-            ec = gp_signals.EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5))
+            ec = gp_signals.EcorrBasisModel(
+                log10_ecorr=parameter.Uniform(-10, -5))
             pl = utils.powerlaw(log10_A=parameter.Uniform(-18,-12),
                                 gamma=parameter.Uniform(1,7))
             rn = gp_signals.FourierBasisGP(spectrum=pl, components=10)
@@ -254,8 +263,9 @@ class TestGPCoefficients(unittest.TestCase):
 
             # create hierarchical model
             tmc = gp_signals.TimingModel(coefficients=True)
-            ecc = gp_signals.EcorrBasisModel(log10_ecorr=parameter.Uniform(-10,-5),
-                                             coefficients=True)
+            ecc = gp_signals.EcorrBasisModel(
+                log10_ecorr=parameter.Uniform(-10,-5),
+                coefficients=True)
             rnc = gp_signals.FourierBasisGP(spectrum=pl, components=10,
                                             coefficients=True)
             modelc = ef + tmc + ecc + rnc
@@ -284,6 +294,7 @@ class TestGPCoefficients(unittest.TestCase):
             # I don't know how to integrate l2 to match l1...
             msg = 'Marginal and hierarchical likelihoods should be different.'
             assert l1 != l2, msg
+
 
 class TestGPCoefficientsPint(TestGPCoefficients):
 

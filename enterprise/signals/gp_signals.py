@@ -11,6 +11,7 @@ import math
 import itertools
 import functools
 import platform
+import logging
 
 import numpy as np
 
@@ -24,10 +25,10 @@ from enterprise.signals.utils import KernelMatrix
 
 pyv3 = platform.python_version().split('.')[0] == '3'
 
-import logging
 logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s',
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 def BasisGP(priorFunction, basisFunction, coefficients=False, combine=True,
             selection=Selection(selections.no_selection),
