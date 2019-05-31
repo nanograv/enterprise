@@ -42,7 +42,7 @@ def WhiteNoise(varianceFunction,
                 pnames = [psr.name, name, key]
                 pname = '_'.join([n for n in pnames if n])
                 self._ndiag[key] = vfn(pname, psr=psr)
-                for param in list(self._ndiag[key]._params.values()):
+                for param in self._ndiag[key]._params.values():
                     self._params[param.name] = param
 
         @property
