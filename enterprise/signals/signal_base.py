@@ -781,7 +781,7 @@ def SignalCollection(metasignals):
                             cc += 1
                 elif Fmat is not None and signal.basis_params:
                     nf = Fmat.shape[1]
-                    idx[signal] = list(np.arange(cc, cc + nf))
+                    idx[signal] = list(range(cc, cc + nf))
                     cc += nf
 
             if not idx:
