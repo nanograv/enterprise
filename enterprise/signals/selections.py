@@ -114,8 +114,8 @@ def by_backend(backend_flags):
 def nanograv_backends(backend_flags):
     """Selection function to split by NANOGRav backend flags only."""
     flagvals = np.unique(backend_flags)
-    ngb = ["ASP", "GASP", "GUPPI", "PUPPI"]
-    flagvals = filter(lambda x: any(map(lambda y: y in x, ngb)), flagvals)
+    ngb = ['ASP', 'GASP', 'GUPPI', 'PUPPI']
+    flagvals = [val for val in flagvals if any([b in val for b in ngb])]
     return {flagval: backend_flags == flagval for flagval in flagvals}
 
 
