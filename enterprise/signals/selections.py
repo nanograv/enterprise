@@ -95,20 +95,20 @@ def cut_half(toas):
 
 def by_band(flags):
     """Selection function to split by PPTA frequency band under -B flag"""
-    flagvals = np.unique(flags["B"])
-    return {flagval: flags["B"] == flagval for flagval in flagvals}
+    flagvals = np.unique(flags['B'])
+    return {val: flags['B'] == val for val in flagvals}
 
 
 def by_frontend(flags):
     """Selection function to split by frontend under -fe flag"""
-    flagvals = np.unique(flags["fe"])
-    return {flagval: flags["fe"] == flagval for flagval in flagvals}
+    flagvals = np.unique(flags['fe'])
+    return {val: flags['fe'] == val for val in flagvals}
 
 
 def by_backend(backend_flags):
     """Selection function to split by backend flags."""
     flagvals = np.unique(backend_flags)
-    return {flagval: backend_flags == flagval for flagval in flagvals}
+    return {val: backend_flags == val for val in flagvals}
 
 
 def nanograv_backends(backend_flags):
@@ -116,7 +116,7 @@ def nanograv_backends(backend_flags):
     flagvals = np.unique(backend_flags)
     ngb = ['ASP', 'GASP', 'GUPPI', 'PUPPI']
     flagvals = [val for val in flagvals if any([b in val for b in ngb])]
-    return {flagval: backend_flags == flagval for flagval in flagvals}
+    return {val: backend_flags == val for val in flagvals}
 
 
 def no_selection(toas):
