@@ -842,11 +842,8 @@ def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0,
     # combined polarization
     pol = np.cos(2*gwpol)*fp + np.sin(2*gwpol)*fc
 
-    # Define the heaviside function
-    heaviside = lambda x: 0.5 * (np.sign(x) + 1)
-
     # Return the time-series for the pulsar
-    return pol * h * heaviside(toas-t0) * (toas-t0)
+    return pol * h * np.heaviside(toas-t0, 0.5) * (toas-t0)
 
 
 @function
