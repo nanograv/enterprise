@@ -176,7 +176,7 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
                 Umats.append(utils.create_quantization_matrix(
                     psr.toas[mask], nmin=2)[0])
 
-            nepoch = np.sum(U.shape[1] for U in Umats)
+            nepoch = sum(U.shape[1] for U in Umats)
             U = np.zeros((len(psr.toas), nepoch))
             self._slices = {}
             netot = 0
