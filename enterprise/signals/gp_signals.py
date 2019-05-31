@@ -53,7 +53,7 @@ def BasisGP(
         def _do_selection(self, psr, priorfn, basisfn, coefficients, selection):
             sel = selection(psr)
 
-            self._keys = list(sorted(sel.masks.keys()))
+            self._keys = sorted(sel.masks.keys())
             self._masks = [sel.masks[key] for key in self._keys]
             self._prior, self._bases = {}, {}
             self._params, self._coefficients = {}, {}
