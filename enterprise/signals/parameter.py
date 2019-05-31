@@ -485,7 +485,7 @@ def Function(func, name='', **func_kwargs):
 
         def __repr__(self):
             return '{}({})'.format(self.name,
-                                   ', '.join(map(str,self.params)))
+                                   ', '.join([str(p) for p in self.params])
 
     return Function
 
