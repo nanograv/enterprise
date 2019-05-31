@@ -35,7 +35,7 @@ def WhiteNoise(varianceFunction,
         def _do_selection(self, psr, vfn, selection):
 
             sel = selection(psr)
-            self._keys = list(sorted(sel.masks.keys()))
+            self._keys = sorted(sel.masks.keys())
             self._masks = [sel.masks[key] for key in self._keys]
             self._ndiag, self._params = {}, {}
             for key, mask in zip(self._keys, self._masks):
@@ -168,7 +168,7 @@ def EcorrKernelNoise(log10_ecorr=parameter.Uniform(-10, -5),
 
             sel = selection(psr)
             self._params, self._masks = sel('log10_ecorr', log10_ecorr)
-            keys = list(sorted(self._masks.keys()))
+            keys = sorted(self._masks.keys())
             masks = [self._masks[key] for key in keys]
 
             Umats = []
