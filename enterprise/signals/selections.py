@@ -111,18 +111,46 @@ def by_backend(backend_flags):
 def by_frequency(freqs):
     """Selection function to split by frequency bands"""
     return dict(zip(['low_freq', 'mid_freq', 'high_freq'],
-                    [freqs <= 1000, (freqs>1000)*(freqs<=2000),
+                    [freqs <= 1000, (freqs > 1000)*(freqs <= 2000),
                      freqs > 2000]))
 
 
-def single_band(flags, band_val=None):
-    """Selection function to choose a single PPTA band (-B flag)"""
-    return {band_val: flags['B'] == band_val}
+def nanograv_backends(backend_flags):
+    """Selection function to split by NANOGRav backend flags only."""
+    flagvals = np.unique(backend_flags)
+    ngb = ['ASP', 'GASP', 'GUPPI', 'PUPPI']
+    flagvals = filter(lambda x: any(map(lambda y: y in x, ngb)), flagvals)
+    return {flagval: backend_flags == flagval for flagval in flagvals}
 
 
-def single_backend(backend_flags, backend_val=None):
-    """Selection function for a single backend"""
-    return {backend_val: backend_flags == backend_val}
+def band_50cm(freqs):
+    """Selection only obs <700MHz"""
+    return dict(zip(['50cm'], [freqs < 700]))
+
+
+def band_40cm(freqs):
+    """Selection only obs 700MHz <= f < 1000MHz"""
+    return dict(zip(['40cm'], [(freqs >= 700)*(freqs < 1000)]))
+
+
+def band_4050cm(freqs):
+    """Selection only obs f < 1000MHz"""
+    return dict(zip(['4050cm'], [freqs < 1000]))
+
+
+def band_20cm(freqs):
+    """Selection only obs 1000 <= f < 2000MHz"""
+    return dict(zip(['20cm'], [(freqs >= 1000)*(freqs < 2000)]))
+
+
+def band_10cm(freqs):
+    """Selection only obs >=2000MHz"""
+    return dict(zip(['10cm'], [freqs > 2000]))
+
+
+def single_band(freqs, min_freq=0, max_freq=10000, name='band'):
+    """Selection only observations with min_freq <= f < max_freq"""
+    return dict(zip([name], [(freqs >= min_freq)*(freqs < max_freq)]))
 
 
 def nanograv_backends(backend_flags):
