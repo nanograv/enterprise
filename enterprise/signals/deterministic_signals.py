@@ -70,9 +70,9 @@ def PhysicalEphemerisSignal(
     jup_orb_elements=parameter.Uniform(-0.05,0.05,size=6)('jup_orb_elements'),
     sat_orb_elements=parameter.Uniform(-0.5,0.5,size=6)('sat_orb_elements'),
     jup_dyn_orb_elements=parameter.Uniform(-1e-4,1e-4,
-                                           size=6)('jup_orb_elements'),
+                                           size=6)('jup_dyn_orb_elements'),
     jupsun_dyn_orb_elements=parameter.Uniform(-1e-4,1e-4,
-                                          size=12)('jupsun_orb_elements'),
+                                          size=12)('jupsun_dyn_orb_elements'),
     dynamic=False, inc_jupiter_orb=True, inc_saturn_orb=False,
     inc_jupitersun_orb=False, use_epoch_toas=True,
     name=''):  # noqa: E125,E501
