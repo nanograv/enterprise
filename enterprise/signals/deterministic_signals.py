@@ -165,6 +165,11 @@ def PhysicalEphemerisSignal(
         Default: True
     """
 
+    # turn off dynamic orbital elements if necessary
+    if not dynamic:
+        jup_dyn_orb_elements = np.zeros(6)
+        jupsun_dyn_orb_elements = np.zeros(12)
+
     # turn off jupiter orbital element parameters if not including in signal
     if not inc_jupiter_orb:
         jup_orb_elements = np.zeros(6)
