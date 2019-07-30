@@ -310,6 +310,14 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction,
             if coefficients and pyv3:
                 self._construct_basis()
 
+                # if we're given an instantiated coefficient vector
+                # that's what we will use
+                if isinstance(coefficients, parameter.Parameter):
+                    self._coefficients[''] = coefficients
+                    self._params[coefficients.name] = coefficients
+
+                    return
+
                 chain = itertools.chain(self._prior._params.values(),
                                         self._orf._params.values(),
                                         self._bases._params.values())
