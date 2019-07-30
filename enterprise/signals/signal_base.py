@@ -241,9 +241,18 @@ class PTA(object):
 
     @property
     def params(self):
-        return sorted({par for signalcollection in self._signalcollections for
-                       par in signalcollection.params},
-                      key=lambda par: par.name)
+        ret = set()
+
+        for signalcollection in self._signalcollections:
+            for param in signalcollection.params:
+                for par in param.params:
+                    ret.add(par)
+
+        return sorted(list(ret), key=lambda par: par.name)
+
+        # return sorted({par for signalcollection in self._signalcollections for
+        #                par in signalcollection.params},
+        #               key=lambda par: par.name)
 
     @property
     def param_names(self):
