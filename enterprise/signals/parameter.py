@@ -96,7 +96,10 @@ class Parameter(object):
                 raise ValueError(
                     "You shouldn't give me my value when you're sampling me.!")
 
-            return self.prior(func=self._sampler, size=self._size, **kwargs)
+            if hasattr(self,'prior'):
+                return self.prior(func=self._sampler, size=self._size, **kwargs)
+            else:
+                return self.logprior(func=self._sampler, size=self._size, **kwargs)
 
     @property
     def size(self):
