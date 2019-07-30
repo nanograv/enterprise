@@ -250,8 +250,8 @@ class PTA(object):
 
         return sorted(list(ret), key=lambda par: par.name)
 
-        # return sorted({par for signalcollection in self._signalcollections for
-        #                par in signalcollection.params},
+        # return sorted({par for signalcollection in self._signalcollections
+        #                    for par in signalcollection.params},
         #               key=lambda par: par.name)
 
     @property
