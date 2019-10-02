@@ -114,7 +114,7 @@ def BasisGP(priorFunction, basisFunction, coefficients=False, combine=True,
 
             nc = np.sum(F.shape[1] for F in basis.values())
             self._basis = np.zeros((len(self._masks[0]), nc))
-            
+
             # TODO: should this be defined here? it will cache phi
             self._phi = KernelMatrix(nc)
 

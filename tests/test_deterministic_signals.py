@@ -137,21 +137,21 @@ class TestDeterministicSignals(unittest.TestCase):
             e1, e2 = eph1(self.psr), eph2(self.psr)
 
             # set parameters
-            params = {'d_jupiter_mass':  -8.561198198000628e-12,
-                      'd_neptune_mass':   1.0251757860647059e-11,
-                      'd_saturn_mass':    6.22114376130324e-12,
-                      'd_uranus_mass':   -2.1157536169469958e-10,
+            params = {'d_jupiter_mass': -8.561198198000628e-12,
+                      'd_neptune_mass': 1.0251757860647059e-11,
+                      'd_saturn_mass': 6.22114376130324e-12,
+                      'd_uranus_mass': -2.1157536169469958e-10,
                       'frame_drift_rate': 2.874659280396648e-10,
-                      'jup_orb_elements': np.array([ 0.04140015,-0.03422412,
-                                                     0.01165894,-0.03525219,
+                      'jup_orb_elements': np.array([0.04140015,-0.03422412,
+                                                    0.01165894,-0.03525219,
                                                     -0.00406852, 0.0421522]),
                       'sat_orb_elements': np.array([-0.39701798,-0.13322608,
                                                     -0.05025925, 0.36331171,
                                                     -0.17080321, 0.25093799])}
 
             # test against waveform and compare non-epoch and epoch TOA results
-            d1 = e1.get_delay(params = params)
-            d2 = e2.get_delay(params = params)
+            d1 = e1.get_delay(params=params)
+            d2 = e2.get_delay(params=params)
 
             (jup_mjd,
              jup_orbel,
@@ -159,7 +159,7 @@ class TestDeterministicSignals(unittest.TestCase):
 
             d3 = utils.physical_ephem_delay(
                 self.psr.toas, self.psr.planetssb, self.psr.pos_t,
-                times = jup_mjd, jup_orbit = jup_orbel, sat_orbit = sat_orbel,
+                times=jup_mjd, jup_orbit=jup_orbel, sat_orbit=sat_orbel,
                 **params)
 
             msg1 = 'Signal delay does not match function delay'
