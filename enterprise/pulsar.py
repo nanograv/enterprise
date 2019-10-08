@@ -29,9 +29,9 @@ try:
     import pint.toa as toa
     import pint.models.model_builder as mb
     from pint.models import TimingModel
-    from pint.residuals import resids
+    from pint.residuals import Residuals as resids
 except ImportError:
-    print('No PINT? Meh...')
+    print('Cannot import PINT? Meh...')
     pint = None
 
 import astropy.units as u

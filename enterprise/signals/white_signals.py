@@ -33,7 +33,6 @@ def WhiteNoise(varianceFunction,
             self._do_selection(psr, varianceFunction, selection)
 
         def _do_selection(self, psr, vfn, selection):
-
             sel = selection(psr)
             self._keys = list(sorted(sel.masks.keys()))
             self._masks = [sel.masks[key] for key in self._keys]

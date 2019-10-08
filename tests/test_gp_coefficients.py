@@ -80,7 +80,7 @@ class TestGPCoefficients(unittest.TestCase):
                 sat_orb_elements=None, coefficients=True)
 
             ephd = deterministic_signals.PhysicalEphemerisSignal(
-                inc_saturn_orb=False)
+                sat_orb_elements=False)
 
             model = ef + eph
             modelc = ef + ephc
