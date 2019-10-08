@@ -18,7 +18,7 @@ test_requirements = []
 
 setup(
     name='enterprise',
-    version='1.2.0',
+    version='1.2.1',
     description="ENTERPRISE (Enhanced Numerical Toolbox Enabling a Robust PulsaR Inference SuitE)",
     long_description=readme + '\n\n' + history,
     author="Justin A. Ellis",
