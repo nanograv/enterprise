@@ -1125,7 +1125,8 @@ def createfourierdesignmatrix_physicalephem(toas, planetssb, pos_t,
                                             d_uranus_mass=5.71923361e-11,
                                             d_neptune_mass=7.96103855e-11,
                                             jup_orb_elements=0.05,
-                                            sat_orb_elements=0.5):
+                                            sat_orb_elements=0.5,
+                                            model='orbel'):
     """
     Construct physical ephemeris perturbation design matrix and 'frequencies'.
     Parameters can be excluded by setting the corresponding prior sigma to None
@@ -1145,12 +1146,9 @@ def createfourierdesignmatrix_physicalephem(toas, planetssb, pos_t,
     """
 
     # Jupiter + Saturn orbit definitions that we pass to physical_ephem_delay
-    oa = {'inc_jupiter_orb': True, 'inc_saturn_orb': True}
-    (oa['jup_mjd'], oa['jup_orbelxyz'],
-     oa['sat_mjd'], oa['sat_orbelxyz'],
-     oa['jup_dyn_mjd'], oa['jup_dyn_orbelxyz'],
-     oa['jupsun_dyn_mjd'], oa['jupsun_dyn_orbelxyz']) = \
-        get_planet_orbital_elements()
+    oa = {}
+    (oa['times'], oa['jup_orbit'], oa['sat_orbit']) = \
+        get_planet_orbital_elements(model)
 
     dpar = 1e-5  # may need finessing
     Fl, Phil = [], []

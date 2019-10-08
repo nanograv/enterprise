@@ -176,7 +176,7 @@ class TestDeterministicSignals(unittest.TestCase):
         elif isinstance(self.psr, enterprise.pulsar.PintPulsar):
             with self.assertRaises(NotImplementedError) as context:
                 eph1 = deterministic_signals.PhysicalEphemerisSignal(
-                    inc_saturn_orb=True)
+                    sat_orb_elements=True)
                 e1 = eph1(self.psr)
 
                 msg = 'Physical Ephemeris model is not compatible with PINT '
