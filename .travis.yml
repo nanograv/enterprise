@@ -2,7 +2,6 @@ language: python
 cache: pip
 
 python:
-    - "2.7.15"
     - "3.6"
 
 before_install:
@@ -32,9 +31,9 @@ install:
     - python setup.py install
 
 script:
-    #- make test
+    # - make test
     - coverage run --source enterprise setup.py test
     - make lint
 
 after_success:
-    coveralls
+    - coveralls
