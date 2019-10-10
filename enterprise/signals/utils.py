@@ -20,12 +20,9 @@ from pkg_resources import resource_filename, Requirement
 import enterprise
 import enterprise.constants as const
 from enterprise.signals.parameter import function
-from enterprise.signals.gp_priors import powerlaw, turnover
-from enterprise.signals.gp_bases import (createfourierdesignmatrix_red,
-                                         createfourierdesignmatrix_dm,
-                                         createfourierdesignmatrix_env,
-                                         createfourierdesignmatrix_ephem,
-                                         createfourierdesignmatrix_eph)
+from enterprise.signals.gp_priors import powerlaw, turnover  # noqa: F401
+from enterprise.signals.gp_bases import *  # noqa: F401, F403
+
 
 try:
     from sksparse.cholmod import cholesky

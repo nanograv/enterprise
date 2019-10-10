@@ -12,6 +12,11 @@ from enterprise.signals.parameter import function
 # Fourier-basis signal functions #####
 ######################################
 
+__all__ = ['createfourierdesignmatrix_red',
+           'createfourierdesignmatrix_dm',
+           'createfourierdesignmatrix_env',
+           'createfourierdesignmatrix_ephem',
+           'createfourierdesignmatrix_eph']
 
 @function
 def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
