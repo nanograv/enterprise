@@ -18,6 +18,7 @@ __all__ = ['createfourierdesignmatrix_red',
            'createfourierdesignmatrix_ephem',
            'createfourierdesignmatrix_eph']
 
+
 @function
 def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
                                   logf=False, fmin=None, fmax=None,
