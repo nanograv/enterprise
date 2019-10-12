@@ -36,11 +36,11 @@ init:
 	@./.enterprise/bin/python3 -m pip install -e .
 
 format:
-	@./.enterprise/bin/python3 -m black .
+	black .
 
 lint:
-	@./.enterprise/bin/python3 -m black --check .
-	@./.enterprise/bin/python3 -m flake8 .
+	black --check .
+	flake8 .
 
 clean: clean-build clean-pyc clean-test ## remove all build, test, coverage and Python artifacts
 
