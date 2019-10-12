@@ -155,7 +155,7 @@ class TestPTASignals(unittest.TestCase):
         inv1, ld1 = pta.get_phiinv(ps,method='cliques', logdet=True)
         inv2, ld2 = pta.get_phiinv(ps,method='partition', logdet=True)
         inv3, ld3 = pta.get_phiinv(ps,method='sparse', logdet=True)
-        if not isinstance(inv3,np.ndarray):
+        if not isinstance(inv3, np.ndarray):
             inv3 = inv3.toarray()
 
         for ld in [ld1, ld2, ld3]:
@@ -213,7 +213,8 @@ class TestPTASignals(unittest.TestCase):
         inv1, ld1 = pta.get_phiinv(ps,method='cliques', logdet=True)
         inv2, ld2 = pta.get_phiinv(ps,method='partition', logdet=True)
         inv3, ld3 = pta.get_phiinv(ps,method='sparse', logdet=True)
-        inv3 = inv3.toarray()
+        if not isinstance(inv3, np.ndarray):
+            inv3 = inv3.toarray()
 
         for ld in [ld1, ld3]:
             msg = "Wrong phi log determinant for two common processes"
@@ -241,7 +242,8 @@ class TestPTASignals(unittest.TestCase):
         inv1, ld1 = pta.get_phiinv(ps,method='cliques', logdet=True)
         inv2, ld2 = pta.get_phiinv(ps,method='partition', logdet=True)
         inv3, ld3 = pta.get_phiinv(ps,method='sparse', logdet=True)
-        inv3 = inv3.toarray()
+        if not isinstance(inv3, np.ndarray):
+            inv3 = inv3.toarray()
 
         for ld in [ld1, ld3]:
             msg = "Wrong phi log determinant for two common processes"

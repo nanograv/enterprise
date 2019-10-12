@@ -114,7 +114,10 @@ def BasisGP(priorFunction, basisFunction, coefficients=False, combine=True,
 
             nc = sum(F.shape[1] for F in basis.values())
             self._basis = np.zeros((len(self._masks[0]), nc))
+
+            # TODO: should this be defined here? it will cache phi
             self._phi = KernelMatrix(nc)
+
             self._slices = {}
             nctot = 0
             for key, mask in zip(self._keys, self._masks):
@@ -309,6 +312,14 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction,
 
             if coefficients and pyv3:
                 self._construct_basis()
+
+                # if we're given an instantiated coefficient vector
+                # that's what we will use
+                if isinstance(coefficients, parameter.Parameter):
+                    self._coefficients[''] = coefficients
+                    self._params[coefficients.name] = coefficients
+
+                    return
 
                 chain = itertools.chain(self._prior._params.values(),
                                         self._orf._params.values(),
