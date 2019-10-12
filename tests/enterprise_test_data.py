@@ -8,4 +8,4 @@ import os
 
 # Location of this file and the test data scripts
 testdir = os.path.dirname(os.path.abspath(__file__))
-datadir = os.path.join(testdir, 'data')
+datadir = os.path.join(testdir, "data")
