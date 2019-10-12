@@ -72,12 +72,11 @@ test-all: ## run tests on every Python version with tox
 	tox
 
 coverage: ## check code coverage quickly with the default Python
+	coverage run --source enterprise setup.py test
 
-		coverage run --source enterprise setup.py test
-
-		coverage report -m
-		coverage html
-		$(BROWSER) htmlcov/index.html
+	coverage report -m
+	coverage html
+	$(BROWSER) htmlcov/index.html
 
 jupyter-docs:
 	jupyter nbconvert --template docs/nb-rst.tpl --to rst docs/_static/notebooks/*.ipynb --output-dir docs/
