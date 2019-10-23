@@ -26,8 +26,23 @@ BROWSER := python -c "$$BROWSER_PYSCRIPT"
 help:
 	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
 
-clean: clean-build clean-pyc clean-test ## remove all build, test, coverage and Python artifacts
+init:
+	@python3 -m venv .enterprise --prompt enterprise
+	@./.enterprise/bin/python3 -m pip install numpy
+	@./.enterprise/bin/python3 -m pip install -r requirements.txt -U
+	@./.enterprise/bin/python3 -m pip install -r requirements_dev.txt -U
+	@./.enterprise/bin/python3 -m pip install libstempo --install-option="--with-tempo2=$(TEMPO2)"
+	@./.enterprise/bin/python3 -m pre_commit install --install-hooks --overwrite
+	@./.enterprise/bin/python3 -m pip install -e .
 
+format:
+	black .
+
+lint:
+	black --check .
+	flake8 .
+
+clean: clean-build clean-pyc clean-test ## remove all build, test, coverage and Python artifacts
 
 clean-build: ## remove build artifacts
 	rm -fr build/
@@ -47,23 +62,21 @@ clean-test: ## remove test and coverage artifacts
 	rm -f .coverage
 	rm -fr htmlcov/
 
-lint: ## check style with flake8
-	flake8 --ignore=E265,E226,E231,E731,E722,W504 enterprise tests
+#lint: ## check style with flake8
+#	flake8 --ignore=E265,E226,E231,E731,E722,W504 enterprise tests
 
 test: ## run tests quickly with the default Python
-
-		pytest -v --full-trace --cov-config .coveragerc --cov=enterprise tests
+	pytest -v --full-trace --cov-config .coveragerc --cov=enterprise tests
 
 test-all: ## run tests on every Python version with tox
 	tox
 
 coverage: ## check code coverage quickly with the default Python
+	coverage run --source enterprise setup.py test
 
-		coverage run --source enterprise setup.py test
-
-		coverage report -m
-		coverage html
-		$(BROWSER) htmlcov/index.html
+	coverage report -m
+	coverage html
+	$(BROWSER) htmlcov/index.html
 
 jupyter-docs:
 	jupyter nbconvert --template docs/nb-rst.tpl --to rst docs/_static/notebooks/*.ipynb --output-dir docs/

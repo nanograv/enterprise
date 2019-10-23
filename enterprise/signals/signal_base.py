@@ -3,41 +3,35 @@
 Defines the signal base classes and metaclasses. All signals will then be
 derived from these base classes.
 """
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import collections
 import itertools
-
-import six
+import logging
 
 import numpy as np
-import scipy.sparse as sps
 import scipy.linalg as sl
-
-
-from enterprise.signals.parameter import ConstantParameter
-from enterprise.signals.utils import KernelMatrix
+import scipy.sparse as sps
+import six
 
 # these are defined in parameter.py, but currently imported
 # in various places from signal_base.py
-from enterprise.signals.parameter import function  # noqa: F401
 from enterprise.signals.parameter import Function  # noqa: F401
+from enterprise.signals.parameter import function  # noqa: F401
+from enterprise.signals.parameter import ConstantParameter
+from enterprise.signals.utils import KernelMatrix
 
-import logging
-logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s',
-                    level=logging.INFO)
+logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 try:
     from sksparse.cholmod import cholesky
 except ImportError:
-    msg = 'No sksparse library. Using scipy instead!'
+    msg = "No sksparse library. Using scipy instead!"
     logger.warning(msg)
 
     class cholesky(object):
-
         def __init__(self, x):
             if sps.issparse(x):
                 x = x.toarray()
@@ -60,7 +54,7 @@ class MetaSignal(type):
         if isinstance(other, MetaSignal):
             return SignalCollection([self, other])
         elif isinstance(other, MetaCollection):
-            return SignalCollection([self]+other._metasignals)
+            return SignalCollection([self] + other._metasignals)
         else:
             raise TypeError
 
@@ -72,9 +66,9 @@ class MetaCollection(type):
 
     def __add__(self, other):
         if isinstance(other, MetaSignal):
-            return SignalCollection(self._metasignals+[other])
+            return SignalCollection(self._metasignals + [other])
         elif isinstance(other, MetaCollection):
-            return SignalCollection(self._metasignals+other._metasignals)
+            return SignalCollection(self._metasignals + other._metasignals)
         else:
             raise TypeError
 
@@ -89,8 +83,7 @@ class Signal(object):
     @property
     def params(self):
         # return only nonconstant parameters
-        return [par for par in self._params.values() if not
-                isinstance(par, ConstantParameter)]
+        return [par for par in self._params.values() if not isinstance(par, ConstantParameter)]
 
     @property
     def param_names(self):
@@ -98,7 +91,7 @@ class Signal(object):
         for p in self.params:
             if p.size:
                 for ii in range(0, p.size):
-                    ret.append(p.name+'_{}'.format(ii))
+                    ret.append(p.name + "_{}".format(ii))
             else:
                 ret.append(p.name)
         return ret
@@ -113,12 +106,12 @@ class Signal(object):
         """Set default parameters."""
         for kw, par in self._params.items():
             if par.name in params and isinstance(par, ConstantParameter):
-                msg = 'Setting {} to {}'.format(par.name, params[par.name])
+                msg = "Setting {} to {}".format(par.name, params[par.name])
                 logger.info(msg)
                 self._params[kw].value = params[par.name]
             elif par.name not in params and isinstance(par, ConstantParameter):
                 if par.value is None:
-                    msg = '{} not set! Check parameter dict.'.format(par.name)
+                    msg = "{} not set! Check parameter dict.".format(par.name)
                     logger.warning(msg)
 
     def get_ndiag(self, params):
@@ -163,11 +156,11 @@ class LogLikelihood(object):
         self.pta = pta
 
     def _make_sigma(self, TNTs, phiinv):
-        return sps.block_diag(TNTs,'csc') + sps.csc_matrix(phiinv)
+        return sps.block_diag(TNTs, "csc") + sps.csc_matrix(phiinv)
 
-    def __call__(self, xs, phiinv_method='cliques'):
+    def __call__(self, xs, phiinv_method="cliques"):
         # map parameter vector if needed
-        params = xs if isinstance(xs,dict) else self.pta.map_params(xs)
+        params = xs if isinstance(xs, dict) else self.pta.map_params(xs)
 
         loglike = 0
 
@@ -175,8 +168,7 @@ class LogLikelihood(object):
         # correlated signals
         TNrs = self.pta.get_TNr(params)
         TNTs = self.pta.get_TNT(params)
-        phiinvs = self.pta.get_phiinv(params, logdet=True,
-                                      method=phiinv_method)
+        phiinvs = self.pta.get_phiinv(params, logdet=True, method=phiinv_method)
 
         # get -0.5 * (rNr + logdet_N) piece of likelihood
         loglike += -0.5 * np.sum([l for l in self.pta.get_rNr_logdet(params)])
@@ -196,7 +188,7 @@ class LogLikelihood(object):
 
             logdet_sigma = cf.logdet()
 
-            loglike += 0.5*(np.dot(TNr, expval) - logdet_sigma - logdet_phi)
+            loglike += 0.5 * (np.dot(TNr, expval) - logdet_sigma - logdet_phi)
         else:
             for TNr, TNT, pl in zip(TNrs, TNTs, phiinvs):
                 if TNr is None:
@@ -213,8 +205,7 @@ class LogLikelihood(object):
 
                 logdet_sigma = np.sum(2 * np.log(np.diag(cf[0])))
 
-                loglike += 0.5*(np.dot(TNr, expval) -
-                                logdet_sigma - logdet_phi)
+                loglike += 0.5 * (np.dot(TNr, expval) - logdet_sigma - logdet_phi)
 
         return loglike
 
@@ -232,12 +223,10 @@ class PTA(object):
         self._set_signal_dict()
 
     def __add__(self, other):
-        if hasattr(other, '_signalcollections'):
-            return PTA(self._signalcollections+other._signalcollections,
-                       lnlikelihood=self.lnlikelihood)
+        if hasattr(other, "_signalcollections"):
+            return PTA(self._signalcollections + other._signalcollections, lnlikelihood=self.lnlikelihood)
         else:
-            return PTA(self._signalcollections+[other],
-                       lnlikelihood=self.lnlikelihood)
+            return PTA(self._signalcollections + [other], lnlikelihood=self.lnlikelihood)
 
     @property
     def params(self):
@@ -260,7 +249,7 @@ class PTA(object):
         for p in self.params:
             if p.size:
                 for ii in range(0, p.size):
-                    ret.append(p.name+'_{}'.format(ii))
+                    ret.append(p.name + "_{}".format(ii))
             else:
                 ret.append(p.name)
         return ret
@@ -270,41 +259,34 @@ class PTA(object):
         return self._signalcollections
 
     def get_TNr(self, params):
-        return [signalcollection.get_TNr(params) for signalcollection
-                in self._signalcollections]
+        return [signalcollection.get_TNr(params) for signalcollection in self._signalcollections]
 
     def get_TNT(self, params):
-        return [signalcollection.get_TNT(params) for signalcollection
-                in self._signalcollections]
+        return [signalcollection.get_TNT(params) for signalcollection in self._signalcollections]
 
     def get_rNr_logdet(self, params):
-        return [signalcollection.get_rNr_logdet(params) for signalcollection
-                in self._signalcollections]
+        return [signalcollection.get_rNr_logdet(params) for signalcollection in self._signalcollections]
 
     def get_residuals(self):
-        return [signalcollection._residuals
-                for signalcollection in self._signalcollections]
+        return [signalcollection._residuals for signalcollection in self._signalcollections]
 
     def get_ndiag(self, params={}):
-        return [signalcollection.get_ndiag(params)
-                for signalcollection in self._signalcollections]
+        return [signalcollection.get_ndiag(params) for signalcollection in self._signalcollections]
 
     def get_delay(self, params={}):
-        return [signalcollection.get_delay(params)
-                for signalcollection in self._signalcollections]
+        return [signalcollection.get_delay(params) for signalcollection in self._signalcollections]
 
     def set_default_params(self, params):
         for sc in self._signalcollections:
             sc.set_default_params(params)
 
     def get_basis(self, params={}):
-        return [signalcollection.get_basis(params) for
-                signalcollection in self._signalcollections]
+        return [signalcollection.get_basis(params) for signalcollection in self._signalcollections]
 
     @property
     def _lnlikelihood(self):
         # instantiate on first use
-        if not hasattr(self, '_lnlike'):
+        if not hasattr(self, "_lnlike"):
             self._lnlike = self.lnlikelihood(self)
 
         return self._lnlike
@@ -315,7 +297,7 @@ class PTA(object):
     @property
     def _commonsignals(self):
         # cache the computation if we don't have it yet
-        if not hasattr(self, '_cs'):
+        if not hasattr(self, "_cs"):
             commonsignals = collections.defaultdict(collections.OrderedDict)
 
             for signalcollection in self._signalcollections:
@@ -326,14 +308,11 @@ class PTA(object):
                     for signal in signalcollection._signals:
                         # if the CommonSignal is coefficient based we don't
                         # need to worry about it for get_phi and get_phiinv
-                        if (isinstance(signal, CommonSignal) and
-                                not getattr(signal, '_coefficients', {})):
-                            commonsignals[signal.__class__][signal] = \
-                                signalcollection
+                        if isinstance(signal, CommonSignal) and not getattr(signal, "_coefficients", {}):
+                            commonsignals[signal.__class__][signal] = signalcollection
 
             # drop common signals that appear only once
-            self._cs = {csclass: csdict for csclass, csdict in
-                        commonsignals.items() if len(csdict) > 1}
+            self._cs = {csclass: csdict for csclass, csdict in commonsignals.items() if len(csdict) > 1}
 
         return self._cs
 
@@ -344,17 +323,17 @@ class PTA(object):
         for sc, phivec in zip(self._signalcollections, phivecs):
             # assume phi is either a column vector or a square matrix
             stop = 0 if phivec is None else phivec.shape[0]
-            ret[sc] = slice(offset, offset+stop)
+            ret[sc] = slice(offset, offset + stop)
             offset = ret[sc].stop
 
         return ret
 
-    def get_phiinv(self, params, logdet=False, method='cliques'):
-        if method == 'cliques':
+    def get_phiinv(self, params, logdet=False, method="cliques"):
+        if method == "cliques":
             return self.get_phiinv_byfreq_cliques(params, logdet)
-        elif method == 'partition':
+        elif method == "partition":
             return self.get_phiinv_byfreq_partition(params, logdet)
-        elif method == 'sparse':
+        elif method == "sparse":
             return self.get_phiinv_sparse(params, logdet)
         else:
             raise NotImplementedError
@@ -363,8 +342,7 @@ class PTA(object):
         phi = self.get_phi(params)
 
         if isinstance(phi, list):
-            return [None if phivec is None else phivec.inv(logdet)
-                    for phivec in phi]
+            return [None if phivec is None else phivec.inv(logdet) for phivec in phi]
         else:
             phisparse = sps.csc_matrix(phi)
             cf = cholesky(phisparse)
@@ -375,28 +353,25 @@ class PTA(object):
                 return cf.inv()
 
     def get_phiinv_byfreq_partition(self, params, logdet=False):
-        phivecs = [signalcollection.get_phi(params) for
-                   signalcollection in self._signalcollections]
+        phivecs = [signalcollection.get_phi(params) for signalcollection in self._signalcollections]
 
         # if we found common signals, we'll return a big phivec matrix,
         # otherwise a list of phivec vectors (some of which possibly None)
         if self._commonsignals:
             slices = self._get_slices(phivecs)
 
-            #TODO: This is messy, maybe we should clean up
+            # TODO: This is messy, maybe we should clean up
             phis = [phivec for phivec in phivecs if phivec is not None]
             if np.any([phivec.ndim == 2 for phivec in phis]):
                 phiinvs = [phivec.inv(logdet) for phivec in phis]
-                phiinv_full = [np.diag(phi[0]) if phi[0].ndim == 1 else phi[0]
-                               for phi in phiinvs]
+                phiinv_full = [np.diag(phi[0]) if phi[0].ndim == 1 else phi[0] for phi in phiinvs]
                 phiinv = sl.block_diag(*phiinv_full)
                 if logdet:
                     ld = np.sum([pi[1] for pi in phiinvs])
-                phidiag = np.concatenate([np.diag(phi) if phi.ndim == 2
-                                          else phi for phi in phis])
+                phidiag = np.concatenate([np.diag(phi) if phi.ndim == 2 else phi for phi in phis])
             else:
                 phidiag = np.concatenate(phis)
-                phiinv = np.diag(1.0/phidiag)
+                phiinv = np.diag(1.0 / phidiag)
                 if logdet:
                     ld = np.sum(np.log(phidiag))
 
@@ -414,28 +389,24 @@ class PTA(object):
                         crossdiag = csclass.get_phicross(cs1, cs2, params)
 
                         if invert is None:
-                            invert = np.zeros((len(crossdiag),
-                                               len(csdict),
-                                               len(csdict)),'d')
+                            invert = np.zeros((len(crossdiag), len(csdict), len(csdict)), "d")
 
                         if crossdiag.ndim == 2:
                             raise NotImplementedError(
-                                "get_phiinv with method='partition' does not "
-                                "support dense phi matrices.")
+                                "get_phiinv with method='partition' does not " "support dense phi matrices."
+                            )
 
-                        invert[:,i,j] += crossdiag
-                        invert[:,j,i] += crossdiag
+                        invert[:, i, j] += crossdiag
+                        invert[:, j, i] += crossdiag
 
-                    invert[:,i,i] += phidiag[slices[csc1]][csc1._idx[cs1]]
+                    invert[:, i, i] += phidiag[slices[csc1]][csc1._idx[cs1]]
 
                     if logdet:
-                        ld -= np.sum(np.log(
-                            phidiag[slices[csc1]][csc1._idx[cs1]]))
+                        ld -= np.sum(np.log(phidiag[slices[csc1]][csc1._idx[cs1]]))
 
             for k in range(len(crossdiag)):
-                cf = sl.cho_factor(invert[k,:,:])
-                invert[k,:,:] = sl.cho_solve(
-                    cf, np.eye(invert[k,:,:].shape[0]))
+                cf = sl.cho_factor(invert[k, :, :])
+                invert[k, :, :] = sl.cho_solve(cf, np.eye(invert[k, :, :].shape[0]))
                 if logdet:
                     ld += np.sum(2 * np.log(np.diag(cf[0])))
 
@@ -448,41 +419,38 @@ class PTA(object):
 
                     block2, idx2 = slices[csc2], csc2._idx[cs2]
 
-                    phiinv[block1,block2][idx1,idx2] = invert[:,i,j]
-                    phiinv[block2,block1][idx2,idx1] = invert[:,i,j]
+                    phiinv[block1, block2][idx1, idx2] = invert[:, i, j]
+                    phiinv[block2, block1][idx2, idx1] = invert[:, i, j]
 
             if logdet:
                 return phiinv, ld
             else:
                 return phiinv
         else:
-            return [None if phivec is None else phivec.inv(logdet)
-                    for phivec in phivecs]
+            return [None if phivec is None else phivec.inv(logdet) for phivec in phivecs]
 
     def get_phiinv_byfreq_cliques(self, params, logdet=False, cholesky=False):
         phi = self.get_phi(params, cliques=True)
 
         if isinstance(phi, list):
-            return [None if phivec is None else phivec.inv(logdet)
-                    for phivec in phi]
+            return [None if phivec is None else phivec.inv(logdet) for phivec in phi]
         else:
             ld = 0
 
             # first invert all the cliques
             for clcount in range(self._clcount):
-                idx = (self._cliques == clcount)
+                idx = self._cliques == clcount
 
                 if np.any(idx):
-                    idx2 = np.ix_(idx,idx)
+                    idx2 = np.ix_(idx, idx)
 
                     if cholesky:
                         cf = sl.cho_factor(phi[idx2])
 
                         if logdet:
-                            ld += 2.0*np.sum(np.log(np.diag(cf[0])))
+                            ld += 2.0 * np.sum(np.log(np.diag(cf[0])))
 
-                        phi[idx2] = sl.cho_solve(
-                            cf, np.identity(cf[0].shape[0]))
+                        phi[idx2] = sl.cho_solve(cf, np.identity(cf[0].shape[0]))
                     else:
                         phi2 = phi[idx2]
 
@@ -492,12 +460,12 @@ class PTA(object):
                         phi[idx2] = np.linalg.inv(phi2)
 
             # then do the pure diagonal terms
-            idx = (self._cliques == -1)
+            idx = self._cliques == -1
 
             if logdet:
-                ld += np.sum(np.log(phi[idx,idx]))
+                ld += np.sum(np.log(phi[idx, idx]))
 
-            phi[idx,idx] = 1.0/phi[idx,idx]
+            phi[idx, idx] = 1.0 / phi[idx, idx]
 
             return (phi, ld) if logdet else phi
 
@@ -512,15 +480,14 @@ class PTA(object):
 
     # update clique index by considering a common signal under
     # the assumption that the corresponding "big-Phi" matrix is block diagonal
-    def _setcliques(self,slices,csdict):
+    def _setcliques(self, slices, csdict):
         # each column in idxmatrix (mind the .T) corresponds to the indices
         # that participate in a common signal for a given pulsar
         idxmatrix = np.array([csc._idx[cs] for cs, csc in csdict.items()]).T
 
         # each row in the updated idxmatrix corresponds to a set of "global"
         # Phi indices that are correlated across pulsars
-        idxmatrix = idxmatrix + np.array([slices[csc].start
-                                          for cs, csc in csdict.items()])
+        idxmatrix = idxmatrix + np.array([slices[csc].start for cs, csc in csdict.items()])
 
         # loop over vectors of common-signal-correlated global-indices
         for idxs in idxmatrix:
@@ -537,8 +504,7 @@ class PTA(object):
                 # I don't think this code is ever exercised...
                 # if maxidx == -1, then allidx = [-1]
                 if len(allidx) > 1:
-                    self._cliques[np.in1d(self._cliques,allidx)] = \
-                        self._clcount
+                    self._cliques[np.in1d(self._cliques, allidx)] = self._clcount
 
                 self._clcount = self._clcount + 1
             else:
@@ -550,42 +516,37 @@ class PTA(object):
                 # since cliques are "contagious", reassign all the other
                 # clique indices that we found to maxidx
                 if len(allidx) > 1:
-                    self._cliques[np.in1d(self._cliques,allidx)] = maxidx
+                    self._cliques[np.in1d(self._cliques, allidx)] = maxidx
 
     # add cliques from individual pulsar phis; these will never overlap
     # TO DO: at this point Phi could be defined as a smarter KernelMatrix!
     def _setpulsarcliques(self, slices, phis):
         for sc, phi in zip(self._signalcollections, phis):
             if phi is not None:
-                for clindex in range(getattr(phi, '_clcount', 0)):
+                for clindex in range(getattr(phi, "_clcount", 0)):
                     phiind = np.where(phi._cliques == clindex)[0]
 
                     if len(phiind) > 0:
                         try:
-                            self._cliques[slices[sc].start+phiind] = (
-                                self._clcount)
+                            self._cliques[slices[sc].start + phiind] = self._clcount
                             self._clcount = self._clcount + 1
                         except:
                             print(self._cliques.shape)
-                            print("phiind",phiind,len(phiind))
+                            print("phiind", phiind, len(phiind))
                             print(slices)
                             raise
 
     def get_phi(self, params, cliques=False):
-        phis = [signalcollection.get_phi(params) for
-                signalcollection in self._signalcollections]
+        phis = [signalcollection.get_phi(params) for signalcollection in self._signalcollections]
 
         # if we found common signals, we'll return a big phivec matrix,
         # otherwise a list of phivec vectors (some of which possibly None)
         if self._commonsignals:
             if np.any([phi.ndim == 2 for phi in phis if phi is not None]):
                 # if we have any dense matrices,
-                Phi = sl.block_diag(*[np.diag(phi) if phi.ndim == 1 else phi
-                                      for phi in phis
-                                      if phi is not None])
+                Phi = sl.block_diag(*[np.diag(phi) if phi.ndim == 1 else phi for phi in phis if phi is not None])
             else:
-                Phi = np.diag(np.concatenate([phi for phi in phis
-                                              if phi is not None]))
+                Phi = np.diag(np.concatenate([phi for phi in phis if phi is not None]))
 
             # get a dictionary of slices locating each pulsar in Phi matrix
             slices = self._get_slices(phis)
@@ -605,7 +566,7 @@ class PTA(object):
                     self._setcliques(slices, csdict)
 
                 # now iterate over all pairs of common signal instances
-                pairs = itertools.combinations(csdict.items(),2)
+                pairs = itertools.combinations(csdict.items(), 2)
 
                 for (cs1, csc1), (cs2, csc2) in pairs:
                     crossdiag = csclass.get_phicross(cs1, cs2, params)
@@ -614,11 +575,11 @@ class PTA(object):
                     block2, idx2 = slices[csc2], csc2._idx[cs2]
 
                     if crossdiag.ndim == 1:
-                        Phi[block1,block2][idx1,idx2] += crossdiag
-                        Phi[block2,block1][idx2,idx1] += crossdiag
+                        Phi[block1, block2][idx1, idx2] += crossdiag
+                        Phi[block2, block1][idx2, idx1] += crossdiag
                     else:
-                        Phi[block1,block2][np.ix_(idx1,idx2)] += crossdiag
-                        Phi[block2,block1][np.ix_(idx2,idx1)] += crossdiag
+                        Phi[block1, block2][np.ix_(idx1, idx2)] += crossdiag
+                        Phi[block2, block1][np.ix_(idx2, idx1)] += crossdiag
 
             return Phi
         else:
@@ -629,14 +590,13 @@ class PTA(object):
         ct = 0
         for p in self.params:
             n = p.size if p.size else 1
-            ret[p.name] = xs[ct:ct+n] if n > 1 else float(xs[ct])
+            ret[p.name] = xs[ct : ct + n] if n > 1 else float(xs[ct])
             ct += n
         return ret
 
     def get_lnprior(self, params):
         # map parameter vector if needed
-        params = (params if isinstance(params, dict)
-                  else self.map_params(params))
+        params = params if isinstance(params, dict) else self.map_params(params)
 
         return np.sum(p.get_logpdf(params=params) for p in self.params)
 
@@ -655,14 +615,13 @@ class PTA(object):
                     sig_list.append(sig.name)
                     self._signal_dict[sig.name] = sig
                 else:
-                    msg = 'Duplicate signal {} from objects {} and {}.'
-                    msg += '\nThis functionality was added in v1.1.0 and may'
-                    msg += ' cause post v1.1.0 functionality to break.'
-                    msg += '\nThis may not cause other errors but it is'
-                    msg += ' recommended that you use a custom name for one'
-                    msg += ' of the duplicate signals.\n'
-                    logger.warn(msg.format(
-                        sig.name, sig, self._signal_dict[sig.name]))
+                    msg = "Duplicate signal {} from objects {} and {}."
+                    msg += "\nThis functionality was added in v1.1.0 and may"
+                    msg += " cause post v1.1.0 functionality to break."
+                    msg += "\nThis may not cause other errors but it is"
+                    msg += " recommended that you use a custom name for one"
+                    msg += " of the duplicate signals.\n"
+                    logger.warn(msg.format(sig.name, sig, self._signal_dict[sig.name]))
 
     @property
     def signals(self):
@@ -682,10 +641,10 @@ class PTA(object):
             print summary to `stdout` instead of returning it
         :return: [string]
         """
-        summary = ''
-        row = ['Signal Name', 'Signal Class', 'no. Parameters']
+        summary = ""
+        row = ["Signal Name", "Signal Class", "no. Parameters"]
         summary += "{: <40} {: <30} {: <20}\n".format(*row)
-        summary += '='*90 + '\n'
+        summary += "=" * 90 + "\n"
         cpcount, copcount = 0, 0
         for sc in self._signalcollections:
             for sig in sc._signals:
@@ -695,20 +654,19 @@ class PTA(object):
                 row = [sig.name, sig.__class__.__name__, len(sig.param_names)]
                 summary += "{: <40} {: <30} {: <20}\n".format(*row)
                 if include_params:
-                    summary += '\n'
-                    summary += 'params:\n'
+                    summary += "\n"
+                    summary += "params:\n"
                     for par in sig._params.values():
                         if isinstance(par, ConstantParameter):
                             copcount += 1
                         summary += "{!s: <90}\n".format(par.__repr__())
-                summary += '_'*90 + '\n'
-        summary += '='*90 + '\n'
-        summary += 'Total params: {}\n'.format(len(self.param_names)+copcount)
-        summary += 'Varying params: {}\n'.format(len(self.param_names))
-        summary += 'Common params: {}\n'.format(cpcount)
-        summary += 'Fixed params: {}\n'.format(copcount)
-        summary += 'Number of pulsars: {}\n'\
-                   .format(len(self._signalcollections))
+                summary += "_" * 90 + "\n"
+        summary += "=" * 90 + "\n"
+        summary += "Total params: {}\n".format(len(self.param_names) + copcount)
+        summary += "Varying params: {}\n".format(len(self.param_names))
+        summary += "Common params: {}\n".format(cpcount)
+        summary += "Fixed params: {}\n".format(copcount)
+        summary += "Number of pulsars: {}\n".format(len(self._signalcollections))
         if to_stdout:
             print(summary)
         else:
@@ -725,8 +683,7 @@ def SignalCollection(metasignals):
         def __init__(self, psr):
             self.psrname = psr.name
             # instantiate all the signals with a pulsar
-            self._signals = [metasignal(psr) for metasignal
-                             in self._metasignals]
+            self._signals = [metasignal(psr) for metasignal in self._metasignals]
 
             self._residuals = psr.residuals
 
@@ -735,7 +692,7 @@ def SignalCollection(metasignals):
         def __add__(self, other):
             return PTA([self, other])
 
-        #TODO: this could be implemented more cleanly
+        # TODO: this could be implemented more cleanly
         def _set_cache_parameters(self):
             """ Sets the cache for various signal types."""
 
@@ -743,26 +700,24 @@ def SignalCollection(metasignals):
             self.basis_params = []
             self.delay_params = []
             for signal in self._signals:
-                if signal.signal_type == 'white noise':
+                if signal.signal_type == "white noise":
                     self.white_params.extend(signal.ndiag_params)
-                elif signal.signal_type in ['basis', 'common basis']:
+                elif signal.signal_type in ["basis", "common basis"]:
                     # to support GP coefficients, and yet do the right thing
                     # for common GPs, which do not have coefficients yet
-                    self.delay_params.extend(getattr(signal,'delay_params',[]))
+                    self.delay_params.extend(getattr(signal, "delay_params", []))
                     self.basis_params.extend(signal.basis_params)
-                elif signal.signal_type in ['deterministic']:
+                elif signal.signal_type in ["deterministic"]:
                     self.delay_params.extend(signal.delay_params)
                 else:
-                    msg = '{} signal type not recognized! Caching '.format(
-                        signal.signal_type)
-                    msg += 'may not work correctly for this signal.'
+                    msg = "{} signal type not recognized! Caching ".format(signal.signal_type)
+                    msg += "may not work correctly for this signal."
                     logger.error(msg)
 
         # a candidate for memoization
         @property
         def params(self):
-            return sorted({param for signal in self._signals for param
-                           in signal.params}, key=lambda par: par.name)
+            return sorted({param for signal in self._signals for param in signal.params}, key=lambda par: par.name)
 
         @property
         def param_names(self):
@@ -770,7 +725,7 @@ def SignalCollection(metasignals):
             for p in self.params:
                 if p.size:
                     for ii in range(0, p.size):
-                        ret.append(p.name+'_{}'.format(ii))
+                        ret.append(p.name + "_{}".format(ii))
                 else:
                     ret.append(p.name)
             return ret
@@ -814,7 +769,7 @@ def SignalCollection(metasignals):
                             cc += 1
                 elif Fmat is not None and signal.basis_params:
                     nf = Fmat.shape[1]
-                    idx[signal] = list(np.arange(cc, cc+nf))
+                    idx[signal] = list(np.arange(cc, cc + nf))
                     cc += nf
 
             if not idx:
@@ -822,34 +777,31 @@ def SignalCollection(metasignals):
             else:
                 ncol = len(np.unique(sum(idx.values(), [])))
                 nrow = len(Fmatlist[0])
-                return ({key: np.array(idx[key]) for key in idx.keys()},
-                        np.zeros((nrow, ncol)))
+                return ({key: np.array(idx[key]) for key in idx.keys()}, np.zeros((nrow, ncol)))
 
         # goofy way to cache _idx
         def __getattr__(self, par):
-            if par in ('_idx', '_Fmat'):
-                self._idx, self._Fmat = self._combine_basis_columns(
-                    self._signals)
-                return getattr(self,par)
+            if par in ("_idx", "_Fmat"):
+                self._idx, self._Fmat = self._combine_basis_columns(self._signals)
+                return getattr(self, par)
             else:
-                raise AttributeError("{} object has no attribute {}".format(
-                    self.__class__,par))
+                raise AttributeError("{} object has no attribute {}".format(self.__class__, par))
 
-        @cache_call('white_params')
+        @cache_call("white_params")
         def get_ndiag(self, params):
             ndiags = [signal.get_ndiag(params) for signal in self._signals]
             return sum(ndiag for ndiag in ndiags if ndiag is not None)
 
-        @cache_call('delay_params')
+        @cache_call("delay_params")
         def get_delay(self, params):
             delays = [signal.get_delay(params) for signal in self._signals]
             return sum(delay for delay in delays if delay is not None)
 
-        @cache_call('delay_params')
+        @cache_call("delay_params")
         def get_detres(self, params):
             return self._residuals - self.get_delay(params)
 
-        @cache_call('basis_params')
+        @cache_call("basis_params")
         def get_basis(self, params={}):
             for signal in self._signals:
                 if signal in self._idx:
@@ -872,7 +824,7 @@ def SignalCollection(metasignals):
 
             return phi
 
-        @cache_call(['basis_params', 'white_params', 'delay_params'])
+        @cache_call(["basis_params", "white_params", "delay_params"])
         def get_TNr(self, params):
             T = self.get_basis(params)
             if T is None:
@@ -881,7 +833,7 @@ def SignalCollection(metasignals):
             res = self.get_detres(params)
             return Nvec.solve(res, left_array=T)
 
-        @cache_call(['basis_params', 'white_params'])
+        @cache_call(["basis_params", "white_params"])
         def get_TNT(self, params):
             T = self.get_basis(params)
             if T is None:
@@ -889,7 +841,7 @@ def SignalCollection(metasignals):
             Nvec = self.get_ndiag(params)
             return Nvec.solve(T, left_array=T)
 
-        @cache_call(['white_params', 'delay_params'])
+        @cache_call(["white_params", "delay_params"])
         def get_rNr_logdet(self, params):
             Nvec = self.get_ndiag(params)
             res = self.get_detres(params)
@@ -917,7 +869,6 @@ def cache_call(attrs, limit=2):
         attrs = [attrs]
 
     def cache_decorator(func):
-
         def wrapper(self, params={}):
 
             # get the relevant parameters to be cached
@@ -931,27 +882,26 @@ def cache_call(attrs, limit=2):
                     else:
                         ret.append((key, params[key]))
             key = tuple(ret)
-            #key = tuple([(key, params[key]) for key in keys if key in params])
+            # key = tuple([(key, params[key]) for key in keys if key in params])
 
             # make sure the cache is part of the object
-            if not hasattr(self, '_cache_'+func.__name__):
-                msg = 'Create cache {} for signal {}'.format(
-                    func.__name__, self.__class__)
+            if not hasattr(self, "_cache_" + func.__name__):
+                msg = "Create cache {} for signal {}".format(func.__name__, self.__class__)
                 logger.debug(msg)
-                setattr(self, '_cache_'+func.__name__, {})
-                setattr(self, '_cache_list_'+func.__name__, [])
-            cache = getattr(self, '_cache_'+func.__name__)
-            cache_list = getattr(self, '_cache_list_'+func.__name__)
+                setattr(self, "_cache_" + func.__name__, {})
+                setattr(self, "_cache_list_" + func.__name__, [])
+            cache = getattr(self, "_cache_" + func.__name__)
+            cache_list = getattr(self, "_cache_list_" + func.__name__)
 
             if key not in cache:
-                msg = 'Setting cache for {} in {}: {}'.format(
-                    attrs, self.__class__, key)
+                msg = "Setting cache for {} in {}: {}".format(attrs, self.__class__, key)
                 logger.debug(msg)
                 cache_list.append(key)
                 cache[key] = func(self, params)
                 if len(cache_list) > limit:
                     _ = cache.pop(cache_list.pop(0), None)  # noqa: F841
             return cache[key]
+
         return wrapper
 
     return cache_decorator
@@ -963,10 +913,8 @@ class csc_matrix_alt(sps.csc_matrix):
     """
 
     def _add_diag(self, other):
-        other_diag = sps.dia_matrix(
-            (other, np.array([0])),
-            shape=(other.shape[0], other.shape[0]))
-        return self._binopt(other_diag, '_plus_')
+        other_diag = sps.dia_matrix((other, np.array([0])), shape=(other.shape[0], other.shape[0]))
+        return self._binopt(other_diag, "_plus_")
 
     def __add__(self, other):
 
@@ -1009,7 +957,7 @@ class ndarray_alt(np.ndarray):
         if other.ndim == 1:
             mult = np.array(other / self)
         elif other.ndim == 2:
-            mult = np.array(other / self[:,None])
+            mult = np.array(other / self[:, None])
         if left_array is not None:
             mult = np.dot(left_array.T, mult)
 
@@ -1025,8 +973,7 @@ class BlockMatrix(object):
 
         if np.any(nvec != 0):
             s1 = set(np.arange(len(nvec)))
-            s2 = set(np.concatenate([np.arange(len(nvec))[slc]
-                                     for slc in slices]))
+            s2 = set(np.concatenate([np.arange(len(nvec))[slc] for slc in slices]))
             sd = s1.difference(s2)
             self._idx = np.array([s for s in sd])
 
@@ -1053,8 +1000,7 @@ class BlockMatrix(object):
         n, m = Z.shape[1], X.shape[1]
         ZNX = np.zeros((n, m))
         if len(self._idx) > 0:
-            ZNXr = np.dot(Z[self._idx,:].T, X[self._idx,:] /
-                          self._nvec[self._idx, None])
+            ZNXr = np.dot(Z[self._idx, :].T, X[self._idx, :] / self._nvec[self._idx, None])
         else:
             ZNXr = 0
         for slc, block in zip(self._slices, self._blocks):
@@ -1062,7 +1008,7 @@ class BlockMatrix(object):
             Xblock = X[slc, :]
 
             if slc.stop - slc.start > 1:
-                cf = sl.cho_factor(block+np.diag(self._nvec[slc]))
+                cf = sl.cho_factor(block + np.diag(self._nvec[slc]))
                 bx = sl.cho_solve(cf, Xblock)
             else:
                 bx = Xblock / self._nvec[slc][:, None]
@@ -1077,11 +1023,11 @@ class BlockMatrix(object):
         if X.ndim == 1:
             X = X.reshape(X.shape[0], 1)
 
-        NX = X / self._nvec[:,None]
+        NX = X / self._nvec[:, None]
         for slc, block in zip(self._slices, self._blocks):
             Xblock = X[slc, :]
             if slc.stop - slc.start > 1:
-                cf = sl.cho_factor(block+np.diag(self._nvec[slc]))
+                cf = sl.cho_factor(block + np.diag(self._nvec[slc]))
                 NX[slc] = sl.cho_solve(cf, Xblock)
         return NX.squeeze()
 
@@ -1095,8 +1041,8 @@ class BlockMatrix(object):
             logdet = 0
         for slc, block in zip(self._slices, self._blocks):
             if slc.stop - slc.start > 1:
-                cf = sl.cho_factor(block+np.diag(self._nvec[slc]))
-                logdet += np.sum(2*np.log(np.diag(cf[0])))
+                cf = sl.cho_factor(block + np.diag(self._nvec[slc]))
+                logdet += np.sum(2 * np.log(np.diag(cf[0])))
             else:
                 logdet += np.sum(np.log(self._nvec[slc]))
         return logdet
@@ -1144,7 +1090,7 @@ class ShermanMorrison(object):
             if slc.stop - slc.start > 1:
                 rblock = x[slc]
                 niblock = 1 / self._nvec[slc]
-                beta = 1.0 / (np.einsum('i->', niblock) + 1.0/jv)
+                beta = 1.0 / (np.einsum("i->", niblock) + 1.0 / jv)
                 Nx[slc] -= beta * np.dot(niblock, rblock) * niblock
         return Nx
 
@@ -1160,7 +1106,7 @@ class ShermanMorrison(object):
                 xblock = x[slc]
                 yblock = y[slc]
                 niblock = 1 / self._nvec[slc]
-                beta = 1.0 / (np.einsum('i->', niblock)+1.0/jv)
+                beta = 1.0 / (np.einsum("i->", niblock) + 1.0 / jv)
                 yNx -= beta * np.dot(niblock, xblock) * np.dot(niblock, yblock)
         return yNx
 
@@ -1175,7 +1121,7 @@ class ShermanMorrison(object):
                 Zblock = Z[slc, :]
                 Xblock = X[slc, :]
                 niblock = 1 / self._nvec[slc]
-                beta = 1.0 / (np.einsum('i->', niblock)+1.0/jv)
+                beta = 1.0 / (np.einsum("i->", niblock) + 1.0 / jv)
                 zn = np.dot(niblock, Zblock)
                 xn = np.dot(niblock, Xblock)
                 ZNX -= beta * np.outer(zn.T, xn)
@@ -1185,11 +1131,11 @@ class ShermanMorrison(object):
         """Returns log determinant of :math:`N+UJU^{T}` where :math:`U`
         is a quantization matrix.
         """
-        logdet = np.einsum('i->', np.log(self._nvec))
+        logdet = np.einsum("i->", np.log(self._nvec))
         for slc, jv in zip(self._slices, self._jvec):
             if slc.stop - slc.start > 1:
                 niblock = 1 / self._nvec[slc]
-                beta = 1.0 / (np.einsum('i->', niblock)+1.0/jv)
+                beta = 1.0 / (np.einsum("i->", niblock) + 1.0 / jv)
                 logdet += np.log(jv) - np.log(beta)
         return logdet
 
