@@ -21,7 +21,13 @@ import enterprise
 import enterprise.constants as const
 from enterprise.signals.parameter import function
 from enterprise.signals.gp_priors import powerlaw, turnover  # noqa: F401
-from enterprise.signals.gp_bases import *  # noqa: F401, F403
+import enterprise.signals as sigs  # noqa: F401
+from enterprise.signals.gp_bases import (  # noqa: F401
+                                         createfourierdesignmatrix_red,
+                                         createfourierdesignmatrix_dm,
+                                         createfourierdesignmatrix_env,
+                                         createfourierdesignmatrix_ephem,
+                                         createfourierdesignmatrix_eph)
 
 
 try:
