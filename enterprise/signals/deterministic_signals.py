@@ -201,7 +201,7 @@ def PhysicalEphemerisSignal(
             self._delay = np.zeros(len(psr.toas))
 
         # this defaults to all parameters
-        @signal_base.cache_call('delay_params')
+        @signal_base.cache_call("delay_params")
         def get_delay(self, params):
             if use_epoch_toas:
                 delay = self._wf[""](toas=self._avetoas, planetssb=self._planetssb, pos_t=self._pos_t, params=params)
