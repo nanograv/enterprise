@@ -1,6 +1,6 @@
 # deterministic_signals.py
 """Contains class factories for deterministic signals.
-Determinisitc signals are defined as the class of signals that have a
+Deterministic signals are defined as the class of signals that have a
 delay that is to be subtracted from the residuals.
 """
 
@@ -172,7 +172,6 @@ def PhysicalEphemerisSignal(frame_drift_rate=True,
         signal_id = 'phys_ephem_' + name if name else 'phys_ephem'
 
         def __init__(self, psr):
-
             # not available for PINT yet
             if isinstance(psr, pulsar.PintPulsar):
                 msg = 'Physical Ephemeris model is not compatible with PINT '
@@ -205,7 +204,8 @@ def PhysicalEphemerisSignal(frame_drift_rate=True,
             # initialize delay
             self._delay = np.zeros(len(psr.toas))
 
-        # @signal_base.cache_call('delay_params')
+        # this defaults to all parameters
+        @signal_base.cache_call('delay_params')
         def get_delay(self, params):
             if use_epoch_toas:
                 delay = self._wf[''](toas=self._avetoas,
