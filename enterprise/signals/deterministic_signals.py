@@ -4,31 +4,26 @@ Deterministic signals are defined as the class of signals that have a
 delay that is to be subtracted from the residuals.
 """
 
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import numpy as np
 
 from enterprise import pulsar
-from enterprise.signals import signal_base
-from enterprise.signals import parameter
-from enterprise.signals import selections
-from enterprise.signals import utils
+from enterprise.signals import parameter, selections, signal_base, utils
 from enterprise.signals.selections import Selection
 
 
-def Deterministic(waveform, selection=Selection(selections.no_selection),
-                  name=''):
+def Deterministic(waveform, selection=Selection(selections.no_selection), name=""):
     """Class factory for generic deterministic signals."""
 
     class Deterministic(signal_base.Signal):
-        signal_type = 'deterministic'
+        signal_type = "deterministic"
         signal_name = name
         signal_id = name
 
         def __init__(self, psr):
             super(Deterministic, self).__init__(psr)
-            self.name = self.psrname + '_' + self.signal_id
+            self.name = self.psrname + "_" + self.signal_id
             self._do_selection(psr, waveform, selection)
 
         def _do_selection(self, psr, waveform, selection):
@@ -39,7 +34,7 @@ def Deterministic(waveform, selection=Selection(selections.no_selection),
             self._wf, self._params = {}, {}
             for key, mask in zip(self._keys, self._masks):
                 pnames = [psr.name, name, key]
-                pname = '_'.join([n for n in pnames if n])
+                pname = "_".join([n for n in pnames if n])
                 self._wf[key] = waveform(pname, psr=psr)
                 params = self._wf[key]._params.values()
                 for param in params:
@@ -50,7 +45,7 @@ def Deterministic(waveform, selection=Selection(selections.no_selection),
             """Get any varying ndiag parameters."""
             return [pp.name for pp in self.params]
 
-        @signal_base.cache_call('delay_params')
+        @signal_base.cache_call("delay_params")
         def get_delay(self, params):
             """Return signal delay."""
             for key, mask in zip(self._keys, self._masks):
@@ -60,16 +55,18 @@ def Deterministic(waveform, selection=Selection(selections.no_selection),
     return Deterministic
 
 
-def PhysicalEphemerisSignal(frame_drift_rate=True,
-                            d_jupiter_mass=True,
-                            d_saturn_mass=True,
-                            d_uranus_mass=True,
-                            d_neptune_mass=True,
-                            jup_orb_elements=True,
-                            sat_orb_elements=False,
-                            model='orbel',
-                            use_epoch_toas=True,
-                            name=''):  # noqa: E125,E501
+def PhysicalEphemerisSignal(
+    frame_drift_rate=True,
+    d_jupiter_mass=True,
+    d_saturn_mass=True,
+    d_uranus_mass=True,
+    d_neptune_mass=True,
+    jup_orb_elements=True,
+    sat_orb_elements=False,
+    model="orbel",
+    use_epoch_toas=True,
+    name="",
+):  # noqa: E125,E501
     """
     Class factory for physical ephemeris model signal.
 
@@ -127,55 +124,55 @@ def PhysicalEphemerisSignal(frame_drift_rate=True,
     """
 
     if frame_drift_rate is True:
-        frame_drift_rate = parameter.Uniform(-1e-9, 1e-9)('frame_drift_rate')
+        frame_drift_rate = parameter.Uniform(-1e-9, 1e-9)("frame_drift_rate")
 
     if d_jupiter_mass is True:
-        d_jupiter_mass = parameter.Normal(0, 1.54976690e-11)('d_jupiter_mass')
+        d_jupiter_mass = parameter.Normal(0, 1.54976690e-11)("d_jupiter_mass")
 
     if d_saturn_mass is True:
-        d_saturn_mass = parameter.Normal(0, 8.17306184e-12)('d_saturn_mass')
+        d_saturn_mass = parameter.Normal(0, 8.17306184e-12)("d_saturn_mass")
 
     if d_uranus_mass is True:
-        d_uranus_mass = parameter.Normal(0, 5.71923361e-11)('d_uranus_mass')
+        d_uranus_mass = parameter.Normal(0, 5.71923361e-11)("d_uranus_mass")
 
     if d_neptune_mass is True:
-        d_neptune_mass = parameter.Normal(0, 7.96103855e-11)('d_neptune_mass')
+        d_neptune_mass = parameter.Normal(0, 7.96103855e-11)("d_neptune_mass")
 
     if jup_orb_elements is True:
-        jup_orb_elements = \
-            parameter.Uniform(-0.05,0.05,size=6)('jup_orb_elements')
+        jup_orb_elements = parameter.Uniform(-0.05, 0.05, size=6)("jup_orb_elements")
 
     if sat_orb_elements is True:
-        sat_orb_elements = \
-            parameter.Uniform(-0.5,0.5,size=6)('sat_orb_elements')
+        sat_orb_elements = parameter.Uniform(-0.5, 0.5, size=6)("sat_orb_elements")
 
     # note: default prior for dynamical model is Uniform(-1e-4, 1e-4)
     #       for each element.
 
     times, jup_orbit, sat_orbit = utils.get_planet_orbital_elements(model)
 
-    wf = utils.physical_ephem_delay(frame_drift_rate=frame_drift_rate,
-                                    d_jupiter_mass=d_jupiter_mass,
-                                    d_saturn_mass=d_saturn_mass,
-                                    d_uranus_mass=d_uranus_mass,
-                                    d_neptune_mass=d_neptune_mass,
-                                    jup_orb_elements=jup_orb_elements,
-                                    sat_orb_elements=sat_orb_elements,
-                                    times=times,
-                                    jup_orbit=jup_orbit,
-                                    sat_orbit=sat_orbit)
+    wf = utils.physical_ephem_delay(
+        frame_drift_rate=frame_drift_rate,
+        d_jupiter_mass=d_jupiter_mass,
+        d_saturn_mass=d_saturn_mass,
+        d_uranus_mass=d_uranus_mass,
+        d_neptune_mass=d_neptune_mass,
+        jup_orb_elements=jup_orb_elements,
+        sat_orb_elements=sat_orb_elements,
+        times=times,
+        jup_orbit=jup_orbit,
+        sat_orbit=sat_orbit,
+    )
 
     BaseClass = Deterministic(wf, name=name)
 
     class PhysicalEphemerisSignal(BaseClass):
-        signal_name = 'phys_ephem'
-        signal_id = 'phys_ephem_' + name if name else 'phys_ephem'
+        signal_name = "phys_ephem"
+        signal_id = "phys_ephem_" + name if name else "phys_ephem"
 
         def __init__(self, psr):
             # not available for PINT yet
             if isinstance(psr, pulsar.PintPulsar):
-                msg = 'Physical Ephemeris model is not compatible with PINT '
-                msg += 'at this time.'
+                msg = "Physical Ephemeris model is not compatible with PINT "
+                msg += "at this time."
                 raise NotImplementedError(msg)
 
             super(PhysicalEphemerisSignal, self).__init__(psr)
@@ -191,14 +188,13 @@ def PhysicalEphemerisSignal(frame_drift_rate=True,
                 # interpolate ssb planet position vectors to avetoas
                 planetssb = np.zeros((len(avetoas), 9, 3))
                 for jj in range(9):
-                    planetssb[:, jj, :] = np.array([
-                        np.interp(avetoas, psr.toas, psr.planetssb[:,jj,aa])
-                        for aa in range(3)]).T
+                    planetssb[:, jj, :] = np.array(
+                        [np.interp(avetoas, psr.toas, psr.planetssb[:, jj, aa]) for aa in range(3)]
+                    ).T
                 self._planetssb = planetssb
 
                 # Interpolating the pulsar position vectors onto epoch TOAs
-                pos_t = np.array([np.interp(avetoas, psr.toas, psr.pos_t[:,aa])
-                                  for aa in range(3)]).T
+                pos_t = np.array([np.interp(avetoas, psr.toas, psr.pos_t[:, aa]) for aa in range(3)]).T
                 self._pos_t = pos_t
 
             # initialize delay
@@ -208,16 +204,13 @@ def PhysicalEphemerisSignal(frame_drift_rate=True,
         @signal_base.cache_call('delay_params')
         def get_delay(self, params):
             if use_epoch_toas:
-                delay = self._wf[''](toas=self._avetoas,
-                                     planetssb=self._planetssb,
-                                     pos_t=self._pos_t,
-                                     params=params)
+                delay = self._wf[""](toas=self._avetoas, planetssb=self._planetssb, pos_t=self._pos_t, params=params)
 
                 for slc, val in zip(self._uinds, delay):
                     self._delay[slc] = val
                 return self._delay
             else:
-                delay = self._wf[''](params=params)
+                delay = self._wf[""](params=params)
                 return delay
 
     return PhysicalEphemerisSignal

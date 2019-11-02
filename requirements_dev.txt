@@ -1,8 +1,10 @@
-pip==9.0.1
+pip>=19.1.1
+black~=19.3b0
+flake8~=3.7.7
+pre-commit~=1.15.2
 bumpversion==0.5.3
 wheel==0.29.0
 watchdog==0.8.3
-flake8==3.3.0
 tox==2.6.0
 coverage==4.3.4
 Sphinx==1.5.2

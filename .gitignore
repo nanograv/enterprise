@@ -68,3 +68,9 @@ target/
 
 # mac stuff:
 .DS_Store
+
+# virtual environment
+.enterprise
+
+# vscode
+.vscode
