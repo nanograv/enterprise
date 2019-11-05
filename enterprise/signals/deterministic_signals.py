@@ -79,8 +79,9 @@ def PhysicalEphemerisSignal(
 
     .. note:: This signal is only compatible with a tempo2 Pulsar object.
 
-    The user can implement their own priors but we have set reasonable
-    defaults.
+    The user can implement their own priors (e.g., by setting
+    frame_drift_rate = parameter.Uniform(-1e-10,1e-10)('frame_drift_rate')
+    but we have set reasonable defaults (see below).
 
     :param frame_drift_rate:
         ecliptic z-drift rate in units of rad/year referred to offset 1/1/2010.
