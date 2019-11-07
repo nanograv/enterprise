@@ -65,6 +65,7 @@ class TestGPCoefficients(unittest.TestCase):
         logger.warning(msg)
         pass
     else:
+
         def test_ephemeris(self):
             """Test physical-ephemeris delay, made three ways: from
             marginalized GP, from coefficient-based GP, from
