@@ -65,7 +65,6 @@ class TestGPCoefficients(unittest.TestCase):
         logger.warning(msg)
         pass
     else:
-
         def test_ephemeris(self):
             """Test physical-ephemeris delay, made three ways: from
             marginalized GP, from coefficient-based GP, from
@@ -96,8 +95,8 @@ class TestGPCoefficients(unittest.TestCase):
             params = {
                 "B1855+09_efac": 1,
                 "B1937+21_efac": 1,
-                "B1855+09_physicalephem_gp_coefficients": cf,
-                "B1937+21_physicalephem_gp_coefficients": cf,
+                "B1855+09_phys_ephem_gp_coefficients": cf,
+                "B1937+21_phys_ephem_gp_coefficients": cf,
             }
             db = ptac.get_delay(params=params)
 
