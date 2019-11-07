@@ -31,9 +31,9 @@ install:
     - python setup.py install
 
 script:
-    # - make test
+    #- make test
     - coverage run --source enterprise setup.py test
     - make lint
 
 after_success:
-    - coveralls
+    coveralls
