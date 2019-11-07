@@ -1,6 +1,6 @@
 # deterministic_signals.py
 """Contains class factories for deterministic signals.
-Determinisitc signals are defined as the class of signals that have a
+Deterministic signals are defined as the class of signals that have a
 delay that is to be subtracted from the residuals.
 """
 
@@ -79,8 +79,9 @@ def PhysicalEphemerisSignal(
 
     .. note:: This signal is only compatible with a tempo2 Pulsar object.
 
-    The user can implement their own priors but we have set reasonable
-    defaults.
+    The user can implement their own priors (e.g., by setting
+    frame_drift_rate = parameter.Uniform(-1e-10,1e-10)('frame_drift_rate')
+    but we have set reasonable defaults (see below).
 
     :param frame_drift_rate:
         ecliptic z-drift rate in units of rad/year referred to offset 1/1/2010.
@@ -169,7 +170,6 @@ def PhysicalEphemerisSignal(
         signal_id = "phys_ephem_" + name if name else "phys_ephem"
 
         def __init__(self, psr):
-
             # not available for PINT yet
             if isinstance(psr, pulsar.PintPulsar):
                 msg = "Physical Ephemeris model is not compatible with PINT "
@@ -201,7 +201,8 @@ def PhysicalEphemerisSignal(
             # initialize delay
             self._delay = np.zeros(len(psr.toas))
 
-        # @signal_base.cache_call('delay_params')
+        # this defaults to all parameters
+        @signal_base.cache_call("delay_params")
         def get_delay(self, params):
             if use_epoch_toas:
                 delay = self._wf[""](toas=self._avetoas, planetssb=self._planetssb, pos_t=self._pos_t, params=params)

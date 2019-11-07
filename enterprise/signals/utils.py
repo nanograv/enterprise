@@ -936,6 +936,8 @@ def createfourierdesignmatrix_physicalephem(
     :param d_neptune_mass:   normal sigma for Neptune mass perturbation
     :param jup_orb_elements: normal sigma for Jupiter orbital elem. perturb.
     :param sat_orb_elements: normal sigma for Saturn orbital elem. perturb.
+    :param model:            vector basis used by Jupiter and Saturn perturb.;
+                             see PhysicalEphemerisSignal, defaults to "orbel"
 
     :return: F: Fourier design matrix of shape (len(toas), nvecs)
     :return: sigmas: Phi sigmas (nvecs, to be passed to physicalephem_spectrum)

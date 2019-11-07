@@ -447,8 +447,9 @@ def FourierBasisCommonGP_physicalephem(
     d_neptune_mass=7.96103855e-11,
     jup_orb_elements=0.05,
     sat_orb_elements=0.5,
+    model="orbel",
     coefficients=False,
-    name="physicalephem_gp",
+    name="phys_ephem_gp",
 ):
     """
     Class factory for physical ephemeris corrections as a common GP.
@@ -462,6 +463,8 @@ def FourierBasisCommonGP_physicalephem(
     :param d_neptune_mass:   Gaussian sigma for Neptune mass perturbation
     :param jup_orb_elements: Gaussian sigma for Jupiter orbital elem. perturb.
     :param sat_orb_elements: Gaussian sigma for Saturn orbital elem. perturb.
+    :param model:            vector basis used by Jupiter and Saturn perturb.;
+                             see PhysicalEphemerisSignal, defaults to "orbel"
     :param coefficients:     if True, treat GP coefficients as enterprise
                              parameters; if False, marginalize over them
 
@@ -476,6 +479,7 @@ def FourierBasisCommonGP_physicalephem(
         d_neptune_mass=d_neptune_mass,
         jup_orb_elements=jup_orb_elements,
         sat_orb_elements=sat_orb_elements,
+        model=model,
     )
 
     spectrum = utils.physicalephem_spectrum()
