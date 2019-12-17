@@ -113,6 +113,23 @@ def nanograv_backends(backend_flags):
     return {flagval: backend_flags == flagval for flagval in flagvals}
 
 
+def custom_backends(cb):
+    def backends(backend_flags):
+        """Selection function to split by custom backend flags only.
+        cb : list of str of the backends
+        use None to recover by_backend
+        use ["ASP", "GASP", "GUPPI", "PUPPI"] to recover nanograv_backends
+        """
+        flagvals = np.unique(backend_flags)
+        if cb is not None:
+            cb = list(np.atleast_1d(cb))
+            flagvals = filter(lambda x: any(map(lambda y: y in x, cb)), flagvals)
+        else:
+            pass
+        return {flagval: backend_flags == flagval for flagval in flagvals}
+    return backends
+
+
 def no_selection(toas):
     """Default selection with no splitting."""
     return {"": np.ones_like(toas, dtype=bool)}
