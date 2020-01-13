@@ -99,6 +99,12 @@ def by_band(flags):
     return {flagval: flags["B"] == flagval for flagval in flagvals}
 
 
+def by_frontend(flags):
+    """Selection function to split by frontend under -fe flag"""
+    flagvals = np.unique(flags['fe'])
+    return {flagval: flags['fe'] == flagval for flagval in flagvals}
+
+
 def by_backend(backend_flags):
     """Selection function to split by backend flags."""
     flagvals = np.unique(backend_flags)
