@@ -487,11 +487,15 @@ def FourierBasisCommonGP_physicalephem(
 
     return BasisCommonGP(spectrum, basis, orf, coefficients=coefficients, name=name)
 
-def WidebandTimingModel(dmefac=parameter.Uniform(pmin=0.1, pmax=10.0),
-                         dmjump=parameter.Uniform(pmin=-0.01, pmax=0.01),
-                         dmefac_selection=Selection(selections.no_selection),
-                         dmjump_selection=Selection(selections.no_selection),
-                         dmjump_ref=None, name='wideband_timing_model'):
+
+def WidebandTimingModel(
+    dmefac=parameter.Uniform(pmin=0.1, pmax=10.0),
+    dmjump=parameter.Uniform(pmin=-0.01, pmax=0.01),
+    dmefac_selection=Selection(selections.no_selection),
+    dmjump_selection=Selection(selections.no_selection),
+    dmjump_ref=None,
+    name="wideband_timing_model",
+):
     """Class factory for marginalized linear timing model signals that take wideband TOAs and DMs.  Currently assumes DMX for DM model."""
 
     basis = utils.unnormed_tm_basis()  # will need to normalize phi otherwise
@@ -499,34 +503,31 @@ def WidebandTimingModel(dmefac=parameter.Uniform(pmin=0.1, pmax=10.0),
     BaseClass = BasisGP(prior, basis, coefficients=False, name=name)
 
     class WidebandTimingModel(BaseClass):
-        signal_type = 'basis'
-        signal_name = 'wideband timing model'
+        signal_type = "basis"
+        signal_name = "wideband timing model"
         signal_id = name
 
-        basis_combine = False # should never need to be True
+        basis_combine = False  # should never need to be True
 
         def __init__(self, psr):
             super(WidebandTimingModel, self).__init__(psr)
-            self.name = self.psrname + '_' + self.signal_id
+            self.name = self.psrname + "_" + self.signal_id
 
             # make selection for DMEFACs
             dmefac_select = dmefac_selection(psr)
             self._dmefac_keys = list(sorted(dmefac_select.masks.keys()))
-            self._dmefac_masks = [dmefac_select.masks[key] for key in \
-                    self._dmefac_keys]
+            self._dmefac_masks = [dmefac_select.masks[key] for key in self._dmefac_keys]
 
             # make selection for DMJUMPs
             dmjump_select = dmjump_selection(psr)
             self._dmjump_keys = list(sorted(dmjump_select.masks.keys()))
-            self._dmjump_masks = [dmjump_select.masks[key] for key in \
-                    self._dmjump_keys]
+            self._dmjump_masks = [dmjump_select.masks[key] for key in self._dmjump_keys]
 
             self._params = {}
 
             self._dmefacs = []
             for key in self._dmefac_keys:
-                pname = '_'.join([n for n in [psr.name, key, 'dmefac'] \
-                        if n])
+                pname = "_".join([n for n in [psr.name, key, "dmefac"] if n])
                 param = dmefac(pname)
 
                 self._dmefacs.append(param)
@@ -535,10 +536,9 @@ def WidebandTimingModel(dmefac=parameter.Uniform(pmin=0.1, pmax=10.0),
             self._dmjumps = []
             if dmjump is not None:
                 for key in self._dmjump_keys:
-                    pname = '_'.join([n for n in [psr.name, key, 'dmjump'] \
-                            if n])
+                    pname = "_".join([n for n in [psr.name, key, "dmjump"] if n])
                     if dmjump_ref is not None:
-                        if pname == psr.name + '_' + dmjump_ref + '_dmjump':
+                        if pname == psr.name + "_" + dmjump_ref + "_dmjump":
                             fixed_dmjump = parameter.Constant(val=0.0)
                             param = fixed_dmjump(pname)
                         else:
@@ -551,7 +551,7 @@ def WidebandTimingModel(dmefac=parameter.Uniform(pmin=0.1, pmax=10.0),
             ### save design matrix and other psr information
 
             # (now handled by BaseClass)
-            #self._basis, self._labels = psr.Mmat, np.ones_like(
+            # self._basis, self._labels = psr.Mmat, np.ones_like(
             #        psr.Mmat.shape[1])
 
             # could add norming to Mmat -- but would have to normalize phi
@@ -564,41 +564,40 @@ def WidebandTimingModel(dmefac=parameter.Uniform(pmin=0.1, pmax=10.0),
             ### collect DMX information (will be used to make phi and delay)
 
             self._dmpar = psr.dm
-            self._dm = np.array(psr.flags['pp_dm'], 'd')
-            self._dmerr = dme_flags = np.array(psr.flags['pp_dme'], 'd')
+            self._dm = np.array(psr.flags["pp_dm"], "d")
+            self._dmerr = dme_flags = np.array(psr.flags["pp_dme"], "d")
 
-            check = np.zeros_like(psr.toas, 'i')
+            check = np.zeros_like(psr.toas, "i")
             self._dmx, self._dmindex, self._dmwhich = [], [], []
             for index, key in enumerate(sorted(psr.dmx)):
                 dmx = psr.dmx[key]
-                assert dmx['fit'], "All DMX parameters must be estimated."
+                assert dmx["fit"], "All DMX parameters must be estimated."
 
-                self._dmx.append(dmx['DMX'])
+                self._dmx.append(dmx["DMX"])
                 self._dmindex.append(psr.fitpars.index(key))
-                self._dmwhich.append((dmx['DMXR1'] <= psr.stoas/86400) &
-                                     (psr.stoas/86400 < dmx['DMXR2']))
+                self._dmwhich.append((dmx["DMXR1"] <= psr.stoas / 86400) & (psr.stoas / 86400 < dmx["DMXR2"]))
 
                 check += self._dmwhich[-1]
 
             assert np.sum(check) == self._ntoas, "Cannot account for all TOAs in DMX intervals."
-            assert 'DM' not in psr.fitpars, "DM must not be estimated."
+            assert "DM" not in psr.fitpars, "DM must not be estimated."
 
             self._ndmx = len(self._dmx)
 
-        #@property
-        #def basis_params(self):
+        # @property
+        # def basis_params(self):
         #    return []
 
         ## TODO: I need to understand caching better
-        #@signal_base.cache_call('basis_params')
-        #def get_basis(self, params={}):
+        # @signal_base.cache_call('basis_params')
+        # def get_basis(self, params={}):
         #    return self._basis
 
         def get_phi(self, params):
             dme = self.get_dme(params)
-            phi = KernelMatrix(1e40 * np.ones(self._npars, 'd'))
+            phi = KernelMatrix(1e40 * np.ones(self._npars, "d"))
             for index, which in zip(self._dmindex, self._dmwhich):
-                phi.set(1.0 / np.sum(1.0 / dme[which]**2), index)
+                phi.set(1.0 / np.sum(1.0 / dme[which] ** 2), index)
             return phi
 
         def get_phiinv(self, params):
@@ -606,52 +605,52 @@ def WidebandTimingModel(dmefac=parameter.Uniform(pmin=0.1, pmax=10.0),
 
         @property
         def delay_params(self):
-            return [p.name for p in self._dmefacs] + [p.name for p in \
-                    self._dmjumps]
+            return [p.name for p in self._dmefacs] + [p.name for p in self._dmjumps]
 
-        @signal_base.cache_call(['delay_params'])
+        @signal_base.cache_call(["delay_params"])
         def get_delay(self, params):
-            dm_delay = np.zeros(self._ntoas, 'd')
+            dm_delay = np.zeros(self._ntoas, "d")
 
             avg_dm = self.get_mean_dm(params)
             for dmx, which in zip(self._dmx, self._dmwhich):
                 dm_delay[which] = avg_dm[which] - (self._dmpar + dmx)
 
-            return dm_delay / (2.41e-4 * self._freqs**2)
+            return dm_delay / (2.41e-4 * self._freqs ** 2)
 
         def get_dme(self, params):  # DMEFAC-scaled measurement uncertainties
             # TODO: could we cache the dme computation with the enterprise facility?
-            dme = sum((params[efac.name] if efac.name in params \
-                    else efac.value) * mask
-                  for efac, mask in zip(self._dmefacs, self._dmefac_masks)) * \
-                          self._dmerr
+            dme = (
+                sum(
+                    (params[efac.name] if efac.name in params else efac.value) * mask
+                    for efac, mask in zip(self._dmefacs, self._dmefac_masks)
+                )
+                * self._dmerr
+            )
             return dme
 
         def get_mean_dme(self, params):  # uncertainty on weighted mean DM
-            mean_dme = np.zeros(self._ntoas, 'd')
+            mean_dme = np.zeros(self._ntoas, "d")
 
             dme = self.get_dme(params)
             for which in self._dmwhich:
-                mean_dme[which] = np.sqrt(1.0 / np.sum(1.0 / dme[which]**2))
+                mean_dme[which] = np.sqrt(1.0 / np.sum(1.0 / dme[which] ** 2))
             return mean_dme
 
         def get_mean_dm(self, params):  # weighted mean DM in each DMX bin
-            dm = np.zeros(self._ntoas, 'd')
+            dm = np.zeros(self._ntoas, "d")
 
             dm_temp = self._dm.copy()
             dme = self.get_dme(params)
             # loop is trivial if self._dmjumps == []
             for jump, mask in zip(self._dmjumps, self._dmjump_masks):
-                dm_temp[mask] += (params[jump.name] if jump.name in params \
-                        else jump.value)
+                dm_temp[mask] += params[jump.name] if jump.name in params else jump.value
             for dmx, which in zip(self._dmx, self._dmwhich):
-                dm[which] = np.sum(dm_temp[which] / dme[which]**2) / \
-                        np.sum(1.0 / dme[which]**2)
+                dm[which] = np.sum(dm_temp[which] / dme[which] ** 2) / np.sum(1.0 / dme[which] ** 2)
 
             return dm
 
         def get_delta_dm(self, params):  # difference between mean DMs and DMX
-            delta_dm = np.zeros(self._ntoas, 'd')
+            delta_dm = np.zeros(self._ntoas, "d")
 
             avg_dm = self.get_mean_dm(params)
             for dmx, which in zip(self._dmx, self._dmwhich):
@@ -662,11 +661,11 @@ def WidebandTimingModel(dmefac=parameter.Uniform(pmin=0.1, pmax=10.0),
         def get_dm_chi2(self, params):  # 'DM' chi-sqaured value for DMX model
             delta_dm = self.get_delta_dm(params)
             mean_dme = self.get_mean_dme(params)
-            #chi2 = np.sum((delta_dm / mean_dme)**2)
+            # chi2 = np.sum((delta_dm / mean_dme)**2)
 
             chi2 = 0.0
             for idmx, which in enumerate(self._dmwhich):
-                chi2 += (delta_dm[which][0] / mean_dme[which][0])**2
+                chi2 += (delta_dm[which][0] / mean_dme[which][0]) ** 2
 
             return chi2
 
