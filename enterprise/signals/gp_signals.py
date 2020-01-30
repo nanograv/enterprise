@@ -594,7 +594,7 @@ def WidebandTimingModel(
         #    return self._basis
 
         def get_phi(self, params):
-            dme = self.get_dme(params)
+            dme = self.get_dme(params)  # DMEFAC-adjusted
             phi = KernelMatrix(1e40 * np.ones(self._npars, "d"))
             for index, which in zip(self._dmindex, self._dmwhich):
                 phi.set(1.0 / np.sum(1.0 / dme[which] ** 2), index)
@@ -617,7 +617,21 @@ def WidebandTimingModel(
 
             return dm_delay / (2.41e-4 * self._freqs ** 2)
 
-        def get_dme(self, params):  # DMEFAC-scaled measurement uncertainties
+        def get_dm(self, params):   # DMJUMP-adjusted DMs
+            #dm = self._dm.copy()
+            ## loop is trivial if self._dmjumps == []
+            #for jump, mask in zip(self._dmjumps, self._dmjump_masks):
+            #    dm[mask] += params[jump.name] if jump.name in params else jump.value
+            dm = (
+                sum(
+                    (params[jump.name] if jump.name in params else jump.value) * mask
+                    for jump, mask in zip(self._dmjumps, self._dmjump_masks)
+                )
+                + self._dm
+            )
+            return dm
+
+        def get_dme(self, params):  # DMEFAC-adjusted measurement uncertainties
             # TODO: could we cache the dme computation with the enterprise facility?
             dme = (
                 sum(
@@ -631,41 +645,43 @@ def WidebandTimingModel(
         def get_mean_dme(self, params):  # uncertainty on weighted mean DM
             mean_dme = np.zeros(self._ntoas, "d")
 
-            dme = self.get_dme(params)
+            dme = self.get_dme(params)  # DMEFAC-adjusted
             for which in self._dmwhich:
                 mean_dme[which] = np.sqrt(1.0 / np.sum(1.0 / dme[which] ** 2))
             return mean_dme
 
         def get_mean_dm(self, params):  # weighted mean DM in each DMX bin
-            dm = np.zeros(self._ntoas, "d")
+            mean_dm = np.zeros(self._ntoas, "d")
 
-            dm_temp = self._dm.copy()
-            dme = self.get_dme(params)
-            # loop is trivial if self._dmjumps == []
-            for jump, mask in zip(self._dmjumps, self._dmjump_masks):
-                dm_temp[mask] += params[jump.name] if jump.name in params else jump.value
+            dm = self.get_dm(params)  # DMJUMP-adjusted
+            dme = self.get_dme(params)  # DMEFAC-adjusted
             for dmx, which in zip(self._dmx, self._dmwhich):
-                dm[which] = np.sum(dm_temp[which] / dme[which] ** 2) / np.sum(1.0 / dme[which] ** 2)
+                mean_dm[which] = np.sum(dm[which] / dme[which] ** 2) / np.sum(1.0 / dme[which] ** 2)
 
-            return dm
+            return mean_dm
 
-        def get_delta_dm(self, params):  # difference between mean DMs and DMX
+        def get_delta_dm(self, params, use_mean_dm=True):  # DM - DMX
             delta_dm = np.zeros(self._ntoas, "d")
 
-            avg_dm = self.get_mean_dm(params)
+            if use_mean_dm: dm = self.get_mean_dm(params)
+            else: dm = self.get_dm(params)  # DMJUMP-adjusted
             for dmx, which in zip(self._dmx, self._dmwhich):
-                delta_dm[which] = avg_dm[which] - (self._dmpar + dmx)
+                delta_dm[which] = dm[which] - (self._dmpar + dmx)
 
             return delta_dm
 
-        def get_dm_chi2(self, params):  # 'DM' chi-sqaured value for DMX model
-            delta_dm = self.get_delta_dm(params)
-            mean_dme = self.get_mean_dme(params)
-            # chi2 = np.sum((delta_dm / mean_dme)**2)
+        def get_dm_chi2(self, params, use_mean_dm=True):  # 'DM' chi-sqaured
+            delta_dm = self.get_delta_dm(params, use_mean_dm=use_mean_dm)
 
-            chi2 = 0.0
-            for idmx, which in enumerate(self._dmwhich):
-                chi2 += (delta_dm[which][0] / mean_dme[which][0]) ** 2
+            if use_mean_dm:
+                dme = self.get_mean_dme(params)
+                chi2 = 0.0
+                for idmx, which in enumerate(self._dmwhich):
+                    chi2 += (delta_dm[which][0] / dme[which][0]) ** 2
+
+            else:
+                dme = self.get_dme(params)  # DMEFAC-adjusted
+                chi2 = np.sum((delta_dm / dme)**2)
 
             return chi2
 
