@@ -1,11 +1,10 @@
 # parameter.py
 """Contains parameter types for use in `enterprise` ``Signal`` classes."""
 
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
-import inspect
 import functools
+import inspect
 
 import numpy as np
 import scipy.stats
@@ -44,9 +43,9 @@ class Parameter(object):
     def __init__(self, name):
         self.name = name
 
-        if hasattr(self,'_prior'):
+        if hasattr(self, "_prior"):
             self.prior = self._prior(name)
-        elif hasattr(self,'_logprior'):
+        elif hasattr(self, "_logprior"):
             self.logprior = self._logprior(name)
         else:
             msg = "Parameter classes need to define _prior, or _logprior."
@@ -56,13 +55,12 @@ class Parameter(object):
 
     def get_logpdf(self, value=None, **kwargs):
         if not isinstance(self, Parameter):
-            raise TypeError("You can only call get_logpdf() on an "
-                            "instantiated (named) Parameter.")
+            raise TypeError("You can only call get_logpdf() on an " "instantiated (named) Parameter.")
 
-        if value is None and 'params' in kwargs:
-            value = kwargs['params'][self.name]
+        if value is None and "params" in kwargs:
+            value = kwargs["params"][self.name]
 
-        if hasattr(self,'prior'):
+        if hasattr(self, "prior"):
             logpdf = np.log(self.prior(value, **kwargs))
         else:
             logpdf = self.logprior(value, **kwargs)
@@ -71,13 +69,12 @@ class Parameter(object):
 
     def get_pdf(self, value=None, **kwargs):
         if not isinstance(self, Parameter):
-            raise TypeError("You can only call get_pdf() on an "
-                            "instantiated (named) Parameter.")
+            raise TypeError("You can only call get_pdf() on an " "instantiated (named) Parameter.")
 
-        if value is None and 'params' in kwargs:
-            value = kwargs['params'][self.name]
+        if value is None and "params" in kwargs:
+            value = kwargs["params"][self.name]
 
-        if hasattr(self,'prior'):
+        if hasattr(self, "prior"):
             pdf = self.prior(value, **kwargs)
         else:
             pdf = np.exp(self.logprior(value, **kwargs))
@@ -86,17 +83,18 @@ class Parameter(object):
 
     def sample(self, **kwargs):
         if not isinstance(self, Parameter):
-            raise TypeError("You can only call sample() on an "
-                            "instantiated (named) Parameter.")
+            raise TypeError("You can only call sample() on an " "instantiated (named) Parameter.")
 
         if self._sampler is None:
             raise AttributeError("No sampler was provided for this Parameter.")
         else:
             if self.name in kwargs:
-                raise ValueError(
-                    "You shouldn't give me my value when you're sampling me.!")
+                raise ValueError("You shouldn't give me my value when you're sampling me.!")
 
-            return self.prior(func=self._sampler, size=self._size, **kwargs)
+            if hasattr(self, "prior"):
+                return self.prior(func=self._sampler, size=self._size, **kwargs)
+            else:
+                return self.logprior(func=self._sampler, size=self._size, **kwargs)
 
     @property
     def size(self):
@@ -104,14 +102,12 @@ class Parameter(object):
 
     @property
     def params(self):
-        priorparams = (self.prior.params if hasattr(self,'prior')
-                       else self.logprior.params)
+        priorparams = self.prior.params if hasattr(self, "prior") else self.logprior.params
 
-        return [self] + [par for par in priorparams
-                         if not isinstance(par, ConstantParameter)]
+        return [self] + [par for par in priorparams if not isinstance(par, ConstantParameter)]
 
     def __repr__(self):
-        if hasattr(self,'prior'):
+        if hasattr(self, "prior"):
             args = self.prior._params.copy()
             args.update(self.prior._funcs)
         else:
@@ -119,9 +115,9 @@ class Parameter(object):
             args.update(self.logprior._funcs)
 
         typename = self._typename.format(**args)
-        array = '' if self._size is None else '[{}]'.format(self._size)
+        array = "" if self._size is None else "[{}]".format(self._size)
 
-        return '{}:{}{}'.format(self.name, typename, array)
+        return "{}:{}{}".format(self.name, typename, array)
 
     # this trick lets us pass an instantiated parameter to a signal;
     # the parameter will refuse to be renamed and will return itself
@@ -137,7 +133,7 @@ def GPCoefficients(logprior, size):
         _size = size
         _logprior = logprior
         _sampler = None  # MV: TO DO, connect with GP object
-        _typename = 'GPCoefficients'
+        _typename = "GPCoefficients"
 
     return GPCoefficients
 
@@ -164,7 +160,7 @@ def UserParameter(prior=None, logprior=None, sampler=None, size=None):
         if logprior is not None:
             _logprior = logprior
         _sampler = None if sampler is None else staticmethod(sampler)
-        _typename = 'UserParameter'
+        _typename = "UserParameter"
 
     return UserParameter
 
@@ -172,15 +168,14 @@ def UserParameter(prior=None, logprior=None, sampler=None, size=None):
 def _argrepr(typename, **kwargs):
     args = []
     for par, arg in kwargs.items():
-        if isinstance(arg, type) and \
-                issubclass(arg, (Parameter, FunctionBase)):
-            args.append('{}={{{}}}'.format(par, par))
+        if isinstance(arg, type) and issubclass(arg, (Parameter, FunctionBase)):
+            args.append("{}={{{}}}".format(par, par))
         elif isinstance(arg, (Parameter, FunctionBase)):
-            args.append('{}={}'.format(par, arg))
+            args.append("{}={}".format(par, arg))
         else:
-            args.append('{}={}'.format(par, arg))
+            args.append("{}={}".format(par, arg))
 
-    return '{}({})'.format(typename,', '.join(args))
+    return "{}({})".format(typename, ", ".join(args))
 
 
 def UniformPrior(value, pmin, pmax):
@@ -217,7 +212,7 @@ def Uniform(pmin, pmax, size=None):
         _size = size
         _prior = Function(UniformPrior, pmin=pmin, pmax=pmax)
         _sampler = staticmethod(UniformSampler)
-        _typename = _argrepr('Uniform', pmin=pmin, pmax=pmax)
+        _typename = _argrepr("Uniform", pmin=pmin, pmax=pmax)
 
     return Uniform
 
@@ -229,7 +224,7 @@ def NormalPrior(value, mu, sigma):
     # this code handles vectors correctly, if mu and sigma are scalars,
     # if mu and sigma are vectors with len(value) = len(mu) = len(sigma),
     # or if len(value) = len(mu) and sigma is len(value) x len(value)
-    cov = sigma if np.ndim(sigma) == 2 else sigma**2
+    cov = sigma if np.ndim(sigma) == 2 else sigma ** 2
     return scipy.stats.multivariate_normal.pdf(value, mean=mu, cov=cov)
 
 
@@ -237,8 +232,7 @@ def NormalSampler(mu, sigma, size=None):
     """Sampling function for Normal parameters."""
 
     if np.ndim(mu) == 1 and len(mu) != size:
-        raise ValueError(
-            "Size mismatch between Parameter size and distribution arguments")
+        raise ValueError("Size mismatch between Parameter size and distribution arguments")
 
     # we let scipy.stats handle all other errors
     # this code handles vectors correctly, if mu and sigma are scalars,
@@ -247,10 +241,8 @@ def NormalSampler(mu, sigma, size=None):
     # note that scipy.stats.multivariate_normal.rvs infers parameter
     # size from mu and sigma, so if these are vectors we pass size=None;
     # otherwise we'd get multiple copies of a jointly-normal vector
-    cov = sigma if np.ndim(sigma) == 2 else sigma**2
-    return scipy.stats.multivariate_normal.rvs(
-        mean=mu, cov=cov,
-        size=(None if np.ndim(mu) == 1 else size))
+    cov = sigma if np.ndim(sigma) == 2 else sigma ** 2
+    return scipy.stats.multivariate_normal.rvs(mean=mu, cov=cov, size=(None if np.ndim(mu) == 1 else size))
 
 
 def Normal(mu=0, sigma=1, size=None):
@@ -270,7 +262,7 @@ def Normal(mu=0, sigma=1, size=None):
         _size = size
         _prior = Function(NormalPrior, mu=mu, sigma=sigma)
         _sampler = staticmethod(NormalSampler)
-        _typename = _argrepr('Normal', mu=mu, sigma=sigma)
+        _typename = _argrepr("Normal", mu=mu, sigma=sigma)
 
     return Normal
 
@@ -283,8 +275,7 @@ def LinearExpPrior(value, pmin, pmax):
 
     # works with vectors if pmin and pmax are either scalars,
     # or len(value) vectors
-    return (((pmin <= value) & (value <= pmax)) * np.log(10) *
-            10**value / (10**pmax - 10**pmin))
+    return ((pmin <= value) & (value <= pmax)) * np.log(10) * 10 ** value / (10 ** pmax - 10 ** pmin)
 
 
 def LinearExpSampler(pmin, pmax, size):
@@ -295,7 +286,7 @@ def LinearExpSampler(pmin, pmax, size):
 
     # works with vectors if pmin and pmax are either scalars
     # or vectors, in which case one must have len(pmin) = len(pmax) = size
-    return np.log10(np.random.uniform(10**pmin, 10**pmax, size))
+    return np.log10(np.random.uniform(10 ** pmin, 10 ** pmax, size))
 
 
 def LinearExp(pmin, pmax, size=None):
@@ -314,7 +305,7 @@ def LinearExp(pmin, pmax, size=None):
         _size = size
         _prior = Function(LinearExpPrior, pmin=pmin, pmax=pmax)
         _sampler = staticmethod(LinearExpSampler)
-        _typename = _argrepr('LinearExp', pmin=pmin, pmax=pmax)
+        _typename = _argrepr("LinearExp", pmin=pmin, pmax=pmax)
 
     return LinearExp
 
@@ -337,13 +328,14 @@ class ConstantParameter(object):
         return self
 
     def __repr__(self):
-        return '{}:Constant={}'.format(self.name, self.value)
+        return "{}:Constant={}".format(self.name, self.value)
 
 
 def Constant(val=None):
     """Class factory for Constant parameters.  Leave ``val=None`` to set
     value later, for example with ``signal_base.PTA.set_default_params()``.
     """
+
     class Constant(ConstantParameter):
         # MV: I don't know if this does what it's supposed to...
         value = val
@@ -355,7 +347,7 @@ class FunctionBase(object):
     pass
 
 
-def Function(func, name='', **func_kwargs):
+def Function(func, name="", **func_kwargs):
     fname = name
 
     class Function(FunctionBase):
@@ -367,9 +359,12 @@ def Function(func, name='', **func_kwargs):
             self._defaults = {}
             self._funcs = {}
 
-            self.name = '_'.join([n for n in [name, fname] if n])
+            self.name = "_".join([n for n in [name, fname] if n])
 
-            self.func_args = inspect.getargspec(func).args
+            try:
+                self.func_args = inspect.getfullargspec(func).args
+            except:
+                self.func_args = inspect.getargspec(func).args
             self.func_kwargs = func_kwargs
 
             # process keyword parameters:
@@ -386,13 +381,12 @@ def Function(func, name='', **func_kwargs):
             #   which we will save in self._defaults
 
             for kw, arg in self.func_kwargs.items():
-                if isinstance(arg, type) and issubclass(
-                        arg, (Parameter, ConstantParameter)):
+                if isinstance(arg, type) and issubclass(arg, (Parameter, ConstantParameter)):
 
                     # parameter name template:
                     #   pname_[signalname_][fname_]parname
                     pnames = [name, fname, kw]
-                    par = arg('_'.join([n for n in pnames if n]))
+                    par = arg("_".join([n for n in pnames if n]))
 
                     self._params[kw] = par
                 elif isinstance(arg, (Parameter, ConstantParameter)):
@@ -400,7 +394,7 @@ def Function(func, name='', **func_kwargs):
                 elif isinstance(arg, type) and issubclass(arg, FunctionBase):
                     # instantiate the function
                     pnames = [name, fname, kw]
-                    parfunc = arg('_'.join([n for n in pnames if n]), psr)
+                    parfunc = arg("_".join([n for n in pnames if n]), psr)
 
                     self._funcs[kw] = parfunc
                     self._params.update(parfunc._params)
@@ -415,14 +409,14 @@ def Function(func, name='', **func_kwargs):
             # by passing it args, kwargs, after augmenting kwargs (see below)
 
             # kwargs['params'] is special, take it out of kwargs
-            params = kwargs.get('params', {})
-            if 'params' in kwargs:
-                del kwargs['params']
+            params = kwargs.get("params", {})
+            if "params" in kwargs:
+                del kwargs["params"]
 
             # if kwargs['func'] is given, we will call that instead
-            func = kwargs.get('func', self._func)
-            if 'func' in kwargs:
-                del kwargs['func']
+            func = kwargs.get("func", self._func)
+            if "func" in kwargs:
+                del kwargs["func"]
 
             # we augment kwargs as follows:
             # - parameters given in the original Function definition
@@ -445,28 +439,29 @@ def Function(func, name='', **func_kwargs):
 
                         if par.name in params:
                             kwargs[kw] = params[par.name]
-                        elif hasattr(par, 'value'):
+                        elif hasattr(par, "value"):
                             kwargs[kw] = par.value
                     elif kw in self._defaults:
                         kwargs[kw] = self._defaults[kw]
                     elif kw in self._funcs:
                         f = self._funcs[kw]
-                        fargs = {par: val for par, val in kwargs.items()
-                                 if par in f.func_kwargs}
-                        fargs['params'] = params
+                        fargs = {par: val for par, val in kwargs.items() if par in f.func_kwargs}
+                        fargs["params"] = params
                         kwargs[kw] = f(**fargs)
 
             # pass our pulsar if we have one
-            if self._psr is not None and 'psr' not in kwargs:
-                kwargs['psr'] = self._psr
+            if self._psr is not None and "psr" not in kwargs:
+                kwargs["psr"] = self._psr
 
             # clean up parameters that are not meant for `func`
             # keep those required for `selection_func` to work
             # keep also `size` needed by samplers
 
-            kwargs = {par: val for par, val in kwargs.items()
-                      if (par in self.func_kwargs or par in self.func_args or
-                          par in ['psr', 'mask', 'size'])}
+            kwargs = {
+                par: val
+                for par, val in kwargs.items()
+                if (par in self.func_kwargs or par in self.func_args or par in ["psr", "mask", "size"])
+            }
 
             return func(*args, **kwargs)
 
@@ -477,26 +472,27 @@ def Function(func, name='', **func_kwargs):
         def params(self):
             # if we extract the ConstantParameter value above, we would not
             # need a special case here
-            return sum([par.params for par in self._params.values()
-                        if not isinstance(par, ConstantParameter)], [])
+            return sum([par.params for par in self._params.values() if not isinstance(par, ConstantParameter)], [])
 
         def __repr__(self):
-            return '{}({})'.format(self.name,
-                                   ', '.join(map(str,self.params)))
+            return "{}({})".format(self.name, ", ".join(map(str, self.params)))
 
     return Function
 
 
 def get_funcargs(func):
     """Convenience function to get args and kwargs of any function."""
-    argspec = inspect.getargspec(func)
+    try:
+        argspec = inspect.getfullargspec(func)
+    except:
+        argspec = inspect.getargspec(func)
 
     if argspec.defaults is None:
         args = argspec.args
         kwargs = []
     else:
-        args = argspec.args[:(len(argspec.args)-len(argspec.defaults))]
-        kwargs = argspec.args[-len(argspec.defaults):]
+        args = argspec.args[: (len(argspec.args) - len(argspec.defaults))]
+        kwargs = argspec.args[-len(argspec.defaults) :]
 
     return args, kwargs
 
@@ -511,8 +507,7 @@ def function(func):
     def wrapper(*args, **kwargs):
         # make a dictionary of positional arguments (declared for func,
         # and passed to wrapper), and of keyword arguments passed to wrapper
-        fargs = {funcargs[ct]: val for ct, val in
-                 enumerate(args[:len(funcargs)])}
+        fargs = {funcargs[ct]: val for ct, val in enumerate(args[: len(funcargs)])}
         fargs.update(kwargs)
 
         # if any of the positional arguments are missing, we make a Function
@@ -522,11 +517,14 @@ def function(func):
         # if any of the keyword arguments are Parameters or Functions,
         # we make a Function
         for kw, arg in kwargs.items():
-            if isinstance(arg, type) and issubclass(
-                    arg, (Parameter, ConstantParameter)) or \
-               isinstance(arg, (Parameter, ConstantParameter)) or \
-               isinstance(arg, type) and issubclass(arg, FunctionBase) or \
-               isinstance(arg, FunctionBase):
+            if (
+                isinstance(arg, type)
+                and issubclass(arg, (Parameter, ConstantParameter))
+                or isinstance(arg, (Parameter, ConstantParameter))
+                or isinstance(arg, type)
+                and issubclass(arg, FunctionBase)
+                or isinstance(arg, FunctionBase)
+            ):
 
                 return Function(func, **kwargs)
 
