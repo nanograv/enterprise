@@ -15,10 +15,10 @@ from scipy.integrate import odeint
 from scipy.interpolate import interp1d
 
 import enterprise
-import enterprise.constants as const
+from enterprise import constants as const
 from enterprise.signals.parameter import function
 from enterprise.signals.gp_priors import powerlaw, turnover  # noqa: F401
-import enterprise.signals as sigs  # noqa: F401
+from enterprise import signals as sigs  # noqa: F401
 from enterprise.signals.gp_bases import (  # noqa: F401
     createfourierdesignmatrix_red,
     createfourierdesignmatrix_dm,
