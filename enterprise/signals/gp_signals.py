@@ -524,6 +524,8 @@ def WidebandTimingModel(
             self._dmjump_keys = list(sorted(dmjump_select.masks.keys()))
             self._dmjump_masks = [dmjump_select.masks[key] for key in self._dmjump_keys]
 
+            # collect parameters
+
             self._params = {}
 
             self._dmefacs = []
@@ -546,16 +548,11 @@ def WidebandTimingModel(
                             param = dmjump(pname)
                     else:
                         param = dmjump(pname)
+
                     self._dmjumps.append(param)
                     self._params[param.name] = param
 
-            # save design matrix and other psr information
-
-            # (now handled by BaseClass)
-            # self._basis, self._labels = psr.Mmat, np.ones_like(
-            #        psr.Mmat.shape[1])
-
-            # could add norming to Mmat -- but would have to normalize phi
+            # copy psr quantities
 
             self._ntoas = len(psr.toas)
             self._npars = len(psr.fitpars)
@@ -569,10 +566,15 @@ def WidebandTimingModel(
             self._dmerr = np.array(psr.flags["pp_dme"], "d")
 
             check = np.zeros_like(psr.toas, "i")
+
+            # assign TOAs to DMX bins
+
             self._dmx, self._dmindex, self._dmwhich = [], [], []
             for index, key in enumerate(sorted(psr.dmx)):
                 dmx = psr.dmx[key]
-                assert dmx["fit"], "All DMX parameters must be estimated."
+
+                if not dmx["fit"]:
+                    raise ValueError("WidebandTimingModel: all DMX parameters must be estimated.")
 
                 self._dmx.append(dmx["DMX"])
                 self._dmindex.append(psr.fitpars.index(key))
@@ -580,86 +582,108 @@ def WidebandTimingModel(
 
                 check += self._dmwhich[-1]
 
-            assert np.sum(check) == self._ntoas, "Cannot account for all TOAs in DMX intervals."
-            assert "DM" not in psr.fitpars, "DM must not be estimated."
+            if np.sum(check) != self._ntoas:
+                raise ValueError("WidebandTimingModel: cannot account for all TOAs in DMX intervals.")
+
+            if np.sum(check) != self._ntoas:
+                raise ValueError("WidebandTimingModel: cannot account for all TOAs in DMX intervals.")
+
+            if "DM" in psr.fitpars:
+                raise ValueError("WidebandTimingModel: DM must not be estimated.")
 
             self._ndmx = len(self._dmx)
 
-        # @property
-        # def basis_params(self):
-        #    return []
-
-        # TODO: I need to understand caching better
-        # @signal_base.cache_call('basis_params')
-        # def get_basis(self, params={}):
-        #    return self._basis
-
-        def get_phi(self, params):
-            dme = self.get_dme(params)  # DMEFAC-adjusted
-            phi = KernelMatrix(1e40 * np.ones(self._npars, "d"))
-            for index, which in zip(self._dmindex, self._dmwhich):
-                phi.set(1.0 / np.sum(1.0 / dme[which] ** 2), index)
-            return phi
-
-        def get_phiinv(self, params):
-            return self.get_phi(params).inv()
-
         @property
         def delay_params(self):
+            # cache parameters are all DMEFACS and DMJUMPS
             return [p.name for p in self._dmefacs] + [p.name for p in self._dmjumps]
 
         @signal_base.cache_call(["delay_params"])
+        def get_phi(self, params):
+            """Return wideband timing-model prior."""
+
+            # get DMEFAC-adjusted DMX errors
+            dme = self.get_dme(params)
+
+            # initialize the timing-model "infinite" prior
+            phi = KernelMatrix(1e40 * np.ones(self._npars, "d"))
+
+            # fill the DMX slots with weighted errors
+            for index, which in zip(self._dmindex, self._dmwhich):
+                phi.set(1.0 / np.sum(1.0 / dme[which] ** 2), index)
+
+            return phi
+
+        def get_phiinv(self, params):
+            """Return inverse prior (using KernelMatrix inv)."""
+            return self.get_phi(params).inv()
+
+        @signal_base.cache_call(["delay_params"])
         def get_delay(self, params):
+            """Return the weighted-mean DM correction that applies for each residual.
+            (Will be the same across each DM bin, before measurement-frequency weighting.)"""
+
             dm_delay = np.zeros(self._ntoas, "d")
 
             avg_dm = self.get_mean_dm(params)
+
             for dmx, which in zip(self._dmx, self._dmwhich):
                 dm_delay[which] = avg_dm[which] - (self._dmpar + dmx)
 
             return dm_delay / (2.41e-4 * self._freqs ** 2)
 
-        def get_dm(self, params):  # DMJUMP-adjusted DMs
-            # dm = self._dm.copy()
-            # loop is trivial if self._dmjumps == []
-            # for jump, mask in zip(self._dmjumps, self._dmjump_masks):
-            #    dm[mask] += params[jump.name] if jump.name in params else jump.value
-            dm = (
+        @signal_base.cache_call(["delay_params"])
+        def get_dm(self, params):
+            """Return DMJUMP-adjusted DM measurements."""
+
+            return (
                 sum(
                     (params[jump.name] if jump.name in params else jump.value) * mask
                     for jump, mask in zip(self._dmjumps, self._dmjump_masks)
                 )
                 + self._dm
             )
-            return dm
 
-        def get_dme(self, params):  # DMEFAC-adjusted measurement uncertainties
-            # TODO: could we cache the dme computation with the enterprise facility?
-            dme = (
+        @signal_base.cache_call(["delay_params"])
+        def get_dme(self, params):
+            """Return EFAC-weighted DM errors."""
+
+            return (
                 sum(
                     (params[efac.name] if efac.name in params else efac.value) * mask
                     for efac, mask in zip(self._dmefacs, self._dmefac_masks)
                 )
                 * self._dmerr
             )
-            return dme
 
-        def get_mean_dme(self, params):  # uncertainty on weighted mean DM
-            mean_dme = np.zeros(self._ntoas, "d")
+        @signal_base.cache_call(["delay_params"])
+        def get_mean_dm(self, params):
+            """Get weighted DMX estimates (distributed to TOAs)."""
 
-            dme = self.get_dme(params)  # DMEFAC-adjusted
-            for which in self._dmwhich:
-                mean_dme[which] = np.sqrt(1.0 / np.sum(1.0 / dme[which] ** 2))
-            return mean_dme
-
-        def get_mean_dm(self, params):  # weighted mean DM in each DMX bin
             mean_dm = np.zeros(self._ntoas, "d")
 
-            dm = self.get_dm(params)  # DMJUMP-adjusted
-            dme = self.get_dme(params)  # DMEFAC-adjusted
+            # DMEFAC- and DMJUMP-adjusted
+            dm, dme = self.get_dm(params), self.get_dme(params)
+
             for dmx, which in zip(self._dmx, self._dmwhich):
                 mean_dm[which] = np.sum(dm[which] / dme[which] ** 2) / np.sum(1.0 / dme[which] ** 2)
 
             return mean_dm
+
+        @signal_base.cache_call(["delay_params"])
+        def get_mean_dme(self, params):
+            """Get weighted DMX uncertainties (distributed to TOAs).
+            Note that get_phi computes these variances directly."""
+
+            mean_dme = np.zeros(self._ntoas, "d")
+
+            # DMEFAC-adjusted
+            dme = self.get_dme(params)
+
+            for which in self._dmwhich:
+                mean_dme[which] = np.sqrt(1.0 / np.sum(1.0 / dme[which] ** 2))
+
+            return mean_dme
 
         def get_delta_dm(self, params, use_mean_dm=True):  # DM - DMX
             delta_dm = np.zeros(self._ntoas, "d")
