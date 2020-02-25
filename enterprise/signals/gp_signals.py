@@ -496,7 +496,8 @@ def WidebandTimingModel(
     dmjump_ref=None,
     name="wideband_timing_model",
 ):
-    """Class factory for marginalized linear timing model signals that take wideband TOAs and DMs.  Currently assumes DMX for DM model."""
+    """Class factory for marginalized linear timing model signals
+    that take wideband TOAs and DMs.  Currently assumes DMX for DM model."""
 
     basis = utils.unnormed_tm_basis()  # will need to normalize phi otherwise
     prior = utils.tm_prior()  # standard
@@ -548,7 +549,7 @@ def WidebandTimingModel(
                     self._dmjumps.append(param)
                     self._params[param.name] = param
 
-            ### save design matrix and other psr information
+            # save design matrix and other psr information
 
             # (now handled by BaseClass)
             # self._basis, self._labels = psr.Mmat, np.ones_like(
@@ -561,11 +562,11 @@ def WidebandTimingModel(
 
             self._freqs = psr.freqs
 
-            ### collect DMX information (will be used to make phi and delay)
+            # collect DMX information (will be used to make phi and delay)
 
             self._dmpar = psr.dm
             self._dm = np.array(psr.flags["pp_dm"], "d")
-            self._dmerr = dme_flags = np.array(psr.flags["pp_dme"], "d")
+            self._dmerr = np.array(psr.flags["pp_dme"], "d")
 
             check = np.zeros_like(psr.toas, "i")
             self._dmx, self._dmindex, self._dmwhich = [], [], []
@@ -588,7 +589,7 @@ def WidebandTimingModel(
         # def basis_params(self):
         #    return []
 
-        ## TODO: I need to understand caching better
+        # TODO: I need to understand caching better
         # @signal_base.cache_call('basis_params')
         # def get_basis(self, params={}):
         #    return self._basis
@@ -619,7 +620,7 @@ def WidebandTimingModel(
 
         def get_dm(self, params):  # DMJUMP-adjusted DMs
             # dm = self._dm.copy()
-            ## loop is trivial if self._dmjumps == []
+            # loop is trivial if self._dmjumps == []
             # for jump, mask in zip(self._dmjumps, self._dmjump_masks):
             #    dm[mask] += params[jump.name] if jump.name in params else jump.value
             dm = (
