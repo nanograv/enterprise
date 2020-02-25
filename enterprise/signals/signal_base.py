@@ -137,6 +137,10 @@ class Signal(object):
         """Returns inverse of the covaraince of basis amplitudes."""
         return None
 
+    def get_logsignalprior(self, params):
+        """Returns an additional prior/likelihood terms associated with a signal."""
+        return 0
+
 
 class CommonSignal(Signal):
     """Base class for CommonSignal objects."""
@@ -171,7 +175,10 @@ class LogLikelihood(object):
         phiinvs = self.pta.get_phiinv(params, logdet=True, method=phiinv_method)
 
         # get -0.5 * (rNr + logdet_N) piece of likelihood
-        loglike += -0.5 * np.sum([l for l in self.pta.get_rNr_logdet(params)])
+        loglike += -0.5 * sum(self.pta.get_rNr_logdet(params))
+
+        # get extra prior/likelihoods
+        loglike += sum(self.pta.get_logsignalprior(params))
 
         # red noise piece
         if self.pta._commonsignals:
@@ -275,6 +282,9 @@ class PTA(object):
 
     def get_delay(self, params={}):
         return [signalcollection.get_delay(params) for signalcollection in self._signalcollections]
+
+    def get_logsignalprior(self, params):
+        return [signalcollection.get_logsignalprior(params) for signalcollection in self._signalcollections]
 
     def set_default_params(self, params):
         for sc in self._signalcollections:
@@ -846,6 +856,10 @@ def SignalCollection(metasignals):
             Nvec = self.get_ndiag(params)
             res = self.get_detres(params)
             return Nvec.solve(res, left_array=res, logdet=True)
+
+        # TO DO: cache how?
+        def get_logsignalprior(self, params):
+            return sum(signal.get_logsignalprior(params) for signal in self._signals)
 
     return SignalCollection
 

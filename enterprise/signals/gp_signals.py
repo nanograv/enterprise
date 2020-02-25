@@ -665,7 +665,7 @@ def WidebandTimingModel(
             # DMEFAC- and DMJUMP-adjusted
             dm, dme = self.get_dm(params), self.get_dme(params)
 
-            for dmx, which in zip(self._dmx, self._dmwhich):
+            for which in self._dmwhich:
                 mean_dm[which] = np.sum(dm[which] / dme[which] ** 2) / np.sum(1.0 / dme[which] ** 2)
 
             return mean_dm
@@ -684,6 +684,26 @@ def WidebandTimingModel(
                 mean_dme[which] = np.sqrt(1.0 / np.sum(1.0 / dme[which] ** 2))
 
             return mean_dme
+
+        @signal_base.cache_call(["delay_params"])
+        def get_logsignalprior(self, params):
+            """Get an additional likelihood/prior term to cover terms that would not
+            affect optimization, were they not dependent on DMEFAC and DMJUMP."""
+
+            dm, dme = self.get_dm(params), self.get_dme(params)
+            mean_dm, mean_dme = self.get_mean_dm(params), self.get_mean_dme(params)
+
+            # now this is a bit wasteful, because it makes copies of the mean DMX and DMXERR
+            # and only uses the first value, but it shouldn't cost us too much
+            expterm = -0.5 * np.sum(dm ** 2 / dme ** 2)
+            expterm += 0.5 * sum(mean_dm[which][0] ** 2 / mean_dme[which][0] ** 2 for which in self._dmwhich)
+
+            # sum_i [-0.5 * log(dmerr**2)] = -sum_i log dmerr; same for mean_dmerr
+            logterm = -np.sum(np.log(dme)) + sum(math.log(mean_dme[which][0]) for which in self._dmwhich)
+
+            return expterm + logterm
+
+        # these are for debugging, but should not enter the likelihood computation
 
         def get_delta_dm(self, params, use_mean_dm=True):  # DM - DMX
             delta_dm = np.zeros(self._ntoas, "d")
