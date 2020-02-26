@@ -524,7 +524,7 @@ def WidebandTimingModel(
             self._dmjump_keys = list(sorted(dmjump_select.masks.keys()))
             self._dmjump_masks = [dmjump_select.masks[key] for key in self._dmjump_keys]
 
-            if self._dmjump_keys == [''] and dmjump is not None:
+            if self._dmjump_keys == [""] and dmjump is not None:
                 raise ValueError("WidebandTimingModel: can only do DMJUMP with more than one selection.")
 
             # collect parameters
