@@ -63,7 +63,7 @@ def PhysicalEphemerisSignal(
     d_neptune_mass=True,
     jup_orb_elements=True,
     sat_orb_elements=False,
-    model="orbel",
+    model="setIII",
     use_epoch_toas=True,
     name="",
 ):  # noqa: E125,E501
@@ -116,7 +116,7 @@ def PhysicalEphemerisSignal(
     :param model:
         Sets the vector basis used by Jupiter and Saturn orbital-element
         perturbations. Currently can be set to 'orbel', 'orbel-v2', 'setIII'.
-        Default: 'orbel'
+        Default: 'setIII'
 
     :param use_epoch_toas:
         Use interpolation from epoch to full TOAs. This option reduces

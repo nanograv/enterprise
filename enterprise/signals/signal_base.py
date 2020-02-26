@@ -176,7 +176,7 @@ class LogLikelihood(object):
         phiinvs = self.pta.get_phiinv(params, logdet=True, method=phiinv_method)
 
         # get -0.5 * (rNr + logdet_N) piece of likelihood
-        # loglike += -0.5 * sum(self.pta.get_rNr_logdet(params))
+        # the np.sum here is needed because each pulsar returns a 2-tuple
         loglike += -0.5 * np.sum([l for l in self.pta.get_rNr_logdet(params)])
 
         # get extra prior/likelihoods
