@@ -302,7 +302,7 @@ class TestGPSignals(unittest.TestCase):
 
         nf = sum(F.shape[1] for F in Fmats)
         F = np.zeros((len(self.psr.toas), nf))
-        phi = np.hstack(p for p in phis)
+        phi = np.hstack([p for p in phis])
         nftot = 0
         for ct, flag in enumerate(np.unique(bflags)):
             mask = bflags == flag
@@ -453,7 +453,7 @@ class TestGPSignals(unittest.TestCase):
             phis.append(p2)
             nf = sum(F.shape[1] for F in Fmats)
             F = np.zeros((len(self.psr.toas), nf))
-            phi = np.hstack(p for p in phis)
+            phi = np.hstack([p for p in phis])
             nftot = 0
             for ct, flag in enumerate(np.unique(bflags)):
                 mask = bflags == flag

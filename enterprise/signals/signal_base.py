@@ -6,6 +6,7 @@ derived from these base classes.
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import collections
+import collections.abc
 import itertools
 import logging
 
@@ -175,7 +176,8 @@ class LogLikelihood(object):
         phiinvs = self.pta.get_phiinv(params, logdet=True, method=phiinv_method)
 
         # get -0.5 * (rNr + logdet_N) piece of likelihood
-        loglike += -0.5 * sum(self.pta.get_rNr_logdet(params))
+        # loglike += -0.5 * sum(self.pta.get_rNr_logdet(params))
+        loglike += -0.5 * np.sum([l for l in self.pta.get_rNr_logdet(params)])
 
         # get extra prior/likelihoods
         loglike += sum(self.pta.get_logsignalprior(params))
@@ -219,7 +221,7 @@ class LogLikelihood(object):
 
 class PTA(object):
     def __init__(self, init, lnlikelihood=LogLikelihood):
-        if isinstance(init, collections.Sequence):
+        if isinstance(init, collections.abc.Sequence):
             self._signalcollections = list(init)
         else:
             self._signalcollections = [init]

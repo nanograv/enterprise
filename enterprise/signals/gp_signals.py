@@ -103,7 +103,7 @@ def BasisGP(
             for key, mask in zip(self._keys, self._masks):
                 basis[key], self._labels[key] = self._bases[key](params=params, mask=mask)
 
-            nc = np.sum(F.shape[1] for F in basis.values())
+            nc = sum(F.shape[1] for F in basis.values())
             self._basis = np.zeros((len(self._masks[0]), nc))
 
             # TODO: should this be defined here? it will cache phi
