@@ -280,6 +280,11 @@ class BasePulsar(object):
         """Return planetary position vectors at all timestamps"""
         return self._planetssb[self._isort, :, :]
 
+    @property
+    def sunssb(self):
+        """Return sun position vector at all timestamps"""
+        return self._sunssb[self._isort, :]
+
 
 class PintPulsar(BasePulsar):
 
@@ -378,6 +383,7 @@ class Tempo2Pulsar(BasePulsar):
         self._raj, self._decj = self._get_radec(t2pulsar)
         self._pos = self._get_pos()
         self._planetssb = self._get_planetssb(t2pulsar)
+        self._sunssb = self._get_sunssb(t2pulsar)
 
         # gather DM/DMX information if available
         self._set_dm(t2pulsar)
@@ -446,6 +452,24 @@ class Tempo2Pulsar(BasePulsar):
                     planetssb[:,ii,:3] = utils.ecl2eq_vec(planetssb[:,ii,:3])
                     planetssb[:,ii,3:] = utils.ecl2eq_vec(planetssb[:,ii,3:])
         return planetssb
+
+    def _get_sunssb(self, t2pulsar):
+        sunssb = None
+        if self.planets:
+            # for ii in range(1, 10):
+            #     tag = 'DMASSPLANET' + str(ii)
+            #     self.t2pulsar[tag].val = 0.0
+            self.t2pulsar.formbats()
+            sunssb = np.zeros((len(self._toas), 6))
+            sunssb[:, :] = self.t2pulsar.sun_ssb
+
+
+            if 'ELONG' and 'ELAT' in np.concatenate((t2pulsar.pars(),
+                                                     t2pulsar.pars(
+                                                         which='set'))):
+                sunssb[:,:3] = utils.ecl2eq_vec(sunssb[:,:3])
+                sunssb[:,3:] = utils.ecl2eq_vec(sunssb[:,3:])
+        return sunssb
 
 
 def Pulsar(*args, **kwargs):
