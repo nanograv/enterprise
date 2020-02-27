@@ -3,15 +3,24 @@
 functions for use in other modules.
 """
 
+<<<<<<< HEAD
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
 import numpy as np
 from enterprise.signals.parameter import function
+=======
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+import numpy as np
+from enterprise.signals.parameter import function
+
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
 ######################################
 # Fourier-basis signal functions #####
 ######################################
 
+<<<<<<< HEAD
 __all__ = ['createfourierdesignmatrix_red',
            'createfourierdesignmatrix_dm',
            'createfourierdesignmatrix_env',
@@ -23,6 +32,21 @@ __all__ = ['createfourierdesignmatrix_red',
 def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
                                   logf=False, fmin=None, fmax=None,
                                   pshift=False, modes=None):
+=======
+__all__ = [
+    "createfourierdesignmatrix_red",
+    "createfourierdesignmatrix_dm",
+    "createfourierdesignmatrix_env",
+    "createfourierdesignmatrix_ephem",
+    "createfourierdesignmatrix_eph",
+]
+
+
+@function
+def createfourierdesignmatrix_red(
+    toas, nmodes=30, Tspan=None, logf=False, fmin=None, fmax=None, pshift=False, modes=None
+):
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
     """
     Construct fourier design matrix from eq 11 of Lentati et al, 2013
     :param toas: vector of time series in seconds
@@ -65,8 +89,12 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
             f = np.linspace(fmin, fmax, nmodes)
 
     # add random phase shift to basis functions
+<<<<<<< HEAD
     ranphase = (np.random.uniform(0.0, 2 * np.pi, nmodes)
                 if pshift else np.zeros(nmodes))
+=======
+    ranphase = np.random.uniform(0.0, 2 * np.pi, nmodes) if pshift else np.zeros(nmodes)
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
 
     Ffreqs = np.repeat(f, 2)
 
@@ -74,18 +102,29 @@ def createfourierdesignmatrix_red(toas, nmodes=30, Tspan=None,
     F = np.zeros((N, 2 * nmodes))
 
     # The sine/cosine modes
+<<<<<<< HEAD
     F[:, ::2] = np.sin(2*np.pi*toas[:, None]*f[None, :] +
                        ranphase[None, :])
     F[:, 1::2] = np.cos(2*np.pi*toas[:, None]*f[None, :] +
                         ranphase[None, :])
+=======
+    F[:, ::2] = np.sin(2 * np.pi * toas[:, None] * f[None, :] + ranphase[None, :])
+    F[:, 1::2] = np.cos(2 * np.pi * toas[:, None] * f[None, :] + ranphase[None, :])
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
 
     return F, Ffreqs
 
 
 @function
+<<<<<<< HEAD
 def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
                                  pshift=False, fref=1400, logf=False,
                                  fmin=None, fmax=None, modes=None):
+=======
+def createfourierdesignmatrix_dm(
+    toas, freqs, nmodes=30, Tspan=None, pshift=False, fref=1400, logf=False, fmin=None, fmax=None, modes=None
+):
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
     """
     Construct DM-variation fourier design matrix. Current
     normalization expresses DM signal as a deviation [seconds]
@@ -109,20 +148,43 @@ def createfourierdesignmatrix_dm(toas, freqs, nmodes=30, Tspan=None,
 
     # get base fourier design matrix and frequencies
     F, Ffreqs = createfourierdesignmatrix_red(
+<<<<<<< HEAD
         toas, nmodes=nmodes, Tspan=Tspan, logf=logf,
         fmin=fmin, fmax=fmax, pshift=pshift, modes=modes)
 
     # compute the DM-variation vectors
     Dm = (fref/freqs)**2
+=======
+        toas, nmodes=nmodes, Tspan=Tspan, logf=logf, fmin=fmin, fmax=fmax, pshift=pshift, modes=modes
+    )
+
+    # compute the DM-variation vectors
+    Dm = (fref / freqs) ** 2
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
 
     return F * Dm[:, None], Ffreqs
 
 
 @function
+<<<<<<< HEAD
 def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
                                   t0=53000*86400, nmodes=30, Tspan=None,
                                   logf=False, fmin=None, fmax=None,
                                   modes=None):
+=======
+def createfourierdesignmatrix_env(
+    toas,
+    log10_Amp=-7,
+    log10_Q=np.log10(300),
+    t0=53000 * 86400,
+    nmodes=30,
+    Tspan=None,
+    logf=False,
+    fmin=None,
+    fmax=None,
+    modes=None,
+):
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
     """
     Construct fourier design matrix with gaussian envelope.
 
@@ -146,6 +208,7 @@ def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
 
     # get base fourier design matrix and frequencies
     F, Ffreqs = createfourierdesignmatrix_red(
+<<<<<<< HEAD
         toas, nmodes=nmodes, Tspan=Tspan, logf=logf,
         fmin=fmin, fmax=fmax, modes=modes)
 
@@ -153,6 +216,15 @@ def createfourierdesignmatrix_env(toas, log10_Amp=-7, log10_Q=np.log10(300),
     A = 10**log10_Amp
     Q = 10**log10_Q * 86400
     env = A * np.exp(-(toas-t0)**2/2/Q**2)
+=======
+        toas, nmodes=nmodes, Tspan=Tspan, logf=logf, fmin=fmin, fmax=fmax, modes=modes
+    )
+
+    # compute gaussian envelope
+    A = 10 ** log10_Amp
+    Q = 10 ** log10_Q * 86400
+    env = A * np.exp(-((toas - t0) ** 2) / 2 / Q ** 2)
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
     return F * env[:, None], Ffreqs
 
 
@@ -180,16 +252,23 @@ def createfourierdesignmatrix_ephem(toas, pos, nmodes=30, Tspan=None):
     :return: f: Sampling frequencies (6*nmodes)
     """
 
+<<<<<<< HEAD
     F0, F0f = createfourierdesignmatrix_red(
         toas, nmodes=nmodes, Tspan=Tspan)
 
     F1 = np.zeros((len(toas), nmodes, 2, 3), 'd')
+=======
+    F0, F0f = createfourierdesignmatrix_red(toas, nmodes=nmodes, Tspan=Tspan)
+
+    F1 = np.zeros((len(toas), nmodes, 2, 3), "d")
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
     F1[:, :, 0, :] = F0[:, 0::2, np.newaxis]
     F1[:, :, 1, :] = F0[:, 1::2, np.newaxis]
 
     # verify this is the scalar product we want
     F1 *= pos
 
+<<<<<<< HEAD
     F1f = np.zeros((nmodes, 2, 3), 'd')
     F1f[:, :, :] = F0f[::2, np.newaxis, np.newaxis]
 
@@ -208,6 +287,24 @@ def createfourierdesignmatrix_eph(t, nmodes, phi, theta, freq=False,
 def createfourierdesignmatrix_chromatic(toas, freqs, nmodes=30, Tspan=None,
                                         logf=False, fmin=None, fmax=None,
                                         idx=4):
+=======
+    F1f = np.zeros((nmodes, 2, 3), "d")
+    F1f[:, :, :] = F0f[::2, np.newaxis, np.newaxis]
+
+    return F1.reshape((len(toas), nmodes * 6)), F1f.reshape((nmodes * 6,))
+
+
+def createfourierdesignmatrix_eph(
+    t, nmodes, phi, theta, freq=False, Tspan=None, logf=False, fmin=None, fmax=None, modes=None
+):
+    raise NotImplementedError(
+        "createfourierdesignmatrix_eph was removed, " + "and replaced with createfourierdesignmatrix_ephem"
+    )
+
+
+@function
+def createfourierdesignmatrix_chromatic(toas, freqs, nmodes=30, Tspan=None, logf=False, fmin=None, fmax=None, idx=4):
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
 
     """
     Construct Scattering-variation fourier design matrix.
@@ -227,10 +324,17 @@ def createfourierdesignmatrix_chromatic(toas, freqs, nmodes=30, Tspan=None,
     """
 
     # get base fourier design matrix and frequencies
+<<<<<<< HEAD
     F, Ffreqs = createfourierdesignmatrix_red(toas, nmodes=nmodes, Tspan=Tspan,
                                               logf=logf, fmin=fmin, fmax=fmax)
 
     # compute the DM-variation vectors
     Dm = (1400/freqs) ** idx
+=======
+    F, Ffreqs = createfourierdesignmatrix_red(toas, nmodes=nmodes, Tspan=Tspan, logf=logf, fmin=fmin, fmax=fmax)
+
+    # compute the DM-variation vectors
+    Dm = (1400 / freqs) ** idx
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
 
     return F * Dm[:, None], Ffreqs

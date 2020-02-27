@@ -3,20 +3,29 @@
 functions for use in other modules.
 """
 
+<<<<<<< HEAD
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
+=======
+from __future__ import absolute_import, division, print_function, unicode_literals
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
 
 import numpy as np
 import scipy.stats
 
 from enterprise.signals import parameter
 from enterprise.signals.parameter import function
+<<<<<<< HEAD
 import enterprise.constants as const
+=======
+from enterprise import constants as const
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
 
 
 @function
 def powerlaw(f, log10_A=-16, gamma=5, components=2):
     df = np.diff(np.concatenate((np.array([0]), f[::components])))
+<<<<<<< HEAD
     return ((10**log10_A)**2 / 12.0 / np.pi**2 *
             const.fyr**(gamma-3) * f**(-gamma) * np.repeat(df, components))
 
@@ -27,6 +36,18 @@ def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10/3, beta=0.5):
     hcf = (10**log10_A * (f / const.fyr) ** ((3-gamma) / 2) /
            (1 + (10**lf0 / f) ** kappa) ** beta)
     return hcf**2/12/np.pi**2/f**3*np.repeat(df, 2)
+=======
+    return (
+        (10 ** log10_A) ** 2 / 12.0 / np.pi ** 2 * const.fyr ** (gamma - 3) * f ** (-gamma) * np.repeat(df, components)
+    )
+
+
+@function
+def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10 / 3, beta=0.5):
+    df = np.diff(np.concatenate((np.array([0]), f[::2])))
+    hcf = 10 ** log10_A * (f / const.fyr) ** ((3 - gamma) / 2) / (1 + (10 ** lf0 / f) ** kappa) ** beta
+    return hcf ** 2 / 12 / np.pi ** 2 / f ** 3 * np.repeat(df, 2)
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
 
 
 @function
@@ -38,7 +59,11 @@ def free_spectrum(f, log10_rho=None):
     where \rho_i is the free parameter and T is the observation
     length.
     """
+<<<<<<< HEAD
     return np.repeat(10**(2*np.array(log10_rho)), 2)
+=======
+    return np.repeat(10 ** (2 * np.array(log10_rho)), 2)
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
 
 
 @function
@@ -64,8 +89,13 @@ def t_process_adapt(f, log10_A=-15, gamma=4.33, alphas_adapt=None, nfreq=None):
             alpha_model = np.repeat(alphas_adapt, 2)
         else:
             alpha_model = np.ones_like(f)
+<<<<<<< HEAD
             alpha_model[2*int(np.rint(nfreq))] = alphas_adapt
             alpha_model[2*int(np.rint(nfreq))+1] = alphas_adapt
+=======
+            alpha_model[2 * int(np.rint(nfreq))] = alphas_adapt
+            alpha_model[2 * int(np.rint(nfreq)) + 1] = alphas_adapt
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
 
     return powerlaw(f, log10_A=log10_A, gamma=gamma) * alpha_model
 
@@ -82,6 +112,10 @@ def InvGammaSampler(alpha=1, gamma=1, size=None):
 
 def InvGamma(alpha=1, gamma=1, size=None):
     """Class factory for Inverse Gamma parameters."""
+<<<<<<< HEAD
+=======
+
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
     class InvGamma(parameter.Parameter):
         _size = size
         _prior = parameter.Function(InvGammaPrior, alpha=alpha, gamma=gamma)
@@ -90,8 +124,14 @@ def InvGamma(alpha=1, gamma=1, size=None):
         _gamma = gamma
 
         def __repr__(self):
+<<<<<<< HEAD
             return '"{}": InvGamma({},{})'.format(self.name, alpha, gamma) \
                 + ('' if self._size is None else '[{}]'.format(self._size))
+=======
+            return '"{}": InvGamma({},{})'.format(self.name, alpha, gamma) + (
+                "" if self._size is None else "[{}]".format(self._size)
+            )
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
 
     return InvGamma
 
@@ -109,10 +149,20 @@ def turnover_knee(f, log10_A, gamma, lfb, lfk, kappa, delta):
     :param delta: slope at higher frequencies
     """
     df = np.diff(np.concatenate((np.array([0]), f[::2])))
+<<<<<<< HEAD
     hcf = (10**log10_A * (f / const.fyr) ** ((3-gamma) / 2) *
            (1.0 + (f / 10**lfk)) ** delta /
            np.sqrt(1 + (10**lfb / f) ** kappa))
     return hcf**2 / 12 / np.pi**2 / f**3 * np.repeat(df, 2)
+=======
+    hcf = (
+        10 ** log10_A
+        * (f / const.fyr) ** ((3 - gamma) / 2)
+        * (1.0 + (f / 10 ** lfk)) ** delta
+        / np.sqrt(1 + (10 ** lfb / f) ** kappa)
+    )
+    return hcf ** 2 / 12 / np.pi ** 2 / f ** 3 * np.repeat(df, 2)
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
 
 
 @function
@@ -129,17 +179,35 @@ def broken_powerlaw(f, log10_A, gamma, delta, log10_fb, kappa=0.1):
     :param kappa: smoothness of transition (Default = 0.1)
     """
     df = np.diff(np.concatenate((np.array([0]), f[::2])))
+<<<<<<< HEAD
     hcf = (10**log10_A * (f / const.fyr) ** ((3-gamma) / 2) *
            (1 + (f / 10**log10_fb) ** (1/kappa)) **
            (kappa * (gamma - delta) / 2))
     return hcf**2 / 12 / np.pi**2 / f**3 * np.repeat(df, 2)
+=======
+    hcf = (
+        10 ** log10_A
+        * (f / const.fyr) ** ((3 - gamma) / 2)
+        * (1 + (f / 10 ** log10_fb) ** (1 / kappa)) ** (kappa * (gamma - delta) / 2)
+    )
+    return hcf ** 2 / 12 / np.pi ** 2 / f ** 3 * np.repeat(df, 2)
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
 
 
 @function
 def powerlaw_genmodes(f, log10_A=-16, gamma=5, components=2, wgts=None):
     if wgts is not None:
+<<<<<<< HEAD
         df = wgts**2
     else:
         df = np.diff(np.concatenate((np.array([0]), f[::components])))
     return ((10**log10_A)**2 / 12.0 / np.pi**2 *
             const.fyr**(gamma-3) * f**(-gamma) * np.repeat(df, components))
+=======
+        df = wgts ** 2
+    else:
+        df = np.diff(np.concatenate((np.array([0]), f[::components])))
+    return (
+        (10 ** log10_A) ** 2 / 12.0 / np.pi ** 2 * const.fyr ** (gamma - 3) * f ** (-gamma) * np.repeat(df, components)
+    )
+>>>>>>> 7e6931cbc5a819ee0bf223984eef09d963644927
