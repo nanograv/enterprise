@@ -155,3 +155,9 @@ class TestPulsarPint(TestPulsar):
 
     def test_dm(self):
         pass
+
+    def test_planetssb(self):
+        pass
+
+    def test_sunssb(self):
+        pass
