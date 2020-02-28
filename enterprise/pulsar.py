@@ -344,6 +344,9 @@ class PintPulsar(BasePulsar):
     def _get_planetssb(self):
         return np.zeros((len(self._toas), 9, 6))
 
+    def _get_sunssb(self):
+        return np.zeros((len(self._toas), 6))
+
 
 class Tempo2Pulsar(BasePulsar):
     def __init__(self, t2pulsar, sort=True, drop_t2pulsar=True, planets=True):
