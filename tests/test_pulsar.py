@@ -105,11 +105,11 @@ class TestPulsar(unittest.TestCase):
 
     def test_planetssb(self):
         """Place holder for filter_data tests."""
-        assert hasattr(self.psr, 'planetssb')
+        assert hasattr(self.psr, "planetssb")
 
     def test_sunssb(self):
         """Place holder for filter_data tests."""
-        assert hasattr(self.psr, 'sunssb')
+        assert hasattr(self.psr, "sunssb")
 
     def test_to_pickle(self):
         """Place holder for to_pickle tests."""

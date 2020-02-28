@@ -459,12 +459,9 @@ class Tempo2Pulsar(BasePulsar):
             sunssb = np.zeros((len(self._toas), 6))
             sunssb[:, :] = self.t2pulsar.sun_ssb
 
-
-            if 'ELONG' and 'ELAT' in np.concatenate((t2pulsar.pars(),
-                                                     t2pulsar.pars(
-                                                         which='set'))):
-                sunssb[:,:3] = utils.ecl2eq_vec(sunssb[:,:3])
-                sunssb[:,3:] = utils.ecl2eq_vec(sunssb[:,3:])
+            if "ELONG" and "ELAT" in np.concatenate((t2pulsar.pars(), t2pulsar.pars(which="set"))):
+                sunssb[:, :3] = utils.ecl2eq_vec(sunssb[:, :3])
+                sunssb[:, 3:] = utils.ecl2eq_vec(sunssb[:, 3:])
         return sunssb
 
 
