@@ -403,7 +403,15 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False,
 
 
 def FourierBasisCommonGP(
-    spectrum, orf, coefficients=False, combine=True, components=20, Tspan=None, modes=None, name="common_fourier", pshift=False,
+    spectrum,
+    orf,
+    coefficients=False,
+    combine=True,
+    components=20,
+    Tspan=None,
+    modes=None,
+    name="common_fourier",
+    pshift=False,
 ):
 
     if coefficients and Tspan is None:
