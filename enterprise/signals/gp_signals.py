@@ -198,11 +198,12 @@ def FourierBasisGP(
     Tspan=None,
     modes=None,
     name="red_noise",
+    pshift=False,
 ):
     """Convenience function to return a BasisGP class with a
     fourier basis."""
 
-    basis = utils.createfourierdesignmatrix_red(nmodes=components, Tspan=Tspan, modes=modes)
+    basis = utils.createfourierdesignmatrix_red(nmodes=components, Tspan=Tspan, modes=modes, pshift=False)
     BaseClass = BasisGP(spectrum, basis, coefficients=coefficients, combine=combine, selection=selection, name=name)
 
     class FourierBasisGP(BaseClass):
