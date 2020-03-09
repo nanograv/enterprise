@@ -10,7 +10,7 @@ import scipy.stats
 
 from enterprise.signals import parameter
 from enterprise.signals.parameter import function
-from enterprise import constants as const
+import enterprise.constants as const
 
 
 @function
