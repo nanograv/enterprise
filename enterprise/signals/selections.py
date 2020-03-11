@@ -129,8 +129,7 @@ def custom_backends(cb):
         flagvals = np.unique(backend_flags)
         if cb is not None:
             cb = list(np.atleast_1d(cb))
-            flagvals = filter(lambda x: any(map(lambda y: y in x, cb)),
-                              flagvals)
+            flagvals = filter(lambda x: any(map(lambda y: y in x, cb)), flagvals)
         else:
             pass
         return {flagval: backend_flags == flagval for flagval in flagvals}
