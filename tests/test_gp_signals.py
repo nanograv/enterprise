@@ -32,7 +32,7 @@ def create_quant_matrix(toas, dt=1):
 def se_kernel(etoas, log10_sigma=-7, log10_lam=np.log10(30 * 86400)):
     tm = np.abs(etoas[None, :] - etoas[:, None])
     d = np.eye(tm.shape[0]) * 10 ** (2 * (log10_sigma - 1.5))
-    return 10 ** (2 * log10_sigma) * np.exp(-tm ** 2 / 2 / 10 ** (2 * log10_lam)) + d
+    return 10 ** (2 * log10_sigma) * np.exp(-(tm ** 2) / 2 / 10 ** (2 * log10_lam)) + d
 
 
 class TestGPSignals(unittest.TestCase):
@@ -302,7 +302,7 @@ class TestGPSignals(unittest.TestCase):
 
         nf = sum(F.shape[1] for F in Fmats)
         F = np.zeros((len(self.psr.toas), nf))
-        phi = np.hstack(p for p in phis)
+        phi = np.hstack([p for p in phis])
         nftot = 0
         for ct, flag in enumerate(np.unique(bflags)):
             mask = bflags == flag
@@ -373,7 +373,9 @@ class TestGPSignals(unittest.TestCase):
                 F = F1 if nf1 > nf2 else F2
                 phi[: 2 * nf1] = p1
                 phi[: 2 * nf2] += p2
-                F[:,]  # noqa: E231
+                F[
+                    :,
+                ]  # noqa: E231
             else:
                 phi = np.concatenate((p1, p2))
                 F = np.hstack((F1, F2))
@@ -451,7 +453,7 @@ class TestGPSignals(unittest.TestCase):
             phis.append(p2)
             nf = sum(F.shape[1] for F in Fmats)
             F = np.zeros((len(self.psr.toas), nf))
-            phi = np.hstack(p for p in phis)
+            phi = np.hstack([p for p in phis])
             nftot = 0
             for ct, flag in enumerate(np.unique(bflags)):
                 mask = bflags == flag

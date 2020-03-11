@@ -15,10 +15,10 @@ from scipy.integrate import odeint
 from scipy.interpolate import interp1d
 
 import enterprise
-import enterprise.constants as const
+from enterprise import constants as const
 from enterprise.signals.parameter import function
 from enterprise.signals.gp_priors import powerlaw, turnover  # noqa: F401
-import enterprise.signals as sigs  # noqa: F401
+from enterprise import signals as sigs  # noqa: F401
 from enterprise.signals.gp_bases import (  # noqa: F401
     createfourierdesignmatrix_red,
     createfourierdesignmatrix_dm,
@@ -817,7 +817,7 @@ e_ecl = 23.43704 * np.pi / 180.0
 M_ecl = np.array([[1.0, 0.0, 0.0], [0.0, np.cos(e_ecl), -np.sin(e_ecl)], [0.0, np.sin(e_ecl), np.cos(e_ecl)]])
 
 
-def get_planet_orbital_elements(model="orbel"):
+def get_planet_orbital_elements(model="setIII"):
     """Grab physical ephemeris model files"""
     dpath = enterprise.__path__[0] + "/datafiles/ephemeris/"
 
@@ -921,7 +921,7 @@ def createfourierdesignmatrix_physicalephem(
     d_neptune_mass=7.96103855e-11,
     jup_orb_elements=0.05,
     sat_orb_elements=0.5,
-    model="orbel",
+    model="setIII",
 ):
     """
     Construct physical ephemeris perturbation design matrix and 'frequencies'.
@@ -937,7 +937,7 @@ def createfourierdesignmatrix_physicalephem(
     :param jup_orb_elements: normal sigma for Jupiter orbital elem. perturb.
     :param sat_orb_elements: normal sigma for Saturn orbital elem. perturb.
     :param model:            vector basis used by Jupiter and Saturn perturb.;
-                             see PhysicalEphemerisSignal, defaults to "orbel"
+                             see PhysicalEphemerisSignal, defaults to "setIII"
 
     :return: F: Fourier design matrix of shape (len(toas), nvecs)
     :return: sigmas: Phi sigmas (nvecs, to be passed to physicalephem_spectrum)
