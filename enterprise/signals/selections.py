@@ -126,6 +126,7 @@ def custom_backends(cb):
         use None to recover by_backend
         use ["ASP", "GASP", "GUPPI", "PUPPI"] to recover nanograv_backends
         """
+        nonlocal cb
         flagvals = np.unique(backend_flags)
         if cb is not None:
             cb = list(np.atleast_1d(cb))
