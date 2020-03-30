@@ -155,3 +155,11 @@ def powerlaw_genmodes(f, log10_A=-16, gamma=5, components=2, wgts=None):
 @function
 def infinitepower(f):
     return np.full_like(f, 1e40, dtype="d")
+
+
+@function
+def flat_powerlaw(f, log10_A=-16, gamma=5, log10_B=-10, components=2):
+    df = np.diff(np.concatenate((np.array([0]), f[::components])))
+    return (
+        (10 ** log10_A) ** 2 / 12.0 / np.pi ** 2 * const.fyr ** (gamma - 3) * f ** (-gamma) + 10 ** log10_B
+    ) * np.repeat(df, components)
