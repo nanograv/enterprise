@@ -6,7 +6,6 @@ functions for use in other modules.
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import numpy as np
-import random
 from enterprise.signals.parameter import function
 
 ######################################
@@ -72,10 +71,10 @@ def createfourierdesignmatrix_red(
     if pseed is not None:
         # Use the first toa to make a different seed for every pulsar
         seed = int(toas[0] / 17) + pseed
-        random.seed(seed)
+        np.random.seed(seed)
 
     # add random phase shift to basis functions
-    ranphase = np.array([random.uniform(0.0, 2 * np.pi) for ii in range(nmodes)]) if pshift else np.zeros(nmodes)
+    ranphase = np.random.uniform(0.0, 2 * np.pi, nmodes) if pshift else np.zeros(nmodes)
 
     Ffreqs = np.repeat(f, 2)
 
