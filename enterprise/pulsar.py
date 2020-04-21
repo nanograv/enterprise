@@ -77,9 +77,9 @@ class BasePulsar(object):
 
         if self.name[0] not in ["J", "B"]:
             if "J" + self.name in pdict:
-                pdist = tuple(pdict.get("J" + self.name))
-            elif "B" + self.name in pdict:
-                pdist = tuple(pdict.get("B" + self.name))
+                pdist = tuple(pdict.get("J" + self.name, (1.0, 0.2)))
+            else:
+                pdist = tuple(pdict.get("B" + self.name, (1.0, 0.2)))
         else:
             pdist = tuple(pdict.get(self.name, (1.0, 0.2)))
 
