@@ -23,7 +23,7 @@ __all__ = [
 
 @function
 def createfourierdesignmatrix_red(
-    toas, nmodes=30, Tspan=None, logf=False, fmin=None, fmax=None, pshift=False, modes=None
+    toas, nmodes=30, Tspan=None, logf=False, fmin=None, fmax=None, pshift=False, modes=None, pseed=None
 ):
     """
     Construct fourier design matrix from eq 11 of Lentati et al, 2013
@@ -35,6 +35,7 @@ def createfourierdesignmatrix_red(
     :param fmin: lower sampling frequency
     :param fmax: upper sampling frequency
     :param pshift: option to add random phase shift
+    :param pseed: option to provide phase shift seed
     :param modes: option to provide explicit list or array of
                   sampling frequencies
 
@@ -65,6 +66,12 @@ def createfourierdesignmatrix_red(
             f = np.logspace(np.log10(fmin), np.log10(fmax), nmodes)
         else:
             f = np.linspace(fmin, fmax, nmodes)
+
+    # Use seed to make a repeatable random phase
+    if pseed is not None:
+        # Use the first toa to make a different seed for every pulsar
+        seed = int(toas[0] / 17) + pseed
+        np.random.seed(seed)
 
     # add random phase shift to basis functions
     ranphase = np.random.uniform(0.0, 2 * np.pi, nmodes) if pshift else np.zeros(nmodes)
@@ -159,7 +166,7 @@ def createfourierdesignmatrix_env(
     # compute gaussian envelope
     A = 10 ** log10_Amp
     Q = 10 ** log10_Q * 86400
-    env = A * np.exp(-(toas - t0) ** 2 / 2 / Q ** 2)
+    env = A * np.exp(-((toas - t0) ** 2) / 2 / Q ** 2)
     return F * env[:, None], Ffreqs
 
 

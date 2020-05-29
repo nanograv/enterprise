@@ -32,7 +32,7 @@ def create_quant_matrix(toas, dt=1):
 def se_kernel(etoas, log10_sigma=-7, log10_lam=np.log10(30 * 86400)):
     tm = np.abs(etoas[None, :] - etoas[:, None])
     d = np.eye(tm.shape[0]) * 10 ** (2 * (log10_sigma - 1.5))
-    return 10 ** (2 * log10_sigma) * np.exp(-tm ** 2 / 2 / 10 ** (2 * log10_lam)) + d
+    return 10 ** (2 * log10_sigma) * np.exp(-(tm ** 2) / 2 / 10 ** (2 * log10_lam)) + d
 
 
 class TestGPSignals(unittest.TestCase):
@@ -237,6 +237,35 @@ class TestGPSignals(unittest.TestCase):
         msg = "F matrix shape incorrect"
         assert rnm.get_basis(params).shape == F.shape, msg
 
+    def test_fourier_red_noise_pshift(self):
+        """Test that red noise signal returns correct values."""
+        # set up signal parameter
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18, -12), gamma=parameter.Uniform(1, 7))
+        rn = gp_signals.FourierBasisGP(spectrum=pl, components=30, pshift=True, pseed=42)
+        rnm = rn(self.psr)
+
+        # parameters
+        log10_A, gamma = -14.5, 4.33
+        params = {"B1855+09_red_noise_log10_A": log10_A, "B1855+09_red_noise_gamma": gamma}
+
+        # basis matrix test
+        F, f2 = utils.createfourierdesignmatrix_red(self.psr.toas, nmodes=30, pshift=True, pseed=42)
+        msg = "F matrix incorrect for GP Fourier signal."
+        assert np.allclose(F, rnm.get_basis(params)), msg
+
+        # spectrum test
+        phi = utils.powerlaw(f2, log10_A=log10_A, gamma=gamma)
+        msg = "Spectrum incorrect for GP Fourier signal."
+        assert np.all(rnm.get_phi(params) == phi), msg
+
+        # inverse spectrum test
+        msg = "Spectrum inverse incorrect for GP Fourier signal."
+        assert np.all(rnm.get_phiinv(params) == 1 / phi), msg
+
+        # test shape
+        msg = "F matrix shape incorrect"
+        assert rnm.get_basis(params).shape == F.shape, msg
+
     def test_fourier_red_user_freq_array(self):
         """Test that red noise signal returns correct values with user defined
         frequency array."""
@@ -302,7 +331,7 @@ class TestGPSignals(unittest.TestCase):
 
         nf = sum(F.shape[1] for F in Fmats)
         F = np.zeros((len(self.psr.toas), nf))
-        phi = np.hstack(p for p in phis)
+        phi = np.hstack([p for p in phis])
         nftot = 0
         for ct, flag in enumerate(np.unique(bflags)):
             mask = bflags == flag
@@ -373,7 +402,9 @@ class TestGPSignals(unittest.TestCase):
                 F = F1 if nf1 > nf2 else F2
                 phi[: 2 * nf1] = p1
                 phi[: 2 * nf2] += p2
-                F[:,]  # noqa: E231
+                F[
+                    :,
+                ]  # noqa: E231
             else:
                 phi = np.concatenate((p1, p2))
                 F = np.hstack((F1, F2))
@@ -451,7 +482,7 @@ class TestGPSignals(unittest.TestCase):
             phis.append(p2)
             nf = sum(F.shape[1] for F in Fmats)
             F = np.zeros((len(self.psr.toas), nf))
-            phi = np.hstack(p for p in phis)
+            phi = np.hstack([p for p in phis])
             nftot = 0
             for ct, flag in enumerate(np.unique(bflags)):
                 mask = bflags == flag
