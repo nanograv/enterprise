@@ -198,11 +198,13 @@ def FourierBasisGP(
     Tspan=None,
     modes=None,
     name="red_noise",
+    pshift=False,
+    pseed=None,
 ):
     """Convenience function to return a BasisGP class with a
     fourier basis."""
 
-    basis = utils.createfourierdesignmatrix_red(nmodes=components, Tspan=Tspan, modes=modes)
+    basis = utils.createfourierdesignmatrix_red(nmodes=components, Tspan=Tspan, modes=modes, pshift=pshift, pseed=pseed)
     BaseClass = BasisGP(spectrum, basis, coefficients=coefficients, combine=combine, selection=selection, name=name)
 
     class FourierBasisGP(BaseClass):
@@ -402,7 +404,16 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False,
 
 
 def FourierBasisCommonGP(
-    spectrum, orf, coefficients=False, combine=True, components=20, Tspan=None, modes=None, name="common_fourier"
+    spectrum,
+    orf,
+    coefficients=False,
+    combine=True,
+    components=20,
+    Tspan=None,
+    modes=None,
+    name="common_fourier",
+    pshift=False,
+    pseed=None,
 ):
 
     if coefficients and Tspan is None:
@@ -410,7 +421,7 @@ def FourierBasisCommonGP(
             "With coefficients=True, FourierBasisCommonGP " + "requires that you specify Tspan explicitly."
         )
 
-    basis = utils.createfourierdesignmatrix_red(nmodes=components, Tspan=Tspan, modes=modes)
+    basis = utils.createfourierdesignmatrix_red(nmodes=components, Tspan=Tspan, modes=modes, pshift=pshift, pseed=pseed)
     BaseClass = BasisCommonGP(spectrum, basis, orf, coefficients=coefficients, combine=combine, name=name)
 
     class FourierBasisCommonGP(BaseClass):
@@ -523,6 +534,9 @@ def WidebandTimingModel(
             dmjump_select = dmjump_selection(psr)
             self._dmjump_keys = list(sorted(dmjump_select.masks.keys()))
             self._dmjump_masks = [dmjump_select.masks[key] for key in self._dmjump_keys]
+
+            if self._dmjump_keys == [""] and dmjump is not None:
+                raise ValueError("WidebandTimingModel: can only do DMJUMP with more than one selection.")
 
             # collect parameters
 
