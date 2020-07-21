@@ -6,7 +6,8 @@ derived from these base classes.
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import collections
-import collections.abc
+try: from collections.abc import Sequence
+except: from collections import Sequence
 import itertools
 import logging
 
@@ -221,7 +222,7 @@ class LogLikelihood(object):
 
 class PTA(object):
     def __init__(self, init, lnlikelihood=LogLikelihood):
-        if isinstance(init, collections.abc.Sequence):
+        if isinstance(init, Sequence):
             self._signalcollections = list(init)
         else:
             self._signalcollections = [init]
