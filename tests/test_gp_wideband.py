@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-test_gp_signals
+test_gp_wideband
 ----------------------------------
 
-Tests for GP signal modules.
+Tests for WidebandTimingModel.
 """
 
 

@@ -739,7 +739,7 @@ def WidebandTimingModel(
 
         # these are for debugging, but should not enter the likelihood computation
 
-        def get_delta_dm(self, params, use_mean_dm=True):  # DM - DMX
+        def get_delta_dm(self, params, use_mean_dm=False):  # DM - DMX
             delta_dm = np.zeros(self._ntoas, "d")
 
             if use_mean_dm:
@@ -751,7 +751,7 @@ def WidebandTimingModel(
 
             return delta_dm
 
-        def get_dm_chi2(self, params, use_mean_dm=True):  # 'DM' chi-sqaured
+        def get_dm_chi2(self, params, use_mean_dm=False):  # 'DM' chi-sqaured
             delta_dm = self.get_delta_dm(params, use_mean_dm=use_mean_dm)
 
             if use_mean_dm:
