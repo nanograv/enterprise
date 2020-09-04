@@ -625,7 +625,11 @@ def WidebandTimingModel(
         @property
         def delay_params(self):
             # cache parameters are all DMEFACS, DMEQUADS, and DMJUMPS
-            return [p.name for p in self._dmefacs] + [p.name for p in self._log10_dmequads] + [p.name for p in self._dmjumps]
+            return (
+                [p.name for p in self._dmefacs]
+                + [p.name for p in self._log10_dmequads]
+                + [p.name for p in self._dmjumps]
+            )
 
         @signal_base.cache_call(["delay_params"])
         def get_phi(self, params):
@@ -681,14 +685,18 @@ def WidebandTimingModel(
                 sum(
                     (params[efac.name] if efac.name in params else efac.value) * mask
                     for efac, mask in zip(self._dmefacs, self._dmefac_masks)
-                )**2
-                * self._dmerr**2 +
-                (10**sum(
-                    (params[equad.name] if equad.name in params else equad.value) * mask
-                    for equad, mask in zip(self._log10_dmequads, self._log10_dmequad_masks)
-                ))**2
-
-            )**0.5
+                )
+                ** 2
+                * self._dmerr ** 2
+                + (
+                    10
+                    ** sum(
+                        (params[equad.name] if equad.name in params else equad.value) * mask
+                        for equad, mask in zip(self._log10_dmequads, self._log10_dmequad_masks)
+                    )
+                )
+                ** 2
+            ) ** 0.5
 
         @signal_base.cache_call(["delay_params"])
         def get_mean_dm(self, params):

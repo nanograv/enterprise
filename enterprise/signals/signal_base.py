@@ -6,8 +6,11 @@ derived from these base classes.
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import collections
-try: from collections.abc import Sequence
-except: from collections import Sequence
+
+try:
+    from collections.abc import Sequence
+except:
+    from collections import Sequence
 import itertools
 import logging
 

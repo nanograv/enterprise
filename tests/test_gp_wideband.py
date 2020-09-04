@@ -39,7 +39,7 @@ class TestWidebandTimingModel(unittest.TestCase):
             dmjump=parameter.Normal(0, 1),
             dmjump_selection=Selection(selections.by_frontend),
             dmjump_ref=None,
-            name="wideband_timing_model"
+            name="wideband_timing_model",
         )
 
         model = ms + dm
@@ -62,13 +62,13 @@ class TestWidebandTimingModel(unittest.TestCase):
         assert np.all(sum(dmtiming._dmjump_masks) == 1), msg
 
         # start with zero DMEFAC, DMEQUAD, and DMJUMP
-        #p0 = {par.name: (1 if "dmefac" in par.name else 0) for par in dmtiming.params}
+        # p0 = {par.name: (1 if "dmefac" in par.name else 0) for par in dmtiming.params}
         p0 = {}
         for par in dmtiming.params:
             if "dmefac" in par.name:
                 p0[par.name] = 1.0
             elif "dmequad" in par.name:
-                p0[par.name] = -1e40 # np.inf breaks the masking trick
+                p0[par.name] = -1e40  # np.inf breaks the masking trick
             else:
                 p0[par.name] = 0.0
 
@@ -106,8 +106,11 @@ class TestWidebandTimingModel(unittest.TestCase):
         assert np.allclose(dl0, delays), msg
 
         # sample DMEFACs and DMEQUADs randomly
-        #p1 = {par.name: (parameter.sample(par)[par.name] if "dmefac" in par.name else 0) for par in dmtiming.params}
-        p1 = {par.name: (parameter.sample(par)[par.name] if "dmefac" in par.name or "dmequad" in par.name else 0) for par in dmtiming.params}
+        # p1 = {par.name: (parameter.sample(par)[par.name] if "dmefac" in par.name else 0) for par in dmtiming.params}
+        p1 = {
+            par.name: (parameter.sample(par)[par.name] if "dmefac" in par.name or "dmequad" in par.name else 0)
+            for par in dmtiming.params
+        }
 
         pta.get_lnlikelihood(params=p1)
 
@@ -123,9 +126,9 @@ class TestWidebandTimingModel(unittest.TestCase):
         for key, mask in sel.masks.items():
             dmefac = p1["J1832-0836_" + key + "_dmefac"]
             log10_dmequad = p1["J1832-0836_" + key + "_log10_dmequad"]
-            dmequad = 10**log10_dmequad
+            dmequad = 10 ** log10_dmequad
             dme_flags_var[mask] *= dmefac
-            dme_flags_var[mask] = (dme_flags_var[mask]**2 + dmequad**2)**0.5
+            dme_flags_var[mask] = (dme_flags_var[mask] ** 2 + dmequad ** 2) ** 0.5
 
         for index, par in enumerate(self.psr.fitpars):
             if "DMX" not in par:
