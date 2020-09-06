@@ -63,6 +63,9 @@ def Deterministic(waveform, selection=Selection(selections.no_selection),
 
 def PhysicalEphemerisSignal(
     frame_drift_rate=parameter.Uniform(-1e-9, 1e-9)('frame_drift_rate'),
+    d_mercury_mass=parameter.Normal(0, 1.66-10)('d_mercury_mass'),
+    d_venus_mass=parameter.Normal(0, 2.45e-9)('d_venus_mass'),
+    d_mars_mass=parameter.Normal(0, 3.23e-10)('d_mars_mass'),
     d_jupiter_mass=parameter.Normal(0, 1.54976690e-11)('d_jupiter_mass'),
     d_saturn_mass=parameter.Normal(0, 8.17306184e-12)('d_saturn_mass'),
     d_uranus_mass=parameter.Normal(0, 5.71923361e-11)('d_uranus_mass'),
@@ -70,7 +73,7 @@ def PhysicalEphemerisSignal(
     jup_orb_elements=parameter.Uniform(-0.05,0.05,size=6)('jup_orb_elements'),
     sat_orb_elements=parameter.Uniform(-0.5,0.5,size=6)('sat_orb_elements'),
     inc_jupiter_orb=True, inc_saturn_orb=False, use_epoch_toas=True,
-    name=''):  # noqa: E125,E501
+    minor_planets=False, name=''):  # noqa: E125,E501
 
     """
     Class factory for physical ephemeris model signal.
@@ -149,6 +152,9 @@ def PhysicalEphemerisSignal(
     jup_mjd, jup_orbelxyz, sat_mjd, sat_orbelxyz = (
         utils.get_planet_orbital_elements())
     wf = utils.physical_ephem_delay(frame_drift_rate=frame_drift_rate,
+                                    d_mercury_mass=d_mercury_mass,
+                                    d_venus_mass=d_venus_mass,
+                                    d_mars_mass=d_mars_mass,
                                     d_jupiter_mass=d_jupiter_mass,
                                     d_saturn_mass=d_saturn_mass,
                                     d_uranus_mass=d_uranus_mass,
@@ -160,7 +166,8 @@ def PhysicalEphemerisSignal(
                                     jup_mjd=jup_mjd,
                                     inc_saturn_orb=inc_saturn_orb,
                                     sat_orbelxyz=sat_orbelxyz,
-                                    sat_mjd=sat_mjd)
+                                    sat_mjd=sat_mjd,
+                                    minor_planets=minor_planets)
 
     BaseClass = Deterministic(wf, name=name)
 

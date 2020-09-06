@@ -1068,7 +1068,9 @@ def physical_ephem_delay(toas, planetssb, pos_t, frame_drift_rate=0,
                          d_neptune_mass=0, jup_orb_elements=np.zeros(6),
                          sat_orb_elements=np.zeros(6), inc_jupiter_orb=False,
                          jup_orbelxyz=None, jup_mjd=None, inc_saturn_orb=False,
-                         sat_orbelxyz=None, sat_mjd=None, equatorial=True):
+                         sat_orbelxyz=None, sat_mjd=None, equatorial=True,
+                         minor_planets=False, d_mercury_mass=0, d_venus_mass=0,
+                         d_mars_mass=0):
 
         # convert toas to MJD
         mjd = toas / 86400
@@ -1079,14 +1081,24 @@ def physical_ephem_delay(toas, planetssb, pos_t, frame_drift_rate=0,
         saturn = planetssb[:, 5, :3]
         uranus = planetssb[:, 6, :3]
         neptune = planetssb[:, 7, :3]
+        if minor_planets:
+            mercury = planetssb[:, 0, :3]
+            venus = planetssb[:, 1, :3]
+            mars = planetssb[:, 3, :3]
 
         # do frame rotation
         earth = ss_framerotate(mjd, earth, 0.0, 0.0, 0.0, frame_drift_rate,
                                offset=None, equatorial=equatorial)
 
         # mass perturbations
-        mpert = [(jupiter, d_jupiter_mass), (saturn, d_saturn_mass),
-                 (uranus, d_uranus_mass), (neptune, d_neptune_mass)]
+        if not minor_planets:
+            mpert = [(jupiter, d_jupiter_mass), (saturn, d_saturn_mass),
+                     (uranus, d_uranus_mass), (neptune, d_neptune_mass)]
+        else:
+            mpert = [(mercury, d_mercury_mass), (venus, d_venus_mass),
+                     (mars, d_mars_mass), (jupiter, d_jupiter_mass),
+                     (saturn, d_saturn_mass), (uranus, d_uranus_mass),
+                     (neptune, d_neptune_mass)]
         for planet, dm in mpert:
             earth += dmass(planet, dm)
 
