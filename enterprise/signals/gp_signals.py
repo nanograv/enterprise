@@ -4,8 +4,6 @@ GP signals are defined as the class of signals that have a basis
 function matrix and basis prior vector..
 """
 
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import functools
 import itertools
 import logging

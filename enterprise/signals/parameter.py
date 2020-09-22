@@ -1,8 +1,6 @@
 # parameter.py
 """Contains parameter types for use in `enterprise` ``Signal`` classes."""
 
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import functools
 import inspect
 

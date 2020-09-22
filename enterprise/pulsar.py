@@ -1,8 +1,6 @@
 # pulsar.py
-
-# Class containing pulsar data from timing package [tempo2/PINT].
-
-from __future__ import absolute_import, division, print_function, unicode_literals
+"""Class containing pulsar data from timing package [tempo2/PINT].
+"""
 
 import json
 import logging
