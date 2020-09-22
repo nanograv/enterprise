@@ -177,7 +177,7 @@ class LogLikelihood(object):
 
         # get -0.5 * (rNr + logdet_N) piece of likelihood
         # the np.sum here is needed because each pulsar returns a 2-tuple
-        loglike += -0.5 * np.sum([l for l in self.pta.get_rNr_logdet(params)])
+        loglike += -0.5 * np.sum([ell for ell in self.pta.get_rNr_logdet(params)])
 
         # get extra prior/likelihoods
         loglike += sum(self.pta.get_logsignalprior(params))
