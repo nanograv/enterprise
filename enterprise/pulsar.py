@@ -58,9 +58,9 @@ def get_maxobs(timfile):
     maxobs = 0
     with open(timfile) as tfile:
         flines = tfile.readlines()
-        lines = [ln for ln in flines if not ln.startswith('C')]
-        if any(['INCLUDE' in ln for ln in lines]):
-            for line in [x for x in lines if 'INCLUDE' in x]:
+        lines = [ln for ln in flines if not ln.startswith("C")]
+        if any(["INCLUDE" in ln for ln in lines]):
+            for line in [x for x in lines if "INCLUDE" in x]:
                 maxobs += get_maxobs(line.split()[-1])
         else:
             maxobs = sum(1 for line in lines if line.rstrip("\n"))
@@ -243,14 +243,13 @@ class BasePulsar(object):
         """
 
         nobs = len(self._toas)
-        bflags = ['flag'] * nobs
-        flags = [['group'], ['g'], ['sys'], ['i'], ['f'], ['fe', 'be']]
+        bflags = ["flag"] * nobs
+        flags = [["group"], ["g"], ["sys"], ["i"], ["f"], ["fe", "be"]]
         for ii in range(nobs):
             # TODO: make this cleaner
             for f in flags:
-                if np.all([x in self._flags and self._flags[x][ii] != ''
-                           for x in f]):
-                    bflags[ii] = '_'.join(self._flags[x][ii] for x in f)
+                if np.all([x in self._flags and self._flags[x][ii] != "" for x in f]):
+                    bflags[ii] = "_".join(self._flags[x][ii] for x in f)
                     break
         return np.array(bflags)[self._isort]
 
@@ -365,10 +364,10 @@ class Tempo2Pulsar(BasePulsar):
         self._ssbfreqs = np.double(t2pulsar.ssbfreqs()) / 1e6
 
         # fitted parameters
-        self.fitpars = ['Offset'] + [str(p) for p in t2pulsar.pars()]
+        self.fitpars = ["Offset"] + [str(p) for p in t2pulsar.pars()]
 
         # set parameters
-        spars = [str(p) for p in t2pulsar.pars(which='set')]
+        spars = [str(p) for p in t2pulsar.pars(which="set")]
         self.setpars = [sp for sp in spars if sp not in self.fitpars]
 
         self._flags = {}
@@ -481,10 +480,8 @@ def Pulsar(*args, **kwargs):
     if t2 is not None:
         t2pulsar = [x for x in args if isinstance(x, t2.tempopulsar)]
 
-    parfile = [x for x in args
-               if isinstance(x, str) and x.split('.')[-1] == 'par']
-    timfile = [x for x in args
-               if isinstance(x, str) and x.split('.')[-1] in ['tim', 'toa']]
+    parfile = [x for x in args if isinstance(x, str) and x.split(".")[-1] == "par"]
+    timfile = [x for x in args if isinstance(x, str) and x.split(".")[-1] in ["tim", "toa"]]
 
     if pint and toas and model:
         return PintPulsar(toas[0], model[0], sort=sort, planets=planets)

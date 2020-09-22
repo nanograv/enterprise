@@ -475,8 +475,7 @@ def Function(func, name="", **func_kwargs):
             return sum([par.params for par in self._params.values() if not isinstance(par, ConstantParameter)], [])
 
         def __repr__(self):
-            return '{}({})'.format(self.name,
-                                   ', '.join([str(p) for p in self.params]))
+            return "{}({})".format(self.name, ", ".join([str(p) for p in self.params]))
 
     return Function
 
