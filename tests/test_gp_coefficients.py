@@ -10,7 +10,6 @@ Tests for GP signals used with deterministic coefficients.
 
 
 import logging
-import math
 import unittest
 
 import numpy as np
@@ -191,7 +190,7 @@ class TestGPCoefficients(unittest.TestCase):
 
         # np.array cast is needed because we get a KernelArray
         phimat = np.array(rnm.get_phi(params))
-        pr1 = -0.5 * np.sum(cf * cf / phimat) - 0.5 * np.sum(np.log(phimat)) - 0.5 * len(phimat) * np.log(2 * math.pi)
+        pr1 = -0.5 * np.sum(cf * cf / phimat) - 0.5 * np.sum(np.log(phimat)) - 0.5 * len(phimat) * np.log(2 * np.pi)
 
         cpar = [p for p in rnmc.params if "coefficients" in p.name][0]
         pr2 = cpar.get_logpdf(params=params)

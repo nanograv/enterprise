@@ -7,7 +7,6 @@ function matrix and basis prior vector..
 import functools
 import itertools
 import logging
-import math
 
 import numpy as np
 
@@ -121,12 +120,12 @@ def BasisGP(
                 phi = self._prior[key](self._labels[key], params=params)
 
                 if phi.ndim == 1:
-                    return -0.5 * np.sum(c * c / phi) - 0.5 * np.sum(np.log(phi)) - 0.5 * len(phi) * np.log(2 * math.pi)
+                    return -0.5 * np.sum(c * c / phi) - 0.5 * np.sum(np.log(phi)) - 0.5 * len(phi) * np.log(2 * np.pi)
                     # note: (2*pi)^(n/2) is not in signal_base likelihood
                 else:
                     # TO DO: this code could be embedded in KernelMatrix
                     phiinv, logdet = KernelMatrix(phi).inv(logdet=True)
-                    return -0.5 * np.dot(c, np.dot(phiinv, c)) - 0.5 * logdet - 0.5 * phi.shape[0] * np.log(2 * math.pi)
+                    return -0.5 * np.dot(c, np.dot(phiinv, c)) - 0.5 * logdet - 0.5 * phi.shape[0] * np.log(2 * np.pi)
 
             # MV: could assign this to a data member at initialization
             @property
@@ -705,7 +704,7 @@ def WidebandTimingModel(
             expterm += 0.5 * sum(mean_dm[which][0] ** 2 / mean_dme[which][0] ** 2 for which in self._dmwhich)
 
             # sum_i [-0.5 * log(dmerr**2)] = -sum_i log dmerr; same for mean_dmerr
-            logterm = -np.sum(np.log(dme)) + sum(math.log(mean_dme[which][0]) for which in self._dmwhich)
+            logterm = -np.sum(np.log(dme)) + sum(np.log(mean_dme[which][0]) for which in self._dmwhich)
 
             return expterm + logterm
 
