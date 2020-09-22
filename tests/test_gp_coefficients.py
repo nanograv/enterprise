@@ -11,7 +11,6 @@ Tests for GP signals used with deterministic coefficients.
 
 import logging
 import math
-import platform
 import unittest
 
 import numpy as np

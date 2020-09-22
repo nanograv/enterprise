@@ -8,7 +8,6 @@ import functools
 import itertools
 import logging
 import math
-import platform
 
 import numpy as np
 
