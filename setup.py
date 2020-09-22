@@ -3,10 +3,10 @@
 
 from setuptools import setup
 
-with open('README.rst') as readme_file:
+with open("README.rst") as readme_file:
     readme = readme_file.read()
 
-with open('HISTORY.rst') as history_file:
+with open("HISTORY.rst") as history_file:
     history = history_file.read()
 
 requirements = [
@@ -20,25 +20,18 @@ setup(
     name='enterprise',
     version='3.0.0',
     description="ENTERPRISE (Enhanced Numerical Toolbox Enabling a Robust PulsaR Inference SuitE)",
-    long_description=readme + '\n\n' + history,
+    long_description=readme + "\n\n" + history,
     author="Justin A. Ellis",
-    author_email='justin.ellis18@gmail.com',
-    url='https://github.com/nanograv/enterprise',
-    packages=[
-        'enterprise',
-        'enterprise.signals'
-    ],
-    package_dir={'enterprise':
-                 'enterprise'},
+    author_email="justin.ellis18@gmail.com",
+    url="https://github.com/nanograv/enterprise",
+    packages=["enterprise", "enterprise.signals"],
+    package_dir={"enterprise": "enterprise"},
     include_package_data=True,
-    package_data={'enterprise':['datafiles/*',
-                                'datafiles/ephemeris/*',
-                                'datafiles/ng9/*',
-                                'datafiles/mdc_open1/*']},
+    package_data={"enterprise": ["datafiles/*", "datafiles/ephemeris/*", "datafiles/ng9/*", "datafiles/mdc_open1/*"]},
     install_requires=requirements,
     license="MIT license",
     zip_safe=False,
-    keywords='enterprise',
+    keywords="enterprise",
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
@@ -52,6 +45,6 @@ setup(
         'Topic :: Scientific/Engineering :: Astronomy',
         'Topic :: Scientific/Engineering :: Physics',
     ],
-    test_suite='tests',
-    tests_require=test_requirements
+    test_suite="tests",
+    tests_require=test_requirements,
 )

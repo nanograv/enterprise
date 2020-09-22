@@ -1,0 +1,17 @@
+[flake8]
+max-line-length = 120
+max-complexity = 45
+ignore =
+  E203
+  W503      # line break before binary operator; conflicts with black
+  E722      # bare except ok
+  E731      # lambda expressions ok
+exclude =
+    .git
+    .tox
+    __pycache__
+    build
+    dist
+    docs
+    .enterprise
+    enterprise/src
