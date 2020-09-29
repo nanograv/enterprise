@@ -4,8 +4,6 @@ Depends on numpy for base mathematical constants, and
 scipy.constants for physical constants.
 """
 
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import numpy as np
 import scipy.constants as sc
 

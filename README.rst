@@ -17,13 +17,14 @@ enterprise
 .. image:: https://coveralls.io/repos/github/nanograv/enterprise/badge.svg?branch=master
     :target: https://coveralls.io/github/nanograv/enterprise?branch=master
     
-.. image:: https://img.shields.io/badge/python-2.7%2C%203.5%2C%203.6-blue.svg
+.. image:: https://img.shields.io/badge/python-3.5%2C%203.6%2C%203.7-blue.svg
 
 
 ENTERPRISE (Enhanced Numerical Toolbox Enabling a Robust PulsaR Inference SuitE)
 is a pulsar timing analysis code, aimed at noise analysis, gravitational-wave
 searches, and timing model analysis.
 
+* Note: `enterprise >= 3.0` does not support `Python2.7`.  You must use `Python >= 3.5`.
 
 * Free software: MIT license
 * Documentation: https://enterprise.readthedocs.io.
