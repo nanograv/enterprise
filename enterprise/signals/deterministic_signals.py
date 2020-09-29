@@ -66,8 +66,9 @@ def PhysicalEphemerisSignal(
     d_neptune_mass=parameter.Normal(0, 7.96103855e-11)('d_neptune_mass'),
     jup_orb_elements=parameter.Uniform(-0.05,0.05,size=6)('jup_orb_elements'),
     sat_orb_elements=parameter.Uniform(-0.5,0.5,size=6)('sat_orb_elements'),
-    inc_jupiter_orb=True, inc_saturn_orb=False, use_epoch_toas=True,
-    minor_planets=False, name=''):  # noqa: E125,E501
+    model="setIII",
+    use_epoch_toas=True,
+    name=""):  # noqa: E125,E501
 
     """
     Class factory for physical ephemeris model signal.
@@ -126,30 +127,23 @@ def PhysicalEphemerisSignal(
         Default: True
     """
 
-    # turn off saturn orbital element parameters if not including in signal
-    if not inc_saturn_orb:
-        sat_orb_elements = np.zeros(6)
+    times, jup_orbit, sat_orbit = utils.get_planet_orbital_elements(model)
 
-    # define waveform
-    jup_mjd, jup_orbelxyz, sat_mjd, sat_orbelxyz = (
-        utils.get_planet_orbital_elements())
-    wf = utils.physical_ephem_delay(frame_drift_rate=frame_drift_rate,
-                                    d_mercury_mass=d_mercury_mass,
-                                    d_venus_mass=d_venus_mass,
-                                    d_mars_mass=d_mars_mass,
-                                    d_jupiter_mass=d_jupiter_mass,
-                                    d_saturn_mass=d_saturn_mass,
-                                    d_uranus_mass=d_uranus_mass,
-                                    d_neptune_mass=d_neptune_mass,
-                                    jup_orb_elements=jup_orb_elements,
-                                    sat_orb_elements=sat_orb_elements,
-                                    inc_jupiter_orb=inc_jupiter_orb,
-                                    jup_orbelxyz=jup_orbelxyz,
-                                    jup_mjd=jup_mjd,
-                                    inc_saturn_orb=inc_saturn_orb,
-                                    sat_orbelxyz=sat_orbelxyz,
-                                    sat_mjd=sat_mjd,
-                                    minor_planets=minor_planets)
+    wf = utils.physical_ephem_delay(
+        frame_drift_rate=frame_drift_rate,
+        d_mercury_mass=d_mercury_mass,
+        d_venus_mass=d_venus_mass,
+        d_mars_mass=d_mars_mass,
+        d_jupiter_mass=d_jupiter_mass,
+        d_saturn_mass=d_saturn_mass,
+        d_uranus_mass=d_uranus_mass,
+        d_neptune_mass=d_neptune_mass,
+        jup_orb_elements=jup_orb_elements,
+        sat_orb_elements=sat_orb_elements,
+        times=times,
+        jup_orbit=jup_orbit,
+        sat_orbit=sat_orbit,
+    )
 
     BaseClass = Deterministic(wf, name=name)
 
