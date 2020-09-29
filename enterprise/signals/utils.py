@@ -904,63 +904,143 @@ def dmass(planet, dm_over_Msun):
 
 
 @function
-def physical_ephem_delay(toas, planetssb, pos_t, frame_drift_rate=0,
-                         d_jupiter_mass=0, d_saturn_mass=0, d_uranus_mass=0,
-                         d_neptune_mass=0, jup_orb_elements=np.zeros(6),
-                         sat_orb_elements=np.zeros(6), inc_jupiter_orb=False,
-                         jup_orbelxyz=None, jup_mjd=None, inc_saturn_orb=False,
-                         sat_orbelxyz=None, sat_mjd=None, equatorial=True,
-                         minor_planets=False, d_mercury_mass=0, d_venus_mass=0,
-                         d_mars_mass=0):
+def physicalephem_spectrum(sigmas):
+    # note the creative use of the "labels" (the very sigmas, not frequencies)
+    return sigmas ** 2
 
-        # convert toas to MJD
-        mjd = toas / 86400
 
-        # grab planet-to-SSB vectors
-        earth = planetssb[:, 2, :3]
-        jupiter = planetssb[:, 4, :3]
-        saturn = planetssb[:, 5, :3]
-        uranus = planetssb[:, 6, :3]
-        neptune = planetssb[:, 7, :3]
-        if minor_planets:
-            mercury = planetssb[:, 0, :3]
-            venus = planetssb[:, 1, :3]
-            mars = planetssb[:, 3, :3]
+@function
+def createfourierdesignmatrix_physicalephem(
+    toas,
+    planetssb,
+    pos_t,
+    frame_drift_rate=1e-9,
+    d_jupiter_mass=1.54976690e-11,
+    d_saturn_mass=8.17306184e-12,
+    d_uranus_mass=5.71923361e-11,
+    d_neptune_mass=7.96103855e-11,
+    jup_orb_elements=0.05,
+    sat_orb_elements=0.5,
+    model="setIII",
+):
+    """
+    Construct physical ephemeris perturbation design matrix and 'frequencies'.
+    Parameters can be excluded by setting the corresponding prior sigma to None
+    :param toas:             vector of time series in seconds
+    :param pos:              pulsar position as Cartesian vector
+    :param frame_drift_rate: normal sigma for frame drift rate
+    :param d_jupiter_mass:   normal sigma for Jupiter mass perturbation
+    :param d_saturn_mass:    normal sigma for Saturn mass perturbation
+    :param d_uranus_mass:    normal sigma for Uranus mass perturbation
+    :param d_neptune_mass:   normal sigma for Neptune mass perturbation
+    :param jup_orb_elements: normal sigma for Jupiter orbital elem. perturb.
+    :param sat_orb_elements: normal sigma for Saturn orbital elem. perturb.
+    :param model:            vector basis used by Jupiter and Saturn perturb.;
+                             see PhysicalEphemerisSignal, defaults to "setIII"
+    :return: F: Fourier design matrix of shape (len(toas), nvecs)
+    :return: sigmas: Phi sigmas (nvecs, to be passed to physicalephem_spectrum)
+    """
 
-        # do frame rotation
-        earth = ss_framerotate(mjd, earth, 0.0, 0.0, 0.0, frame_drift_rate,
-                               offset=None, equatorial=equatorial)
+    # Jupiter + Saturn orbit definitions that we pass to physical_ephem_delay
+    oa = {}
+    (oa["times"], oa["jup_orbit"], oa["sat_orbit"]) = get_planet_orbital_elements(model)
 
-        # mass perturbations
-        if not minor_planets:
-            mpert = [(jupiter, d_jupiter_mass), (saturn, d_saturn_mass),
-                     (uranus, d_uranus_mass), (neptune, d_neptune_mass)]
-        else:
-            mpert = [(mercury, d_mercury_mass), (venus, d_venus_mass),
-                     (mars, d_mars_mass), (jupiter, d_jupiter_mass),
-                     (saturn, d_saturn_mass), (uranus, d_uranus_mass),
-                     (neptune, d_neptune_mass)]
-        for planet, dm in mpert:
-            earth += dmass(planet, dm)
+    dpar = 1e-5  # may need finessing
+    Fl, Phil = [], []
 
-        # jupter orbital element perturbations
-        if inc_jupiter_orb:
-            jup_perturb_tmp = 0.0009547918983127075 * np.einsum(
-                'i,ijk->jk', jup_orb_elements, jup_orbelxyz)
-            earth += np.array([np.interp(mjd, jup_mjd, jup_perturb_tmp[:,aa])
-                               for aa in range(3)]).T
+    for parname in [
+        "frame_drift_rate",
+        "d_jupiter_mass",
+        "d_saturn_mass",
+        "d_uranus_mass",
+        "d_neptune_mass",
+        "jup_orb_elements",
+        "sat_orb_elements",
+    ]:
 
-        # saturn orbital element perturbations
-        if inc_saturn_orb:
-            sat_perturb_tmp = 0.00028588567008942334 * np.einsum(
-                'i,ijk->jk', sat_orb_elements, sat_orbelxyz)
-            earth += np.array([np.interp(mjd, sat_mjd, sat_perturb_tmp[:,aa])
-                               for aa in range(3)]).T
+        ppar = locals()[parname]
+        if ppar:
+            if parname not in ["jup_orb_elements", "sat_orb_elements"]:
+                # need to normalize?
+                Fl.append(physical_ephem_delay(toas, planetssb, pos_t, **{parname: dpar}) / dpar)
+                Phil.append(ppar)
+            else:
+                for i in range(6):
+                    c = np.zeros(6)
+                    c[i] = dpar
 
-        # construct the true geocenter to barycenter roemer
-        tmp_roemer = np.einsum('ij,ij->i', planetssb[:, 2, :3], pos_t)
+                    # Fl.append(physical_ephem_delay(toas, planetssb, pos_t,
+                    #                               **{parname: c}, **oa)/dpar)
+                    kwarg_dict = {parname: c}
+                    kwarg_dict.update(oa)
+                    Fl.append(physical_ephem_delay(toas, planetssb, pos_t, **kwarg_dict) / dpar)
 
-        # create the delay
-        delay = tmp_roemer - np.einsum('ij,ij->i', earth, pos_t)
+                    Phil.append(ppar)
 
-        return delay
+    return np.array(Fl).T.copy(), np.array(Phil)
+
+
+@function
+def physical_ephem_delay(
+    toas,
+    planetssb,
+    pos_t,
+    frame_drift_rate=0,
+    d_mercury_mass=0,
+    d_venus_mass=0,
+    d_mars_mass=0,
+    d_jupiter_mass=0,
+    d_saturn_mass=0,
+    d_uranus_mass=0,
+    d_neptune_mass=0,
+    jup_orb_elements=np.zeros(6, "d"),
+    sat_orb_elements=np.zeros(6, "d"),
+    times=None,
+    jup_orbit=None,
+    sat_orbit=None,
+    equatorial=True,
+):
+
+    # convert toas to MJD
+    mjd = toas / 86400
+
+    # grab planet-to-SSB vectors
+    mercury = planetssb[:, 0, :3]
+    venus = planetssb[:, 1, :3]
+    earth = planetssb[:, 2, :3]
+    mars = planetssb[:, 3, :3]
+    jupiter = planetssb[:, 4, :3]
+    saturn = planetssb[:, 5, :3]
+    uranus = planetssb[:, 6, :3]
+    neptune = planetssb[:, 7, :3]
+
+    # do frame rotation
+    earth = ss_framerotate(mjd, earth, 0.0, 0.0, 0.0, frame_drift_rate, offset=None, equatorial=equatorial)
+
+    # mass perturbations
+    mpert = [(mercury, d_mercury_mass), (venus, d_venus_mass),
+             (mars, d_mars_mass), (jupiter, d_jupiter_mass),
+             (saturn, d_saturn_mass), (uranus, d_uranus_mass),
+             (neptune, d_neptune_mass)]
+    for planet, dm in mpert:
+        earth += dmass(planet, dm)
+
+    # Jupiter orbit perturbation
+    if np.any(jup_orb_elements):
+        tmp = 0.0009547918983127075 * np.einsum("i,ijk->jk", jup_orb_elements, jup_orbit)
+
+        earth += np.array([np.interp(mjd, times, tmp[:, aa]) for aa in range(3)]).T
+
+    # Saturn orbit perturbation
+    if np.any(sat_orb_elements):
+        tmp = 0.00028588567008942334 * np.einsum("i,ijk->jk", sat_orb_elements, sat_orbit)
+
+        earth += np.array([np.interp(mjd, times, tmp[:, aa]) for aa in range(3)]).T
+
+    # construct the true geocenter to barycenter roemer
+    tmp_roemer = np.einsum("ij,ij->i", planetssb[:, 2, :3], pos_t)
+
+    # create the delay
+    delay = tmp_roemer - np.einsum("ij,ij->i", earth, pos_t)
+
+    return delay
