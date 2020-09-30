@@ -2,26 +2,24 @@
 enterprise
 ===============================
 
-
 .. image:: https://img.shields.io/travis/nanograv/enterprise.svg
         :target: https://travis-ci.org/nanograv/enterprise
-
+        :alt: Build Status
 .. image:: https://readthedocs.org/projects/enterprise/badge/?version=latest
         :target: https://enterprise.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
-
 .. image:: https://landscape.io/github/nanograv/enterprise/master/landscape.svg?style=flat
         :target: https://landscape.io/github/nanograv/enterprise/master
         :alt: Code Health
-
 .. image:: https://coveralls.io/repos/github/nanograv/enterprise/badge.svg?branch=master
         :target: https://coveralls.io/github/nanograv/enterprise?branch=master
-    
+        :alt: Test Coverage
 .. image:: https://img.shields.io/badge/python-3.5%2C%203.6%2C%203.7-blue.svg
+        :alt: Python Versions
 
 .. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.4059815.svg
-   :target: https://doi.org/10.5281/zenodo.4059815
-
+       :target: https://doi.org/10.5281/zenodo.4059815
+       :alt: Zenodo DOI 4059815
 
 ENTERPRISE (Enhanced Numerical Toolbox Enabling a Robust PulsaR Inference SuitE)
 is a pulsar timing analysis code, aimed at noise analysis, gravitational-wave
