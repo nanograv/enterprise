@@ -56,16 +56,16 @@ def Deterministic(waveform, selection=Selection(selections.no_selection), name="
 
 
 def PhysicalEphemerisSignal(
-    frame_drift_rate=parameter.Uniform(-1e-9, 1e-9)('frame_drift_rate'),
-    d_mercury_mass=parameter.Normal(0, 1.66-10)('d_mercury_mass'),
-    d_venus_mass=parameter.Normal(0, 2.45e-9)('d_venus_mass'),
-    d_mars_mass=parameter.Normal(0, 3.23e-10)('d_mars_mass'),
-    d_jupiter_mass=parameter.Normal(0, 1.54976690e-11)('d_jupiter_mass'),
-    d_saturn_mass=parameter.Normal(0, 8.17306184e-12)('d_saturn_mass'),
-    d_uranus_mass=parameter.Normal(0, 5.71923361e-11)('d_uranus_mass'),
-    d_neptune_mass=parameter.Normal(0, 7.96103855e-11)('d_neptune_mass'),
-    jup_orb_elements=parameter.Uniform(-0.05,0.05,size=6)('jup_orb_elements'),
-    sat_orb_elements=parameter.Uniform(-0.5,0.5,size=6)('sat_orb_elements'),
+    frame_drift_rate=0,
+    d_mercury_mass=0,
+    d_venus_mass=0,
+    d_mars_mass=0,
+    d_jupiter_mass=0,
+    d_saturn_mass=0,
+    d_uranus_mass=0,
+    d_neptune_mass=0,
+    jup_orb_elements=0,
+    sat_orb_elements=0,
     model="setIII",
     use_epoch_toas=True,
     name=""):  # noqa: E125,E501
@@ -89,6 +89,18 @@ def PhysicalEphemerisSignal(
     :param frame_drift_rate:
         ecliptic z-drift rate in units of rad/year referred to offset 1/1/2010.
         Default prior is Uniform(-1e-9, 1e-9).
+
+    :param d_mercury_mass:
+        Mass deviation of Mercury in solar masses. Default prior taken from
+        IAU mass measurement uncertainty - Normal(0, 1.66-10)
+
+    :param d_venus_mass:
+        Mass deviation of Venus in solar masses. Default prior taken from
+        IAU mass measurement uncertainty - Normal(0, 2.45e-9)
+
+    :param d_mars_mass:
+        Mass deviation of Mars in solar masses. Default prior taken from
+        IAU mass measurement uncertainty - Normal(0, 3.23e-10)
 
     :param d_jupiter_mass:
         Mass deviation of Jupiter in solar masses. Default prior taken from
