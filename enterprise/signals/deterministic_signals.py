@@ -64,8 +64,13 @@ def PhysicalEphemerisSignal(
     d_saturn_mass=0,
     d_uranus_mass=0,
     d_neptune_mass=0,
+    mer_orb_elements=0,
+    ven_orb_elements=0,
+    mar_orb_elements=0,
     jup_orb_elements=0,
     sat_orb_elements=0,
+    ura_orb_elements=0,
+    nep_orb_elements=0,
     model="setIII",
     use_epoch_toas=True,
     name=""):  # noqa: E125,E501
@@ -139,7 +144,9 @@ def PhysicalEphemerisSignal(
         Default: True
     """
 
-    times, jup_orbit, sat_orbit = utils.get_planet_orbital_elements(model)
+    times, mer_orbit, ven_orbit, \
+    mar_orbit, jup_orbit, sat_orbit, \
+    ura_orbit, nep_orbit = utils.get_planet_orbital_elements(model)
 
     wf = utils.physical_ephem_delay(
         frame_drift_rate=frame_drift_rate,
@@ -150,11 +157,21 @@ def PhysicalEphemerisSignal(
         d_saturn_mass=d_saturn_mass,
         d_uranus_mass=d_uranus_mass,
         d_neptune_mass=d_neptune_mass,
+        mer_orb_elements=mer_orb_elements,
+        ven_orb_elements=ven_orb_elements,
+        mar_orb_elements=mar_orb_elements,
         jup_orb_elements=jup_orb_elements,
         sat_orb_elements=sat_orb_elements,
+        ura_orb_elements=ura_orb_elements,
+        nep_orb_elements=nep_orb_elements,
         times=times,
+        mer_orbit=mer_orbit,
+        ven_orbit=ven_orbit,
+        mar_orbit=mar_orbit,
         jup_orbit=jup_orbit,
         sat_orbit=sat_orbit,
+        ura_orbit=ura_orbit,
+        nep_orbit=nep_orbit,
     )
 
     BaseClass = Deterministic(wf, name=name)

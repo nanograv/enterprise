@@ -6,6 +6,8 @@ functions for use in other modules.
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import os
+import warnings
 import numpy as np
 import scipy.linalg as sl
 import scipy.sparse as sps
@@ -33,6 +35,18 @@ try:
 except:
     print("You'll need sksparse for get_coefficients() with common signals!")
 
+
+# Inverse planet masses in Solar-mass units
+# Reference 1: Vallisneri et al. (2020), ApJ, 893(2), 112. GitHub: https://github.com/nanograv/bayes_ephem_project/.
+# Reference 2: IAU standard masses and uncertainties from http://maia.usno.navy.mil/NSFA/NSFA_cbe.html (link currently not working)
+MMe = 6.023657330e6
+MVe = 4.08523719e5
+MMa = 3.09870359e6
+MJu = 1.047348644e3
+MSa = 3.4979018e3
+MUr = 2.2902951e4
+MNe = 1.941226e4
+perturbed_planets = ['mercury','venus','mars','jupiter','saturn','uranus','neptune']
 
 def get_coefficients(pta, params, n=1, phiinv_method="cliques", common_sparse=False):
     ret = []
@@ -821,11 +835,19 @@ def get_planet_orbital_elements(model="setIII"):
     """Grab physical ephemeris model files"""
     dpath = enterprise.__path__[0] + "/datafiles/ephemeris/"
 
-    return (
-        np.load(dpath + "/jupiter-" + model + "-mjd.npy"),
-        np.load(dpath + "/jupiter-" + model + "-xyz-svd.npy"),
-        np.load(dpath + "/saturn-" + model + "-xyz-svd.npy"),
-    )
+    elements = ()
+    elements += (np.load(dpath + "/" + model + "-mjd.npy"), )
+    for pl_name in perturbed_planets:
+      orb_file = dpath + "/" + pl_name + "-" + model + "-xyz-svd.npy"
+      if os.path.exists(orb_file):
+        el = np.load(orb_file)
+      else:
+        warnings.warn("Orbital file is not available: " + orb_file)
+        el = None
+        
+      elements += (el,)
+
+    return elements
 
 
 def ecl2eq_vec(x):
@@ -993,11 +1015,21 @@ def physical_ephem_delay(
     d_saturn_mass=0,
     d_uranus_mass=0,
     d_neptune_mass=0,
+    mer_orb_elements=np.zeros(6, "d"),
+    ven_orb_elements=np.zeros(6, "d"),
+    mar_orb_elements=np.zeros(6, "d"),
     jup_orb_elements=np.zeros(6, "d"),
     sat_orb_elements=np.zeros(6, "d"),
+    ura_orb_elements=np.zeros(6, "d"),
+    nep_orb_elements=np.zeros(6, "d"),
     times=None,
+    mer_orbit=None,
+    ven_orbit=None,
+    mar_orbit=None,
     jup_orbit=None,
     sat_orbit=None,
+    ura_orbit=None,
+    nep_orbit=None,
     equatorial=True,
 ):
 
@@ -1025,17 +1057,19 @@ def physical_ephem_delay(
     for planet, dm in mpert:
         earth += dmass(planet, dm)
 
-    # Jupiter orbit perturbation
-    if np.any(jup_orb_elements):
-        tmp = 0.0009547918983127075 * np.einsum("i,ijk->jk", jup_orb_elements, jup_orbit)
+    # Orbit perturbations
+    orbpert = [mer_orb_elements, ven_orb_elements, mar_orb_elements, 
+               jup_orb_elements, sat_orb_elements, ura_orb_elements, 
+               nep_orb_elements]
+    plorb = [mer_orbit, ven_orbit, mar_orbit, jup_orbit, 
+             sat_orbit, ura_orbit, nep_orbit]
+    inv_mass = [MMe, MVe, MMa, MJu, MSa, MUr, MNe]
 
-        earth += np.array([np.interp(mjd, times, tmp[:, aa]) for aa in range(3)]).T
-
-    # Saturn orbit perturbation
-    if np.any(sat_orb_elements):
-        tmp = 0.00028588567008942334 * np.einsum("i,ijk->jk", sat_orb_elements, sat_orbit)
-
-        earth += np.array([np.interp(mjd, times, tmp[:, aa]) for aa in range(3)]).T
+    for orp, plo, inm in zip(orbpert, plorb, inv_mass):
+      if np.any(orp):
+        tmp = 1. / inm * np.einsum("i,ijk->jk", orp, plo)
+        earth += np.array([np.interp(mjd, times, tmp[:, aa]) \
+                           for aa in range(3)]).T
 
     # construct the true geocenter to barycenter roemer
     tmp_roemer = np.einsum("ij,ij->i", planetssb[:, 2, :3], pos_t)
