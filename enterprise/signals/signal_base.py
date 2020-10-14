@@ -181,7 +181,7 @@ class LogLikelihood(object):
 
         # get -0.5 * (rNr + logdet_N) piece of likelihood
         # the np.sum here is needed because each pulsar returns a 2-tuple
-        loglike += -0.5 * np.sum([l for l in self.pta.get_rNr_logdet(params)])
+        loglike += -0.5 * np.sum([ell for ell in self.pta.get_rNr_logdet(params)])
 
         # get extra prior/likelihoods
         loglike += sum(self.pta.get_logsignalprior(params))
@@ -614,7 +614,7 @@ class PTA(object):
         # map parameter vector if needed
         params = params if isinstance(params, dict) else self.map_params(params)
 
-        return np.sum(p.get_logpdf(params=params) for p in self.params)
+        return np.sum([p.get_logpdf(params=params) for p in self.params])
 
     @property
     def pulsars(self):
@@ -785,7 +785,7 @@ def SignalCollection(metasignals):
                             cc += 1
                 elif Fmat is not None and signal.basis_params:
                     nf = Fmat.shape[1]
-                    idx[signal] = list(np.arange(cc, cc + nf))
+                    idx[signal] = list(range(cc, cc + nf))
                     cc += nf
 
             if not idx:
