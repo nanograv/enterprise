@@ -4,13 +4,9 @@ GP signals are defined as the class of signals that have a basis
 function matrix and basis prior vector..
 """
 
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import functools
 import itertools
 import logging
-import math
-import platform
 
 import numpy as np
 
@@ -18,8 +14,6 @@ from enterprise.signals import parameter, selections, signal_base, utils
 from enterprise.signals.parameter import function
 from enterprise.signals.selections import Selection
 from enterprise.signals.utils import KernelMatrix
-
-pyv3 = platform.python_version().split(".")[0] == "3"
 
 logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -46,14 +40,11 @@ def BasisGP(
             super(BasisGP, self).__init__(psr)
             self.name = self.psrname + "_" + self.signal_id
             self._do_selection(psr, priorFunction, basisFunction, coefficients, selection)
-            if coefficients and not pyv3:
-                msg = "GP coefficients compatible only with Python 3"
-                logger.warning(msg)
 
         def _do_selection(self, psr, priorfn, basisfn, coefficients, selection):
             sel = selection(psr)
 
-            self._keys = list(sorted(sel.masks.keys()))
+            self._keys = sorted(sel.masks.keys())
             self._masks = [sel.masks[key] for key in self._keys]
             self._prior, self._bases = {}, {}
             self._params, self._coefficients = {}, {}
@@ -68,7 +59,7 @@ def BasisGP(
                 for par in itertools.chain(self._prior[key]._params.values(), self._bases[key]._params.values()):
                     self._params[par.name] = par
 
-            if coefficients and pyv3:
+            if coefficients:
                 # we can only create GPCoefficients parameters if the basis
                 # can be constructed with default arguments
                 # (and does not change size)
@@ -121,7 +112,7 @@ def BasisGP(
         # this class does different things (and gets different method
         # definitions) if the user wants it to model GP coefficients
         # (e.g., for a hierarchical likelihood) or if they do not
-        if coefficients and pyv3:
+        if coefficients:
 
             def _get_coefficient_logprior(self, key, c, **params):
                 self._construct_basis(params)
@@ -129,12 +120,12 @@ def BasisGP(
                 phi = self._prior[key](self._labels[key], params=params)
 
                 if phi.ndim == 1:
-                    return -0.5 * np.sum(c * c / phi) - 0.5 * np.sum(np.log(phi)) - 0.5 * len(phi) * np.log(2 * math.pi)
+                    return -0.5 * np.sum(c * c / phi) - 0.5 * np.sum(np.log(phi)) - 0.5 * len(phi) * np.log(2 * np.pi)
                     # note: (2*pi)^(n/2) is not in signal_base likelihood
                 else:
                     # TO DO: this code could be embedded in KernelMatrix
                     phiinv, logdet = KernelMatrix(phi).inv(logdet=True)
-                    return -0.5 * np.dot(c, np.dot(phiinv, c)) - 0.5 * logdet - 0.5 * phi.shape[0] * np.log(2 * math.pi)
+                    return -0.5 * np.dot(c, np.dot(phiinv, c)) - 0.5 * logdet - 0.5 * phi.shape[0] * np.log(2 * np.pi)
 
             # MV: could assign this to a data member at initialization
             @property
@@ -238,7 +229,7 @@ def TimingModel(coefficients=False, name="linear_timing_model", use_svd=False, n
         signal_name = "linear timing model"
         signal_id = name + "_svd" if use_svd else name
 
-        if coefficients and pyv3:
+        if coefficients:
 
             def _get_coefficient_logprior(self, key, c, **params):
                 # MV: probably better to avoid this altogether
@@ -304,7 +295,7 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False,
 
             self._psrpos = psr.pos
 
-            if coefficients and pyv3:
+            if coefficients:
                 self._construct_basis()
 
                 # if we're given an instantiated coefficient vector
@@ -338,7 +329,7 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False,
         def _construct_basis(self, params={}):
             self._basis, self._labels = self._bases(params=params)
 
-        if coefficients and pyv3:
+        if coefficients:
 
             def _get_coefficient_logprior(self, c, **params):
                 # MV: for correlated GPs, the prior needs to use
@@ -713,7 +704,7 @@ def WidebandTimingModel(
             expterm += 0.5 * sum(mean_dm[which][0] ** 2 / mean_dme[which][0] ** 2 for which in self._dmwhich)
 
             # sum_i [-0.5 * log(dmerr**2)] = -sum_i log dmerr; same for mean_dmerr
-            logterm = -np.sum(np.log(dme)) + sum(math.log(mean_dme[which][0]) for which in self._dmwhich)
+            logterm = -np.sum(np.log(dme)) + sum(np.log(mean_dme[which][0]) for which in self._dmwhich)
 
             return expterm + logterm
 

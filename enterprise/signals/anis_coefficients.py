@@ -1,4 +1,4 @@
-from __future__ import division
+# anis_coefficients.py
 
 import healpy as hp
 import numpy as np
