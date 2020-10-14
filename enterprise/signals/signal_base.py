@@ -610,7 +610,7 @@ class PTA(object):
         # map parameter vector if needed
         params = params if isinstance(params, dict) else self.map_params(params)
 
-        return np.sum(p.get_logpdf(params=params) for p in self.params)
+        return np.sum([p.get_logpdf(params=params) for p in self.params])
 
     @property
     def pulsars(self):
