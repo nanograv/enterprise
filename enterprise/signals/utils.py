@@ -821,9 +821,7 @@ def ecl2eq_vec(x):
     """
     Rotate (n,3) vector time series from ecliptic to equatorial.
     """
-    e_ecl = 23.43704 * np.pi / 180.0
-    M_ecl = np.array([[1.0, 0.0, 0.0], [0.0, np.cos(e_ecl), -np.sin(e_ecl)],
-                     [0.0, np.sin(e_ecl), np.cos(e_ecl)]])
+    M_ecl = const.M_ecl
     return np.einsum("jk,ik->ij", M_ecl, x)
 
 
@@ -831,9 +829,7 @@ def eq2ecl_vec(x):
     """
     Rotate (n,3) vector time series from equatorial to ecliptic.
     """
-    e_ecl = 23.43704 * np.pi / 180.0
-    M_ecl = np.array([[1.0, 0.0, 0.0], [0.0, np.cos(e_ecl), -np.sin(e_ecl)],
-                     [0.0, np.sin(e_ecl), np.cos(e_ecl)]])
+    M_ecl = const.M_ecl
     return np.einsum("kj,ik->ij", M_ecl, x)
 
 
@@ -878,7 +874,7 @@ def ss_framerotate(mjd, planet, x, y, z, dz, offset=None, equatorial=False):
     dz. The rate has units of rad/year, and is referred
     to offset 2010/1/1. dates must be given in MJD.
     """
-    t_offset = 55197.0
+    t_offset = 55197.0  # MJD 2010/01/01
 
     if equatorial:
         planet = eq2ecl_vec(planet)
