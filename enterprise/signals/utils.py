@@ -655,6 +655,31 @@ def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0, gwpol=0.0, t
 
 
 @function
+def fdm_delay(toas, log10_A=-14.0, log10_f=-8.0, phase_e=0.0, phase_p=0.0):
+    """
+    Function that calculates the earth-term gravitational-wave
+    fuzzy dark matter signal, as described in:
+    Kato et al. (2020).
+
+    :param toas: Time-of-arrival measurements [s]
+    :param log10_A: log10 of GW strain
+    :param log10_f: log10 of GW frequency
+    :param phase_e: The Earth-term phase of the GW 
+    :param phase_p: The Pulsar-term phase of the GW 
+
+    :return: the waveform as induced timing residuals (seconds)
+    """
+
+    # convert
+    A = 10 ** log10_A
+    
+    f = 10 ** log10_f
+
+    # Return the time-series for the pulsar
+    return - A / (2 * np.pi * f) * (np.sin(2 * np.pi * f * toas + phase_e) - np.sin(2 * np.pi * f * toas + phase_p))
+
+
+@function
 def create_quantization_matrix(toas, dt=1, nmin=2):
     """Create quantization matrix mapping TOAs to observing epochs."""
     isort = np.argsort(toas)
