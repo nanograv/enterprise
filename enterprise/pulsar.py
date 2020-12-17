@@ -1,8 +1,6 @@
 # pulsar.py
-
-# Class containing pulsar data from timing package [tempo2/PINT].
-
-from __future__ import absolute_import, division, print_function, unicode_literals
+"""Class containing pulsar data from timing package [tempo2/PINT].
+"""
 
 import json
 import logging
@@ -59,8 +57,8 @@ def get_maxobs(timfile):
     with open(timfile) as tfile:
         flines = tfile.readlines()
         lines = [ln for ln in flines if not ln.startswith("C")]
-        if any(map(lambda x: "INCLUDE" in x, lines)):
-            for line in filter(lambda x: "INCLUDE" in x, lines):
+        if any(["INCLUDE" in ln for ln in lines]):
+            for line in [ln for ln in lines if "INCLUDE" in ln]:
                 maxobs += get_maxobs(line.split()[-1])
         else:
             maxobs = sum(1 for line in lines if line.rstrip("\n"))
@@ -78,8 +76,8 @@ class BasePulsar(object):
         if self.name[0] not in ["J", "B"]:
             if "J" + self.name in pdict:
                 pdist = tuple(pdict.get("J" + self.name))
-            elif "B" + self.name in pdict:
-                pdist = tuple(pdict.get("B" + self.name))
+            else:
+                pdist = tuple(pdict.get("B" + self.name, (1.0, 0.2)))
         else:
             pdist = tuple(pdict.get(self.name, (1.0, 0.2)))
 
@@ -244,12 +242,11 @@ class BasePulsar(object):
 
         nobs = len(self._toas)
         bflags = ["flag"] * nobs
-        check = lambda i, fl: fl in self._flags and self._flags[fl][i] != ""
         flags = [["group"], ["g"], ["sys"], ["i"], ["f"], ["fe", "be"]]
         for ii in range(nobs):
             # TODO: make this cleaner
             for f in flags:
-                if np.all(list(map(lambda xx: check(ii, xx), f))):
+                if np.all([x in self._flags and self._flags[x][ii] != "" for x in f]):
                     bflags[ii] = "_".join(self._flags[x][ii] for x in f)
                     break
         return np.array(bflags)[self._isort]
@@ -365,10 +362,10 @@ class Tempo2Pulsar(BasePulsar):
         self._ssbfreqs = np.double(t2pulsar.ssbfreqs()) / 1e6
 
         # fitted parameters
-        self.fitpars = ["Offset"] + list(map(str, t2pulsar.pars()))
+        self.fitpars = ["Offset"] + [str(p) for p in t2pulsar.pars()]
 
         # set parameters
-        spars = list(map(str, t2pulsar.pars(which="set")))
+        spars = [str(p) for p in t2pulsar.pars(which="set")]
         self.setpars = [sp for sp in spars if sp not in self.fitpars]
 
         self._flags = {}
@@ -475,14 +472,14 @@ def Pulsar(*args, **kwargs):
     timing_package = kwargs.get("timing_package", "tempo2")
 
     if pint is not None:
-        toas = list(filter(lambda x: isinstance(x, toa.TOAs), args))
-        model = list(filter(lambda x: isinstance(x, TimingModel), args))
+        toas = [x for x in args if isinstance(x, toa.TOAs)]
+        model = [x for x in args if isinstance(x, TimingModel)]
 
     if t2 is not None:
-        t2pulsar = list(filter(lambda x: isinstance(x, t2.tempopulsar), args))
+        t2pulsar = [x for x in args if isinstance(x, t2.tempopulsar)]
 
-    parfile = list(filter(lambda x: isinstance(x, str) and x.split(".")[-1] == "par", args))
-    timfile = list(filter(lambda x: isinstance(x, str) and x.split(".")[-1] in ["tim", "toa"], args))
+    parfile = [x for x in args if isinstance(x, str) and x.split(".")[-1] == "par"]
+    timfile = [x for x in args if isinstance(x, str) and x.split(".")[-1] in ["tim", "toa"]]
 
     if pint and toas and model:
         return PintPulsar(toas[0], model[0], sort=sort, planets=planets)

@@ -62,9 +62,6 @@ clean-test: ## remove test and coverage artifacts
 	rm -f .coverage
 	rm -fr htmlcov/
 
-#lint: ## check style with flake8
-#	flake8 --ignore=E265,E226,E231,E731,E722,W504 enterprise tests
-
 test: ## run tests quickly with the default Python
 	pytest -v --full-trace --cov-config .coveragerc --cov=enterprise tests
 

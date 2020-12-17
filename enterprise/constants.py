@@ -4,8 +4,6 @@ Depends on numpy for base mathematical constants, and
 scipy.constants for physical constants.
 """
 
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import numpy as np
 import scipy.constants as sc
 
@@ -45,3 +43,9 @@ erg = sc.erg
 
 # other things
 DM_K = 2.41e-16  # for DM variation design matrix
+
+# relative angle between the Earth's ecliptic and the galactic equator
+e_ecl = 23.43704 * np.pi / 180.0
+
+# unit vector pointing in direction of angle between Earth's ecliptic and the galactic equator
+M_ecl = np.array([[1.0, 0.0, 0.0], [0.0, np.cos(e_ecl), -np.sin(e_ecl)], [0.0, np.sin(e_ecl), np.cos(e_ecl)]])

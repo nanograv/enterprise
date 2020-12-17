@@ -4,13 +4,9 @@ GP signals are defined as the class of signals that have a basis
 function matrix and basis prior vector..
 """
 
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import functools
 import itertools
 import logging
-import math
-import platform
 
 import numpy as np
 
@@ -18,8 +14,6 @@ from enterprise.signals import parameter, selections, signal_base, utils
 from enterprise.signals.parameter import function
 from enterprise.signals.selections import Selection
 from enterprise.signals.utils import KernelMatrix
-
-pyv3 = platform.python_version().split(".")[0] == "3"
 
 logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -46,14 +40,11 @@ def BasisGP(
             super(BasisGP, self).__init__(psr)
             self.name = self.psrname + "_" + self.signal_id
             self._do_selection(psr, priorFunction, basisFunction, coefficients, selection)
-            if coefficients and not pyv3:
-                msg = "GP coefficients compatible only with Python 3"
-                logger.warning(msg)
 
         def _do_selection(self, psr, priorfn, basisfn, coefficients, selection):
             sel = selection(psr)
 
-            self._keys = list(sorted(sel.masks.keys()))
+            self._keys = sorted(sel.masks.keys())
             self._masks = [sel.masks[key] for key in self._keys]
             self._prior, self._bases = {}, {}
             self._params, self._coefficients = {}, {}
@@ -68,7 +59,7 @@ def BasisGP(
                 for par in itertools.chain(self._prior[key]._params.values(), self._bases[key]._params.values()):
                     self._params[par.name] = par
 
-            if coefficients and pyv3:
+            if coefficients:
                 # we can only create GPCoefficients parameters if the basis
                 # can be constructed with default arguments
                 # (and does not change size)
@@ -121,7 +112,7 @@ def BasisGP(
         # this class does different things (and gets different method
         # definitions) if the user wants it to model GP coefficients
         # (e.g., for a hierarchical likelihood) or if they do not
-        if coefficients and pyv3:
+        if coefficients:
 
             def _get_coefficient_logprior(self, key, c, **params):
                 self._construct_basis(params)
@@ -129,12 +120,12 @@ def BasisGP(
                 phi = self._prior[key](self._labels[key], params=params)
 
                 if phi.ndim == 1:
-                    return -0.5 * np.sum(c * c / phi) - 0.5 * np.sum(np.log(phi)) - 0.5 * len(phi) * np.log(2 * math.pi)
+                    return -0.5 * np.sum(c * c / phi) - 0.5 * np.sum(np.log(phi)) - 0.5 * len(phi) * np.log(2 * np.pi)
                     # note: (2*pi)^(n/2) is not in signal_base likelihood
                 else:
                     # TO DO: this code could be embedded in KernelMatrix
                     phiinv, logdet = KernelMatrix(phi).inv(logdet=True)
-                    return -0.5 * np.dot(c, np.dot(phiinv, c)) - 0.5 * logdet - 0.5 * phi.shape[0] * np.log(2 * math.pi)
+                    return -0.5 * np.dot(c, np.dot(phiinv, c)) - 0.5 * logdet - 0.5 * phi.shape[0] * np.log(2 * np.pi)
 
             # MV: could assign this to a data member at initialization
             @property
@@ -238,7 +229,7 @@ def TimingModel(coefficients=False, name="linear_timing_model", use_svd=False, n
         signal_name = "linear timing model"
         signal_id = name + "_svd" if use_svd else name
 
-        if coefficients and pyv3:
+        if coefficients:
 
             def _get_coefficient_logprior(self, key, c, **params):
                 # MV: probably better to avoid this altogether
@@ -304,7 +295,7 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False,
 
             self._psrpos = psr.pos
 
-            if coefficients and pyv3:
+            if coefficients:
                 self._construct_basis()
 
                 # if we're given an instantiated coefficient vector
@@ -338,7 +329,7 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False,
         def _construct_basis(self, params={}):
             self._basis, self._labels = self._bases(params=params)
 
-        if coefficients and pyv3:
+        if coefficients:
 
             def _get_coefficient_logprior(self, c, **params):
                 # MV: for correlated GPs, the prior needs to use
@@ -501,8 +492,10 @@ def FourierBasisCommonGP_physicalephem(
 
 def WidebandTimingModel(
     dmefac=parameter.Uniform(pmin=0.1, pmax=10.0),
+    log10_dmequad=parameter.Uniform(pmin=-7.0, pmax=0.0),
     dmjump=parameter.Uniform(pmin=-0.01, pmax=0.01),
     dmefac_selection=Selection(selections.no_selection),
+    log10_dmequad_selection=Selection(selections.no_selection),
     dmjump_selection=Selection(selections.no_selection),
     dmjump_ref=None,
     name="wideband_timing_model",
@@ -530,6 +523,11 @@ def WidebandTimingModel(
             self._dmefac_keys = list(sorted(dmefac_select.masks.keys()))
             self._dmefac_masks = [dmefac_select.masks[key] for key in self._dmefac_keys]
 
+            # make selection for DMEQUADs
+            log10_dmequad_select = log10_dmequad_selection(psr)
+            self._log10_dmequad_keys = list(sorted(log10_dmequad_select.masks.keys()))
+            self._log10_dmequad_masks = [log10_dmequad_select.masks[key] for key in self._log10_dmequad_keys]
+
             # make selection for DMJUMPs
             dmjump_select = dmjump_selection(psr)
             self._dmjump_keys = list(sorted(dmjump_select.masks.keys()))
@@ -548,6 +546,14 @@ def WidebandTimingModel(
                 param = dmefac(pname)
 
                 self._dmefacs.append(param)
+                self._params[param.name] = param
+
+            self._log10_dmequads = []
+            for key in self._log10_dmequad_keys:
+                pname = "_".join([n for n in [psr.name, key, "log10_dmequad"] if n])
+                param = log10_dmequad(pname)
+
+                self._log10_dmequads.append(param)
                 self._params[param.name] = param
 
             self._dmjumps = []
@@ -609,14 +615,18 @@ def WidebandTimingModel(
 
         @property
         def delay_params(self):
-            # cache parameters are all DMEFACS and DMJUMPS
-            return [p.name for p in self._dmefacs] + [p.name for p in self._dmjumps]
+            # cache parameters are all DMEFACS, DMEQUADS, and DMJUMPS
+            return (
+                [p.name for p in self._dmefacs]
+                + [p.name for p in self._log10_dmequads]
+                + [p.name for p in self._dmjumps]
+            )
 
         @signal_base.cache_call(["delay_params"])
         def get_phi(self, params):
             """Return wideband timing-model prior."""
 
-            # get DMEFAC-adjusted DMX errors
+            # get DMEFAC- and DMEQUAD-adjusted DMX errors
             dme = self.get_dme(params)
 
             # initialize the timing-model "infinite" prior
@@ -660,15 +670,24 @@ def WidebandTimingModel(
 
         @signal_base.cache_call(["delay_params"])
         def get_dme(self, params):
-            """Return EFAC-weighted DM errors."""
+            """Return EFAC- and EQUAD-weighted DM errors."""
 
             return (
                 sum(
                     (params[efac.name] if efac.name in params else efac.value) * mask
                     for efac, mask in zip(self._dmefacs, self._dmefac_masks)
                 )
-                * self._dmerr
-            )
+                ** 2
+                * self._dmerr ** 2
+                + (
+                    10
+                    ** sum(
+                        (params[equad.name] if equad.name in params else equad.value) * mask
+                        for equad, mask in zip(self._log10_dmequads, self._log10_dmequad_masks)
+                    )
+                )
+                ** 2
+            ) ** 0.5
 
         @signal_base.cache_call(["delay_params"])
         def get_mean_dm(self, params):
@@ -691,7 +710,7 @@ def WidebandTimingModel(
 
             mean_dme = np.zeros(self._ntoas, "d")
 
-            # DMEFAC-adjusted
+            # DMEFAC- and DMJUMP-adjusted
             dme = self.get_dme(params)
 
             for which in self._dmwhich:
@@ -702,7 +721,7 @@ def WidebandTimingModel(
         @signal_base.cache_call(["delay_params"])
         def get_logsignalprior(self, params):
             """Get an additional likelihood/prior term to cover terms that would not
-            affect optimization, were they not dependent on DMEFAC and DMJUMP."""
+            affect optimization, were they not dependent on DMEFAC, DMEQUAD, and DMJUMP."""
 
             dm, dme = self.get_dm(params), self.get_dme(params)
             mean_dm, mean_dme = self.get_mean_dm(params), self.get_mean_dme(params)
@@ -713,13 +732,13 @@ def WidebandTimingModel(
             expterm += 0.5 * sum(mean_dm[which][0] ** 2 / mean_dme[which][0] ** 2 for which in self._dmwhich)
 
             # sum_i [-0.5 * log(dmerr**2)] = -sum_i log dmerr; same for mean_dmerr
-            logterm = -np.sum(np.log(dme)) + sum(math.log(mean_dme[which][0]) for which in self._dmwhich)
+            logterm = -np.sum(np.log(dme)) + sum(np.log(mean_dme[which][0]) for which in self._dmwhich)
 
             return expterm + logterm
 
         # these are for debugging, but should not enter the likelihood computation
 
-        def get_delta_dm(self, params, use_mean_dm=True):  # DM - DMX
+        def get_delta_dm(self, params, use_mean_dm=False):  # DM - DMX
             delta_dm = np.zeros(self._ntoas, "d")
 
             if use_mean_dm:
@@ -731,7 +750,7 @@ def WidebandTimingModel(
 
             return delta_dm
 
-        def get_dm_chi2(self, params, use_mean_dm=True):  # 'DM' chi-sqaured
+        def get_dm_chi2(self, params, use_mean_dm=False):  # 'DM' chi-sqaured
             delta_dm = self.get_delta_dm(params, use_mean_dm=use_mean_dm)
 
             if use_mean_dm:
@@ -741,7 +760,7 @@ def WidebandTimingModel(
                     chi2 += (delta_dm[which][0] / dme[which][0]) ** 2
 
             else:
-                dme = self.get_dme(params)  # DMEFAC-adjusted
+                dme = self.get_dme(params)  # DMEFAC- and DMEQUAD-adjusted
                 chi2 = np.sum((delta_dm / dme) ** 2)
 
             return chi2
