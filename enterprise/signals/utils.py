@@ -22,6 +22,7 @@ from enterprise import signals as sigs  # noqa: F401
 from enterprise.signals.gp_bases import (  # noqa: F401
     createfourierdesignmatrix_red,
     createfourierdesignmatrix_dm,
+    createfourierdesignmatrix_dm_tn,
     createfourierdesignmatrix_env,
     createfourierdesignmatrix_ephem,
     createfourierdesignmatrix_eph,

@@ -13,6 +13,7 @@ from enterprise.signals.parameter import function
 __all__ = [
     "createfourierdesignmatrix_red",
     "createfourierdesignmatrix_dm",
+    "createfourierdesignmatrix_dm_tn",
     "createfourierdesignmatrix_env",
     "createfourierdesignmatrix_ephem",
     "createfourierdesignmatrix_eph",
@@ -118,6 +119,42 @@ def createfourierdesignmatrix_dm(
 
     # compute the DM-variation vectors
     Dm = (fref / freqs) ** 2
+
+    return F * Dm[:, None], Ffreqs
+
+
+@function
+def createfourierdesignmatrix_dm_tn(
+    toas, freqs, nmodes=30, Tspan=None, pshift=False, fref=1400, logf=False, fmin=None, fmax=None, modes=None
+):
+    """
+    Construct DM-variation fourier design matrix. Current
+    normalization expresses DM signal as a deviation [seconds]
+    at fref [MHz]
+
+    :param toas: vector of time series in seconds
+    :param freqs: radio frequencies of observations [MHz]
+    :param nmodes: number of fourier coefficients to use
+    :param Tspan: option to some other Tspan
+    :param pshift: option to add random phase shift
+    :param fref: reference frequency [MHz]
+    :param logf: use log frequency spacing
+    :param fmin: lower sampling frequency
+    :param fmax: upper sampling frequency
+    :param modes: option to provide explicit list or array of
+                  sampling frequencies
+
+    :return: F: DM-variation fourier design matrix
+    :return: f: Sampling frequencies
+    """
+
+    # get base fourier design matrix and frequencies
+    F, Ffreqs = createfourierdesignmatrix_red(
+        toas, nmodes=nmodes, Tspan=Tspan, logf=logf, fmin=fmin, fmax=fmax, pshift=pshift, modes=modes
+    )
+
+    # compute the DM-variation vectors
+    Dm = (fref / freqs) ** 2 * np.sqrt(12) * np.pi / 1400 / 1400 / 2.41e-4
 
     return F * Dm[:, None], Ffreqs
 
