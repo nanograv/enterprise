@@ -157,10 +157,10 @@ def custom_backends_dict(cb):
         elif isinstance(cb, dict):
             flagdict = {}
             for flagname in cb.keys():
-                if flagname == 'backend':
+                if flagname == "backend":
                     flagvals = np.unique(backend_flags)
-                    if cb['backend'] is not None:
-                        cb_key = list(np.atleast_1d(cb['backend']))
+                    if cb["backend"] is not None:
+                        cb_key = list(np.atleast_1d(cb["backend"]))
                         flagvals = [val for val in flagvals if any([b in val for b in cb_key])]
                     else:
                         pass
