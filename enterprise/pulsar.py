@@ -26,9 +26,8 @@ except ImportError:
 
 try:
     import pint
-    import pint.toa as toa
-    import pint.models.model_builder as mb
-    from pint.models import TimingModel
+    from pint.toa import TOAs
+    from pint.models import get_model_and_toas, TimingModel
     from pint.residuals import Residuals as resids
 except ImportError:
     print("Cannot import PINT? Meh...")
@@ -466,13 +465,14 @@ def Pulsar(*args, **kwargs):
 
     ephem = kwargs.get("ephem", None)
     clk = kwargs.get("clk", None)
+    bipm_version = kwargs.get("bipm_version", None)
     planets = kwargs.get("planets", True)
     sort = kwargs.get("sort", True)
     drop_t2pulsar = kwargs.get("drop_t2pulsar", True)
     timing_package = kwargs.get("timing_package", "tempo2")
 
     if pint is not None:
-        toas = [x for x in args if isinstance(x, toa.TOAs)]
+        toas = [x for x in args if isinstance(x, TOAs)]
         model = [x for x in args if isinstance(x, TimingModel)]
 
     if t2 is not None:
@@ -505,14 +505,9 @@ def Pulsar(*args, **kwargs):
         os.chdir(dirname)
 
         if timing_package.lower() == "pint":
-            if ephem is None:
-                ephem = "DE421"
-            if clk is None:
-                bipm_version = "BIPM2015"
-            else:
+            if (clk is not None) and (bipm_version is None):
                 bipm_version = clk.split("(")[1][:-1]
-            toas = toa.get_TOAs(reltimfile, ephem=ephem, planets=planets, bipm_version=bipm_version)
-            model = mb.get_model(relparfile)
+            model, toas = get_model_and_toas(relparfile, reltimfile, ephem=ephem, bipm_version=bipm_version)
             os.chdir(cwd)
             return PintPulsar(toas, model, sort=sort, planets=planets)
 
