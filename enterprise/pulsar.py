@@ -332,7 +332,7 @@ class PintPulsar(BasePulsar):
     def _set_dm(self, model):
         pars = [par for par in model.params if not getattr(model, par).frozen]
 
-        if hasattr(model, 'DM'):
+        if hasattr(model, "DM"):
             self._dm = model["DM"].value
 
         dmx = {
