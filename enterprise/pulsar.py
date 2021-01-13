@@ -44,11 +44,9 @@ logger = logging.getLogger(__name__)
 
 def get_maxobs(timfile):
     """Utility function to return number of lines in tim file.
-
     :param timfile:
         Full path to tim-file. For tim-files that use INCLUDEs this
         should be the base tim file.
-
     :returns: Number of lines in tim-file
     """
 
@@ -232,11 +230,9 @@ class BasePulsar(object):
     @property
     def backend_flags(self):
         """Return array of backend flags.
-
         Not all TOAs have the same flags for all data sets. In order to
         facilitate this we have a ranked ordering system that will look
         for flags. The order is `group`, `g`, `sys`, `i`, `f`, `fe`+`be`.
-
         """
 
         nobs = len(self._toas)
@@ -289,6 +285,8 @@ class PintPulsar(BasePulsar):
         self.name = model.PSR.value
 
         self._toas = np.array(toas.table["tdbld"], dtype="float64") * 86400
+        # saving also stoas (e.g., for DMX comparisons)
+        self._stoas = np.array(toas.get_mjds().value, dtype="float64") * 86400
         self._residuals = np.array(resids(toas, model).time_resids.to(u.s), dtype="float64")
         self._toaerrs = np.array(toas.get_errors().to(u.s), dtype="float64")
         self._designmatrix = model.designmatrix(toas)[0]
@@ -296,6 +294,9 @@ class PintPulsar(BasePulsar):
 
         # fitted parameters
         self.fitpars = ["Offset"] + [par for par in model.params if not getattr(model, par).frozen]
+
+        # gather DM/DMX information if available
+        self._set_dm(model)
 
         # set parameters
         spars = [par for par in model.params]
@@ -327,6 +328,27 @@ class PintPulsar(BasePulsar):
         self._pos_t = np.zeros((len(self._toas), 3))
 
         self.sort_data()
+
+    def _set_dm(self, model):
+        pars = [par for par in model.params if not getattr(model, par).frozen]
+
+        if hasattr(model, "DM"):
+            self._dm = model["DM"].value
+
+        dmx = {
+            par: {
+                "DMX": model[par].value,
+                "DMXerr": model[par].uncertainty_value,
+                "DMXR1": model[par[:3] + "R1" + par[3:]].value,
+                "DMXR2": model[par[:3] + "R2" + par[3:]].value,
+                "fit": par in pars,
+            }
+            for par in pars
+            if "DMX_" in par
+        }
+
+        if dmx:
+            self._dmx = dmx
 
     def _get_radec(self, model):
         if hasattr(model, "RAJ") and hasattr(model, "DECJ"):
