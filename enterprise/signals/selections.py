@@ -139,7 +139,7 @@ def custom_backends(cb):
 
 
 def custom_backends_dict(cb):
-    def backends(backend_flags, flags):
+    def backends(backend_flags, flags, toas):
         """Selection function to split by custom flags dictionary only.
         cb : str, list or dict of flags and names
         use None to recover no_selection
