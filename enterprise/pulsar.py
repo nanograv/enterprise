@@ -7,6 +7,7 @@ import logging
 import os
 
 import astropy.units as u
+import astropy.constants as const
 import numpy as np
 from ephem import Ecliptic, Equatorial
 
@@ -322,7 +323,8 @@ class PintPulsar(BasePulsar):
         self._pdist = self._get_pdist()
         self._raj, self._decj = self._get_radec(model)
         self._pos = self._get_pos()
-        self._planetssb = self._get_planetssb()
+        self._planetssb = self._get_planetssb(toas)
+        self._sunssb = self._get_sunssb(toas)
 
         # TODO: pos_t not currently implemented
         self._pos_t = np.zeros((len(self._toas), 3))
@@ -338,11 +340,48 @@ class PintPulsar(BasePulsar):
             elong, elat = model.ELONG.value, model.ELAT.value
             return self._get_radec_from_ecliptic(elong * d2r, elat * d2r)
 
+    def _get_ssb_lsec(toas,obs_pl,ssb_obs):
+        """Get the planet to SSB vector in lightseconds from Pint table"""
+        vec = toas.table[obs_pl]-toas.table[ssb_obs]
+        return (vec/const.c).to('s').value
+
     def _get_planetssb(self):
         return np.zeros((len(self._toas), 9, 6))
 
     def _get_sunssb(self):
         return np.zeros((len(self._toas), 6))
+
+    def _get_planetssb(self, toas):
+        planetssb = None
+        if self.planets:
+
+            planetssb = np.zeros((len(self._toas), 9, 6))
+            # planetssb[:, 0, :] = self.t2pulsar.mercury_ssb
+            # planetssb[:, 1, :] = self.t2pulsar.venus_ssb
+            planetssb[:, 2, :3] = _get_ssb_lsec(toas,'obs_earth_pos','ssb_obs_pos')
+            # planetssb[:, 3, :] = self.t2pulsar.mars_ssb
+            planetssb[:, 4, :3] = _get_ssb_lsec(toas,'obs_jupiter_pos','ssb_obs_pos')
+            planetssb[:, 5, :3] = _get_ssb_lsec(toas,'obs_saturn_pos','ssb_obs_pos')
+            planetssb[:, 6, :3] = _get_ssb_lsec(toas,'obs_uranus_pos','ssb_obs_pos')
+            planetssb[:, 7, :3] = _get_ssb_lsec(toas,'obs_neptune_pos','ssb_obs_pos')
+            # planetssb[:, 8, :] = self.t2pulsar.pluto_ssb
+
+            # if "ELONG" and "ELAT" in np.concatenate((t2pulsar.pars(), t2pulsar.pars(which="set"))):
+            #     for ii in range(9):
+            #         planetssb[:, ii, :3] = utils.ecl2eq_vec(planetssb[:, ii, :3])
+            #         planetssb[:, ii, 3:] = utils.ecl2eq_vec(planetssb[:, ii, 3:])
+        return planetssb
+
+    def _get_sunssb(self, toas):
+        sunssb = None
+        if self.planets:
+            sunssb = np.zeros((len(self._toas), 6))
+            sunssb[:, :3] = _get_ssb_lsec(toas,'obs_sun_pos','ssb_obs_pos')
+
+            # if "ELONG" and "ELAT" in np.concatenate((t2pulsar.pars(), t2pulsar.pars(which="set"))):
+            #     sunssb[:, :3] = utils.ecl2eq_vec(sunssb[:, :3])
+            #     sunssb[:, 3:] = utils.ecl2eq_vec(sunssb[:, 3:])
+        return sunssb
 
 
 class Tempo2Pulsar(BasePulsar):
