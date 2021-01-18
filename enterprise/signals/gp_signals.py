@@ -605,9 +605,6 @@ def WidebandTimingModel(
             if np.sum(check) != self._ntoas:
                 raise ValueError("WidebandTimingModel: cannot account for all TOAs in DMX intervals.")
 
-            if np.sum(check) != self._ntoas:
-                raise ValueError("WidebandTimingModel: cannot account for all TOAs in DMX intervals.")
-
             if "DM" in psr.fitpars:
                 raise ValueError("WidebandTimingModel: DM must not be estimated.")
 
