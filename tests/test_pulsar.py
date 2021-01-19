@@ -151,13 +151,15 @@ class TestPulsarPint(TestPulsar):
     # exclude tests pending implementation of .stoas, .dm, .dmx in PintPulsar
 
     def test_stoas(self):
-        pass
+        assert hasattr(self.psr, "stoas")
 
     def test_dm(self):
-        pass
+        assert hasattr(self.psr, "dm")
 
     def test_planetssb(self):
-        pass
+        """Place holder for filter_data tests."""
+        assert hasattr(self.psr, "planetssb")
 
     def test_sunssb(self):
-        pass
+        """Place holder for filter_data tests."""
+        assert hasattr(self.psr, "sunssb")
