@@ -27,8 +27,8 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Pre-install
       run: |
-        apt-get install gfortran
-        apt-get install libsuitesparse-dev
+        sudo apt-get install gfortran
+        sudo apt-get install libsuitesparse-dev
     - name: Non-Pip Installs
       run: |
         export TEMPO2=$HOME/.local/tempo2
