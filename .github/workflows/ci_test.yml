@@ -41,6 +41,7 @@ jobs:
         pip install setuptools>=40.0.0
         pip install scikit-sparse>=0.4.2 --no-binary scikit-sparse
         pip install astropy>=4.0,!=4.0.1,!=4.0.1.post1
+        pip install healpy
     - name: Install other requirements
       run: |
         pip install git+https://github.com/nanograv/PINT.git@master
