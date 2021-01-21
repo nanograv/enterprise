@@ -28,6 +28,7 @@ jobs:
     - name: Pre-install
       run: |
         sudo apt-get install gfortran gcc g++
+        sudo apt-get install python3-dev
         sudo apt-get install libsuitesparse-dev
     - name: Non-Pip Installs
       run: |
@@ -59,6 +60,7 @@ jobs:
         pip install astropy>=4.0,!=4.0.1,!=4.0.1.post1
     - name: Install other requirements
       run: |
+        echo "$TEMPO2"
         pip install git+https://github.com/nanograv/PINT.git@master
         pip install git+https://github.com/vallis/libstempo.git --install-option="--with-tempo2=$TEMPO2"
         pip install -r requirements_dev.txt
