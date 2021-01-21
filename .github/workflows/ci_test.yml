@@ -27,7 +27,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Pre-install
       run: |
-        sudo apt-get install gfortran
+        sudo apt-get install gfortran gcc g++
         sudo apt-get install libsuitesparse-dev
     - name: Non-Pip Installs
       run: |
