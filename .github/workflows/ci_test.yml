@@ -1,0 +1,64 @@
+name: CI-Tests
+
+on:
+  push:
+#    branches:
+#    - master
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+      - uses: psf/black@stable
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.5, 3.6, 3.7, 3.8]
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Pre-install
+      run: |
+        apt-get install gfortran
+        apt-get install libsuitesparse-dev
+    - name: Non-Pip Installs
+      run: |
+        export TEMPO2=$HOME/.local/tempo2
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$TEMPO2/lib
+        mkdir -p $TEMPO2
+        curl -O https://bitbucket.org/psrsoft/tempo2/get/master.tar.gz -z master.tar.gz
+        tar zxvf master.tar.gz
+        cd psrsoft-tempo2-*
+        ./bootstrap
+        ./configure --prefix=$TEMPO2
+        make && make install
+        cp -Rp T2runtime/* $TEMPO2/.
+        cd ..
+        rm -rf psrsoft-tempo2-*
+        sudo apt-get update
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install -r requirements_dev.txt
+        pip list | grep -E "numpy|scipy|Cython|scikit-sparse"
+        pip install git+https://github.com/vallis/libstempo.git --install-option="--with-tempo2=$TEMPO2"
+        python setup.py install
+    - name: Install other requirements
+      run: |
+        pip install -r requirements.txt
+        pip install -r requirements_dev.txt
+    - name: Display Python, pip, and setuptools version
+      run: |
+        python -c "import sys; print(f'Python {sys.version}')"
+        python -c "import pip; print(f'pip {pip.__version__}')"
+        python -c "import setuptools; print(f'setuptools {setuptools.__version__}')"
+    - name: Run Tests
+      run: pytest
