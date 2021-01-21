@@ -55,6 +55,7 @@ jobs:
         pip install setuptools>=40.0.0
         pip install healpy==1.12.0
         pip install scikit-sparse>=0.4.2 --no-binary scikit-sparse
+        pip install six
         pip install git+https://github.com/nanograv/PINT.git@master
         pip list | grep -E "numpy|scipy|Cython|scikit-sparse"
         pip install git+https://github.com/vallis/libstempo.git --install-option="--with-tempo2=$TEMPO2"
