@@ -1,0 +1,5 @@
+Collecting astropy
+  Using cached astropy-4.1-cp36-cp36m-manylinux1_x86_64.whl (10.3 MB)
+Requirement already satisfied: numpy>=1.16 in /home/andrew/anaconda3/envs/enterprise-dev1/lib/python3.6/site-packages (from astropy) (1.19.2)
+Installing collected packages: astropy
+Successfully installed astropy-4.1
