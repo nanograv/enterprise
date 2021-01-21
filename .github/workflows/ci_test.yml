@@ -56,13 +56,13 @@ jobs:
         pip install six
         pip install healpy==1.12.0
         pip install scikit-sparse>=0.4.2 --no-binary scikit-sparse
-        pip install git+https://github.com/nanograv/PINT.git@master
-        pip list | grep -E "numpy|scipy|Cython|scikit-sparse"
-        pip install git+https://github.com/vallis/libstempo.git --install-option="--with-tempo2=$TEMPO2"
-        python setup.py install
+        pip install astropy!=4.0.1,!=4.0.1.post1,>=4.0
     - name: Install other requirements
       run: |
+        pip install git+https://github.com/nanograv/PINT.git@master
+        pip install git+https://github.com/vallis/libstempo.git --install-option="--with-tempo2=$TEMPO2"
         pip install -r requirements_dev.txt
+        python setup.py install
     - name: Display Python, pip, and setuptools version
       run: |
         python -c "import sys; print(f'Python {sys.version}')"
