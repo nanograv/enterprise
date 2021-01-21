@@ -47,14 +47,20 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip setuptools wheel pytest pytest-cov
-        pip install -r requirements.txt
-        pip install -r requirements_dev.txt
+        pip install numpy==1.16.3
+        pip install scipy==1.2.0
+        pip install ephem>=3.7.6.0
+        pip install Cython>=0.28.5
+        pip install jplephem==2.6
+        pip install setuptools>=40.0.0
+        pip install healpy==1.12.0
+        pip install scikit-sparse>=0.4.2 --no-binary scikit-sparse
+        pip install git+https://github.com/nanograv/PINT.git@master
         pip list | grep -E "numpy|scipy|Cython|scikit-sparse"
         pip install git+https://github.com/vallis/libstempo.git --install-option="--with-tempo2=$TEMPO2"
         python setup.py install
     - name: Install other requirements
       run: |
-        pip install -r requirements.txt
         pip install -r requirements_dev.txt
     - name: Display Python, pip, and setuptools version
       run: |
