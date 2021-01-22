@@ -1,5 +1,5 @@
-numpy==1.16.3
-scipy==1.2.0
+numpy>=1.16.3
+scipy>=1.2.0
 ephem>=3.7.6.0
 Cython>=0.28.5
 jplephem==2.6
