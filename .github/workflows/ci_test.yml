@@ -57,5 +57,5 @@ jobs:
       run: coverage run --source enterprise setup.py test
     - name: Coveralls
       uses: coverallsapp/github-action@master
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
