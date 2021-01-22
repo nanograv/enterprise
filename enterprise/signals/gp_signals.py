@@ -492,8 +492,10 @@ def FourierBasisCommonGP_physicalephem(
 
 def WidebandTimingModel(
     dmefac=parameter.Uniform(pmin=0.1, pmax=10.0),
+    log10_dmequad=parameter.Uniform(pmin=-7.0, pmax=0.0),
     dmjump=parameter.Uniform(pmin=-0.01, pmax=0.01),
     dmefac_selection=Selection(selections.no_selection),
+    log10_dmequad_selection=Selection(selections.no_selection),
     dmjump_selection=Selection(selections.no_selection),
     dmjump_ref=None,
     name="wideband_timing_model",
@@ -521,6 +523,11 @@ def WidebandTimingModel(
             self._dmefac_keys = list(sorted(dmefac_select.masks.keys()))
             self._dmefac_masks = [dmefac_select.masks[key] for key in self._dmefac_keys]
 
+            # make selection for DMEQUADs
+            log10_dmequad_select = log10_dmequad_selection(psr)
+            self._log10_dmequad_keys = list(sorted(log10_dmequad_select.masks.keys()))
+            self._log10_dmequad_masks = [log10_dmequad_select.masks[key] for key in self._log10_dmequad_keys]
+
             # make selection for DMJUMPs
             dmjump_select = dmjump_selection(psr)
             self._dmjump_keys = list(sorted(dmjump_select.masks.keys()))
@@ -539,6 +546,14 @@ def WidebandTimingModel(
                 param = dmefac(pname)
 
                 self._dmefacs.append(param)
+                self._params[param.name] = param
+
+            self._log10_dmequads = []
+            for key in self._log10_dmequad_keys:
+                pname = "_".join([n for n in [psr.name, key, "log10_dmequad"] if n])
+                param = log10_dmequad(pname)
+
+                self._log10_dmequads.append(param)
                 self._params[param.name] = param
 
             self._dmjumps = []
@@ -590,9 +605,6 @@ def WidebandTimingModel(
             if np.sum(check) != self._ntoas:
                 raise ValueError("WidebandTimingModel: cannot account for all TOAs in DMX intervals.")
 
-            if np.sum(check) != self._ntoas:
-                raise ValueError("WidebandTimingModel: cannot account for all TOAs in DMX intervals.")
-
             if "DM" in psr.fitpars:
                 raise ValueError("WidebandTimingModel: DM must not be estimated.")
 
@@ -600,14 +612,18 @@ def WidebandTimingModel(
 
         @property
         def delay_params(self):
-            # cache parameters are all DMEFACS and DMJUMPS
-            return [p.name for p in self._dmefacs] + [p.name for p in self._dmjumps]
+            # cache parameters are all DMEFACS, DMEQUADS, and DMJUMPS
+            return (
+                [p.name for p in self._dmefacs]
+                + [p.name for p in self._log10_dmequads]
+                + [p.name for p in self._dmjumps]
+            )
 
         @signal_base.cache_call(["delay_params"])
         def get_phi(self, params):
             """Return wideband timing-model prior."""
 
-            # get DMEFAC-adjusted DMX errors
+            # get DMEFAC- and DMEQUAD-adjusted DMX errors
             dme = self.get_dme(params)
 
             # initialize the timing-model "infinite" prior
@@ -651,15 +667,24 @@ def WidebandTimingModel(
 
         @signal_base.cache_call(["delay_params"])
         def get_dme(self, params):
-            """Return EFAC-weighted DM errors."""
+            """Return EFAC- and EQUAD-weighted DM errors."""
 
             return (
                 sum(
                     (params[efac.name] if efac.name in params else efac.value) * mask
                     for efac, mask in zip(self._dmefacs, self._dmefac_masks)
                 )
-                * self._dmerr
-            )
+                ** 2
+                * self._dmerr ** 2
+                + (
+                    10
+                    ** sum(
+                        (params[equad.name] if equad.name in params else equad.value) * mask
+                        for equad, mask in zip(self._log10_dmequads, self._log10_dmequad_masks)
+                    )
+                )
+                ** 2
+            ) ** 0.5
 
         @signal_base.cache_call(["delay_params"])
         def get_mean_dm(self, params):
@@ -682,7 +707,7 @@ def WidebandTimingModel(
 
             mean_dme = np.zeros(self._ntoas, "d")
 
-            # DMEFAC-adjusted
+            # DMEFAC- and DMJUMP-adjusted
             dme = self.get_dme(params)
 
             for which in self._dmwhich:
@@ -693,7 +718,7 @@ def WidebandTimingModel(
         @signal_base.cache_call(["delay_params"])
         def get_logsignalprior(self, params):
             """Get an additional likelihood/prior term to cover terms that would not
-            affect optimization, were they not dependent on DMEFAC and DMJUMP."""
+            affect optimization, were they not dependent on DMEFAC, DMEQUAD, and DMJUMP."""
 
             dm, dme = self.get_dm(params), self.get_dme(params)
             mean_dm, mean_dme = self.get_mean_dm(params), self.get_mean_dme(params)
@@ -710,7 +735,7 @@ def WidebandTimingModel(
 
         # these are for debugging, but should not enter the likelihood computation
 
-        def get_delta_dm(self, params, use_mean_dm=True):  # DM - DMX
+        def get_delta_dm(self, params, use_mean_dm=False):  # DM - DMX
             delta_dm = np.zeros(self._ntoas, "d")
 
             if use_mean_dm:
@@ -722,7 +747,7 @@ def WidebandTimingModel(
 
             return delta_dm
 
-        def get_dm_chi2(self, params, use_mean_dm=True):  # 'DM' chi-sqaured
+        def get_dm_chi2(self, params, use_mean_dm=False):  # 'DM' chi-sqaured
             delta_dm = self.get_delta_dm(params, use_mean_dm=use_mean_dm)
 
             if use_mean_dm:
@@ -732,7 +757,7 @@ def WidebandTimingModel(
                     chi2 += (delta_dm[which][0] / dme[which][0]) ** 2
 
             else:
-                dme = self.get_dme(params)  # DMEFAC-adjusted
+                dme = self.get_dme(params)  # DMEFAC- and DMEQUAD-adjusted
                 chi2 = np.sum((delta_dm / dme) ** 2)
 
             return chi2
