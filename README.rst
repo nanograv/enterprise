@@ -2,15 +2,15 @@
 enterprise
 ===============================
 
-.. image:: https://github.com/ark0015/enterprise/workflows/CI-Tests/badge.svg
-        :target: https://github.com/ark0015/enterprise/actions
+.. image:: https://github.com/nanograv/enterprise/workflows/CI-Tests/badge.svg
+        :target: https://github.com/nanograv/enterprise/actions
         :alt: Build Status
 .. image:: https://readthedocs.org/projects/enterprise/badge/?version=latest
         :target: https://enterprise.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 
-.. image:: https://codecov.io/gh/ark0015/enterprise/branch/master/graph/badge.svg?token=YXSX3293VF
-        :target: https://codecov.io/gh/ark0015/enterprise
+.. image:: https://codecov.io/gh/nanograv/enterprise/branch/master/graph/badge.svg?token=YXSX3293VF
+        :target: https://codecov.io/gh/nanograv/enterprise
         :alt: Test Coverage
 .. image:: https://img.shields.io/badge/python-3.6%2C%203.7%2C%203.8-blue.svg
         :alt: Python Versions
