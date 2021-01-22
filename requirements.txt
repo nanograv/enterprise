@@ -5,5 +5,5 @@ Cython>=0.28.5
 jplephem==2.6
 setuptools>=40.0.0
 healpy>=1.14.0
-scikit-sparse>=0.4.2 --no-binary scikit-sparse
+scikit-sparse==0.4.2 --no-binary scikit-sparse
 -e git+https://github.com/nanograv/PINT.git@master#egg=pint-pulsar
