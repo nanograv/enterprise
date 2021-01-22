@@ -7,18 +7,12 @@ on:
   pull_request:
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-      - uses: psf/black@stable
   build:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.6, 3.7, 3.8, 3.9]
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v2
@@ -29,33 +23,23 @@ jobs:
     - name: Pre-install
       run: |
         sudo apt-get install libsuitesparse-dev
-    - name: Install dependencies
+        python -m pip install --upgrade pip
+    - name: Install Dependencies
       run: |
-        python -m pip install --upgrade pip wheel pytest pytest-cov
-        pip install numpy==1.16.3
-        pip install scipy==1.2.0
-        pip install ephem>=3.7.6.0
-        pip install Cython>=0.28.5
-        pip install jplephem==2.6
-        pip install setuptools>=40.0.0
-        pip install scikit-sparse>=0.4.2 --no-binary scikit-sparse
-        pip install astropy>=4.0,!=4.0.1,!=4.0.1.post1
-        pip install healpy
-    - name: Install other requirements
-      run: |
-        pip install git+https://github.com/nanograv/PINT.git@master
-        pip install git+https://github.com/vallis/libstempo.git@master --install-option="--force-tempo2-install"
+        pip install -r requirements.txt
         pip install -r requirements_dev.txt
+        pip install git+https://github.com/vallis/libstempo.git@master --install-option="--force-tempo2-install"
         python setup.py install
     - name: Display Python, pip, and setuptools version
       run: |
         python -c "import sys; print(f'Python {sys.version}')"
         python -c "import pip; print(f'pip {pip.__version__}')"
         python -c "import setuptools; print(f'setuptools {setuptools.__version__}')"
-    - name: Run Tests
-      run: |
-        pytest --cov=./ --cov-report=xml
-        make lint
+        pip freeze
+    - name: Lint
+      run: make lint
+    - name: Lint and Run Tests
+      run: pytest --cov=./ --cov-report=xml --cov-config=.coveragerc
     - name: Codecov
       uses: codecov/codecov-action@v1
       with:
