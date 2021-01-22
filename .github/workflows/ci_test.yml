@@ -29,7 +29,6 @@ jobs:
     - name: Pre-install
       run: |
         sudo apt-get install libsuitesparse-dev
-        sudo apt-get install autoconf automake libtool pkg-config python3-dev
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip wheel pytest pytest-cov
@@ -54,8 +53,10 @@ jobs:
         python -c "import pip; print(f'pip {pip.__version__}')"
         python -c "import setuptools; print(f'setuptools {setuptools.__version__}')"
     - name: Run Tests
-      run: coverage run --source enterprise setup.py test
-    - name: Coveralls
-      uses: coverallsapp/github-action@master
+      run: |
+        pytest --cov=./ --cov-report=xml
+        make lint
+    - name: Codecov
+      uses: codecov/codecov-action@v1
       with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+        fail_ci_if_error: true
