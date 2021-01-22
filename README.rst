@@ -4,6 +4,8 @@ enterprise
 
 .. image:: https://img.shields.io/travis/nanograv/enterprise.svg
         :target: https://travis-ci.org/nanograv/enterprise
+        https://github.com/ark0015/enterprise/workflows/CI-Tests/badge.svg
+        :target: https://github.com/ark0015/enterprise/actions
         :alt: Build Status
 .. image:: https://readthedocs.org/projects/enterprise/badge/?version=latest
         :target: https://enterprise.readthedocs.io/en/latest/?badge=latest
