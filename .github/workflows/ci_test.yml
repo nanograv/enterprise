@@ -32,8 +32,8 @@ jobs:
         python -m pip install --upgrade pip
     - name: Install Dependencies
       run: |
-        cat requirements.txt | xargs -n 1 -L 1 pip install
         cat requirements_dev.txt | xargs -n 1 -L 1 pip install
+        cat requirements.txt | xargs -n 1 -L 1 pip install
         python setup.py install
     - name: Display Python, pip, setuptools, and all installed versions
       run: |
