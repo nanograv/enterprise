@@ -43,7 +43,7 @@ jobs:
         pip freeze
     - name: Run Tests and Lint
       run: |
-        pytest --cov=./ --cov-report=xml --cov-config=.coveragerc
+        pytest --cov-config=.coveragerc --cov=enterprise --cov-report=xml
         make lint
     - name: Codecov
       uses: codecov/codecov-action@v1
