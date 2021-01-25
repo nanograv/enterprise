@@ -1,9 +1,10 @@
-numpy==1.16.3
-scipy==1.2.0
+numpy>=1.16.3
+scipy>=1.2.0
 ephem>=3.7.6.0
 Cython>=0.28.5
 jplephem==2.6
 setuptools>=40.0.0
-healpy==1.12.0
+healpy>=1.14.0
 scikit-sparse>=0.4.2 --no-binary scikit-sparse
--e git+https://github.com/nanograv/PINT.git#egg=PINT
+git+https://github.com/nanograv/PINT.git@master#egg=pint-pulsar
+git+https://github.com/vallis/libstempo.git@master#egg=libstempo --install-option="--force-tempo2-install"
