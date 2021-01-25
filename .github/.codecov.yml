@@ -6,12 +6,12 @@ coverage:
   round: down
   range: "75...100"
   status:
-    project: on
-      target: 50%
-      #threshold: 0%
-    patch: off
+    project:
+      target: 85%
+      threshold: 6%
+    patch:
       target: auto
-      #threshold: 0%
+      threshold: 6%
 
 parsers:
   gcov:
