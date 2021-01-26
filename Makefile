@@ -65,8 +65,8 @@ clean-test: ## remove test and coverage artifacts
 test: ## run tests quickly with the default Python
 	pytest -v --full-trace --cov-config .coveragerc --cov=enterprise tests
 
-test-all: ## run tests on every Python version with tox
-	tox
+#test-all: ## run tests on every Python version with tox
+#	tox
 
 coverage: ## check code coverage quickly with the default Python
 	coverage run --source enterprise setup.py test
