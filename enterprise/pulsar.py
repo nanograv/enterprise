@@ -7,6 +7,7 @@ import logging
 import os
 
 import astropy.units as u
+import astropy.constants as const
 import numpy as np
 from ephem import Ecliptic, Equatorial
 
@@ -26,9 +27,8 @@ except ImportError:
 
 try:
     import pint
-    import pint.toa as toa
-    import pint.models.model_builder as mb
-    from pint.models import TimingModel
+    from pint.toa import TOAs
+    from pint.models import get_model_and_toas, TimingModel
     from pint.residuals import Residuals as resids
 except ImportError:
     print("Cannot import PINT? Meh...")
@@ -45,11 +45,9 @@ logger = logging.getLogger(__name__)
 
 def get_maxobs(timfile):
     """Utility function to return number of lines in tim file.
-
     :param timfile:
         Full path to tim-file. For tim-files that use INCLUDEs this
         should be the base tim file.
-
     :returns: Number of lines in tim-file
     """
 
@@ -233,11 +231,9 @@ class BasePulsar(object):
     @property
     def backend_flags(self):
         """Return array of backend flags.
-
         Not all TOAs have the same flags for all data sets. In order to
         facilitate this we have a ranked ordering system that will look
         for flags. The order is `group`, `g`, `sys`, `i`, `f`, `fe`+`be`.
-
         """
 
         nobs = len(self._toas)
@@ -290,6 +286,8 @@ class PintPulsar(BasePulsar):
         self.name = model.PSR.value
 
         self._toas = np.array(toas.table["tdbld"], dtype="float64") * 86400
+        # saving also stoas (e.g., for DMX comparisons)
+        self._stoas = np.array(toas.get_mjds().value, dtype="float64") * 86400
         self._residuals = np.array(resids(toas, model).time_resids.to(u.s), dtype="float64")
         self._toaerrs = np.array(toas.get_errors().to(u.s), dtype="float64")
         self._designmatrix = model.designmatrix(toas)[0]
@@ -297,6 +295,9 @@ class PintPulsar(BasePulsar):
 
         # fitted parameters
         self.fitpars = ["Offset"] + [par for par in model.params if not getattr(model, par).frozen]
+
+        # gather DM/DMX information if available
+        self._set_dm(model)
 
         # set parameters
         spars = [par for par in model.params]
@@ -322,12 +323,34 @@ class PintPulsar(BasePulsar):
         self._pdist = self._get_pdist()
         self._raj, self._decj = self._get_radec(model)
         self._pos = self._get_pos()
-        self._planetssb = self._get_planetssb()
+        self._planetssb = self._get_planetssb(toas, model)
+        self._sunssb = self._get_sunssb(toas, model)
 
         # TODO: pos_t not currently implemented
         self._pos_t = np.zeros((len(self._toas), 3))
 
         self.sort_data()
+
+    def _set_dm(self, model):
+        pars = [par for par in model.params if not getattr(model, par).frozen]
+
+        if hasattr(model, "DM"):
+            self._dm = model["DM"].value
+
+        dmx = {
+            par: {
+                "DMX": model[par].value,
+                "DMXerr": model[par].uncertainty_value,
+                "DMXR1": model[par[:3] + "R1" + par[3:]].value,
+                "DMXR2": model[par[:3] + "R2" + par[3:]].value,
+                "fit": par in pars,
+            }
+            for par in pars
+            if "DMX_" in par
+        }
+
+        if dmx:
+            self._dmx = dmx
 
     def _get_radec(self, model):
         if hasattr(model, "RAJ") and hasattr(model, "DECJ"):
@@ -338,11 +361,41 @@ class PintPulsar(BasePulsar):
             elong, elat = model.ELONG.value, model.ELAT.value
             return self._get_radec_from_ecliptic(elong * d2r, elat * d2r)
 
-    def _get_planetssb(self):
-        return np.zeros((len(self._toas), 9, 6))
+    def _get_ssb_lsec(self, toas, obs_planet):
+        """Get the planet to SSB vector in lightseconds from Pint table"""
+        vec = toas.table[obs_planet] + toas.table["ssb_obs_pos"]
+        return (vec / const.c).to("s").value
 
-    def _get_sunssb(self):
-        return np.zeros((len(self._toas), 6))
+    def _get_planetssb(self, toas, model):
+        planetssb = None
+        if self.planets:
+            planetssb = np.zeros((len(self._toas), 9, 6))
+            # planetssb[:, 0, :] = self.t2pulsar.mercury_ssb
+            # planetssb[:, 1, :] = self.t2pulsar.venus_ssb
+            planetssb[:, 2, :3] = self._get_ssb_lsec(toas, "obs_earth_pos")
+            # planetssb[:, 3, :] = self.t2pulsar.mars_ssb
+            planetssb[:, 4, :3] = self._get_ssb_lsec(toas, "obs_jupiter_pos")
+            planetssb[:, 5, :3] = self._get_ssb_lsec(toas, "obs_saturn_pos")
+            planetssb[:, 6, :3] = self._get_ssb_lsec(toas, "obs_uranus_pos")
+            planetssb[:, 7, :3] = self._get_ssb_lsec(toas, "obs_neptune_pos")
+            # planetssb[:, 8, :] = self.t2pulsar.pluto_ssb
+
+            # if hasattr(model, "ELAT") and hasattr(model, "ELONG"):
+            #     for ii in range(9):
+            #         planetssb[:, ii, :3] = utils.ecl2eq_vec(planetssb[:, ii, :3])
+            #         # planetssb[:, ii, 3:] = utils.ecl2eq_vec(planetssb[:, ii, 3:])
+        return planetssb
+
+    def _get_sunssb(self, toas, model):
+        sunssb = None
+        if self.planets:
+            sunssb = np.zeros((len(self._toas), 6))
+            sunssb[:, :3] = self._get_ssb_lsec(toas, "obs_sun_pos")
+
+            # if hasattr(model, "ELAT") and hasattr(model, "ELONG"):
+            #     sunssb[:, :3] = utils.ecl2eq_vec(sunssb[:, :3])
+            # #     sunssb[:, 3:] = utils.ecl2eq_vec(sunssb[:, 3:])
+        return sunssb
 
 
 class Tempo2Pulsar(BasePulsar):
@@ -466,13 +519,14 @@ def Pulsar(*args, **kwargs):
 
     ephem = kwargs.get("ephem", None)
     clk = kwargs.get("clk", None)
+    bipm_version = kwargs.get("bipm_version", None)
     planets = kwargs.get("planets", True)
     sort = kwargs.get("sort", True)
     drop_t2pulsar = kwargs.get("drop_t2pulsar", True)
     timing_package = kwargs.get("timing_package", "tempo2")
 
     if pint is not None:
-        toas = [x for x in args if isinstance(x, toa.TOAs)]
+        toas = [x for x in args if isinstance(x, TOAs)]
         model = [x for x in args if isinstance(x, TimingModel)]
 
     if t2 is not None:
@@ -505,14 +559,11 @@ def Pulsar(*args, **kwargs):
         os.chdir(dirname)
 
         if timing_package.lower() == "pint":
-            if ephem is None:
-                ephem = "DE421"
-            if clk is None:
-                bipm_version = "BIPM2015"
-            else:
+            if (clk is not None) and (bipm_version is None):
                 bipm_version = clk.split("(")[1][:-1]
-            toas = toa.get_TOAs(reltimfile, ephem=ephem, planets=planets, bipm_version=bipm_version)
-            model = mb.get_model(relparfile)
+            model, toas = get_model_and_toas(
+                relparfile, reltimfile, ephem=ephem, bipm_version=bipm_version, planets=planets
+            )
             os.chdir(cwd)
             return PintPulsar(toas, model, sort=sort, planets=planets)
 
