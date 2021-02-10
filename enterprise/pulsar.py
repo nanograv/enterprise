@@ -363,6 +363,10 @@ class PintPulsar(BasePulsar):
 
     def _get_ssb_lsec(self, toas, obs_planet):
         """Get the planet to SSB vector in lightseconds from Pint table"""
+        if obs_planet not in toas.table.colnames:
+            err_msg = f'{obs_planet} is not in toas.table.colnames. Either '
+            err_msg += 'planet flag is not True or further Pint development needed.'
+            raise ValueError(err_msg)
         vec = toas.table[obs_planet] + toas.table["ssb_obs_pos"]
         return (vec / const.c).to("s").value
 
@@ -370,8 +374,8 @@ class PintPulsar(BasePulsar):
         planetssb = None
         if self.planets:
             planetssb = np.zeros((len(self._toas), 9, 6))
-            # planetssb[:, 0, :] = self.t2pulsar.mercury_ssb
-            # planetssb[:, 1, :] = self.t2pulsar.venus_ssb
+            # planetssb[:, 0, :3] = self._get_ssb_lsec(toas, "obs_mercury_pos")
+            # planetssb[:, 1, :3] = self._get_ssb_lsec(toas, "obs_venus_pos")
             planetssb[:, 2, :3] = self._get_ssb_lsec(toas, "obs_earth_pos")
             # planetssb[:, 3, :] = self.t2pulsar.mars_ssb
             planetssb[:, 4, :3] = self._get_ssb_lsec(toas, "obs_jupiter_pos")
