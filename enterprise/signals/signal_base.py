@@ -26,7 +26,7 @@ from enterprise.signals.parameter import function  # noqa: F401
 from enterprise.signals.parameter import ConstantParameter
 from enterprise.signals.utils import KernelMatrix
 
-logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
+# logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
