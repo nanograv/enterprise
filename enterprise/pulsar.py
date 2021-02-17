@@ -39,7 +39,7 @@ if pint is None and t2 is None:
     err_msg = "Must have either PINT or libstempo timing package installed"
     raise ImportError(err_msg)
 
-logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
+# logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
