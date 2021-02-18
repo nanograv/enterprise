@@ -655,7 +655,7 @@ def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0, gwpol=0.0, t
 
 
 @function
-def fdm_delay(toas, log10_A=-14.0, log10_f=-8.0, phase_e=0.0, phase_p=0.0):
+def fdm_delay(toas, log10_A, log10_f, phase_e, phase_p):
     """
     Function that calculates the earth-term gravitational-wave
     fuzzy dark matter signal, as described in:
