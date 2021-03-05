@@ -53,17 +53,17 @@ def replicate(pta, ptac, p0, coefficients=False):
     
     Returns a list of replicated residuals, one list element
     per pulsar."""
-    
+
     # GP delays
     if not coefficients:
         p0 = get_coefficients(pta, p0)
 
     ds = ptac.get_delay(params=p0)
-    
+
     # note: the proper way to cache the Nmat computation is to give
     # a `sample` method to csc_matrix_alt and ndarray_alt, which
     # would then save the factorization in the instance
-    
+
     nmats = ptac.get_ndiag(params=p0)
     for d, nmat in zip(ds, nmats):
         if isinstance(nmat, sps.csc_matrix):
@@ -76,9 +76,10 @@ def replicate(pta, ptac, p0, coefficients=False):
             # diagonal case, nmat will be ndarray_alt instance
             d += np.sqrt(nmat) * np.random.randn(len(d))
         else:
-            raise NotImplementedError("Cannot take Nmat factor; "
-                "you may need to set the EcorrKernelNoise to 'sparse'.")
-            
+            raise NotImplementedError(
+                "Cannot take Nmat factor; " "you may need to set the EcorrKernelNoise to 'sparse'."
+            )
+
     return ds
 
 
