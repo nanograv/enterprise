@@ -222,7 +222,7 @@ def TimingModel(coefficients=False, name="linear_timing_model", use_svd=False, n
         basis = utils.unnormed_tm_basis()
 
     prior = utils.tm_prior()
-    BaseClass = BasisGP(prior, basis, coefficients=coefficients, name=name)
+    BaseClass = BasisGP(prior, basis, coefficients=coefficients, name=name + "_svd" if use_svd else name)
 
     class TimingModel(BaseClass):
         signal_type = "basis"
