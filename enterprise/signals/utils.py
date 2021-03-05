@@ -27,11 +27,59 @@ from enterprise.signals.gp_bases import (  # noqa: F401
     createfourierdesignmatrix_eph,
 )
 
-
 try:
     from sksparse.cholmod import cholesky
 except:
-    print("You'll need sksparse for get_coefficients() with common signals!")
+    print("You'll need sksparse for get_coefficients() and replicate()!")
+
+
+def replicate(pta, ptac, p0, coefficients=False):
+    """Create a replicated residuals conditioned on the data.
+    Here pta is standard marginalized-likelihood PTA, and
+    ptac is a hierarchical-likelihood version of pta with
+    coefficients=True for all GPs. This function:
+    
+    - calls utils.get_coefficients(pta, p0) to get a realization
+    of the GP coefficients conditioned on the data and on the
+    hyperparameters in p0;
+    - calls ptac.get_delay() to compute the resulting realized
+    GPs at the toas;
+    - adds measurement noise (including ECORR) consistent with
+    the hyperparameters.
+    
+    To use this (pending further development), you need to set
+    combine=False on the pta/ptac GPs, and method='sparse' on
+    the ptac EcorrKernelNoise.
+    
+    Returns a list of replicated residuals, one list element
+    per pulsar."""
+    
+    # GP delays
+    if not coefficients:
+        p0 = get_coefficients(pta, p0)
+
+    ds = ptac.get_delay(params=p0)
+    
+    # note: the proper way to cache the Nmat computation is to give
+    # a `sample` method to csc_matrix_alt and ndarray_alt, which
+    # would then save the factorization in the instance
+    
+    nmats = ptac.get_ndiag(params=p0)
+    for d, nmat in zip(ds, nmats):
+        if isinstance(nmat, sps.csc_matrix):
+            # add EFAC/EQUAD/ECORR noise
+            # use xx' = I => (Lx)(Lx)' = LL' with LL' = PNP'
+            # see https://scikit-sparse.readthedocs.io/en/latest/cholmod.html
+            ch = cholesky(nmat)
+            d[ch.P()] += ch.L() @ np.random.randn(len(d))
+        elif isinstance(nmat, np.ndarray):
+            # diagonal case, nmat will be ndarray_alt instance
+            d += np.sqrt(nmat) * np.random.randn(len(d))
+        else:
+            raise NotImplementedError("Cannot take Nmat factor; "
+                "you may need to set the EcorrKernelNoise to 'sparse'.")
+            
+    return ds
 
 
 def get_coefficients(pta, params, n=1, phiinv_method="cliques", common_sparse=False):
