@@ -38,7 +38,7 @@ def replicate(pta, ptac, p0, coefficients=False):
     Here pta is standard marginalized-likelihood PTA, and
     ptac is a hierarchical-likelihood version of pta with
     coefficients=True for all GPs. This function:
-    
+
     - calls utils.get_coefficients(pta, p0) to get a realization
     of the GP coefficients conditioned on the data and on the
     hyperparameters in p0;
@@ -46,11 +46,11 @@ def replicate(pta, ptac, p0, coefficients=False):
     GPs at the toas;
     - adds measurement noise (including ECORR) consistent with
     the hyperparameters.
-    
+
     To use this (pending further development), you need to set
     combine=False on the pta/ptac GPs, and method='sparse' on
     the ptac EcorrKernelNoise.
-    
+
     Returns a list of replicated residuals, one list element
     per pulsar."""
 
