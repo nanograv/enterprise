@@ -31,15 +31,15 @@ jobs:
         curl -sSL https://raw.githubusercontent.com/jellis18/libstempo/master/install_tempo2.sh | sh
     - name: Install dependencies and package
       run: |
-        python -m pip install --upgrade pip
+        python -m pip install --upgrade pip setuptools wheel
         python -m pip install flake8 pytest black pytest-cov
-        pip install -e .
+        python -m pip install -e .
     - name: Display Python, pip, setuptools, and all installed versions
       run: |
         python -c "import sys; print(f'Python {sys.version}')"
         python -c "import pip; print(f'pip {pip.__version__}')"
         python -c "import setuptools; print(f'setuptools {setuptools.__version__}')"
-        pip freeze
+        python -m pip freeze
     - name: Run lint
       run: make lint
     - name: Test with pytest
@@ -70,15 +70,15 @@ jobs:
         curl -sSL https://raw.githubusercontent.com/jellis18/libstempo/master/install_tempo2.sh | sh
     - name: Install dependencies and package
       run: |
-        python -m pip install --upgrade pip
+        python -m pip install --upgrade pip setuptools wheel
         python -m pip install flake8 pytest black pytest-cov
-        pip install -e .
+        python -m pip install -e .
     - name: Display Python, pip, setuptools, and all installed versions
       run: |
         python -c "import sys; print(f'Python {sys.version}')"
         python -c "import pip; print(f'pip {pip.__version__}')"
         python -c "import setuptools; print(f'setuptools {setuptools.__version__}')"
-        pip freeze
+        python -m pip freeze
     - name: Run lint
       run: make lint
     - name: Test with pytest
