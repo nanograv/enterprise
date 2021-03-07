@@ -10,7 +10,14 @@ with open("HISTORY.rst") as history_file:
     history = history_file.read()
 
 requirements = [
-    # TODO: put package requirements here
+    "numpy>=1.16.3",
+    "scipy>=1.2.0",
+    "ephem>=3.7.6.0",
+    "jplephem==2.6",
+    "healpy>=1.14.0",
+    "scikit-sparse>=0.4.2",
+    "pint-pulsar>=0.8.2",
+    "libstempo @ git+https://github.com/jellis18/libstempo.git@master#egg=libstempo",
 ]
 
 test_requirements = []
