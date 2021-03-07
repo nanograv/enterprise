@@ -67,8 +67,8 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install non-python dependencies
       run: |
-        alias gfortran=gfortran-9
         brew install suite-sparse automake
+        export FC=gfortran-10
         curl -sSL https://raw.githubusercontent.com/jellis18/libstempo/master/install_tempo2.sh | sh
     - name: Install dependencies and package
       run: |
