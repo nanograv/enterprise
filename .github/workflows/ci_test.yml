@@ -12,7 +12,7 @@ on:
 
 jobs:
   tests:
-    runs-on: ${{ os.matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
