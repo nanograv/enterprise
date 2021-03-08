@@ -25,7 +25,5 @@ exclude = '''
 requires = [
     "setuptools>=40.8.0",
     "wheel",
-    "Cython>=0.22", # need for scikit-sparse
-    "numpy>=1.15.0" # need for scikit-sparse
 ]
 build-backend = "setuptools.build_meta"
