@@ -28,10 +28,10 @@ help:
 
 init:
 	@python3 -m venv .enterprise --prompt enterprise
-	@./.enterprise/bin/python3 -m pip install numpy
+	@./.enterprise/bin/python3 -m pip install -U pip setuptools wheel
+	@./.enterprise/bin/python3 -m pip install numpy cython
 	@./.enterprise/bin/python3 -m pip install -r requirements.txt -U
 	@./.enterprise/bin/python3 -m pip install -r requirements_dev.txt -U
-	@./.enterprise/bin/python3 -m pip install libstempo --install-option="--with-tempo2=$(TEMPO2)"
 	@./.enterprise/bin/python3 -m pre_commit install --install-hooks --overwrite
 	@./.enterprise/bin/python3 -m pip install -e .
 
@@ -62,8 +62,8 @@ clean-test: ## remove test and coverage artifacts
 	rm -f .coverage
 	rm -fr htmlcov/
 
-test: ## run tests quickly with the default Python
-	pytest -v --full-trace --cov-config .coveragerc --cov=enterprise tests
+test: lint ## run tests quickly with the default Python
+	pytest -v --durations=10 --full-trace --cov-config .coveragerc --cov=enterprise tests
 
 #test-all: ## run tests on every Python version with tox
 #	tox
