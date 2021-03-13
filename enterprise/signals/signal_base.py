@@ -654,7 +654,7 @@ class PTA(object):
         :param include_params: [bool]
             list all parameters for each signal
         :param to_stdout: [bool]
-            logger.info summary to `stdout` instead of returning it
+            print summary to `stdout` instead of returning it
         :return: [string]
         """
         summary = ""
