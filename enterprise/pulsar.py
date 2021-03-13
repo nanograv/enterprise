@@ -118,7 +118,7 @@ class BasePulsar(object):
         """Sort data by time."""
         if self._sort:
             self._isort = np.argsort(self._toas, kind="mergesort")
-            self._iisort = np.zeros(len(self._isort), dtype=np.int)
+            self._iisort = np.zeros(len(self._isort), dtype=int)
             for ii, p in enumerate(self._isort):
                 self._iisort[p] = ii
         else:
