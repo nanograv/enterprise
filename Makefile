@@ -28,7 +28,7 @@ help:
 
 init:
 	@python3 -m venv .enterprise --prompt enterprise
-	@./.enterprise/bin/python3 -m pip install -U pip
+	@./.enterprise/bin/python3 -m pip install -U pip setuptools wheel
 	@./.enterprise/bin/python3 -m pip install numpy cython
 	@./.enterprise/bin/python3 -m pip install -r requirements.txt -U
 	@./.enterprise/bin/python3 -m pip install -r requirements_dev.txt -U

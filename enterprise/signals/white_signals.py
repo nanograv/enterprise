@@ -3,7 +3,6 @@
 defined as the class of signals that only modifies the white noise matrix `N`.
 """
 
-from __future__ import absolute_import, division, print_function, unicode_literals
 
 import numpy as np
 import scipy.sparse
