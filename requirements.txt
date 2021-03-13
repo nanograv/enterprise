@@ -5,4 +5,4 @@ jplephem==2.6
 healpy>=1.14.0
 scikit-sparse>=0.4.2
 pint-pulsar>=0.8.2
-git+https://github.com/jellis18/libstempo.git@master#egg=libstempo
+git+https://github.com/vallis/libstempo.git@master#egg=libstempo

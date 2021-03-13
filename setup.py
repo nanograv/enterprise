@@ -17,7 +17,7 @@ requirements = [
     "healpy>=1.14.0",
     "scikit-sparse>=0.4.2",
     "pint-pulsar>=0.8.2",
-    "libstempo @ git+https://github.com/jellis18/libstempo.git@master#egg=libstempo",
+    "libstempo @ git+https://github.com/vallis/libstempo.git@master#egg=libstempo",
 ]
 
 test_requirements = []
@@ -35,6 +35,7 @@ setup(
     package_dir={"enterprise": "enterprise"},
     include_package_data=True,
     package_data={"enterprise": ["datafiles/*", "datafiles/ephemeris/*", "datafiles/ng9/*", "datafiles/mdc_open1/*"]},
+    python_requires=">=3.6, <3.9",
     install_requires=requirements,
     license="MIT license",
     zip_safe=False,
