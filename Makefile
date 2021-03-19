@@ -34,6 +34,8 @@ init:
 	@./.enterprise/bin/python3 -m pip install -r requirements_dev.txt -U
 	@./.enterprise/bin/python3 -m pre_commit install --install-hooks --overwrite
 	@./.enterprise/bin/python3 -m pip install -e .
+	@echo "run source .enterprise/bin/activate to activate environment"
+
 
 format:
 	black .
@@ -61,24 +63,18 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr .tox/
 	rm -f .coverage
 	rm -fr htmlcov/
+	rm -rf coverage.xml
 
 test: lint ## run tests quickly with the default Python
-	pytest -v --durations=10 --full-trace --cov-config .coveragerc --cov=enterprise tests
+	pytest -v --durations=10 --full-trace --cov-report html --cov-report xml --cov-config .coveragerc --cov=enterprise tests
 
-#test-all: ## run tests on every Python version with tox
-#	tox
 
-coverage: ## check code coverage quickly with the default Python
-	coverage run --source enterprise setup.py test
-
-	coverage report -m
-	coverage html
+coverage: test ## check code coverage quickly with the default Python
 	$(BROWSER) htmlcov/index.html
 
 jupyter-docs:
 	jupyter nbconvert --template docs/nb-rst.tpl --to rst docs/_static/notebooks/*.ipynb --output-dir docs/
 	cp -r docs/_static/notebooks/img docs/
-	#jupyter nbconvert --template docs/nb-rst.tpl --to rst docs/_static/notebooks/tutorials/*.ipynb --output-dir docs/tutorials/
 
 docs: ## generate Sphinx HTML documentation, including API docs
 	rm -f docs/enterprise*.rst

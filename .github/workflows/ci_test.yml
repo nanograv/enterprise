@@ -52,7 +52,7 @@ jobs:
     - name: Run lint
       run: make lint
     - name: Test with pytest
-      run: pytest --cov-config=.coveragerc --cov=enterprise --cov-report=xml
+      run: make test
     - name: Codecov
       uses: codecov/codecov-action@v1
       with:
