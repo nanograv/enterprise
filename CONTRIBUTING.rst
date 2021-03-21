@@ -72,11 +72,13 @@ Ready to contribute? Here's how to set up `enterprise` for local development.
    
     $ git pull upstream master
 
-4. This is how you set up your fork for local development::
+4. This is how you set up your fork for local development:
 
     .. note:: 
         You will need to have ``tempo`` and ``suitesparse`` installed before  
         running the commands below. 
+
+ ::
 
     $ cd enterprise/
     $ make init
