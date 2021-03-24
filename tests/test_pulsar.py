@@ -145,6 +145,7 @@ class TestPulsarPint(TestPulsar):
             datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
             datadir + "/B1855+09_NANOGrav_9yv1.tim",
             ephem="DE430",
+            drop_pintpsr=False,
             timing_package="pint",
         )
 
