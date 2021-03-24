@@ -157,9 +157,13 @@ class TestPulsarPint(TestPulsar):
         assert hasattr(self.psr, "dm")
 
     def test_planetssb(self):
-        """Place holder for filter_data tests."""
         assert hasattr(self.psr, "planetssb")
 
     def test_sunssb(self):
-        """Place holder for filter_data tests."""
         assert hasattr(self.psr, "sunssb")
+
+    def test_model(self):
+        assert hasattr(self.psr, "model")
+
+    def test_pint_toas(self):
+        assert hasattr(self.psr, "pint_toas")

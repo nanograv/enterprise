@@ -285,6 +285,9 @@ class PintPulsar(BasePulsar):
         self.planets = planets
         self.name = model.PSR.value
 
+        self.model = model
+        self.pint_toas = toas
+
         self._toas = np.array(toas.table["tdbld"], dtype="float64") * 86400
         # saving also stoas (e.g., for DMX comparisons)
         self._stoas = np.array(toas.get_mjds().value, dtype="float64") * 86400
