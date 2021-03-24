@@ -17,7 +17,7 @@ requirements = [
     "healpy>=1.14.0",
     "scikit-sparse>=0.4.2",
     "pint-pulsar>=0.8.2",
-    "libstempo @ git+https://github.com/vallis/libstempo.git@master#egg=libstempo",
+    "libstempo>=2.4.0",
 ]
 
 test_requirements = []
