@@ -142,6 +142,12 @@ class TestPulsar(unittest.TestCase):
             msg = "Cannot find parfile wrong.par or timfile wrong.tim!"
             self.assertTrue(msg in context.exception)
 
+    def test_value_error(self):
+        """Test exception when unknown argument is given"""
+
+        with self.assertRaises(ValueError):
+            Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.time")
+
 
 class TestPulsarPint(TestPulsar):
     @classmethod

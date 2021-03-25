@@ -573,5 +573,5 @@ def Pulsar(*args, **kwargs):
             t2pulsar = t2.tempopulsar(relparfile, reltimfile, maxobs=maxobs, ephem=ephem, clk=clk)
             os.chdir(cwd)
             return Tempo2Pulsar(t2pulsar, sort=sort, drop_t2pulsar=drop_t2pulsar, planets=planets)
-    else:
-        logger.error("Unknown arguments {}".format(args))  # pragma: no cover
+
+    raise ValueError("Unknown arguments {}".format(args))
