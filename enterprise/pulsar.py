@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 try:
     import libstempo as t2
 except ImportError:
-    logger.warning("libstempo not installed. Will use PINT instead.")
+    logger.warning("libstempo not installed. Will use PINT instead.")  # pragma: no cover
     t2 = None
 
 try:
@@ -33,7 +33,7 @@ try:
     from pint.residuals import Residuals as resids
     from pint.toa import TOAs
 except ImportError:
-    logger.warning("PINT not installed. Will use libstempo instead.")
+    logger.warning("PINT not installed. Will use libstempo instead.")  # pragma: no cover
     pint = None
 
 
@@ -574,4 +574,4 @@ def Pulsar(*args, **kwargs):
             os.chdir(cwd)
             return Tempo2Pulsar(t2pulsar, sort=sort, drop_t2pulsar=drop_t2pulsar, planets=planets)
     else:
-        logger.error("Unknown arguments {}".format(args))
+        logger.error("Unknown arguments {}".format(args))  # pragma: no cover

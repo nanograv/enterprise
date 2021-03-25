@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 try:
     from sksparse.cholmod import cholesky
-except ImportError:
+except ImportError:  # pragma no cover
     logger.warning("sksparse not installed. You'll need sksparse for get_coefficients() with common signals!")
 
 

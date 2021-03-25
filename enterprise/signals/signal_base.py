@@ -545,7 +545,7 @@ class PTA(object):
                         try:
                             self._cliques[slices[sc].start + phiind] = self._clcount
                             self._clcount = self._clcount + 1
-                        except Exception:
+                        except Exception:  # pragma: no cover
                             logger.exception("Exception raised in computing cliques")
                             logger.info(self._cliques.shape)
                             logger.info("phiind", phiind, len(phiind))
