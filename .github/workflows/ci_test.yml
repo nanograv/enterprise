@@ -29,6 +29,7 @@ jobs:
     - name: Pre-install
       run: |
         sudo apt-get install libsuitesparse-dev
+        curl -sSL https://raw.githubusercontent.com/vallis/libstempo/master/install_tempo2.sh | sh
         python -m pip install --upgrade pip
     - name: Install Dependencies
       run: |

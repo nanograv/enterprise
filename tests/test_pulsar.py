@@ -145,6 +145,7 @@ class TestPulsarPint(TestPulsar):
             datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
             datadir + "/B1855+09_NANOGrav_9yv1.tim",
             ephem="DE430",
+            drop_pintpsr=False,
             timing_package="pint",
         )
 
@@ -157,9 +158,13 @@ class TestPulsarPint(TestPulsar):
         assert hasattr(self.psr, "dm")
 
     def test_planetssb(self):
-        """Place holder for filter_data tests."""
         assert hasattr(self.psr, "planetssb")
 
     def test_sunssb(self):
-        """Place holder for filter_data tests."""
         assert hasattr(self.psr, "sunssb")
+
+    def test_model(self):
+        assert hasattr(self.psr, "model")
+
+    def test_pint_toas(self):
+        assert hasattr(self.psr, "pint_toas")

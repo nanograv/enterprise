@@ -156,6 +156,14 @@ class BasePulsar(object):
         # drop t2pulsar object
         if hasattr(self, "t2pulsar"):
             del self.t2pulsar
+            msg = "t2pulsar object cannot be pickled and has been removed."
+            logger.warning(msg)
+
+        if hasattr(self, "pint_toas"):
+            del self.pint_toas
+            del self.model
+            msg = "pint_toas and model objects cannot be pickled and have been removed."
+            logger.warning(msg)
 
         if outdir is None:
             outdir = os.getcwd()
@@ -279,11 +287,14 @@ class BasePulsar(object):
 
 
 class PintPulsar(BasePulsar):
-    def __init__(self, toas, model, sort=True, planets=True):
+    def __init__(self, toas, model, sort=True, drop_pintpsr=True, planets=True):
 
         self._sort = sort
         self.planets = planets
         self.name = model.PSR.value
+        if not drop_pintpsr:
+            self.model = model
+            self.pint_toas = toas
 
         self._toas = np.array(toas.table["tdbld"], dtype="float64") * 86400
         # saving also stoas (e.g., for DMX comparisons)
@@ -523,6 +534,7 @@ def Pulsar(*args, **kwargs):
     planets = kwargs.get("planets", True)
     sort = kwargs.get("sort", True)
     drop_t2pulsar = kwargs.get("drop_t2pulsar", True)
+    drop_pintpsr = kwargs.get("drop_pintpsr", True)
     timing_package = kwargs.get("timing_package", "tempo2")
 
     if pint is not None:
@@ -536,7 +548,7 @@ def Pulsar(*args, **kwargs):
     timfile = [x for x in args if isinstance(x, str) and x.split(".")[-1] in ["tim", "toa"]]
 
     if pint and toas and model:
-        return PintPulsar(toas[0], model[0], sort=sort, planets=planets)
+        return PintPulsar(toas[0], model[0], sort=sort, drop_pintpsr=drop_pintpsr, planets=planets)
     elif t2 and t2pulsar:
         return Tempo2Pulsar(t2pulsar[0], sort=sort, drop_t2pulsar=drop_t2pulsar, planets=planets)
     elif parfile and timfile:
@@ -565,7 +577,7 @@ def Pulsar(*args, **kwargs):
                 relparfile, reltimfile, ephem=ephem, bipm_version=bipm_version, planets=planets
             )
             os.chdir(cwd)
-            return PintPulsar(toas, model, sort=sort, planets=planets)
+            return PintPulsar(toas, model, sort=sort, drop_pintpsr=drop_pintpsr, planets=planets)
 
         elif timing_package.lower() == "tempo2":
 
