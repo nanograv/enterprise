@@ -10,6 +10,8 @@ for time slicing, PINT integration and pickling.
 """
 
 
+import os
+import shutil
 import unittest
 
 import numpy as np
@@ -30,6 +32,10 @@ class TestPulsar(unittest.TestCase):
 
         # initialize Pulsar class
         cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree("pickle_dir")
 
     def test_residuals(self):
         """Check Residual shape."""
@@ -117,6 +123,8 @@ class TestPulsar(unittest.TestCase):
         with open("B1855+09.pkl", "rb") as f:
             pkl_psr = pickle.load(f)
 
+        os.remove("B1855+09.pkl")
+
         assert np.allclose(self.psr.residuals, pkl_psr.residuals, rtol=1e-10)
 
         self.psr.to_pickle("pickle_dir")
@@ -133,6 +141,12 @@ class TestPulsar(unittest.TestCase):
 
             msg = "Cannot find parfile wrong.par or timfile wrong.tim!"
             self.assertTrue(msg in context.exception)
+
+    def test_value_error(self):
+        """Test exception when unknown argument is given"""
+
+        with self.assertRaises(ValueError):
+            Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.time")
 
 
 class TestPulsarPint(TestPulsar):

@@ -9,3 +9,8 @@ repos:
     hooks:
     - id: flake8
       args: ["--config=.flake8"]
+- repo: https://github.com/timothycrosley/isort
+  rev: 5.6.1
+  hooks:
+    - id: isort
+

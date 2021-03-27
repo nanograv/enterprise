@@ -3,14 +3,13 @@
 Defines the signal base classes and metaclasses. All signals will then be
 derived from these base classes.
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import collections
 
 try:
     from collections.abc import Sequence
 except:
     from collections import Sequence
+
 import itertools
 import logging
 
@@ -546,10 +545,11 @@ class PTA(object):
                         try:
                             self._cliques[slices[sc].start + phiind] = self._clcount
                             self._clcount = self._clcount + 1
-                        except:
-                            print(self._cliques.shape)
-                            print("phiind", phiind, len(phiind))
-                            print(slices)
+                        except Exception:  # pragma: no cover
+                            logger.exception("Exception raised in computing cliques")
+                            logger.info(self._cliques.shape)
+                            logger.info("phiind", phiind, len(phiind))
+                            logger.info(slices)
                             raise
 
     def get_phi(self, params, cliques=False):
@@ -684,7 +684,7 @@ class PTA(object):
         summary += "Fixed params: {}\n".format(copcount)
         summary += "Number of pulsars: {}\n".format(len(self._signalcollections))
         if to_stdout:
-            print(summary)
+            logger.info(summary)
         else:
             return summary
 

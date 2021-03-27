@@ -6,8 +6,8 @@ import json
 import logging
 import os
 
-import astropy.units as u
 import astropy.constants as const
+import astropy.units as u
 import numpy as np
 from ephem import Ecliptic, Equatorial
 
@@ -19,28 +19,27 @@ try:
 except:
     import pickle
 
+logger = logging.getLogger(__name__)
+
 try:
     import libstempo as t2
 except ImportError:
-    print("Ooh, no libstempo?")
+    logger.warning("libstempo not installed. Will use PINT instead.")  # pragma: no cover
     t2 = None
 
 try:
     import pint
-    from pint.toa import TOAs
-    from pint.models import get_model_and_toas, TimingModel
+    from pint.models import TimingModel, get_model_and_toas
     from pint.residuals import Residuals as resids
+    from pint.toa import TOAs
 except ImportError:
-    print("Cannot import PINT? Meh...")
+    logger.warning("PINT not installed. Will use libstempo instead.")  # pragma: no cover
     pint = None
 
 
 if pint is None and t2 is None:
     err_msg = "Must have either PINT or libstempo timing package installed"
     raise ImportError(err_msg)
-
-# logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 def get_maxobs(timfile):
@@ -119,7 +118,7 @@ class BasePulsar(object):
         """Sort data by time."""
         if self._sort:
             self._isort = np.argsort(self._toas, kind="mergesort")
-            self._iisort = np.zeros(len(self._isort), dtype=np.int)
+            self._iisort = np.zeros(len(self._isort), dtype=int)
             for ii, p in enumerate(self._isort):
                 self._iisort[p] = ii
         else:
@@ -586,5 +585,5 @@ def Pulsar(*args, **kwargs):
             t2pulsar = t2.tempopulsar(relparfile, reltimfile, maxobs=maxobs, ephem=ephem, clk=clk)
             os.chdir(cwd)
             return Tempo2Pulsar(t2pulsar, sort=sort, drop_t2pulsar=drop_t2pulsar, planets=planets)
-    else:
-        print("Unknown arguments {}".format(args))
+
+    raise ValueError("Unknown arguments {}".format(args))

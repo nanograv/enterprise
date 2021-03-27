@@ -2,7 +2,6 @@
 """Contains various selection functions to mask parameters by backend flags,
 time-intervals, etc."""
 
-from __future__ import absolute_import, division, print_function, unicode_literals
 
 import functools
 import inspect

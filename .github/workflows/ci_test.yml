@@ -1,52 +1,132 @@
-name: CI-Tests
+name: enterprise CI targets
 
 on:
   push:
-#    branches:
-#    - master
+    branches: [ master ]
   pull_request:
+    branches: [ master ]
+  release: 
+    types:
+      - published
+
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-      - uses: psf/black@stable
-  build:
-    runs-on: ubuntu-latest
+  tests:
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest]
         python-version: [3.6, 3.7, 3.8]
+
     steps:
-    - name: Checkout Repository
+    - name: Checkout repository
       uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Pre-install
+    - name: Install non-python dependencies on mac
+      if: runner.os == 'macOS'
+      run: |
+        brew unlink gcc && brew link gcc
+        brew install automake suite-sparse
+        curl -sSL https://raw.githubusercontent.com/vallis/libstempo/master/install_tempo2.sh | sh
+    - name: Install non-python dependencies on linux
+      if: runner.os == 'Linux'
       run: |
         sudo apt-get install libsuitesparse-dev
         curl -sSL https://raw.githubusercontent.com/vallis/libstempo/master/install_tempo2.sh | sh
-        python -m pip install --upgrade pip
-    - name: Install Dependencies
+    - name: Install dependencies and package
       run: |
-        cat requirements_dev.txt | xargs -n 1 -L 1 pip install
-        cat requirements.txt | xargs -n 1 -L 1 pip install
-        python setup.py install
+        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install flake8 pytest black pytest-cov
+        python -m pip install numpy cython
+        python -m pip install -e .
     - name: Display Python, pip, setuptools, and all installed versions
       run: |
         python -c "import sys; print(f'Python {sys.version}')"
         python -c "import pip; print(f'pip {pip.__version__}')"
         python -c "import setuptools; print(f'setuptools {setuptools.__version__}')"
-        pip freeze
-    - name: Run Tests and Lint
-      run: |
-        pytest --cov-config=.coveragerc --cov=enterprise --cov-report=xml
-        make lint
+        python -m pip freeze
+    - name: Run lint
+      run: make lint
+    - name: Test with pytest
+      run: make test
     - name: Codecov
       uses: codecov/codecov-action@v1
+      #with:
+      #  fail_ci_if_error: true
+
+
+  build:
+    needs: [tests]
+    name: Build source distribution
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 
+      uses: actions/setup-python@v2
       with:
-        fail_ci_if_error: true
+        python-version: "3.7"
+    - name: Install non-python dependencies on linux
+      run: |
+        sudo apt-get install libsuitesparse-dev
+        curl -sSL https://raw.githubusercontent.com/vallis/libstempo/master/install_tempo2.sh | sh
+    - name: Build
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        pip install numpy==1.16.3 cython
+        pip install -r requirements.txt
+        make dist
+    - name: Test the sdist
+      run: |
+        mkdir tmp  
+        cd tmp
+        python -m venv venv-sdist
+        venv-sdist/bin/python -m pip install --upgrade pip setuptools wheel
+        venv-sdist/bin/python -m pip install numpy cython
+        venv-sdist/bin/python -m pip install ../dist/enterprise*.tar.gz
+        venv-sdist/bin/python -c "import enterprise;print(enterprise.__version__)"
+    - name: Test the wheel
+      run: |
+        mkdir tmp2  
+        cd tmp2
+        python -m venv venv-wheel
+        venv-wheel/bin/python -m pip install --upgrade pip setuptools
+        venv-wheel/bin/python -m pip install numpy cython
+        venv-wheel/bin/python -m pip install ../dist/enterprise*.whl
+        venv-wheel/bin/python -c "import enterprise;print(enterprise.__version__)"
+    - uses: actions/upload-artifact@v2
+      with:
+        name: dist
+        path: dist/*
+
+
+  deploy:
+    needs: [tests, build]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.7'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install setuptools wheel twine
+    - name: Download wheel/dist from build
+      uses: actions/download-artifact@v2
+      with:
+        name: dist
+        path: dist
+    - name: Build and publish
+      env:
+        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      run: |
+        twine upload dist/*

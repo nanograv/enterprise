@@ -10,14 +10,21 @@ with open("HISTORY.rst") as history_file:
     history = history_file.read()
 
 requirements = [
-    # TODO: put package requirements here
+    "numpy>=1.16.3",
+    "scipy>=1.2.0",
+    "ephem>=3.7.6.0",
+    "jplephem==2.6",
+    "healpy>=1.14.0",
+    "scikit-sparse>=0.4.2",
+    "pint-pulsar>=0.8.2",
+    "libstempo>=2.4.0",
 ]
 
 test_requirements = []
 
 
 setup(
-    name="enterprise",
+    name="enterprise-pulsar",
     version="3.0.0",
     description="ENTERPRISE (Enhanced Numerical Toolbox Enabling a Robust PulsaR Inference SuitE)",
     long_description=readme + "\n\n" + history,
@@ -28,6 +35,7 @@ setup(
     package_dir={"enterprise": "enterprise"},
     include_package_data=True,
     package_data={"enterprise": ["datafiles/*", "datafiles/ephemeris/*", "datafiles/ng9/*", "datafiles/mdc_open1/*"]},
+    python_requires=">=3.6, <3.9",
     install_requires=requirements,
     license="MIT license",
     zip_safe=False,
