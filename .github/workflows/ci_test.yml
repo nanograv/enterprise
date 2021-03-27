@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.6, 3.7, 3.8, 3.9]
 
     steps:
     - name: Checkout repository
@@ -41,7 +41,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip setuptools wheel
         python -m pip install flake8 pytest black pytest-cov
-        python -m pip install numpy cython
         python -m pip install -e .
     - name: Display Python, pip, setuptools, and all installed versions
       run: |
@@ -78,7 +77,6 @@ jobs:
     - name: Build
       run: |
         python -m pip install --upgrade pip setuptools wheel
-        pip install numpy==1.16.3 cython
         pip install -r requirements.txt
         make dist
     - name: Test the sdist

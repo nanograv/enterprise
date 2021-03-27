@@ -15,7 +15,9 @@ requirements = [
     "ephem>=3.7.6.0",
     "jplephem==2.6",
     "healpy>=1.14.0",
-    "scikit-sparse>=0.4.2",
+    # "scikit-sparse>=0.4.2",
+    # use fork until scikit-sparse fixes build
+    "sksparse @ git+https://github.com/jellis18/sksparse@1.0.0",
     "pint-pulsar>=0.8.2",
     "libstempo>=2.4.0",
 ]
