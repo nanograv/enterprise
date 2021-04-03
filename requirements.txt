@@ -3,6 +3,6 @@ scipy>=1.2.0
 ephem>=3.7.6.0
 jplephem==2.6
 healpy>=1.14.0
-sksparse @ git+https://github.com/jellis18/sksparse@1.0.0 # use fork until scikit-sparse fixes build
+sksparse>=0.4.5
 pint-pulsar>=0.8.2
 libstempo>=2.4.0
