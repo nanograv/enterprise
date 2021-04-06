@@ -12,7 +12,7 @@ enterprise
 .. image:: https://codecov.io/gh/nanograv/enterprise/branch/master/graph/badge.svg?token=YXSX3293VF
         :target: https://codecov.io/gh/nanograv/enterprise
         :alt: Test Coverage
-.. image:: https://img.shields.io/badge/python-3.6%2C%203.7%2C%203.8-blue.svg
+.. image:: https://img.shields.io/badge/python-3.6%2C%203.7%2C%203.8%2C%203.9-blue.svg
         :alt: Python Versions
 
 .. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.4059815.svg

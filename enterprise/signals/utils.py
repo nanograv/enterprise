@@ -13,6 +13,7 @@ import scipy.special as ss
 from pkg_resources import Requirement, resource_filename
 from scipy.integrate import odeint
 from scipy.interpolate import interp1d
+from sksparse.cholmod import cholesky
 
 import enterprise
 from enterprise import constants as const
@@ -28,11 +29,6 @@ from enterprise.signals.gp_priors import powerlaw, turnover  # noqa: F401
 from enterprise.signals.parameter import function
 
 logger = logging.getLogger(__name__)
-
-try:
-    from sksparse.cholmod import cholesky
-except ImportError:  # pragma no cover
-    logger.warning("sksparse not installed. You'll need sksparse for get_coefficients() with common signals!")
 
 
 def get_coefficients(pta, params, n=1, phiinv_method="cliques", common_sparse=False):
