@@ -29,7 +29,6 @@ help:
 init:
 	@python3 -m venv .enterprise --prompt enterprise
 	@./.enterprise/bin/python3 -m pip install -U pip setuptools wheel
-	@./.enterprise/bin/python3 -m pip install numpy cython
 	@./.enterprise/bin/python3 -m pip install -r requirements.txt -U
 	@./.enterprise/bin/python3 -m pip install -r requirements_dev.txt -U
 	@./.enterprise/bin/python3 -m pre_commit install --install-hooks --overwrite
@@ -91,6 +90,5 @@ servedocs: docs ## compile the docs watching for changes
 	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
 
 dist: clean ## builds source and wheel package
-	python setup.py sdist
-	python setup.py bdist_wheel
+	python -m build --sdist --wheel
 	ls -l dist

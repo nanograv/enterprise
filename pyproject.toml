@@ -21,9 +21,14 @@ exclude = '''
   )/
 )
 '''
+
+[tool.setuptools_scm]
+write_to = "enterprise/version.py"
+
 [build-system]
 requires = [
     "setuptools>=40.8.0",
     "wheel",
+    "setuptools_scm[toml]>=6.0",
 ]
 build-backend = "setuptools.build_meta"

@@ -28,7 +28,6 @@ searches, and timing model analysis.
 * Free software: MIT license
 * Documentation: https://enterprise.readthedocs.io.
 
-.. include:: AUTHORS.rst
 
 Attribution
 -----------

@@ -3,11 +3,8 @@
 
 from setuptools import setup
 
-with open("README.rst") as readme_file:
+with open("README.rst", encoding="utf-8") as readme_file:
     readme = readme_file.read()
-
-with open("HISTORY.rst") as history_file:
-    history = history_file.read()
 
 requirements = [
     "numpy>=1.16.3",
@@ -25,9 +22,9 @@ test_requirements = []
 
 setup(
     name="enterprise-pulsar",
-    version="3.0.0",
     description="ENTERPRISE (Enhanced Numerical Toolbox Enabling a Robust PulsaR Inference SuitE)",
-    long_description=readme + "\n\n" + history,
+    long_description=readme,
+    long_desctiption_content_type="text/x-rst",
     author="Justin A. Ellis",
     author_email="justin.ellis18@gmail.com",
     url="https://github.com/nanograv/enterprise",
