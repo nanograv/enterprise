@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
+from .version import version
 
-__author__ = """Justin A. Ellis"""
-__email__ = "justin.ellis18@gmail.com"
-__version__ = "3.1.0"
+__version__ = version
