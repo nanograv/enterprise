@@ -18,4 +18,3 @@ python:
    version: 3.7
    install:
    - requirements: requirements_dev.txt
-   - requirements: requirements_rtd.txt
