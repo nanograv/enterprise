@@ -1,7 +1,10 @@
 ===============================
 enterprise
 ===============================
-
+.. image:: https://img.shields.io/pypi/v/enterprise-pulsar   
+        :alt: PyPI
+.. image:: https://img.shields.io/conda/v/conda-forge/enterprise-pulsar   
+        :alt: Conda
 .. image:: https://github.com/nanograv/enterprise/workflows/CI-Tests/badge.svg
         :target: https://github.com/nanograv/enterprise/actions
         :alt: Build Status
@@ -27,6 +30,21 @@ searches, and timing model analysis.
 
 * Free software: MIT license
 * Documentation: https://enterprise.readthedocs.io.
+
+Installation
+------------
+
+To install via ``pip``, some global dependencies are required. See the `libstempo <https://github.com/vallis/libstempo#pip-install>`_
+and `scikit-sparse <https://github.com/scikit-sparse/scikit-sparse#with-pip>`_ documentation for more info on how to install these dependencies.
+Once these are installed, you can do
+.. code:: bash
+
+        pip install enterprise-pulsar
+
+To install via ``conda``, simply do
+.. code:: bash
+
+        conda install -c conda-forge enterprise-pulsar
 
 
 Attribution
