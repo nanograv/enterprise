@@ -3,7 +3,7 @@
 
 from setuptools import setup
 
-with open("README.rst", encoding="utf-8") as readme_file:
+with open("README.md", encoding="utf-8") as readme_file:
     readme = readme_file.read()
 
 requirements = [
@@ -23,7 +23,7 @@ setup(
     name="enterprise-pulsar",
     description="ENTERPRISE (Enhanced Numerical Toolbox Enabling a Robust PulsaR Inference SuitE)",
     long_description=readme,
-    long_desctiption_content_type="text/x-rst",
+    long_description_content_type="text/markdown",
     author="Justin A. Ellis",
     author_email="justin.ellis18@gmail.com",
     url="https://github.com/nanograv/enterprise",
