@@ -80,6 +80,10 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements_dev.txt
         make dist
+    - name: Test deployability
+      run: |
+        pip install twine
+        twine check dist/*
     - name: Test the sdist
       run: |
         mkdir tmp  
