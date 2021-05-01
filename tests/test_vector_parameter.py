@@ -8,7 +8,6 @@ test_vector_parameter
 Tests for vector parameter functionality
 """
 
-from __future__ import division
 
 import unittest
 
