@@ -72,14 +72,17 @@ Ready to contribute? Here's how to set up `enterprise` for local development.
    
     $ git pull upstream master
 
-4. Install your local copy into a virtualenv. Assuming you have virtualenvwrapper installed, this is how you set up your fork for local development::
+4. This is how you set up your fork for local development:
 
-    $ mkvirtualenv enterprise
+    .. note:: 
+        You will need to have ``tempo`` and ``suitesparse`` installed before  
+        running the commands below. 
+
+ ::
+
     $ cd enterprise/
-    $ pip install -r requirements_dev.txt
-    $ pip install -r requirements.txt
-    $ pip install libstempo --install-option="--with-tempo2=$TEMPO2"
-    $ python setup.py develop
+    $ make init
+    $ source .enterprise/bin/activate  
 
 5. Create a branch for local development::
 

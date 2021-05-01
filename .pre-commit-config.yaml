@@ -1,6 +1,6 @@
 repos:
 -   repo: https://github.com/ambv/black
-    rev: 19.3b0
+    rev: 19.10b0
     hooks:
     - id: black
       args: ["--config=pyproject.toml", "--check"]
@@ -9,3 +9,8 @@ repos:
     hooks:
     - id: flake8
       args: ["--config=.flake8"]
+- repo: https://github.com/timothycrosley/isort
+  rev: 5.6.1
+  hooks:
+    - id: isort
+
