@@ -168,11 +168,6 @@ def PhysicalEphemerisSignal(
         signal_id = "phys_ephem_" + name if name else "phys_ephem"
 
         def __init__(self, psr):
-            # not available for PINT yet
-            if isinstance(psr, pulsar.PintPulsar):
-                msg = "Physical Ephemeris model is not compatible with PINT "
-                msg += "at this time."
-                raise NotImplementedError(msg)
 
             super(PhysicalEphemerisSignal, self).__init__(psr)
 
