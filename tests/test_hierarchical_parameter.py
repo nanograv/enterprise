@@ -8,7 +8,6 @@ test_hierarchical_parameter
 Tests for hierarchical parameter functionality
 """
 
-from __future__ import division
 
 import unittest
 

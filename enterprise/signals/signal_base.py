@@ -3,14 +3,13 @@
 Defines the signal base classes and metaclasses. All signals will then be
 derived from these base classes.
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import collections
 
 try:
     from collections.abc import Sequence
 except:
     from collections import Sequence
+
 import itertools
 import logging
 
@@ -18,6 +17,7 @@ import numpy as np
 import scipy.linalg as sl
 import scipy.sparse as sps
 import six
+from sksparse.cholmod import cholesky
 
 # these are defined in parameter.py, but currently imported
 # in various places from signal_base.py
@@ -28,28 +28,6 @@ from enterprise.signals.utils import KernelMatrix
 
 # logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-try:
-    from sksparse.cholmod import cholesky
-except ImportError:
-    msg = "No sksparse library. Using scipy instead!"
-    logger.warning(msg)
-
-    class cholesky(object):
-        def __init__(self, x):
-            if sps.issparse(x):
-                x = x.toarray()
-            self.cf = sl.cho_factor(x)
-
-        def __call__(self, other):
-            return sl.cho_solve(self.cf, other)
-
-        def logdet(self):
-            return np.sum(2 * np.log(np.diag(self.cf[0])))
-
-        def inv(self):
-            return sl.cho_solve(self.cf, np.eye(len(self.cf[0])))
 
 
 class MetaSignal(type):
@@ -546,10 +524,11 @@ class PTA(object):
                         try:
                             self._cliques[slices[sc].start + phiind] = self._clcount
                             self._clcount = self._clcount + 1
-                        except:
-                            print(self._cliques.shape)
-                            print("phiind", phiind, len(phiind))
-                            print(slices)
+                        except Exception:  # pragma: no cover
+                            logger.exception("Exception raised in computing cliques")
+                            logger.info(self._cliques.shape)
+                            logger.info("phiind", phiind, len(phiind))
+                            logger.info(slices)
                             raise
 
     def get_phi(self, params, cliques=False):
@@ -684,7 +663,7 @@ class PTA(object):
         summary += "Fixed params: {}\n".format(copcount)
         summary += "Number of pulsars: {}\n".format(len(self._signalcollections))
         if to_stdout:
-            print(summary)
+            logger.info(summary)
         else:
             return summary
 

@@ -6,8 +6,8 @@ import json
 import logging
 import os
 
-import astropy.units as u
 import astropy.constants as const
+import astropy.units as u
 import numpy as np
 from ephem import Ecliptic, Equatorial
 
@@ -19,28 +19,27 @@ try:
 except:
     import pickle
 
+logger = logging.getLogger(__name__)
+
 try:
     import libstempo as t2
 except ImportError:
-    print("Ooh, no libstempo?")
+    logger.warning("libstempo not installed. Will use PINT instead.")  # pragma: no cover
     t2 = None
 
 try:
     import pint
-    from pint.toa import TOAs
-    from pint.models import get_model_and_toas, TimingModel
+    from pint.models import TimingModel, get_model_and_toas
     from pint.residuals import Residuals as resids
+    from pint.toa import TOAs
 except ImportError:
-    print("Cannot import PINT? Meh...")
+    logger.warning("PINT not installed. Will use libstempo instead.")  # pragma: no cover
     pint = None
 
 
 if pint is None and t2 is None:
     err_msg = "Must have either PINT or libstempo timing package installed"
     raise ImportError(err_msg)
-
-# logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 def get_maxobs(timfile):
@@ -119,7 +118,7 @@ class BasePulsar(object):
         """Sort data by time."""
         if self._sort:
             self._isort = np.argsort(self._toas, kind="mergesort")
-            self._iisort = np.zeros(len(self._isort), dtype=np.int)
+            self._iisort = np.zeros(len(self._isort), dtype=int)
             for ii, p in enumerate(self._isort):
                 self._iisort[p] = ii
         else:
@@ -156,6 +155,14 @@ class BasePulsar(object):
         # drop t2pulsar object
         if hasattr(self, "t2pulsar"):
             del self.t2pulsar
+            msg = "t2pulsar object cannot be pickled and has been removed."
+            logger.warning(msg)
+
+        if hasattr(self, "pint_toas"):
+            del self.pint_toas
+            del self.model
+            msg = "pint_toas and model objects cannot be pickled and have been removed."
+            logger.warning(msg)
 
         if outdir is None:
             outdir = os.getcwd()
@@ -279,11 +286,14 @@ class BasePulsar(object):
 
 
 class PintPulsar(BasePulsar):
-    def __init__(self, toas, model, sort=True, planets=True):
+    def __init__(self, toas, model, sort=True, drop_pintpsr=True, planets=True):
 
         self._sort = sort
         self.planets = planets
         self.name = model.PSR.value
+        if not drop_pintpsr:
+            self.model = model
+            self.pint_toas = toas
 
         self._toas = np.array(toas.table["tdbld"], dtype="float64") * 86400
         # saving also stoas (e.g., for DMX comparisons)
@@ -523,6 +533,7 @@ def Pulsar(*args, **kwargs):
     planets = kwargs.get("planets", True)
     sort = kwargs.get("sort", True)
     drop_t2pulsar = kwargs.get("drop_t2pulsar", True)
+    drop_pintpsr = kwargs.get("drop_pintpsr", True)
     timing_package = kwargs.get("timing_package", "tempo2")
 
     if pint is not None:
@@ -536,7 +547,7 @@ def Pulsar(*args, **kwargs):
     timfile = [x for x in args if isinstance(x, str) and x.split(".")[-1] in ["tim", "toa"]]
 
     if pint and toas and model:
-        return PintPulsar(toas[0], model[0], sort=sort, planets=planets)
+        return PintPulsar(toas[0], model[0], sort=sort, drop_pintpsr=drop_pintpsr, planets=planets)
     elif t2 and t2pulsar:
         return Tempo2Pulsar(t2pulsar[0], sort=sort, drop_t2pulsar=drop_t2pulsar, planets=planets)
     elif parfile and timfile:
@@ -565,7 +576,7 @@ def Pulsar(*args, **kwargs):
                 relparfile, reltimfile, ephem=ephem, bipm_version=bipm_version, planets=planets
             )
             os.chdir(cwd)
-            return PintPulsar(toas, model, sort=sort, planets=planets)
+            return PintPulsar(toas, model, sort=sort, drop_pintpsr=drop_pintpsr, planets=planets)
 
         elif timing_package.lower() == "tempo2":
 
@@ -574,5 +585,5 @@ def Pulsar(*args, **kwargs):
             t2pulsar = t2.tempopulsar(relparfile, reltimfile, maxobs=maxobs, ephem=ephem, clk=clk)
             os.chdir(cwd)
             return Tempo2Pulsar(t2pulsar, sort=sort, drop_t2pulsar=drop_t2pulsar, planets=planets)
-    else:
-        print("Unknown arguments {}".format(args))
+
+    raise ValueError("Unknown arguments {}".format(args))
