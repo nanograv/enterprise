@@ -71,7 +71,7 @@ def createfourierdesignmatrix_red(
             # use the first toa to make a different seed for every pulsar
             seed = int(toas[0] / 17) + int(pseed)
             np.random.seed(seed)
-    
+
         ranphase = np.random.uniform(0.0, 2 * np.pi, nmodes)
     else:
         ranphase = np.zeros(nmodes)
