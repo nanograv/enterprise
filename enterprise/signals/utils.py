@@ -69,6 +69,7 @@ def replicate(pta, ptac, p0, coefficients=False):
         if isinstance(nmat, sps.csc_matrix):
             # add EFAC/EQUAD/ECORR noise
             # use xx' = I => (Lx)(Lx)' = LL' with LL' = PNP'
+            # hence N[P[:, np.newaxis], P[np.newaxis, :]] = LL'
             # see https://scikit-sparse.readthedocs.io/en/latest/cholmod.html
             ch = cholesky(nmat)
             d[ch.P()] += ch.L() @ np.random.randn(len(d))
@@ -90,7 +91,6 @@ def get_coefficients(pta, params, n=1, phiinv_method="cliques", common_sparse=Fa
     TNTs = pta.get_TNT(params)
     phiinvs = pta.get_phiinv(params, logdet=False, method=phiinv_method)
 
-    # ...repeated code in the two if branches... refactor at will!
     if pta._commonsignals:
         if common_sparse:
             Sigma = sps.block_diag(TNTs, "csc") + sps.csc_matrix(phiinvs)
@@ -98,7 +98,19 @@ def get_coefficients(pta, params, n=1, phiinv_method="cliques", common_sparse=Fa
 
             ch = cholesky(Sigma)
             mn = ch(TNr)
-            Li = sps.linalg.inv(ch.L()).toarray()
+            
+            # Li = sps.linalg.inv(ch.L()).toarray()
+            # this was wrong... it neglects the permutation ch.P()
+            # and omits a transpose... if Sigma = L L' then
+            # Sigma^-1 = (L')^-1 L^-1 = (L^-1)' (L^-1) = U U'
+            # and z = (L^-1)' x has covariance
+            # z z^T = (L^-1)^T (x x^T) (L^-1) = Sigma^-1
+
+            Li = np.zeros(Sigma.shape)
+            Li[ch.P(), :] = sps.linalg.inv(ch.L()).T.toarray()
+            # since Sigma[P[:, np.newaxis], P[np.newaxis, :]] = LL'
+            # and (Sigma^-1)[P[:, new], P[new, :]] = (L^-1)' L
+            # but Li multiplies a permutation-invariant randn
         else:
             Sigma = sl.block_diag(*TNTs) + phiinvs
             TNr = np.concatenate(TNrs)
@@ -141,6 +153,8 @@ def get_coefficients(pta, params, n=1, phiinv_method="cliques", common_sparse=Fa
                 mn = np.dot(u, np.dot(u.T, d) / s)
                 Li = u * np.sqrt(1 / s)
             except np.linalg.LinAlgError:
+                # MV: not sure about this, should verify it...
+
                 Q, R = sl.qr(Sigma)
                 Sigi = sl.solve(R, Q.T)
                 mn = np.dot(Sigi, d)

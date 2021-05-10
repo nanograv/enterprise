@@ -730,6 +730,13 @@ def SignalCollection(metasignals):
                     msg += "may not work correctly for this signal."
                     logger.error(msg)
 
+        def cache_clear(self):
+            for instance in [self] + self.signals:    
+                kill = [attr for attr in instance.__dict__ if attr.startswith('_cache')]
+                
+                for attr in kill:
+                    del instance.__dict__[attr]
+
         # a candidate for memoization
         @property
         def params(self):
@@ -764,35 +771,42 @@ def SignalCollection(metasignals):
             matrix to save computations when calling `get_basis` later.
             """
 
-            idx, Fmatlist, hashlist = {}, [], []
-            cc = 0
+            idx, hashlist, cc, nrow = {}, [], 0, None
             for signal in signals:
                 Fmat = signal.get_basis()
 
-                if Fmat is not None and not signal.basis_params:
-                    idx[signal] = []
+                if Fmat is not None:
+                    nrow = Fmat.shape[0]
 
-                    for i, column in enumerate(Fmat.T):
-                        colhash = hash(column.tostring())
+                    if not signal.basis_params:
+                        idx[signal] = []
 
-                        if signal.basis_combine and colhash in hashlist:
-                            j = hashlist.index(colhash)
-                            idx[signal].append(j)
-                        else:
-                            idx[signal].append(cc)
-                            Fmatlist.append(column)
-                            hashlist.append(colhash)
-                            cc += 1
-                elif Fmat is not None and signal.basis_params:
-                    nf = Fmat.shape[1]
-                    idx[signal] = list(range(cc, cc + nf))
-                    cc += nf
+                        for i, column in enumerate(Fmat.T):
+                            colhash = hash(column.tostring())
+
+                            if signal.basis_combine and colhash in hashlist:
+                                # if we're combining the basis for this signal
+                                # and we have seen this column already, make a note
+                                # of where it was
+
+                                j = hashlist.index(colhash)
+                                idx[signal].append(j)
+                            else:
+                                # if we're not combining or we haven't seen it already
+                                # save the hash and make a note it's new
+
+                                hashlist.append(colhash)
+                                idx[signal].append(cc)
+                                cc += 1
+                    elif signal.basis_params:
+                        nf = Fmat.shape[1]
+                        idx[signal] = list(range(cc, cc + nf))
+                        cc += nf
 
             if not idx:
                 return {}, None
             else:
                 ncol = len(np.unique(sum(idx.values(), [])))
-                nrow = len(Fmatlist[0])
                 return ({key: np.array(idx[key]) for key in idx.keys()}, np.zeros((nrow, ncol)))
 
         # goofy way to cache _idx
@@ -908,18 +922,26 @@ def cache_call(attrs, limit=2):
             if not hasattr(self, "_cache_" + func.__name__):
                 msg = "Create cache {} for signal {}".format(func.__name__, self.__class__)
                 logger.debug(msg)
+
                 setattr(self, "_cache_" + func.__name__, {})
                 setattr(self, "_cache_list_" + func.__name__, [])
+
             cache = getattr(self, "_cache_" + func.__name__)
             cache_list = getattr(self, "_cache_list_" + func.__name__)
 
             if key not in cache:
                 msg = "Setting cache for {} in {}: {}".format(attrs, self.__class__, key)
                 logger.debug(msg)
+
                 cache_list.append(key)
                 cache[key] = func(self, params)
+
                 if len(cache_list) > limit:
                     _ = cache.pop(cache_list.pop(0), None)  # noqa: F841
+            else:
+                msg = "Retrieving cache for {} in {}: {}".format(attrs, self.__class__, key)
+                logger.debug(msg)                
+            
             return cache[key]
 
         return wrapper
