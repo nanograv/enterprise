@@ -13,7 +13,7 @@ from enterprise.signals.selections import Selection
 
 
 def WhiteNoise(varianceFunction, selection=Selection(selections.no_selection), name=""):
-    """ Class factory for generic white noise signals."""
+    """Class factory for generic white noise signals."""
 
     class WhiteNoise(signal_base.Signal):
         signal_type = "white noise"

@@ -293,7 +293,7 @@ class TestPTASignals(unittest.TestCase):
         assert np.allclose(phiinv, np.linalg.inv(phit), rtol=1e-15, atol=1e-17), msg
 
     def test_summary(self):
-        """ Test summary table."""
+        """Test summary table."""
         T1, T3 = 3.16e8, 3.16e8
         nf1 = 30
 
