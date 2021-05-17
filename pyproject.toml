@@ -19,6 +19,7 @@ exclude = '''
     | .enterprise
     | enterprise/src
   )/
+  | enterprise/version.py
 )
 '''
 
