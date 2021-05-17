@@ -668,7 +668,7 @@ class PTA(object):
             return summary
 
 
-def SignalCollection(metasignals):
+def SignalCollection(metasignals):  # noqa: C901
     """Class factory for ``SignalCollection`` objects."""
 
     @six.add_metaclass(MetaCollection)
