@@ -761,11 +761,7 @@ def SignalCollection(metasignals):  # noqa: C901
                         idx[signal] = []
 
                         for i, column in enumerate(Fmat.T):
-<<<<<<< HEAD
-                            colhash = hash(column.tostring())
-=======
                             colhash = hash(column.tobytes())
->>>>>>> 64ce7ff5edf78721a7a95130376dfab23da47419
 
                             if signal.basis_combine and colhash in hashlist:
                                 # if we're combining the basis for this signal

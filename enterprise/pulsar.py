@@ -43,7 +43,7 @@ if pint is None and t2 is None:
 try:
     from enterprise.deflate import PulsarInflater
 except:
-    logger.warning("Pulsar deflation/inflation is not available.") 
+    logger.warning("Pulsar deflation/inflation is not available.")
 
 
 def get_maxobs(timfile):
@@ -262,7 +262,6 @@ class BasePulsar(object):
                 ret[:] = np.where(self._flags[flag] == "", ret, self._flags[flag])
 
         return ret[self._isort]
-
 
     @property
     def theta(self):
