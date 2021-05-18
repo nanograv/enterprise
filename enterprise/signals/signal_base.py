@@ -710,9 +710,9 @@ def SignalCollection(metasignals):  # noqa: C901
                     logger.error(msg)
 
         def cache_clear(self):
-            for instance in [self] + self.signals:    
-                kill = [attr for attr in instance.__dict__ if attr.startswith('_cache')]
-                
+            for instance in [self] + self.signals:
+                kill = [attr for attr in instance.__dict__ if attr.startswith("_cache")]
+
                 for attr in kill:
                     del instance.__dict__[attr]
 
@@ -922,8 +922,8 @@ def cache_call(attrs, limit=2):
                     _ = cache.pop(cache_list.pop(0), None)  # noqa: F841
             else:
                 msg = "Retrieving cache for {} in {}: {}".format(attrs, self.__class__, key)
-                logger.debug(msg)                
-            
+                logger.debug(msg)
+
             return cache[key]
 
         return wrapper
