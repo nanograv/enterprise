@@ -36,10 +36,14 @@ except ImportError:
     logger.warning("PINT not installed. Will use libstempo instead.")  # pragma: no cover
     pint = None
 
-
 if pint is None and t2 is None:
     err_msg = "Must have either PINT or libstempo timing package installed"
     raise ImportError(err_msg)
+
+try:
+    from enterprise.deflate import PulsarInflater
+except:
+    logger.warning("Pulsar deflation/inflation is not available.") 
 
 
 def get_maxobs(timfile):
@@ -233,26 +237,32 @@ class BasePulsar(object):
     def flags(self):
         """Return a dictionary of tim-file flags."""
 
-        return dict((k, v[self._isort]) for k, v in self._flags.items())
+        return {flag: self._flags[flag][self._isort] for flag in self._flags.dtype.names}
 
     @property
     def backend_flags(self):
         """Return array of backend flags.
+
         Not all TOAs have the same flags for all data sets. In order to
         facilitate this we have a ranked ordering system that will look
         for flags. The order is `group`, `g`, `sys`, `i`, `f`, `fe`+`be`.
+
         """
 
-        nobs = len(self._toas)
-        bflags = ["flag"] * nobs
-        flags = [["group"], ["g"], ["sys"], ["i"], ["f"], ["fe", "be"]]
-        for ii in range(nobs):
-            # TODO: make this cleaner
-            for f in flags:
-                if np.all([x in self._flags and self._flags[x][ii] != "" for x in f]):
-                    bflags[ii] = "_".join(self._flags[x][ii] for x in f)
-                    break
-        return np.array(bflags)[self._isort]
+        ret = np.zeros(len(self._toas), dtype=self._flags.dtype[0])
+
+        # go through the flags in reverse order of preference
+        # setting or replacing values for each TOA
+
+        if "fe" in self._flags.dtype.names and "be" in self._flags.dtype.names:
+            ret[:] = [(a + "_" + b if (a and b) else "") for a, b in zip(self._flags["fe"], self._flags["be"])]
+
+        for flag in ["f", "i", "sys", "g", "group"]:
+            if flag in self._flags.dtype.names:
+                ret[:] = np.where(self._flags[flag] == "", ret, self._flags[flag])
+
+        return ret[self._isort]
+
 
     @property
     def theta(self):
@@ -283,6 +293,35 @@ class BasePulsar(object):
     def sunssb(self):
         """Return sun position vector at all timestamps"""
         return self._sunssb[self._isort, :]
+
+    # infrastructure for sharing Pulsar objects among processes:
+    # the Pulsar deflater will copy select numpy arrays to SharedMemory,
+    # then replace them with pickleable objects that can be inflated
+    # to numpy arrays with SharedMemory storage
+
+    _todeflate = ["_designmatrix", "_planetssb", "_sunssb", "_flags"]
+
+    _deflated = False
+
+    def deflate(psr):
+        if not psr._deflated:
+            for attr in self._todeflate:
+                if isinstance(getattr(psr, attr), np.ndarray):
+                    setattr(psr, attr, PulsarInflater(getattr(psr, attr)))
+
+            psr._deflated = True
+
+    def inflate(psr):
+        if psr._deflated:
+            for attr in _todeflate:
+                if isinstance(getattr(psr, attr), PulsarInflater):
+                    setattr(psr, attr, getattr(psr, attr).inflate())
+
+    def destroy(psr):
+        if psr._deflated:
+            for attr in _todeflate:
+                if isinstance(getattr(psr, attr), PulsarInflater):
+                    getattr(psr, attr).destroy()
 
 
 class PintPulsar(BasePulsar):
@@ -431,9 +470,14 @@ class Tempo2Pulsar(BasePulsar):
         spars = [str(p) for p in t2pulsar.pars(which="set")]
         self.setpars = [sp for sp in spars if sp not in self.fitpars]
 
-        self._flags = {}
+        flags = {}
         for key in t2pulsar.flags():
-            self._flags[key] = t2pulsar.flagvals(key)
+            flags[key] = t2pulsar.flagvals(key)
+
+        # new-style storage of flags as a numpy record array (previously, psr._flags = flags)
+        self._flags = np.zeros(len(self._toas), dtype=[(key, val.dtype) for key, val in flags.items()])
+        for key, val in flags.items():
+            self._flags[key] = val
 
         self._pdist = self._get_pdist()
         self._raj, self._decj = self._get_radec(t2pulsar)
