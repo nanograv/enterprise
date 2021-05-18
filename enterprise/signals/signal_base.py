@@ -709,12 +709,12 @@ def SignalCollection(metasignals):  # noqa: C901
                     msg += "may not work correctly for this signal."
                     logger.error(msg)
 
-        def cache_clear(self):
-            for instance in [self] + self.signals:
-                kill = [attr for attr in instance.__dict__ if attr.startswith("_cache")]
-
-                for attr in kill:
-                    del instance.__dict__[attr]
+        # def cache_clear(self):
+        #     for instance in [self] + self.signals:
+        #         kill = [attr for attr in instance.__dict__ if attr.startswith("_cache")]
+        #
+        #        for attr in kill:
+        #            del instance.__dict__[attr]
 
         # a candidate for memoization
         @property
@@ -761,7 +761,11 @@ def SignalCollection(metasignals):  # noqa: C901
                         idx[signal] = []
 
                         for i, column in enumerate(Fmat.T):
+<<<<<<< HEAD
                             colhash = hash(column.tostring())
+=======
+                            colhash = hash(column.tobytes())
+>>>>>>> 64ce7ff5edf78721a7a95130376dfab23da47419
 
                             if signal.basis_combine and colhash in hashlist:
                                 # if we're combining the basis for this signal
@@ -810,7 +814,10 @@ def SignalCollection(metasignals):  # noqa: C901
         def get_detres(self, params):
             return self._residuals - self.get_delay(params)
 
-        @cache_call("basis_params")
+        # since this function has side-effects, it can only be cached
+        # with limit=1, so it will run again if called with params different
+        # than the last time
+        @cache_call("basis_params", limit=1)
         def get_basis(self, params={}):
             for signal in self._signals:
                 if signal in self._idx:
