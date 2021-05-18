@@ -304,7 +304,7 @@ class BasePulsar(object):
 
     def deflate(psr):
         if not psr._deflated:
-            for attr in self._todeflate:
+            for attr in psr._todeflate:
                 if isinstance(getattr(psr, attr), np.ndarray):
                     setattr(psr, attr, PulsarInflater(getattr(psr, attr)))
 
@@ -312,13 +312,13 @@ class BasePulsar(object):
 
     def inflate(psr):
         if psr._deflated:
-            for attr in _todeflate:
+            for attr in psr._todeflate:
                 if isinstance(getattr(psr, attr), PulsarInflater):
                     setattr(psr, attr, getattr(psr, attr).inflate())
 
     def destroy(psr):
         if psr._deflated:
-            for attr in _todeflate:
+            for attr in psr._todeflate:
                 if isinstance(getattr(psr, attr), PulsarInflater):
                     getattr(psr, attr).destroy()
 

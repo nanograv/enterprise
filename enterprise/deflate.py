@@ -7,14 +7,12 @@ data.
 from multiprocessing import shared_memory, resource_tracker
 import numpy as np
 
-
 class memmap(np.ndarray):
     def __del__(self):
         if hasattr(self, "shm"):
             self.shm.close()
 
         super().__del__()
-
 
 class PulsarInflater:
     def __init__(self, array):
@@ -40,6 +38,6 @@ class PulsarInflater:
 
         return c
 
-    # def destroy(self):
-    #    shm = shared_memory.SharedMemory(self.shmname)
-    #    shm.unlink()
+    def destroy(self):
+        shm = shared_memory.SharedMemory(self.shmname)
+        shm.unlink()
