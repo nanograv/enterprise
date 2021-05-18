@@ -709,12 +709,12 @@ def SignalCollection(metasignals):  # noqa: C901
                     msg += "may not work correctly for this signal."
                     logger.error(msg)
 
-        def cache_clear(self):
-            for instance in [self] + self.signals:
-                kill = [attr for attr in instance.__dict__ if attr.startswith("_cache")]
-
-                for attr in kill:
-                    del instance.__dict__[attr]
+        # def cache_clear(self):
+        #     for instance in [self] + self.signals:
+        #         kill = [attr for attr in instance.__dict__ if attr.startswith("_cache")]
+        #
+        #        for attr in kill:
+        #            del instance.__dict__[attr]
 
         # a candidate for memoization
         @property
