@@ -29,7 +29,7 @@ from enterprise.signals.utils import KernelMatrix
 from enterprise import __version__
 import sys.version
 
-_py_version = sys.version.split(" ")[]
+_py_version = sys.version.split(" ")[0]
 
 # logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
