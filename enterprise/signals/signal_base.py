@@ -27,9 +27,9 @@ from enterprise.signals.parameter import ConstantParameter
 from enterprise.signals.utils import KernelMatrix
 
 from enterprise import __version__
-import sys.version
+from sys import version
 
-_py_version = sys.version.split(" ")[0]
+_py_version = version.split(" ")[0]
 
 # logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
