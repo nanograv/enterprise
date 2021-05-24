@@ -26,6 +26,11 @@ from enterprise.signals.parameter import function  # noqa: F401
 from enterprise.signals.parameter import ConstantParameter
 from enterprise.signals.utils import KernelMatrix
 
+from enterprise import __version__
+from sys import version
+
+_py_version = version.split(" ")[0]
+
 # logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -636,7 +641,10 @@ class PTA(object):
             print summary to `stdout` instead of returning it
         :return: [string]
         """
-        summary = ""
+        summary = "enterprise v" + __version__ + ",  "
+        summary += "Python v" + _py_version + "\n"
+        summary += "=" * 90 + "\n"
+        summary += "\n"
         row = ["Signal Name", "Signal Class", "no. Parameters"]
         summary += "{: <40} {: <30} {: <20}\n".format(*row)
         summary += "=" * 90 + "\n"
