@@ -68,36 +68,6 @@ class TestDeterministicSignals(unittest.TestCase):
         assert np.all(m.get_delay(params) == d1), msg
 
 
-    def test_fdm(self):
-        """Test FDM waveform."""
-        log10_A = parameter.Uniform(-20, -11)("fdm_log10_A")
-        log10_f = parameter.Uniform(-9, -7)("fdm_log10_f")
-        phase_e = parameter.Uniform(0, 2*np.pi)("fdm_phase_e")
-        phase_p = parameter.Uniform(0, 2*np.pi)("fdm_phase_p")
-        fdm_wf = utils.fdm_delay(log10_A=log10_A, log10_f=log10_f, phase_e=phase_e, phase_p=phase_p)
-        fdm = deterministic_signals.Deterministic(fdm_wf)
-        m = fdm(self.psr)
-
-        # true parameters
-        log10_A = -14
-        log10_f = -8
-        phase_e = np.pi
-        phase_p = np.pi
-        params = {
-            "fdm_log10_A": log10_A,
-            "fdm_log10_f": log10_f,
-            "fdm_phase_e": phase_e,
-            "fdm_phase_p": phase_p,
-        }
-
-        d1 = utils.fdm_delay(self.psr.toas, log10_A=log10_A, log10_f=log10_f, 
-                             phase_e=phase_e, phase_p=phase_p)
-
-        # test
-        msg = "FDM Delay incorrect"
-        assert np.all(m.get_delay(params) == d1), msg
-
-
     def test_delay(self):
         """Test deterministic signal no selection."""
         # set up signal and parameters
