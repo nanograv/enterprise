@@ -26,6 +26,11 @@ from enterprise.signals.parameter import function  # noqa: F401
 from enterprise.signals.parameter import ConstantParameter
 from enterprise.signals.utils import KernelMatrix
 
+from enterprise import __version__
+from sys import version
+
+_py_version = version.split(" ")[0]
+
 # logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -636,7 +641,10 @@ class PTA(object):
             print summary to `stdout` instead of returning it
         :return: [string]
         """
-        summary = ""
+        summary = "enterprise v" + __version__ + ",  "
+        summary += "Python v" + _py_version + "\n"
+        summary += "=" * 90 + "\n"
+        summary += "\n"
         row = ["Signal Name", "Signal Class", "no. Parameters"]
         summary += "{: <40} {: <30} {: <20}\n".format(*row)
         summary += "=" * 90 + "\n"
@@ -668,7 +676,7 @@ class PTA(object):
             return summary
 
 
-def SignalCollection(metasignals):
+def SignalCollection(metasignals):  # noqa: C901
     """Class factory for ``SignalCollection`` objects."""
 
     @six.add_metaclass(MetaCollection)
@@ -709,6 +717,13 @@ def SignalCollection(metasignals):
                     msg += "may not work correctly for this signal."
                     logger.error(msg)
 
+        # def cache_clear(self):
+        #     for instance in [self] + self.signals:
+        #         kill = [attr for attr in instance.__dict__ if attr.startswith("_cache")]
+        #
+        #        for attr in kill:
+        #            del instance.__dict__[attr]
+
         # a candidate for memoization
         @property
         def params(self):
@@ -743,35 +758,42 @@ def SignalCollection(metasignals):
             matrix to save computations when calling `get_basis` later.
             """
 
-            idx, Fmatlist, hashlist = {}, [], []
-            cc = 0
+            idx, hashlist, cc, nrow = {}, [], 0, None
             for signal in signals:
                 Fmat = signal.get_basis()
 
-                if Fmat is not None and not signal.basis_params:
-                    idx[signal] = []
+                if Fmat is not None:
+                    nrow = Fmat.shape[0]
 
-                    for i, column in enumerate(Fmat.T):
-                        colhash = hash(column.tostring())
+                    if not signal.basis_params:
+                        idx[signal] = []
 
-                        if signal.basis_combine and colhash in hashlist:
-                            j = hashlist.index(colhash)
-                            idx[signal].append(j)
-                        else:
-                            idx[signal].append(cc)
-                            Fmatlist.append(column)
-                            hashlist.append(colhash)
-                            cc += 1
-                elif Fmat is not None and signal.basis_params:
-                    nf = Fmat.shape[1]
-                    idx[signal] = list(range(cc, cc + nf))
-                    cc += nf
+                        for i, column in enumerate(Fmat.T):
+                            colhash = hash(column.tobytes())
+
+                            if signal.basis_combine and colhash in hashlist:
+                                # if we're combining the basis for this signal
+                                # and we have seen this column already, make a note
+                                # of where it was
+
+                                j = hashlist.index(colhash)
+                                idx[signal].append(j)
+                            else:
+                                # if we're not combining or we haven't seen it already
+                                # save the hash and make a note it's new
+
+                                hashlist.append(colhash)
+                                idx[signal].append(cc)
+                                cc += 1
+                    elif signal.basis_params:
+                        nf = Fmat.shape[1]
+                        idx[signal] = list(range(cc, cc + nf))
+                        cc += nf
 
             if not idx:
                 return {}, None
             else:
                 ncol = len(np.unique(sum(idx.values(), [])))
-                nrow = len(Fmatlist[0])
                 return ({key: np.array(idx[key]) for key in idx.keys()}, np.zeros((nrow, ncol)))
 
         # goofy way to cache _idx
@@ -796,7 +818,10 @@ def SignalCollection(metasignals):
         def get_detres(self, params):
             return self._residuals - self.get_delay(params)
 
-        @cache_call("basis_params")
+        # since this function has side-effects, it can only be cached
+        # with limit=1, so it will run again if called with params different
+        # than the last time
+        @cache_call("basis_params", limit=1)
         def get_basis(self, params={}):
             for signal in self._signals:
                 if signal in self._idx:
@@ -887,18 +912,26 @@ def cache_call(attrs, limit=2):
             if not hasattr(self, "_cache_" + func.__name__):
                 msg = "Create cache {} for signal {}".format(func.__name__, self.__class__)
                 logger.debug(msg)
+
                 setattr(self, "_cache_" + func.__name__, {})
                 setattr(self, "_cache_list_" + func.__name__, [])
+
             cache = getattr(self, "_cache_" + func.__name__)
             cache_list = getattr(self, "_cache_list_" + func.__name__)
 
             if key not in cache:
                 msg = "Setting cache for {} in {}: {}".format(attrs, self.__class__, key)
                 logger.debug(msg)
+
                 cache_list.append(key)
                 cache[key] = func(self, params)
+
                 if len(cache_list) > limit:
                     _ = cache.pop(cache_list.pop(0), None)  # noqa: F841
+            else:
+                msg = "Retrieving cache for {} in {}: {}".format(attrs, self.__class__, key)
+                logger.debug(msg)
+
             return cache[key]
 
         return wrapper

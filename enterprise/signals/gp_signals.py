@@ -88,7 +88,10 @@ def BasisGP(
                 ret.extend([pp.name for pp in basis.params])
             return ret
 
-        @signal_base.cache_call("basis_params")
+        # since this function has side-effects, it can only be cached
+        # with limit=1, so it will run again if called with params different
+        # than the last time
+        @signal_base.cache_call("basis_params", limit=1)
         def _construct_basis(self, params={}):
             basis, self._labels = {}, {}
             for key, mask in zip(self._keys, self._masks):
@@ -325,7 +328,10 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False,
             """Get any varying basis parameters."""
             return [pp.name for pp in self._bases.params]
 
-        @signal_base.cache_call("basis_params")
+        # since this function has side-effects, it can only be cached
+        # with limit=1, so it will run again if called with params different
+        # than the last time
+        @signal_base.cache_call("basis_params", limit=1)
         def _construct_basis(self, params={}):
             self._basis, self._labels = self._bases(params=params)
 
@@ -425,7 +431,10 @@ def FourierBasisCommonGP(
                 FourierBasisCommonGP._Tmin.append(psr.toas.min())
                 FourierBasisCommonGP._Tmax.append(psr.toas.max())
 
-        @signal_base.cache_call("basis_params")
+        # since this function has side-effects, it can only be cached
+        # with limit=1, so it will run again if called with params different
+        # than the last time
+        @signal_base.cache_call("basis_params", 1)
         def _construct_basis(self, params={}):
             span = Tspan if Tspan is not None else max(FourierBasisCommonGP._Tmax) - min(FourierBasisCommonGP._Tmin)
             self._basis, self._labels = self._bases(params=params, Tspan=span)
