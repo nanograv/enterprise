@@ -1,4 +1,7 @@
-# enterprise
+# fastloglikelihood branch of enterprise
+
+This branch is being developed by Aaron Johnson and Ken Olum to speed
+up the LogLikelihood computation as described by Xavier Siemens.
 
 ![PyPI](https://img.shields.io/pypi/v/enterprise-pulsar)
 ![Conda (channel only)](https://img.shields.io/conda/vn/conda-forge/enterprise-pulsar)
