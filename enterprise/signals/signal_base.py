@@ -3,6 +3,9 @@
 Defines the signal base classes and metaclasses. All signals will then be
 derived from these base classes.
 """
+
+print("Loading fastloglikelihood version of signal_base")
+
 import collections
 
 try:
@@ -141,6 +144,77 @@ class CommonSignal(Signal):
     @classmethod
     def get_phicross(cls, signal1, signal2, params):
         return None
+
+"""Procedures to calculate likelihoods:
+
+Notation:
+r = vector of TOA residuals
+M = design matrix.  Row = TOA number, column = design parameter
+F = Fourier (or other) basis.  Row = TOA number, column = parameter
+T = (M | F)
+E = diagonal matrix of infinities giving lack of knowledge about model parameters
+chi = covariance matrix of parameters.  Xavi's notes call this phi.  It doesn't seem to have a name in the code.
+phi = block diagonal matrix of chi and E.  Xavi's notes call this B.
+N = white noise matrix, generally in Sherman-Morrison form
+C = N + T phi T^T
+C^-1 = N^-1 - N^-1 T (phi^-1 + T^T N^-1 T)^-1 T^T N^-1
+The log of the likelihood is -(1/2) ln det(2 pi N) + (1/2) r^T C^-1 r
+By the matrix determinant lemma, det(C) = det(phi^-1 + T^T N^-1 T) det(phi) det(N)
+
+The one step procedure:
+
+Compute and cache:
+
+T N^-1 r (This is called TNr, and the same convention applies throughout)
+T^T N^-1 T
+r N^-1 r
+det(N)
+
+For each set of parameters, compute:
+
+phi^-1
+det(phi)
+Sigma = phi^-1 + TNT
+Sigma^-1 TNr and det(Sigma) by Cholesky decomposition
+(TNr)^T Sigma^-1 TNr
+Now r^T C^-1 r = rNr + (TNr)^T Sigma^-1 TNr
+and det(C) = det(Sigma) det(phi) det(N).  
+lnlikelihood = (1/2)(rCr - ln det(C)).  We ignore a factor (2pi)^N_TOA in det(N),
+because a constant offset of the likelihoods is OK for MCMC.
+
+We do not include the factor (2pi)^N_TOA
+
+For the two step procedure, we define also:
+
+D = N + M E M^T
+D^-1 = N^-1 - N^-1 M (M^T N^-1 M)^-1 M^T N^-1
+C = D + F chi F^T
+C^-1 = D^-1 - D^-1 F (chi^-1 + F^T D^-1 F)^-1 F^T D^-1
+
+We first compute everything that doesn't depend on the parameters:
+M^T N^-1 M
+M N^-1 r
+r N^-1 r
+(MNM)^-1 and det(MNM) by Cholesky decomposition
+M^T N^-1 F
+F^T N^-1 F
+(MNM)^-1 MNF
+F^T D^-1 F = FNF + (MNF)^T (MNM)^-1 MNF
+r^T D^-1 r = r N^-1 r  - (MNr)^T (MNM)^-1 MNr
+F^T D^-1 r = F^T N^-1 r - (MNMMNF)^T MNr
+det(D) = det(MNM) det(N).  We don't include the infinite det(E) here.
+
+Then for each set of parameters we compute:
+chi^-1
+det(chi)
+Sigma = chi^-1 + FDF
+Sigma^-1 and det(Sigma) FDr by Cholesky decomposition.
+Now r C^-1 r = rDr + (FDr)^T Sigma^-1 FDr
+and det(C) = det(Sigma) det(chi) det(D)
+
+"""
+
+
 
 
 class LogLikelihood(object):
@@ -744,6 +818,15 @@ def SignalCollection(metasignals):  # noqa: C901
         def signals(self):
             return self._signals
 
+        # Signals that do or don't depend on parameters
+        @property
+        def variable_signals(self):
+            return [sig for sig in self.signals if sig.params]
+
+        @property
+        def fixed_signals(self):
+            return [sig for sig in self.signals if not sig.params]
+
         def set_default_params(self, params):
             for signal in self._signals:
                 signal.set_default_params(params)
@@ -800,9 +883,15 @@ def SignalCollection(metasignals):  # noqa: C901
         def __getattr__(self, par):
             if par in ("_idx", "_Fmat"):
                 self._idx, self._Fmat = self._combine_basis_columns(self._signals)
-                return getattr(self, par)
+            elif par in ("_idx_M", "_Fmat_M"):
+                # Signals that don't depend on the parameters are used to make the D matrix
+                self._idx_M, self._Fmat_M = self._combine_basis_columns(self.fixed_signals)
+            elif par in ("_idx_F", "_Fmat_F"):
+                # Signals that depend on the parameters are used to make C from D
+                self._idx_F, self._Fmat_F = self._combine_basis_columns(self.variable_signals)
             else:
                 raise AttributeError("{} object has no attribute {}".format(self.__class__, par))
+            return getattr(self, par)
 
         @cache_call("white_params")
         def get_ndiag(self, params):
@@ -827,6 +916,23 @@ def SignalCollection(metasignals):  # noqa: C901
                 if signal in self._idx:
                     self._Fmat[:, self._idx[signal]] = signal.get_basis(params)
             return self._Fmat
+
+        # This is the M matrix.
+        # By definition there cannot be parameters here
+        @cache_call("basis_params") # This isn't right because it doesn't depend on anything
+        def get_basis_M(self, params={}):
+            for signal in self.fixed_signals:
+                if signal in self._idx:
+                    self._Fmat_M[:, self._idx_M[signal]] = signal.get_basis({})
+            return self._Fmat_M
+
+        # this is the F matrix that has the basis for the signals that depend on parameters
+        @cache_call("basis_params", limit=1)
+        def get_basis_F(self, params={}):
+            for signal in self.variable_signals:
+                if signal in self._idx:
+                    self._Fmat_F[:, self._idx_F[signal]] = signal.get_basis(params)
+            return self._Fmat_F
 
         def get_phiinv(self, params):
             return self.get_phi(params).inv()
@@ -861,6 +967,15 @@ def SignalCollection(metasignals):  # noqa: C901
             Nvec = self.get_ndiag(params)
             return Nvec.solve(T, left_array=T)
 
+        @cache_call("white_params")
+        def get_MNM(self, params):
+            M = self.get_basis_M(params)
+            if M is None:
+                return None
+            Nvec = self.get_ndiag(params)
+            return Nvec.solve(M, left_array=M)
+
+        # Returns r^T N r and ln(det(N))
         @cache_call(["white_params", "delay_params"])
         def get_rNr_logdet(self, params):
             Nvec = self.get_ndiag(params)
