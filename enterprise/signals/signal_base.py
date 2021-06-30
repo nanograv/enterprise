@@ -788,12 +788,12 @@ def SignalCollection(metasignals):  # noqa: C901
                     msg += "may not work correctly for this signal."
                     logger.error(msg)
 
-        # def cache_clear(self):
-        #     for instance in [self] + self.signals:
-        #         kill = [attr for attr in instance.__dict__ if attr.startswith("_cache")]
-        #
-        #        for attr in kill:
-        #            del instance.__dict__[attr]
+        def cache_clear(self):
+            for instance in [self] + self.signals:
+                kill = [attr for attr in instance.__dict__ if attr.startswith("_cache")]
+        
+                for attr in kill:
+                    del instance.__dict__[attr]
 
         # a candidate for memoization
         @property
@@ -965,6 +965,15 @@ def SignalCollection(metasignals):  # noqa: C901
             res = self.get_detres(params)
             return Nvec.solve(res, left_array=T)
 
+        @cache_call(["basis_params", "delay_params"])
+        def get_FNr(self, params):
+            F = self.get_basis_F(params)
+            if F is None:
+                return None
+            Nvec = self.get_ndiag(params)
+            res = self.get_detres(params)
+            return Nvec.solve(res, left_array=F)
+
         @cache_call(["basis_params", "white_params"])
         def get_TNT(self, params):
             T = self.get_basis(params)
@@ -973,13 +982,15 @@ def SignalCollection(metasignals):  # noqa: C901
             Nvec = self.get_ndiag(params)
             return Nvec.solve(T, left_array=T)
 
+        # Return M^T N^-1 M in csc form
         @cache_call("white_params")
         def get_MNM(self, params):
             M = self.get_basis_M(params)
             if M is None:
                 return None
             Nvec = self.get_ndiag(params)
-            return Nvec.solve(M, left_array=M)
+            # Could this be done in a way that gives a sparse matrix to start with?
+            return sps.csc_matrix(Nvec.solve(M, left_array=M))
 
         @cache_call("white_params")
         def get_MNM_cholesky(self, params):
@@ -1006,10 +1017,10 @@ def SignalCollection(metasignals):  # noqa: C901
             Nvec = self.get_ndiag(params)
             return Nvec.solve(F, left_array=M)
 
-        @cache_call("basis_params", "white_params")
+        @cache_call(["basis_params", "white_params"])
         def get_MNMMNF(self, params):
             cf = self.get_MNM_cholesky(params)
-            MNF = self.get_MNF_cholesky(params)
+            MNF = self.get_MNF(params)
             return cf(MNF)      # (MNM)^-1 MNF
 
         # Returns r^T N r and ln(det(N))
@@ -1022,7 +1033,8 @@ def SignalCollection(metasignals):  # noqa: C901
         @cache_call(["basis_params", "white_params"])
         def get_FDF(self, params):
             MNMMNF = self.get_MNMMNF(params)
-            self.get_FNF(params) + np.tensordot(MNF, MNMMNF, (0,0)) # FNF + MNF^T MNM^-1 MNF
+            MNF = self.get_MNF(params)
+            return self.get_FNF(params) + np.tensordot(MNF, MNMMNF, (0,0)) # FNF + MNF^T MNM^-1 MNF
 
         @cache_call(["basis_params", "white_params", "delay_params"])
         def get_FDr(self, params):
@@ -1032,7 +1044,7 @@ def SignalCollection(metasignals):  # noqa: C901
         # Returns r^T D^-1 r and ln(det(D))
         @cache_call(["white_params", "delay_params"])
         def get_rDr_logdet(self, params):
-            rNr, logdet_N = self.get_rNr(params)
+            rNr, logdet_N = self.get_rNr_logdet(params)
             MNr = self.get_MNr(params)
             cf = self.get_MNM_cholesky(params)
             return (rNr - np.dot(MNr, cf(MNr)), logdet_N + self.get_MNM_logdet(params))
