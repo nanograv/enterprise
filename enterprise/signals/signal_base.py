@@ -1041,13 +1041,17 @@ def SignalCollection(metasignals):  # noqa: C901
             MNMMNF = self.get_MNMMNF(params)
             MNr = self.get_MNr(params)
             return self.get_FNr(params) + np.tensordot(MNMMNF, MNr, (0,0))  # FNr + MNF^T MNM^-1 MNr
+
         # Returns r^T D^-1 r and ln(det(D))
         @cache_call(["white_params", "delay_params"])
         def get_rDr_logdet(self, params):
+            M = self.get_basis_M(params)
+            # infinity matrix determinant -- as seen in old calculation:
+            logdet_E = M.shape[1] * np.log(1e40)
             rNr, logdet_N = self.get_rNr_logdet(params)
             MNr = self.get_MNr(params)
             cf = self.get_MNM_cholesky(params)
-            return (rNr - np.dot(MNr, cf(MNr)), logdet_N + self.get_MNM_logdet(params))
+            return (rNr - np.dot(MNr, cf(MNr)), logdet_N + self.get_MNM_logdet(params) + logdet_E)
 
         # TO DO: cache how?
         def get_logsignalprior(self, params):
