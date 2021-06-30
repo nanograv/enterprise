@@ -153,7 +153,7 @@ M = design matrix.  Row = TOA number, column = design parameter
 F = Fourier (or other) basis.  Row = TOA number, column = parameter
 T = (M | F)
 E = diagonal matrix of infinities giving lack of knowledge about model parameters
-chi = covariance matrix of parameters.  Xavi's notes call this phi.  It doesn't seem to have a name in the code.
+chi = covariance matrix of parameters.  Xavi's notes call this phi.
 phi = block diagonal matrix of chi and E.  Xavi's notes call this B.
 N = white noise matrix, generally in Sherman-Morrison form
 C = N + T phi T^T
@@ -179,10 +179,7 @@ Sigma^-1 TNr and det(Sigma) by Cholesky decomposition
 (TNr)^T Sigma^-1 TNr
 Now r^T C^-1 r = rNr + (TNr)^T Sigma^-1 TNr
 and det(C) = det(Sigma) det(phi) det(N).  
-lnlikelihood = (1/2)(rCr - ln det(C)).  We ignore a factor (2pi)^N_TOA in det(N),
-because a constant offset of the likelihoods is OK for MCMC.
-
-We do not include the factor (2pi)^N_TOA
+lnlikelihood = (1/2)(rCr - ln det(C)).  We do not include the factor (2pi)^N_TOA
 
 For the two step procedure, we define also:
 
@@ -196,8 +193,8 @@ M^T N^-1 M
 M N^-1 r
 r N^-1 r
 (MNM)^-1 and det(MNM) by Cholesky decomposition
-M^T N^-1 F
 F^T N^-1 F
+M^T N^-1 F
 (MNM)^-1 MNF
 F^T D^-1 F = FNF + (MNF)^T (MNM)^-1 MNF
 r^T D^-1 r = r N^-1 r  - (MNr)^T (MNM)^-1 MNr
@@ -959,6 +956,15 @@ def SignalCollection(metasignals):  # noqa: C901
             res = self.get_detres(params)
             return Nvec.solve(res, left_array=T)
 
+        @cache_call(["white_params", "delay_params"])
+        def get_MNr(self, params):
+            T = self.get_basis_M(params)
+            if T is None:
+                return None
+            Nvec = self.get_ndiag(params)
+            res = self.get_detres(params)
+            return Nvec.solve(res, left_array=T)
+
         @cache_call(["basis_params", "white_params"])
         def get_TNT(self, params):
             T = self.get_basis(params)
@@ -975,12 +981,61 @@ def SignalCollection(metasignals):  # noqa: C901
             Nvec = self.get_ndiag(params)
             return Nvec.solve(M, left_array=M)
 
+        @cache_call("white_params")
+        def get_MNM_cholesky(self, params):
+            return cholesky(self.get_MNM(params))
+
+        @cache_call("white_params")
+        def get_MNM_logdet(self, params):
+            return self.get_MNM_cholesky().logdet()
+
+        @cache_call(["basis_params", "white_params"])
+        def get_FNF(self, params):
+            F = self.get_basis_F(params)
+            if F is None:
+                return None
+            Nvec = self.get_ndiag(params)
+            return Nvec.solve(F, left_array=F)
+
+        @cache_call(["basis_params", "white_params"])
+        def get_MNF(self, params):
+            M = self.get_basis_M(params)
+            F = self.get_basis_F(params)
+            if F is None or M is None:
+                return None
+            Nvec = self.get_ndiag(params)
+            return Nvec.solve(F, left_array=M)
+
+        @cache_call("basis_params", "white_params")
+        def get_MNMMNF(self, params):
+            cf = self.get_MNM_cholesky(params)
+            MNF = self.get_MNF_cholesky(params)
+            return cf(MNF)      # (MNM)^-1 MNF
+
         # Returns r^T N r and ln(det(N))
         @cache_call(["white_params", "delay_params"])
         def get_rNr_logdet(self, params):
             Nvec = self.get_ndiag(params)
             res = self.get_detres(params)
             return Nvec.solve(res, left_array=res, logdet=True)
+
+        @cache_call(["basis_params", "white_params"])
+        def get_FDF(self, params):
+            MNMMNF = self.get_MNMMNF(params)
+            self.get_FNF(params) + np.tensordot(MNF, MNMMNF, (0,0)) # FNF + MNF^T MNM^-1 MNF
+
+        @cache_call(["basis_params", "white_params", "delay_params"])
+        def get_FDr(self, params):
+            MNMMNF = self.get_MNMMNF(params)
+            MNr = self.get_MNr(params)
+            return self.get_FNr(params) + np.tensordot(MNMMNF, MNr, (0,0))  # FNr + MNF^T MNM^-1 MNr
+        # Returns r^T D^-1 r and ln(det(D))
+        @cache_call(["white_params", "delay_params"])
+        def get_rDr_logdet(self, params):
+            rNr, logdet_N = self.get_rNr(params)
+            MNr = self.get_MNr(params)
+            cf = self.get_MNM_cholesky(params)
+            return (rNr - np.dot(MNr, cf(MNr)), logdet_N + self.get_MNM_logdet(params))
 
         # TO DO: cache how?
         def get_logsignalprior(self, params):
