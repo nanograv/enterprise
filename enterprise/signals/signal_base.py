@@ -211,7 +211,45 @@ and det(C) = det(Sigma) det(chi) det(D)
 
 """
 
+class FastLogLikelihood(object):
+    def __init__(self, pta):
+        self.pta = pta
+        self.lnlikelihood = 0
 
+        self.wn_vary = False
+        # check if white noise is constant or being varied:
+        for key in pta.signals:
+            for par in pta.signals[key]._params.values():
+                if isinstance(par, ConstantParameter):
+                    continue
+                else:
+                    if pta.signals[key].signal_type == 'white noise':
+                        self.wn_vary = True
+
+        # no need to recompute D if it's constant every time!
+        if not self.wn_vary:
+            params = {}
+            self.rDrs = self.pta.get_rDr_logdet(params)
+            self.FDFs = self.pta.get_FDF(params)
+            self.FDrs = self.pta.get_FDr(params)
+
+            for ii in range(len(self.rDrs)):
+                self.lnlikelihood += -0.5 * self.rDrs[ii][0] - 0.5 * self.rDrs[ii][1]
+
+    # _make_Sigma definition or similar goes here
+
+    def __call__(self, xs):
+        # map parameter vector if needed
+        params = xs if isinstance(xs, dict) else self.pta.map_params(xs)
+
+        # if white noise isn't constant, we'll need to recompute this at every call
+        if self.wn_vary:
+            self.rDrs = self.pta.get_rDr_logdet(params)
+            self.FDFs = self.pta.get_FDF(params)
+            self.FDrs = self.pta.get_FDr(params)
+
+            for ii in range(len(self.rDrs)):
+                self.lnlikelihood += -0.5 * self.rDrs[ii][0] - 0.5 * self.rDrs[ii][1]
 
 
 class LogLikelihood(object):
@@ -334,6 +372,41 @@ class PTA(object):
     def get_rNr_logdet(self, params):
         return [signalcollection.get_rNr_logdet(params) for signalcollection in self._signalcollections]
 
+    # new pieces:
+    def get_MNr(self, params):
+        return [signalcollection.get_MNr(params) for signalcollection in self._signalcollections]
+
+    def get_FNr(self, params):
+        return [signalcollection.get_FNr(params) for signalcollection in self._signalcollections]
+
+    def get_MNM(self, params):
+        return [signalcollection.get_MNM(params) for signalcollection in self._signalcollections]
+
+    def get_MNM_cholesky(self, params):
+        return [signalcollection.get_MNM_cholesky(params) for signalcollection in self._signalcollections]
+
+    def get_MNM_logdet(self, params):
+        return [signalcollection.get_MNM_logdet(params) for signalcollection in self._signalcollections]
+
+    def get_FNF(self, params):
+        return [signalcollection.get_FNF(params) for signalcollection in self._signalcollections]
+
+    def get_MNF(self, params):
+        return [signalcollection.get_MNF(params) for signalcollection in self._signalcollections]
+
+    def get_MNMMNF(self, params):
+        return [signalcollection.get_MNMMNF(params) for signalcollection in self._signalcollections]
+
+    def get_FDF(self, params):
+        return [signalcollection.get_FDF(params) for signalcollection in self._signalcollections]
+
+    def get_FDr(self, params):
+        return [signalcollection.get_FDr(params) for signalcollection in self._signalcollections]
+
+    def get_rDr_logdet(self, params):
+        return [signalcollection.get_rDr_logdet(params) for signalcollection in self._signalcollections]
+
+    # back to other pieces here:
     def get_residuals(self):
         return [signalcollection._residuals for signalcollection in self._signalcollections]
 
