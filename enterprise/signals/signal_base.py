@@ -1006,7 +1006,7 @@ def SignalCollection(metasignals):  # noqa: C901
             if F is None:
                 return None
             Nvec = self.get_ndiag(params)
-            return Nvec.solve(F, left_array=F)
+            return Nvec.solve(F, left_array=F)  # F^T N^{-1} F
 
         @cache_call(["basis_params", "white_params"])
         def get_MNF(self, params):
@@ -1015,7 +1015,7 @@ def SignalCollection(metasignals):  # noqa: C901
             if F is None or M is None:
                 return None
             Nvec = self.get_ndiag(params)
-            return Nvec.solve(F, left_array=M)
+            return Nvec.solve(F, left_array=M)  # M^T N^{-1} F
 
         @cache_call(["basis_params", "white_params"])
         def get_MNMMNF(self, params):
@@ -1034,13 +1034,13 @@ def SignalCollection(metasignals):  # noqa: C901
         def get_FDF(self, params):
             MNMMNF = self.get_MNMMNF(params)
             MNF = self.get_MNF(params)
-            return self.get_FNF(params) + np.tensordot(MNF, MNMMNF, (0,0)) # FNF + MNF^T MNM^-1 MNF
+            return self.get_FNF(params) - np.tensordot(MNF, MNMMNF, (0, 0))  # FNF + MNF^T MNM^-1 MNF
 
         @cache_call(["basis_params", "white_params", "delay_params"])
         def get_FDr(self, params):
             MNMMNF = self.get_MNMMNF(params)
             MNr = self.get_MNr(params)
-            return self.get_FNr(params) + np.tensordot(MNMMNF, MNr, (0,0))  # FNr + MNF^T MNM^-1 MNr
+            return self.get_FNr(params) - np.tensordot(MNMMNF, MNr, (0,0))  # FNr + MNF^T MNM^-1 MNr
 
         # Returns r^T D^-1 r and ln(det(D))
         @cache_call(["white_params", "delay_params"])
