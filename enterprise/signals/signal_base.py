@@ -214,7 +214,7 @@ and det(C) = det(Sigma) det(chi) det(D)
 class FastLogLikelihood(object):
     def __init__(self, pta):
         self.pta = pta
-        self.lnlikelihood = 0
+        self.lnlikelihood0 = 0
 
         self.wn_vary = False
         # check if white noise is constant or being varied:
@@ -234,13 +234,17 @@ class FastLogLikelihood(object):
             self.FDrs = self.pta.get_FDr(params)
 
             for ii in range(len(self.rDrs)):
-                self.lnlikelihood += -0.5 * self.rDrs[ii][0] - 0.5 * self.rDrs[ii][1]
+                self.lnlikelihood0 += -0.5 * self.rDrs[ii][0] - 0.5 * self.rDrs[ii][1]
 
     # _make_Sigma definition or similar goes here
+    def _make_sigma(FDFs, chiinv):
+        return sps.block_diag(FDFs, "csc") + sps.csc_matrix(chiinv)
 
-    def __call__(self, xs):
+    def __call__(self, xs, chiinv_method="cliques"):
         # map parameter vector if needed
         params = xs if isinstance(xs, dict) else self.pta.map_params(xs)
+
+        lnlike = self.lnlikelihood0
 
         # if white noise isn't constant, we'll need to recompute this at every call
         if self.wn_vary:
@@ -249,7 +253,45 @@ class FastLogLikelihood(object):
             self.FDrs = self.pta.get_FDr(params)
 
             for ii in range(len(self.rDrs)):
-                self.lnlikelihood += -0.5 * self.rDrs[ii][0] - 0.5 * self.rDrs[ii][1]
+                lnlike += -0.5 * self.rDrs[ii][0] - 0.5 * self.rDrs[ii][1]
+
+        chiinvs = self.pta.get_chiinv(params, logdet=True, method=chiinv_method)
+
+        if self.pta._commonsignals:
+            # This happens for correlations
+            chiinv, logdet_chi = chiinvs
+            Sigma = self._make_sigma(self.FDFs, chiinv)
+            FDr = np.concatenate(self.FDrs)
+            try:
+                cf = cholesky(Sigma)
+                expval = cf(FDr)
+            except:
+                return -np.inf
+
+            logdet_sigma = cf.logdet()
+            lnlike += 0.5 * (np.dot(FDr, expval) - logdet_sigma - logdet_chi)
+
+        else:
+            # This happens for anything that doesn't include correlations
+            for FDr, FDF, pl in zip(self.FDrs, self.FDFs, chiinvs):
+                if FDr is None:
+                    continue
+
+                chiinv, logdet_chi = pl
+                print(FDF)
+                print(chiinv)
+                Sigma = FDF + (np.diag(chiinv) if chiinv.ndim == 1 else chiinv)
+
+                try:
+                    cf = sl.cho_factor(Sigma)
+                    expval = sl.cho_solve(cf, FDr)
+                except:
+                    return -np.inf
+
+                logdet_sigma = np.sum(2 * np.log(np.diag(cf[0])))
+                lnlike += 0.5 * (np.dot(FDr, expval) - logdet_sigma - logdet_chi)
+
+        return lnlike
 
 
 class LogLikelihood(object):
@@ -316,7 +358,7 @@ class LogLikelihood(object):
 
 
 class PTA(object):
-    def __init__(self, init, lnlikelihood=LogLikelihood):
+    def __init__(self, init, lnlikelihood=FastLogLikelihood):
         if isinstance(init, Sequence):
             self._signalcollections = list(init)
         else:
@@ -572,6 +614,149 @@ class PTA(object):
         else:
             return [None if phivec is None else phivec.inv(logdet) for phivec in phivecs]
 
+
+    def get_chiinv(self, params, logdet=False, method="cliques"):
+        if method == "cliques":
+            return self.get_chiinv_byfreq_cliques(params, logdet)
+        elif method == "partition":
+            return self.get_chiinv_byfreq_partition(params, logdet)
+        elif method == "sparse":
+            return self.get_chiinv_sparse(params, logdet)
+        else:
+            raise NotImplementedError
+
+    def get_chiinv_byfreq_partition(self, params, logdet=False):
+        chivecs = [signalcollection.get_chi(params) for signalcollection in self._signalcollections]
+
+        # if we found common signals, we'll return a big phivec matrix,
+        # otherwise a list of phivec vectors (some of which possibly None)
+        if self._commonsignals:
+            slices = self._get_slices(chivecs)
+
+            # TODO: This is messy, maybe we should clean up
+            chis = [chivec for chivec in chivecs if chivec is not None]
+            if np.any([chivec.ndim == 2 for chivec in chis]):
+                chiinvs = [chivec.inv(logdet) for chivec in chis]
+                chiinv_full = [np.diag(chi[0]) if chi[0].ndim == 1 else chi[0] for chi in chiinvs]
+                chiinv = sl.block_diag(*chiinv_full)
+                if logdet:
+                    ld = np.sum([pi[1] for pi in chiinvs])
+                chidiag = np.concatenate([np.diag(chi) if chi.ndim == 2 else chi for chi in chis])
+            else:
+                chidiag = np.concatenate(chis)
+                chiinv = np.diag(1.0 / chidiag)
+                if logdet:
+                    ld = np.sum(np.log(chidiag))
+
+            # this will only work if all common signals are shared among all
+            # the pulsars and share the same basis
+            invert = None
+
+            for csclass, csdict in self._commonsignals.items():
+                for i, (cs1, csc1) in enumerate(csdict.items()):
+                    for j, (cs2, csc2) in enumerate(csdict.items()):
+                        if j <= i:
+                            continue
+
+                        # hoping they're all the same...
+                        crossdiag = csclass.get_phicross(cs1, cs2, params)
+
+                        if invert is None:
+                            invert = np.zeros((len(crossdiag), len(csdict), len(csdict)), "d")
+
+                        if crossdiag.ndim == 2:
+                            raise NotImplementedError(
+                                "get_phiinv with method='partition' does not " "support dense phi matrices."
+                            )
+
+                        invert[:, i, j] += crossdiag
+                        invert[:, j, i] += crossdiag
+
+                    invert[:, i, i] += chidiag[slices[csc1]][csc1._idx[cs1]]
+
+                    if logdet:
+                        ld -= np.sum(np.log(chidiag[slices[csc1]][csc1._idx[cs1]]))
+
+            for k in range(len(crossdiag)):
+                cf = sl.cho_factor(invert[k, :, :])
+                invert[k, :, :] = sl.cho_solve(cf, np.eye(invert[k, :, :].shape[0]))
+                if logdet:
+                    ld += np.sum(2 * np.log(np.diag(cf[0])))
+
+            csdict = list(self._commonsignals.values())[0]
+            for i, (cs1, csc1) in enumerate(csdict.items()):
+                block1, idx1 = slices[csc1], csc1._idx[cs1]
+                for j, (cs2, csc2) in enumerate(csdict.items()):
+                    if j < i:
+                        continue
+
+                    block2, idx2 = slices[csc2], csc2._idx[cs2]
+
+                    chiinv[block1, block2][idx1, idx2] = invert[:, i, j]
+                    chiinv[block2, block1][idx2, idx1] = invert[:, i, j]
+
+            if logdet:
+                return chiinv, ld
+            else:
+                return chiinv
+        else:
+            return [None if chivec is None else chivec.inv(logdet) for chivec in chivecs]
+
+    def get_chiinv_sparse(self, params, logdet=False):
+        chi = self.get_chi(params)
+
+        if isinstance(chi, list):
+            return [None if chivec is None else chivec.inv(logdet) for chivec in chi]
+        else:
+            chisparse = sps.csc_matrix(chi)
+            cf = cholesky(chisparse)
+
+            if logdet:
+                return (cf.inv(), cf.logdet())
+            else:
+                return cf.inv()
+
+    def get_chiinv_byfreq_cliques(self, params, logdet=False, cholesky=False):
+        chi = self.get_chi(params, cliques=True)
+
+        if isinstance(chi, list):
+            return [None if chivec is None else chivec.inv(logdet) for chivec in chi]
+        else:
+            ld = 0
+
+            # first invert all the cliques
+            for clcount in range(self._clcount):
+                idx = self._cliques == clcount
+
+                if np.any(idx):
+                    idx2 = np.ix_(idx, idx)
+
+                    if cholesky:
+                        cf = sl.cho_factor(chi[idx2])
+
+                        if logdet:
+                            ld += 2.0 * np.sum(np.log(np.diag(cf[0])))
+
+                        chi[idx2] = sl.cho_solve(cf, np.identity(cf[0].shape[0]))
+                    else:
+                        chi2 = chi[idx2]
+
+                        if logdet:
+                            ld += np.linalg.slogdet(chi2)[1]
+
+                        chi[idx2] = np.linalg.inv(chi2)
+
+            # then do the pure diagonal terms
+            idx = self._cliques == -1
+
+            if logdet:
+                ld += np.sum(np.log(chi[idx, idx]))
+
+            chi[idx, idx] = 1.0 / chi[idx, idx]
+
+            return (chi, ld) if logdet else chi
+
+
     def get_phiinv_byfreq_cliques(self, params, logdet=False, cholesky=False):
         phi = self.get_phi(params, cliques=True)
 
@@ -728,6 +913,55 @@ class PTA(object):
             return Phi
         else:
             return phis
+
+    def get_chi(self, params, cliques=False):
+        chis = [signalcollection.get_chi(params) for signalcollection in self._signalcollections]
+
+        # if we found common signals, we'll return a big phivec matrix,
+        # otherwise a list of phivec vectors (some of which possibly None)
+        if self._commonsignals:
+            if np.any([chi.ndim == 2 for chi in chis if chi is not None]):
+                # if we have any dense matrices,
+                Chi = sl.block_diag(*[np.diag(chi) if chi.ndim == 1 else chi for chi in chis if chi is not None])
+            else:
+                Chi = np.diag(np.concatenate([chi for chi in chis if chi is not None]))
+
+            # get a dictionary of slices locating each pulsar in Phi matrix
+            slices = self._get_slices(chis)
+
+            # self._cliques is a vector of the same size as the Phi matrix
+            # for each Phi index i, self._cliques[i] is -1 if row/column
+            # belong to no clique, or it gives the clique number otherwise
+            if cliques:
+                self._resetcliques(Chi.shape[0])
+                self._setpulsarcliques(slices, chis)
+
+            # iterate over all common signal classes
+            for csclass, csdict in self._commonsignals.items():
+                # first figure out which indices are used in this common signal
+                # and update the clique index
+                if cliques:
+                    self._setcliques(slices, csdict)
+
+                # now iterate over all pairs of common signal instances
+                pairs = itertools.combinations(csdict.items(), 2)
+
+                for (cs1, csc1), (cs2, csc2) in pairs:
+                    crossdiag = csclass.get_phicross(cs1, cs2, params)
+
+                    block1, idx1 = slices[csc1], csc1._idx[cs1]
+                    block2, idx2 = slices[csc2], csc2._idx[cs2]
+
+                    if crossdiag.ndim == 1:
+                        Chi[block1, block2][idx1, idx2] += crossdiag
+                        Chi[block2, block1][idx2, idx1] += crossdiag
+                    else:
+                        Chi[block1, block2][np.ix_(idx1, idx2)] += crossdiag
+                        Chi[block2, block1][np.ix_(idx2, idx1)] += crossdiag
+
+            return Chi
+        else:
+            return chis
 
     def map_params(self, xs):
         ret = {}
@@ -1019,6 +1253,22 @@ def SignalCollection(metasignals):  # noqa: C901
                     phi = phi.add(signal.get_phi(params), self._idx[signal])
 
             return phi
+
+        # returns a KernelMatrix object
+        def get_chi(self, params):
+            """
+            Like phi, but without the timing model
+            """
+            if self._Fmat is None:
+                return None
+            chi = self.get_phi(params)[:self._Fmat_F.shape[1]]
+
+            return chi
+
+        def get_chiinv(self, params):
+            return self.get_chi(params).inv()
+
+
 
         @cache_call(["basis_params", "white_params", "delay_params"])
         def get_TNr(self, params):
