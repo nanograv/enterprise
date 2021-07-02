@@ -214,54 +214,52 @@ and det(C) = det(Sigma) det(chi) det(D)
 class FastLogLikelihood(object):
     def __init__(self, pta):
         self.pta = pta
-        self.lnlikelihood0 = 0
+        self._cached_FDFs = None
+        self._cached_FDrs = None
+        
+    # Cache the FDF matrix and FDr vector.  This happens only if there are correlations.
+    def get_FDF(self, params):
+        FDFs = self.pta.get_FDF(params)
+        # If this is the first time or anything has changed since last time, compute it
+        # pta.get_FDF returns one object per pulsar, so the lists will be the same length
+        if not self._cached_FDFs or any(x is not y for x, y in zip(FDFs, self._cached_FDFs)):
+            self._cached_FDFs = FDFs
+            self.FDF = sps.block_diag(FDFs, "csc")
+        return self.FDF
 
-        self.wn_vary = False
-        # check if white noise is constant or being varied:
-        for key in pta.signals:
-            for par in pta.signals[key]._params.values():
-                if isinstance(par, ConstantParameter):
-                    continue
-                else:
-                    if pta.signals[key].signal_type == 'white noise':
-                        self.wn_vary = True
+    def get_FDr(self, params):
+        FDrs = self.pta.get_FDr(params)
+        # See get_FDF
+        if not self._cached_FDrs or any(x is not y for x, y in zip(FDrs, self._cached_FDrs)):
+            self._cached_FDrs = FDrs
+            self.FDr = np.concatenate(FDrs)
+        return self.FDr
 
-        # no need to recompute D if it's constant every time!
-        if not self.wn_vary:
-            params = {}
-            self.rDrs = self.pta.get_rDr_logdet(params)
-            self.FDFs = self.pta.get_FDF(params)
-            self.FDrs = self.pta.get_FDr(params)
+    # We don't cache rDr because it would take just as long to check whether it was needed
+    # updating as to update it
 
-            for ii in range(len(self.rDrs)):
-                self.lnlikelihood0 += -0.5 * self.rDrs[ii][0] - 0.5 * self.rDrs[ii][1]
-
-    # _make_Sigma definition or similar goes here
-    def _make_sigma(self, FDFs, chiinv):
-        return sps.block_diag(FDFs, "csc") + sps.csc_matrix(chiinv)
+    # Sigma = chi^-1 + FDF
+    def _make_sigma(self, params, chiinv):
+        return self.get_FDF(params) + sps.csc_matrix(chiinv)
 
     def __call__(self, xs, chiinv_method="cliques"):
         # map parameter vector if needed
         params = xs if isinstance(xs, dict) else self.pta.map_params(xs)
 
-        lnlike = self.lnlikelihood0
+        # get -0.5 * (rDr + logdet_D) piece of likelihood
+        # the np.sum here is needed because each pulsar returns a 2-tuple
+        lnlike = -0.5 * np.sum([ell for ell in self.pta.get_rDr_logdet(params)])
 
-        # if white noise isn't constant, we'll need to recompute this at every call
-        if self.wn_vary:
-            self.rDrs = self.pta.get_rDr_logdet(params)
-            self.FDFs = self.pta.get_FDF(params)
-            self.FDrs = self.pta.get_FDr(params)
-
-            for ii in range(len(self.rDrs)):
-                lnlike += -0.5 * self.rDrs[ii][0] - 0.5 * self.rDrs[ii][1]
+        # get extra prior/likelihoods
+        lnlike += sum(self.pta.get_logsignalprior(params))
 
         chiinvs = self.pta.get_chiinv(params, logdet=True, method=chiinv_method)
 
         if self.pta._commonsignals:
-            # This happens for correlations
+            # This happens for correlations.
             chiinv, logdet_chi = chiinvs
-            Sigma = self._make_sigma(self.FDFs, chiinv)
-            FDr = np.concatenate(self.FDrs)
+            Sigma = self._make_sigma(params, chiinv)
+            FDr = self.get_FDr(params)
             try:
                 cf = cholesky(Sigma)
                 expval = cf(FDr)
@@ -273,7 +271,9 @@ class FastLogLikelihood(object):
 
         else:
             # This happens for anything that doesn't include correlations
-            for FDr, FDF, pl in zip(self.FDrs, self.FDFs, chiinvs):
+            # Then chiinvs is a list of matrix (or its diagonal), logdet for each pulsar
+            # and we compute each pulsar and total them.
+            for FDr, FDF, pl in zip(self.pta.get_FDr(params), self.pta.get_FDF(params), chiinvs):
                 if FDr is None:
                     continue
 
@@ -1220,8 +1220,9 @@ def SignalCollection(metasignals):  # noqa: C901
             return self._Fmat
 
         # This is the M matrix.
-        # By definition there cannot be parameters here
-        @cache_call("basis_params") # This isn't right because it doesn't depend on anything
+        # By definition there cannot be parameters here, but we take the params
+        # argument anyway to make cache_call happy
+        @cache_call([])
         def get_basis_M(self, params={}):
             for signal in self.fixed_signals:
                 if signal in self._idx:
