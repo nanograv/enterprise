@@ -237,7 +237,7 @@ class FastLogLikelihood(object):
                 self.lnlikelihood0 += -0.5 * self.rDrs[ii][0] - 0.5 * self.rDrs[ii][1]
 
     # _make_Sigma definition or similar goes here
-    def _make_sigma(FDFs, chiinv):
+    def _make_sigma(self, FDFs, chiinv):
         return sps.block_diag(FDFs, "csc") + sps.csc_matrix(chiinv)
 
     def __call__(self, xs, chiinv_method="cliques"):
