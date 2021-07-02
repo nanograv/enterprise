@@ -278,8 +278,6 @@ class FastLogLikelihood(object):
                     continue
 
                 chiinv, logdet_chi = pl
-                print(FDF)
-                print(chiinv)
                 Sigma = FDF + (np.diag(chiinv) if chiinv.ndim == 1 else chiinv)
 
                 try:
