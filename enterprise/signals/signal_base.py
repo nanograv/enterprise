@@ -4,7 +4,9 @@ Defines the signal base classes and metaclasses. All signals will then be
 derived from these base classes.
 """
 
-print("Loading fastloglikelihood version of signal_base")
+import time
+import timeit
+import platform
 
 import collections
 
@@ -36,7 +38,6 @@ _py_version = version.split(" ")[0]
 
 # logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 class MetaSignal(type):
     """Metaclass for Signals. Allows addition of ``Signal`` classes."""
@@ -151,7 +152,7 @@ Notation:
 r = vector of TOA residuals
 M = design matrix.  Row = TOA number, column = design parameter
 F = Fourier (or other) basis.  Row = TOA number, column = parameter
-T = (M | F)
+T = (F | M)
 E = diagonal matrix of infinities giving lack of knowledge about model parameters
 chi = covariance matrix of parameters.  Xavi's notes call this phi.
 phi = block diagonal matrix of chi and E.  Xavi's notes call this B.
@@ -212,11 +213,15 @@ and det(C) = det(Sigma) det(chi) det(D)
 """
 
 class FastLogLikelihood(object):
-    def __init__(self, pta):
+    def __init__(self, pta, cholesky_sparse=True):
         self.pta = pta
+        self._cholesky_sparse = cholesky_sparse
         self._cached_FDFs = None
         self._cached_FDrs = None
-        
+        self.cholesky_time = 0
+        self.cholesky_calls = 0
+        self._cached_factor = None
+
     # Cache the FDF matrix and FDr vector.  This happens only if there are correlations.
     def get_FDF(self, params):
         FDFs = self.pta.get_FDF(params)
@@ -224,7 +229,7 @@ class FastLogLikelihood(object):
         # pta.get_FDF returns one object per pulsar, so the lists will be the same length
         if not self._cached_FDFs or any(x is not y for x, y in zip(FDFs, self._cached_FDFs)):
             self._cached_FDFs = FDFs
-            self.FDF = sps.block_diag(FDFs, "csc")
+            self.FDF = sps.block_diag(FDFs, "csc") if self._cholesky_sparse else sl.block_diag(*FDFs)
         return self.FDF
 
     def get_FDr(self, params):
@@ -238,9 +243,9 @@ class FastLogLikelihood(object):
     # We don't cache rDr because it would take just as long to check whether it was needed
     # updating as to update it
 
-    # Sigma = chi^-1 + FDF
+    # Sigma = chi^-1 + FDF.
     def _make_sigma(self, params, chiinv):
-        return self.get_FDF(params) + sps.csc_matrix(chiinv)
+        return self.get_FDF(params) + (sps.csc_matrix(chiinv) if self._cholesky_sparse else chiinv)
 
     def __call__(self, xs, chiinv_method="cliques"):
         # map parameter vector if needed
@@ -260,13 +265,34 @@ class FastLogLikelihood(object):
             chiinv, logdet_chi = chiinvs
             Sigma = self._make_sigma(params, chiinv)
             FDr = self.get_FDr(params)
+
+            start = time.process_time()
             try:
-                cf = cholesky(Sigma)
-                expval = cf(FDr)
+                if self._cholesky_sparse:
+                    # If we have a cached Cholesky factor, reuse it without finding
+                    # the best perturbation anew.  This assumes that any changes don't affect
+                    # the pattern of nonzero elements in Sigma.
+                    if self._cached_factor:
+                        factor.cholesky_inplace(Sigma)
+                    else:
+                        self._cached_factor = cholesky(Sigma,ordering_method="best") # First time
+                    cf = self._cached_factor
+                else:           # Don't use sparse methods
+                    cf = sl.cho_factor(Sigma) # returns tuple with flag saying lower triangular
             except:
                 return -np.inf
+            
+            this_time = time.process_time() - start
+            self.cholesky_time += this_time
+            self.cholesky_calls += 1
 
-            logdet_sigma = cf.logdet()
+            if self._cholesky_sparse:
+                expval = cf(FDr)
+                logdet_sigma = cf.logdet()
+            else:
+                expval = sl.cho_solve(cf,FDr) 
+                logdet_sigma = 2*np.sum(np.log(np.diag(cf[0]))) # A = L L^T so det = det(L)^2
+
             lnlike += 0.5 * (np.dot(FDr, expval) - logdet_sigma - logdet_chi)
 
         else:
@@ -295,6 +321,8 @@ class FastLogLikelihood(object):
 class LogLikelihood(object):
     def __init__(self, pta):
         self.pta = pta
+        self.cholesky_time = 0
+        self.cholesky_calls = 0
 
     def _make_sigma(self, TNTs, phiinv):
         return sps.block_diag(TNTs, "csc") + sps.csc_matrix(phiinv)
@@ -325,11 +353,17 @@ class LogLikelihood(object):
             Sigma = self._make_sigma(TNTs, phiinv)
             TNr = np.concatenate(TNrs)
 
+            start = time.process_time()
             try:
                 cf = cholesky(Sigma)
-                expval = cf(TNr)
             except:
                 return -np.inf
+            
+            this_time = time.process_time() - start
+            self.cholesky_time += this_time
+            self.cholesky_calls += 1
+
+            expval = cf(TNr)
 
             logdet_sigma = cf.logdet()
 
@@ -1703,3 +1737,21 @@ class ShermanMorrison(object):
             raise TypeError
 
         return (ret, self._get_logdet()) if logdet else ret
+
+def compare_times(pta,params,number=10,timer=time.process_time,
+                  slow_number=None,fast_number=None,sparse_number=None):
+    print("Running on", platform.node(), "with", len(pta.pulsars), "pulsars",
+          "using timer", timer.__name__)
+    slow_number = slow_number if slow_number is not None else number
+    fast_number = fast_number if fast_number is not None else number
+    sparse_number = sparse_number if sparse_number is not None else number
+    slow = LogLikelihood(pta)
+    fast = FastLogLikelihood(pta)
+    sparse = FastLogLikelihood(pta,cholesky_sparse=True)
+    for (likelihood, name, count) in [(slow, "slow", slow_number), (fast, "fast", fast_number), 
+                               (sparse, "sparse", sparse_number)]:
+        if count>0:
+            likelihood(params) # Cache first time
+            interval = timeit.timeit(lambda: likelihood(params), timer, number=count)
+            print(name, " ", 1000*interval/count, " ms/call")
+
