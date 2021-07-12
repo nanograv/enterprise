@@ -22,7 +22,7 @@ import numpy as np
 import scipy.linalg as sl
 import scipy.sparse as sps
 import six
-from sksparse.cholmod import cholesky
+from sksparse.cholmod import cholesky, CholmodError
 
 # these are defined in parameter.py, but currently imported
 # in various places from signal_base.py
@@ -213,7 +213,7 @@ and det(C) = det(Sigma) det(chi) det(D)
 """
 
 class FastLogLikelihood(object):
-    def __init__(self, pta, cholesky_sparse=True):
+    def __init__(self, pta, cholesky_sparse=False):
         self.pta = pta
         self._cholesky_sparse = cholesky_sparse
         self._cached_FDFs = None
@@ -273,13 +273,13 @@ class FastLogLikelihood(object):
                     # the best perturbation anew.  This assumes that any changes don't affect
                     # the pattern of nonzero elements in Sigma.
                     if self._cached_factor:
-                        factor.cholesky_inplace(Sigma)
+                        self._cached_factor.cholesky_inplace(Sigma)
                     else:
                         self._cached_factor = cholesky(Sigma,ordering_method="best") # First time
                     cf = self._cached_factor
                 else:           # Don't use sparse methods
                     cf = sl.cho_factor(Sigma) # returns tuple with flag saying lower triangular
-            except:
+            except CholmodError:
                 return -np.inf
             
             this_time = time.process_time() - start
@@ -1739,17 +1739,18 @@ class ShermanMorrison(object):
         return (ret, self._get_logdet()) if logdet else ret
 
 def compare_times(pta,params,number=10,timer=time.process_time,
-                  slow_number=None,fast_number=None,sparse_number=None):
+                  slow_number=None,dense_number=None,sparse_number=None):
     print("Running on", platform.node(), "with", len(pta.pulsars), "pulsars",
           "using timer", timer.__name__)
     slow_number = slow_number if slow_number is not None else number
-    fast_number = fast_number if fast_number is not None else number
+    dense_number = dense_number if dense_number is not None else number
     sparse_number = sparse_number if sparse_number is not None else number
     slow = LogLikelihood(pta)
-    fast = FastLogLikelihood(pta)
+    dense = FastLogLikelihood(pta,cholesky_sparse=False)
     sparse = FastLogLikelihood(pta,cholesky_sparse=True)
-    for (likelihood, name, count) in [(slow, "slow", slow_number), (fast, "fast", fast_number), 
-                               (sparse, "sparse", sparse_number)]:
+    for (likelihood, name, count) in [(slow, "slow", slow_number),
+                                      (dense, "fast dense", dense_number), 
+                                      (sparse, "fast sparse", sparse_number)]:
         if count>0:
             likelihood(params) # Cache first time
             interval = timeit.timeit(lambda: likelihood(params), timer, number=count)
