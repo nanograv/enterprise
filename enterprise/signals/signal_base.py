@@ -267,8 +267,8 @@ class FastLogLikelihood(object):
             FDr = self.get_FDr(params)
 
             start = time.process_time()
-            try:
-                if self._cholesky_sparse:
+            if self._cholesky_sparse:
+                try:
                     # If we have a cached Cholesky factor, reuse it without finding
                     # the best perturbation anew.  This assumes that any changes don't affect
                     # the pattern of nonzero elements in Sigma.
@@ -277,11 +277,14 @@ class FastLogLikelihood(object):
                     else:
                         self._cached_factor = cholesky(Sigma,ordering_method="best") # First time
                     cf = self._cached_factor
-                else:           # Don't use sparse methods
+                except CholmodError:
+                    return -np.inf
+            else:           # Not using sparse methods
+                try: 
                     cf = sl.cho_factor(Sigma) # returns tuple with flag saying lower triangular
-            except CholmodError:
-                return -np.inf
-            
+                except np.linalg.LinAlgError:
+                    return -np.inf
+
             this_time = time.process_time() - start
             self.cholesky_time += this_time
             self.cholesky_calls += 1
@@ -309,7 +312,7 @@ class FastLogLikelihood(object):
                 try:
                     cf = sl.cho_factor(Sigma)
                     expval = sl.cho_solve(cf, FDr)
-                except:
+                except np.linalg.LinAlgError:
                     return -np.inf
 
                 logdet_sigma = np.sum(2 * np.log(np.diag(cf[0])))
@@ -1753,6 +1756,7 @@ def compare_times(pta,params,number=10,timer=time.process_time,
                                       (sparse, "fast sparse", sparse_number)]:
         if count>0:
             likelihood(params) # Cache first time
-            interval = timeit.timeit(lambda: likelihood(params), timer, number=count)
-            print(name, " ", 1000*interval/count, " ms/call")
-
+            likelihood.cholesky_time = likelihood.cholesky_calls = 0
+            interval = timeit.timeit(lambda: likelihood(params), timer=timer, number=count)
+            print(name, " ", 1000*interval/count, " ms/call,",
+                  1000*likelihood.cholesky_time/likelihood.cholesky_calls, "in cholesky")
