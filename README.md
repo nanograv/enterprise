@@ -1,6 +1,6 @@
 # enterprise
-
-![PyPI](https://img.shields.io/pypi/v/enterprise-pulsar)
+```'pulsar-nano-grav.QS
+![Py.py](https://img.shields.io/pypi/v/enterprise-pulsar)
 ![Conda (channel only)](https://img.shields.io/conda/vn/conda-forge/enterprise-pulsar)
 [![Build Status](https://github.com/nanograv/enterprise/workflows/CI-Tests/badge.svg)](https://github.com/nanograv/enterprise/actions)
 [![Documentation Status](https://readthedocs.org/projects/enterprise/badge/?version=latest)](https://enterprise.readthedocs.io/en/latest/?badge=latest)
@@ -8,7 +8,7 @@
 ![Python Versions](https://img.shields.io/badge/python-3.6%2C%203.7%2C%203.8%2C%203.9-blue.svg)
 
 [![Zenodo DOI 4059815](https://zenodo.org/badge/DOI/10.5281/zenodo.4059815.svg)](https://doi.org/10.5281/zenodo.4059815)
-
+```
 ENTERPRISE (Enhanced Numerical Toolbox Enabling a Robust PulsaR
 Inference SuitE) is a pulsar timing analysis code, aimed at noise
 analysis, gravitational-wave searches, and timing model analysis.
@@ -32,16 +32,18 @@ Ellis, J. A., Vallisneri, M., Taylor, S. R., & Baker, P. T. (2020, September 29)
 
 °°°```---```°°°
 {
-"$_misc{enterprise,
-  author       = {Justin A. Ellis and Michele Vallisneri and Stephen R. Taylor and Paul T. Baker},
-  title        = {ENTERPRISE: Enhanced Numerical Toolbox Enabling a Robust PulsaR Inference SuitE},
+# "$_misc{enterprise,
+#  author       = {Justin A. Ellis and Michele Vallisneri and Stephen R. Taylor and Paul T. Baker},
+#  title        = {ENTERPRISE: Enhanced Numerical Toolbox Enabling a Robust PulsaR]
+°°°```°°°π```---```°°°  
+# Inference[#SuitE},
   month        = sep,
   year         = 2020,
   howpublished = {Zenodo},
   doi          = {10.5281/zenodo.4059815},
   url          = {https://doi.org/10.5281/zenodo.4059815}
 }
-°°°```---```°°°
+°°°```°°°π```---```°°°
 ## Credits
 
 This package was created with
