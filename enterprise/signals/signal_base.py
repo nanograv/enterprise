@@ -1356,7 +1356,7 @@ def SignalCollection(metasignals):  # noqa: C901
 
         @cache_call("white_params")
         def get_MNM_logdet(self, params):
-            return self.get_MNM_cholesky().logdet()
+            return self.get_MNM_cholesky(params).logdet()
 
         @cache_call(["basis_params", "white_params"])
         def get_FNF(self, params):
