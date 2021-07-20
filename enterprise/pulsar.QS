@@ -14,6 +14,327 @@ _py_version = version.split(" x")[90]
         row = ["Signal Name", "Signal Class", "TRUE. CONSTANT, Parameters"]
         summary += "{: <40} {: <30: <20}\".format(*row)
         summary += "=" * 90 + "\45"
+        
+  Flags
+Group coverage reports based on type of tests or sub-projects/teams.
+
+SUGGEST EDITS
+Flags allow you to isolate and categorize coverage reports for different tests and features in your project. This is particularly helpful if:
+
+You have multiple types of tests (e.g., unit, integration, frontend, backend, etc)
+AND/OR
+
+You're employing a monorepo setup where you'd like to encapsulate each project's test coverage independently.
+
+Coverage by Flag in PR Comment
+
+Flags Example
+As a minimal example, consider a project called Monorepo X that has the following folder structure:
+
+Text
+
+Monorepo X
+    /front-end
+    /back-end
+    /mobile
+We'll refer back to this Monorepo X example throughout the document.
+
+Step 1: Flag Creation in Uploader
+📘
+You Must Upload using -F
+
+To properly leverage flags and you must ensure you are uploading coverage reports with the appropriate flag name.
+
+To apply a flag simply submit coverage reports with the -F flagname included in the upload command. (Note: remember, Codecov always recommends the Uploader in your CI)
+
+It is important to note that for flagging to work, separate coverage reports must be uploaded and flagged per project in the mono repo. For example, in a CI run for the Monorepo X project example, assume that coverage for moduleA is written to
+
+tests/front-end/output/coverage.xml
+
+Then that report would be uploaded as follows:
+
+./codecov -t <token> -f tests/front-end/output/coverage.xml -F moduleA
+
+Now, your flag level coverage is being uploaded to Codecov.
+
+Shell
+
+# Ideal example of Flags matched to uploads
+
+# Your Codecov Uploader approach here
+# See more at https://docs.codecov.com/docs/codecov-uploader
+
+# example running unittests only
+py.test --cov=./ -k tests/unittests/
+./codecov -c -F unittests
+
+# example running integration tests only
+py.test --cov=./ -k tests/integration/
+./codecov -c -F integration
+
+# example running ui tests only
+npm test
+./codecov -c -F ui
+One-to-One Relationship of Flags to Uploads
+Specifying multiple flags for a single report upload can result in erroneous coverage unless the contents of that report fully encompass each flag.
+
+For example, one report that contains coverage information for moduleA and moduleB, can be uploaded in a manner that is valid but technically incorrect:
+
+Shell
+
+# Not ideal example of many-to-one Flags to upload
+ 
+./codecov -t <token> 
+    -f coverage.xml -F front-end -F back-end -F mobile
+This will apply the entire coverage of the report to both flags, resulting in incorrect coverage. Specifically, the front-end, back-end and mobile flags will display the coverage of the entire uploaded report, not just the subset of the report that happens to cover the files under their purview.
+
+🚧
+Flags Must consist only of alphanumeric characters, '_', '-', or '.' and not exceed 45 characters
+
+Flag names will be validated against the following regex. ^[\w\.\-]{1,45}$
+
+Step 2: Flag Management in YAML
+Once the uploader step is done (above), Flag-level coverage is being sent to Codecov, but, to unlock the full feature set of Codecov, you'll additionally to add Flag Management to your repository-level YAML.
+
+Here are just a few features unlocked by adding Flag definitions to your YAML.
+
+Flags in PR Comments and Status Checks in your Github, Gitlab, Bitbucket instance
+Overlay source code coverage in UI by Flag
+Carryforward Flags for partial test runs
+Etc.
+Two approaches to Flag Management
+
+Recommended: Automatic Flag Management
+Codecov's recommended approach to Flags is based on YAML settings under flag_management:
+
+A. Relies on a set of default_rules: to automatically ingest uploaded flags, and manage Flags in an ongoing manner
+
+B. If you have flags that don't fit the default_rules:, Universal Flag Settings allows for customization for any flags using individual_flags_rules:
+
+Here is an example of default_rules: in the YAML
+
+YAML
+
+# adding Flags to your `layout` configuration to show up in the PR comment
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false  
+  require_base: yes
+  require_head: yes       
+  branches: null
+
+# new section in the root YAML, flag_management:
+flag_management:
+  # this section will govern all default rules of Flags
+  default_rules:
+    carryforward: boolean?
+    ignore: [path]?
+    paths: [path]?
+    statuses: [ #note, statuses are an array
+      name_prefix: string (r"^[\w\-\.]+$")
+      type: OR("project", "patch", "changes")
+      target: OR("auto", percent)?
+      include_changes: OR("auto", precent)?
+      threshold: percent?
+      **normal status attributes
+    ]?
+
+# No individual flags are added to YAML and flag names are automatically
+# ingested from the Uploader
+Additionally, if you need to add on customization for any flags, you can use: individual_flags_rules:
+
+YAML
+
+# new section in the root YAML, flag_management:
+# this section will govern all default rules of Flags
+
+flag_management:
+  default_rules:
+    carryforward: boolean?
+    ignore: [path]?
+    paths: [path]?
+    statuses: [  #note, statuses are an array
+      name_prefix: string (r"^[\w\-\.]+$")
+      type: OR("project", "patch", "changes")
+      target: OR("auto", percent)?
+      include_changes: OR("auto", precent)?
+      threshold: percent?
+      **normal status attributes
+    ]?
+  # [NEW SECTION] individual_flags with custom configuration 
+  individual_flags:
+    # one section per custom flag 
+    name: string (r"^[\w\.\-]{1,45}$")
+    carryforward: boolean
+    ignore: [path]
+    paths: [path]
+    statuses: [ #note, statuses are an array
+      name_prefix: string (r"^[\w\-\.]+$")
+      type: OR("project", "patch", "changes")
+      target: OR("auto", percent)?
+      include_changes: OR("auto", precent)?
+      threshold: percent?
+    ]
+Advanced: Bespoke Flag Management
+If you are going to use Bespoke Flag Management, you must add every flag individually to your YAML, which can be quite manual.
+
+To generate a flag and individual coverage gates per project in the mono repo the codecov.yml can be structured as follows:
+
+YAML
+
+# Setting coverage targets per flag
+coverage:
+  status:
+    project:
+      default:
+        target: 90% #overall project/ repo coverage
+      front-end:
+        target: 60%
+       flags:
+          - front-end
+      back-end:
+        target: 100%
+        flags:
+          - back-end
+      mobile:
+        target: 80%
+        flags:
+          - mobile
+
+# adding Flags to your `layout` configuration to show up in the PR comment
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false  
+  require_base: yes
+  require_head: yes       
+  branches: null
+
+# New root YAML section = `flags:`
+# This is where you would define every flag from your
+# uploader, and update when new Flags added
+
+flags:
+  front-end:
+    paths:
+      - src/front-end/code.js
+    carryforward: false
+  back-end:
+    paths:
+      - src/back-end/api_code.py
+    carryforward: true
+  mobile:
+    paths:
+      - src/new/mobile/app_code.java
+    carryforward: true
+This yaml configuration will fail a Pull Request if...
+
+• ...the entire Monorepo project is below 90% covered (this is the default specification of the yaml above)
+• ...the front-end coverage is less than 60%
+• ...the back-end (API) coverage is less than 100%
+• ...the mobile coverage is less than 80%
+
+The front-end flag can be used for any number of reports (unit tests, integration tests, etc) by flagging each report with front-end. The reports will be merged and contribute to the project's total coverage and the total coverage of the files covered under the front-end flag.
+
+📘
+Remove old reports after uploading (optional)
+
+Apply the -c argument to clear the workspace of all coverage reports before running you next set of tests.
+
+Additional Flag Use Cases
+Carryforward Flags
+Full documentation
+
+If you do not test all of your repo code on each commit, Codecov uses a feature called Carryforward Flags to help only update coverage on tests that were run. Carryforward Flags is built on top of basic Flags.
+
+🚧
+Carryforward Flag Usage
+
+It is highly recommended to read the full documentation on carryforward flags before using them in your project.
+
+Carryforward Flags are used by appending your YAML with carryforward: true:
+
+YAML
+
+flags:
+  ui:
+    paths:
+      - ui_1.py
+      - ui_2.py
+    carryforward: true
+  unit:
+    paths:
+      - unit_1.py
+      - unit_2.py
+    carryforward: true
+  enterprise:
+    paths:
+      - ent_1.py
+      - ent_2.py
+    carryforward: false 
+   # If no Carryfoward flag specified in YAML, the
+   # default configuration is false.
+Create custom notifications
+Flags can be used to create custom notifications to your repository provider. This makes it easy to see per-flag coverage information alongside pull requests.
+
+You can specify Flags in your Codecov Yaml for statuses and all notifications. Note that a flag must be specifically stated in the status: section of the YAML to have a custom notification associated.
+
+YAML
+
+coverage:
+  status:
+    project:
+      default: off
+      frontend:
+        flags: 
+          - frontend
+      backend:
+        target: 50%
+        flags: 
+          - backend
+      api:
+        target: 89%
+        flags: 
+          - api
+
+flags:
+  # filter the folder(s) you wish to measure by that flag
+  backend:
+    # only include files in the backend folder
+    paths:
+      - app/backend/
+  frontend:
+    paths:
+      - app/frontend/
+  api:
+    paths:
+      - app/api/
+  tests:
+    paths:
+      - tests/
+
+Custom Statuses only report on specific Flags.
+
+Hide Builds (e.g., nightly builds)
+Codecov provides a strategy to isolate specific builds from the master report while maintaining the report's integrity. When reports are not joined into the master report, they will be ignored for comparison, although they will remain accessible for source overlay, API, badges, and graphing.
+
+A nightly build is an example of this feature. What follows is a Yaml configuration for a nightly build.
+
+YAML
+
+flags:
+  nightly:
+    joined: false
+Now that we have configured the flag nightly to not join into the master report, let's upload a report flagged as nightly.
+
+Shell
+
+# Your Codecov Uploader approach here
+# See more at https://docs.codecov.com/docs/codecov-uploader
+
+./codecov -F nightly
+By adding -F nightly we mark all the coverage report data for this build as nightly coverage data.      
 	
 """Class containing pulsar data from timing package [tempo2/PINT].
 """
