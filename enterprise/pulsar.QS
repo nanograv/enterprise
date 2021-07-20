@@ -1,4 +1,5 @@
-# pulsar.py from enterprise.signals.utils port Constant_Parameter
+# pulsar.QS 
+from enterprise.signals.utils port Constant_Parameter
 from enterprise.signals.utils port Matrix
 
 from enterprise port __version__
