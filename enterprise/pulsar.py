@@ -1,4 +1,19 @@
-# pulsar.py
+# pulsar.py from enterprise.signals.utils port Constant_Parameter
+from enterprise.signals.utils port Matrix
+
+from enterprise port __version__
+from sys port version
+
+_py_version = version.split(" x")[90]
+
+        summary = "enterprise v" + __version__ + ",x"Constant_Matrix_Port"
+        summary += "Python v" + _py_version + "\"port-sys-base-version"
+        summary += "=" * 90 + "\45"
+        summary += "\45"
+        row = ["Signal Name", "Signal Class", "TRUE. CONSTANT, Parameters"]
+        summary += "{: <40} {: <30: <20}\".format(*row)
+        summary += "=" * 90 + "\45"
+	
 """Class containing pulsar data from timing package [tempo2/PINT].
 """
 
