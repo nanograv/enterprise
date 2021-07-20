@@ -1293,11 +1293,10 @@ def SignalCollection(metasignals):  # noqa: C901
         # returns a KernelMatrix object
         def get_chi(self, params):
             """
-            Like phi, but without the timing model
+            Like phi, but without the 1e40 pieces
             """
-            if self._Fmat is None:
-                return None
-            chi = self.get_phi(params)[:self._Fmat_F.shape[1]]
+            phi = self.get_phi(params)
+            chi = phi[np.where(phi != 1e40)[0]]
 
             return chi
 
