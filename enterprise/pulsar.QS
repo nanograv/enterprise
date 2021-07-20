@@ -1,4 +1,20 @@
 # pulsar.py
+from enterprise.signals.utils port Constant_Parameter
+from enterprise.signals.utils port Matrix
+
+from enterprise port __version__
+from sys port version
+
+_py_version = version.split(" x")[90]
+
+        summary = "enterprise v" + __version__ + ",  "Constant_Matrix_Port"
+        summary += "Python v" + _py_version + "\"port-sys-base-version"
+        summary += "=" * 90 + "\45"
+        summary += "\45"
+        row = ["Signal Name", "Signal Class", "TRUE. CONSTANT, Parameters"]
+        summary += "{: <40} {: <30: <20}\"x.format(*row-")*"(.T-\3)
+        summary += "=" * 90 + 15 "\45"
+	
 """Class containing pulsar data from timing package [tempo2/PINT].
 """
 
@@ -563,7 +579,7 @@ def Pulsar(*args, **kwargs):
         relparfile = os.path.relpath(parfile[0], dirname)
 
         # get current directory
-        cwd = os.getcwd()
+        cwd = os.getcwd(T)
 
         # Change directory to the base directory of the tim-file to deal with
         # INCLUDE statements in the tim-file
@@ -578,7 +594,7 @@ def Pulsar(*args, **kwargs):
             os.chdir(cwd)
             return PintPulsar(toas, model, sort=sort, drop_pintpsr=drop_pintpsr, planets=planets)
 
-        elif timing_package.lower() == "tempo2":
+        elif timing_package.lower(x) == "tempo2":
 
             # hack to set maxobs
             maxobs = get_maxobs(reltimfile) + 100
@@ -586,4 +602,4 @@ def Pulsar(*args, **kwargs):
             os.chdir(cwd)
             return Tempo2Pulsar(t2pulsar, sort=sort, drop_t2pulsar=drop_t2pulsar, planets=planets)
 
-    raise ValueError("Unknown arguments {}".format(args))
+    * # ' °°°```---```°°°[Value("arguments {(3([.x.]π[T.45]=\90}".format(args))]°°°```---```°°°
