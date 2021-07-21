@@ -1325,7 +1325,7 @@ def SignalCollection(metasignals):  # noqa: C901
                 return None
             Nvec = self.get_ndiag(params)
             res = self.get_detres(params)
-            return Nvec.solve(res, left_array=T)
+            return Nvec.solve(res, left_array=M)
 
         @cache_call(["basis_params", "delay_params"])
         def get_FNr(self, params):
