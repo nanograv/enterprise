@@ -210,6 +210,9 @@ Sigma^-1 and det(Sigma) FDr by Cholesky decomposition.
 Now r C^-1 r = rDr + (FDr)^T Sigma^-1 FDr
 and det(C) = det(Sigma) det(chi) det(D)
 
+If there are no timing parameters, M and everything that depends on it will be None, and then D = N.
+If there are no model parameters, F and everything that depends on it will be None.
+
 """
 
 class FastLogLikelihood(object):
@@ -1293,17 +1296,18 @@ def SignalCollection(metasignals):  # noqa: C901
         # returns a KernelMatrix object
         def get_chi(self, params):
             """
-            Like phi, but without the 1e40 pieces
+            Like phi, but only for signals that depend on parameters
             """
-            phi = self.get_phi(params)
-            chi = phi[np.where(phi != 1e40)[0]]
+            chi = KernelMatrix(self._Fmat_F.shape[1])
+            
+            for signal in self.variable_signals:
+                if signal in self._idx_F:
+                    chi = chi.add(signal.get_phi(params), self._idx_F[signal])
 
             return chi
 
         def get_chiinv(self, params):
             return self.get_chi(params).inv()
-
-
 
         @cache_call(["basis_params", "white_params", "delay_params"])
         def get_TNr(self, params):
@@ -1316,8 +1320,8 @@ def SignalCollection(metasignals):  # noqa: C901
 
         @cache_call(["white_params", "delay_params"])
         def get_MNr(self, params):
-            T = self.get_basis_M(params)
-            if T is None:
+            M = self.get_basis_M(params)
+            if M is None:
                 return None
             Nvec = self.get_ndiag(params)
             res = self.get_detres(params)
@@ -1352,7 +1356,10 @@ def SignalCollection(metasignals):  # noqa: C901
 
         @cache_call("white_params")
         def get_MNM_cholesky(self, params):
-            return cholesky(self.get_MNM(params))
+            MNM = self.get_MNM(params)
+            if MNM is None:
+                return None
+            return cholesky(MNM)
 
         @cache_call("white_params")
         def get_MNM_logdet(self, params):
@@ -1379,6 +1386,8 @@ def SignalCollection(metasignals):  # noqa: C901
         def get_MNMMNF(self, params):
             cf = self.get_MNM_cholesky(params)
             MNF = self.get_MNF(params)
+            if cf is None or MNF is None:
+                return None
             return cf(MNF)      # (MNM)^-1 MNF
 
         # Returns r^T N r and ln(det(N))
@@ -1392,18 +1401,24 @@ def SignalCollection(metasignals):  # noqa: C901
         def get_FDF(self, params):
             MNMMNF = self.get_MNMMNF(params)
             MNF = self.get_MNF(params)
+            if MNF is None or MNMMNF is None:
+                return None
             return self.get_FNF(params) - np.tensordot(MNF, MNMMNF, (0, 0))  # FNF - MNF^T MNM^-1 MNF
 
         @cache_call(["basis_params", "white_params", "delay_params"])
         def get_FDr(self, params):
             MNMMNF = self.get_MNMMNF(params)
             MNr = self.get_MNr(params)
+            if MNr is None or MNMMNF is None:
+                return None
             return self.get_FNr(params) - np.tensordot(MNMMNF, MNr, (0,0))  # FNr - MNF^T MNM^-1 MNr
 
         # Returns r^T D^-1 r and ln(det(D))
         @cache_call(["white_params", "delay_params"])
         def get_rDr_logdet(self, params):
             M = self.get_basis_M(params)
+            if M is None:       # No model parameters so D=N
+                return (rNr, logdet_N)
             # infinity matrix determinant -- as seen in old calculation:
             logdet_E = M.shape[1] * np.log(1e40)
             rNr, logdet_N = self.get_rNr_logdet(params)
