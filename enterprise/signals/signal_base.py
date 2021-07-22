@@ -7,6 +7,7 @@ derived from these base classes.
 import time
 import timeit
 import platform
+import cpuinfo
 
 import collections
 
@@ -105,6 +106,10 @@ class Signal(object):
                 if par.value is None:
                     msg = "{} not set! Check parameter dict.".format(par.name)
                     logger.warning(msg)
+
+    def variable_basis(self):
+        """Tell if signal has a variable basis, i.e., it goes in F matrix"""
+        return self.params and self.get_basis() is not None
 
     def get_ndiag(self, params):
         """Returns the diagonal of the white noise vector `N`.
@@ -1163,11 +1168,11 @@ def SignalCollection(metasignals):  # noqa: C901
         # Signals that do or don't depend on parameters
         @property
         def variable_signals(self):
-            return [sig for sig in self.signals if sig.params]
+            return [sig for sig in self.signals if sig.variable_basis()]
 
         @property
         def fixed_signals(self):
-            return [sig for sig in self.signals if not sig.params]
+            return [sig for sig in self.signals if not sig.variable_basis()]
 
         def set_default_params(self, params):
             for signal in self._signals:
@@ -1298,16 +1303,24 @@ def SignalCollection(metasignals):  # noqa: C901
             """
             Like phi, but only for signals that depend on parameters
             """
-            chi = KernelMatrix(self._Fmat_F.shape[1])
-            
-            for signal in self.variable_signals:
-                if signal in self._idx_F:
-                    chi = chi.add(signal.get_phi(params), self._idx_F[signal])
+            if self.variable_signals: # Anything to do?
 
-            return chi
+                chi = KernelMatrix(self._Fmat_F.shape[1])
+            
+                for signal in self.variable_signals:
+                    if signal in self._idx_F:
+                        chi = chi.add(signal.get_phi(params), self._idx_F[signal])
+
+                return chi
+            else:
+                return None # If no variable signals , then no F or chi
 
         def get_chiinv(self, params):
-            return self.get_chi(params).inv()
+            chi = self.get_chi(params)
+            if chi:
+                return chi.inv()
+            else:
+                return None
 
         @cache_call(["basis_params", "white_params", "delay_params"])
         def get_TNr(self, params):
@@ -1757,7 +1770,7 @@ class ShermanMorrison(object):
 
 def compare_times(pta,params,number=10,timer=time.process_time,
                   slow_number=None,dense_number=None,sparse_number=None):
-    print("Running on", platform.node(), "with", len(pta.pulsars), "pulsars",
+    print("Running on", platform.node(), cpuinfo.get_cpu_info()['brand_raw'], "with", len(pta.pulsars), "pulsars",
           "using timer", timer.__name__)
     slow_number = slow_number if slow_number is not None else number
     dense_number = dense_number if dense_number is not None else number
