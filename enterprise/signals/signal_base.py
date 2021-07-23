@@ -70,6 +70,8 @@ class MetaCollection(type):
 class Signal(object):
     """Base class for Signal objects."""
 
+    is_timing_model = False     # See TimingModel
+
     def __init__(self, psr):
         self.psrname = psr.name
 
@@ -106,10 +108,6 @@ class Signal(object):
                 if par.value is None:
                     msg = "{} not set! Check parameter dict.".format(par.name)
                     logger.warning(msg)
-
-    def variable_basis(self):
-        """Tell if signal has a variable basis, i.e., it goes in F matrix"""
-        return self.params and self.get_basis() is not None
 
     def get_ndiag(self, params):
         """Returns the diagonal of the white noise vector `N`.
@@ -216,7 +214,7 @@ Now r C^-1 r = rDr + (FDr)^T Sigma^-1 FDr
 and det(C) = det(Sigma) det(chi) det(D)
 
 If there are no timing parameters, M and everything that depends on it will be None, and then D = N.
-If there are no model parameters, F and everything that depends on it will be None.
+If there are no model parameters, F and everything that depends on it will be None, and then D = C.
 
 """
 
@@ -1165,14 +1163,14 @@ def SignalCollection(metasignals):  # noqa: C901
         def signals(self):
             return self._signals
 
-        # Signals that do or don't depend on parameters
+        # Timing models signals go in M, other signals in F
         @property
-        def variable_signals(self):
-            return [sig for sig in self.signals if sig.variable_basis()]
+        def signals_M(self):
+            return [sig for sig in self.signals if sig.is_timing_model]
 
         @property
-        def fixed_signals(self):
-            return [sig for sig in self.signals if not sig.variable_basis()]
+        def signals_F(self):
+            return [sig for sig in self.signals if not sig.is_timing_model]
 
         def set_default_params(self, params):
             for signal in self._signals:
@@ -1231,11 +1229,11 @@ def SignalCollection(metasignals):  # noqa: C901
             if par in ("_idx", "_Fmat"):
                 self._idx, self._Fmat = self._combine_basis_columns(self._signals)
             elif par in ("_idx_M", "_Fmat_M"):
-                # Signals that don't depend on the parameters are used to make the D matrix
-                self._idx_M, self._Fmat_M = self._combine_basis_columns(self.fixed_signals)
+                # Timing model signals are used to make the D matrix
+                self._idx_M, self._Fmat_M = self._combine_basis_columns(self.signals_M)
             elif par in ("_idx_F", "_Fmat_F"):
-                # Signals that depend on the parameters are used to make C from D
-                self._idx_F, self._Fmat_F = self._combine_basis_columns(self.variable_signals)
+                # Other signals are used to make C from D
+                self._idx_F, self._Fmat_F = self._combine_basis_columns(self.signals_F)
             else:
                 raise AttributeError("{} object has no attribute {}".format(self.__class__, par))
             return getattr(self, par)
@@ -1269,7 +1267,7 @@ def SignalCollection(metasignals):  # noqa: C901
         # argument anyway to make cache_call happy
         @cache_call([])
         def get_basis_M(self, params={}):
-            for signal in self.fixed_signals:
+            for signal in self.signals_M:
                 if signal in self._idx:
                     self._Fmat_M[:, self._idx_M[signal]] = signal.get_basis({})
             return self._Fmat_M
@@ -1277,7 +1275,7 @@ def SignalCollection(metasignals):  # noqa: C901
         # this is the F matrix that has the basis for the signals that depend on parameters
         @cache_call("basis_params", limit=1)
         def get_basis_F(self, params={}):
-            for signal in self.variable_signals:
+            for signal in self.signals_F:
                 if signal in self._idx:
                     self._Fmat_F[:, self._idx_F[signal]] = signal.get_basis(params)
             return self._Fmat_F
@@ -1300,20 +1298,20 @@ def SignalCollection(metasignals):  # noqa: C901
 
         # returns a KernelMatrix object
         def get_chi(self, params):
-            """
-            Like phi, but only for signals that depend on parameters
-            """
-            if self.variable_signals: # Anything to do?
+            """Like phi, but only for signals that depend on parameters"""
 
-                chi = KernelMatrix(self._Fmat_F.shape[1])
+            F = self.get_basis_F(params)
+            if F is not None:             # Anything to do?
+
+                chi = KernelMatrix(F.shape[1])
             
-                for signal in self.variable_signals:
+                for signal in self.signals_F:
                     if signal in self._idx_F:
                         chi = chi.add(signal.get_phi(params), self._idx_F[signal])
 
                 return chi
             else:
-                return None # If no variable signals , then no F or chi
+                return None # If no non-timing-model signals with bases, then no F or chi
 
         def get_chiinv(self, params):
             chi = self.get_chi(params)
@@ -1430,11 +1428,11 @@ def SignalCollection(metasignals):  # noqa: C901
         @cache_call(["white_params", "delay_params"])
         def get_rDr_logdet(self, params):
             M = self.get_basis_M(params)
-            if M is None:       # No model parameters so D=N
-                return (rNr, logdet_N)
             # infinity matrix determinant -- as seen in old calculation:
             logdet_E = M.shape[1] * np.log(1e40)
             rNr, logdet_N = self.get_rNr_logdet(params)
+            if M is None:       # No model parameters so D=N
+                return (rNr, logdet_N)
             MNr = self.get_MNr(params)
             cf = self.get_MNM_cholesky(params)
             return (rNr - np.dot(MNr, cf(MNr)), logdet_N + self.get_MNM_logdet(params) + logdet_E)
