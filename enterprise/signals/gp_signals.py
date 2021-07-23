@@ -231,6 +231,7 @@ def TimingModel(coefficients=False, name="linear_timing_model", use_svd=False, n
         signal_type = "basis"
         signal_name = "linear timing model"
         signal_id = name + "_svd" if use_svd else name
+        is_timing_model = True  # Say this is a timing model signal
 
         if coefficients:
 
