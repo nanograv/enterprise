@@ -1430,10 +1430,10 @@ def SignalCollection(metasignals):  # noqa: C901
         def get_rDr_logdet(self, params):
             M = self.get_basis_M(params)
             # infinity matrix determinant -- as seen in old calculation:
-            logdet_E = M.shape[1] * np.log(1e40)
             rNr, logdet_N = self.get_rNr_logdet(params)
             if M is None:  # No model parameters so D=N
                 return (rNr, logdet_N)
+            logdet_E = M.shape[1] * np.log(1e40)
             MNr = self.get_MNr(params)
             cf = self.get_MNM_cholesky(params)
             return (rNr - np.dot(MNr, cf(MNr)), logdet_N + self.get_MNM_logdet(params) + logdet_E)
