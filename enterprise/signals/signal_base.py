@@ -40,6 +40,7 @@ _py_version = version.split(" ")[0]
 # logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class MetaSignal(type):
     """Metaclass for Signals. Allows addition of ``Signal`` classes."""
 
@@ -70,7 +71,7 @@ class MetaCollection(type):
 class Signal(object):
     """Base class for Signal objects."""
 
-    is_timing_model = False     # See TimingModel
+    is_timing_model = False  # See TimingModel
 
     def __init__(self, psr):
         self.psrname = psr.name
@@ -149,6 +150,7 @@ class CommonSignal(Signal):
     def get_phicross(cls, signal1, signal2, params):
         return None
 
+
 """Procedures to calculate likelihoods:
 
 Notation:
@@ -182,7 +184,7 @@ Sigma = phi^-1 + TNT
 Sigma^-1 TNr and det(Sigma) by Cholesky decomposition
 (TNr)^T Sigma^-1 TNr
 Now r^T C^-1 r = rNr + (TNr)^T Sigma^-1 TNr
-and det(C) = det(Sigma) det(phi) det(N).  
+and det(C) = det(Sigma) det(phi) det(N).
 lnlikelihood = (1/2)(rCr - ln det(C)).  We do not include the factor (2pi)^N_TOA
 
 For the two step procedure, we define also:
@@ -217,6 +219,7 @@ If there are no timing parameters, M and everything that depends on it will be N
 If there are no model parameters, F and everything that depends on it will be None, and then D = C.
 
 """
+
 
 class FastLogLikelihood(object):
     def __init__(self, pta, cholesky_sparse=False):
@@ -281,13 +284,13 @@ class FastLogLikelihood(object):
                     if self._cached_factor:
                         self._cached_factor.cholesky_inplace(Sigma)
                     else:
-                        self._cached_factor = cholesky(Sigma,ordering_method="best") # First time
+                        self._cached_factor = cholesky(Sigma, ordering_method="best")  # First time
                     cf = self._cached_factor
                 except CholmodError:
                     return -np.inf
-            else:           # Not using sparse methods
-                try: 
-                    cf = sl.cho_factor(Sigma) # returns tuple with flag saying lower triangular
+            else:  # Not using sparse methods
+                try:
+                    cf = sl.cho_factor(Sigma)  # returns tuple with flag saying lower triangular
                 except np.linalg.LinAlgError:
                     return -np.inf
 
@@ -299,8 +302,8 @@ class FastLogLikelihood(object):
                 expval = cf(FDr)
                 logdet_sigma = cf.logdet()
             else:
-                expval = sl.cho_solve(cf,FDr) 
-                logdet_sigma = 2*np.sum(np.log(np.diag(cf[0]))) # A = L L^T so det = det(L)^2
+                expval = sl.cho_solve(cf, FDr)
+                logdet_sigma = 2 * np.sum(np.log(np.diag(cf[0])))  # A = L L^T so det = det(L)^2
 
             lnlike += 0.5 * (np.dot(FDr, expval) - logdet_sigma - logdet_chi)
 
@@ -367,7 +370,7 @@ class LogLikelihood(object):
                 cf = cholesky(Sigma)
             except:
                 return -np.inf
-            
+
             this_time = time.process_time() - start
             self.cholesky_time += this_time
             self.cholesky_calls += 1
@@ -655,7 +658,6 @@ class PTA(object):
         else:
             return [None if phivec is None else phivec.inv(logdet) for phivec in phivecs]
 
-
     def get_chiinv(self, params, logdet=False, method="cliques"):
         if method == "cliques":
             return self.get_chiinv_byfreq_cliques(params, logdet)
@@ -796,7 +798,6 @@ class PTA(object):
             chi[idx, idx] = 1.0 / chi[idx, idx]
 
             return (chi, ld) if logdet else chi
-
 
     def get_phiinv_byfreq_cliques(self, params, logdet=False, cholesky=False):
         phi = self.get_phi(params, cliques=True)
@@ -1139,7 +1140,7 @@ def SignalCollection(metasignals):  # noqa: C901
         def cache_clear(self):
             for instance in [self] + self.signals:
                 kill = [attr for attr in instance.__dict__ if attr.startswith("_cache")]
-        
+
                 for attr in kill:
                     del instance.__dict__[attr]
 
@@ -1301,17 +1302,17 @@ def SignalCollection(metasignals):  # noqa: C901
             """Like phi, but only for signals that depend on parameters"""
 
             F = self.get_basis_F(params)
-            if F is not None:             # Anything to do?
+            if F is not None:  # Anything to do?
 
                 chi = KernelMatrix(F.shape[1])
-            
+
                 for signal in self.signals_F:
                     if signal in self._idx_F:
                         chi = chi.add(signal.get_phi(params), self._idx_F[signal])
 
                 return chi
             else:
-                return None # If no non-timing-model signals with bases, then no F or chi
+                return None  # If no non-timing-model signals with bases, then no F or chi
 
         def get_chiinv(self, params):
             chi = self.get_chi(params)
@@ -1399,7 +1400,7 @@ def SignalCollection(metasignals):  # noqa: C901
             MNF = self.get_MNF(params)
             if cf is None or MNF is None:
                 return None
-            return cf(MNF)      # (MNM)^-1 MNF
+            return cf(MNF)  # (MNM)^-1 MNF
 
         # Returns r^T N r and ln(det(N))
         @cache_call(["white_params", "delay_params"])
@@ -1422,7 +1423,7 @@ def SignalCollection(metasignals):  # noqa: C901
             MNr = self.get_MNr(params)
             if MNr is None or MNMMNF is None:
                 return None
-            return self.get_FNr(params) - np.tensordot(MNMMNF, MNr, (0,0))  # FNr - MNF^T MNM^-1 MNr
+            return self.get_FNr(params) - np.tensordot(MNMMNF, MNr, (0, 0))  # FNr - MNF^T MNM^-1 MNr
 
         # Returns r^T D^-1 r and ln(det(D))
         @cache_call(["white_params", "delay_params"])
@@ -1431,7 +1432,7 @@ def SignalCollection(metasignals):  # noqa: C901
             # infinity matrix determinant -- as seen in old calculation:
             logdet_E = M.shape[1] * np.log(1e40)
             rNr, logdet_N = self.get_rNr_logdet(params)
-            if M is None:       # No model parameters so D=N
+            if M is None:  # No model parameters so D=N
                 return (rNr, logdet_N)
             MNr = self.get_MNr(params)
             cf = self.get_MNM_cholesky(params)
@@ -1766,22 +1767,40 @@ class ShermanMorrison(object):
 
         return (ret, self._get_logdet()) if logdet else ret
 
-def compare_times(pta,params,number=10,timer=time.process_time,
-                  slow_number=None,dense_number=None,sparse_number=None):
-    print("Running on", platform.node(), cpuinfo.get_cpu_info()['brand_raw'], "with", len(pta.pulsars), "pulsars",
-          "using timer", timer.__name__)
+
+def compare_times(
+    pta, params, number=10, timer=time.process_time, slow_number=None, dense_number=None, sparse_number=None
+):
+    print(
+        "Running on",
+        platform.node(),
+        cpuinfo.get_cpu_info()["brand_raw"],
+        "with",
+        len(pta.pulsars),
+        "pulsars",
+        "using timer",
+        timer.__name__,
+    )
     slow_number = slow_number if slow_number is not None else number
     dense_number = dense_number if dense_number is not None else number
     sparse_number = sparse_number if sparse_number is not None else number
     slow = LogLikelihood(pta)
-    dense = FastLogLikelihood(pta,cholesky_sparse=False)
-    sparse = FastLogLikelihood(pta,cholesky_sparse=True)
-    for (likelihood, name, count) in [(slow, "slow", slow_number),
-                                      (dense, "fast dense", dense_number), 
-                                      (sparse, "fast sparse", sparse_number)]:
-        if count>0:
-            likelihood(params) # Cache first time
+    dense = FastLogLikelihood(pta, cholesky_sparse=False)
+    sparse = FastLogLikelihood(pta, cholesky_sparse=True)
+    for (likelihood, name, count) in [
+        (slow, "slow", slow_number),
+        (dense, "fast dense", dense_number),
+        (sparse, "fast sparse", sparse_number),
+    ]:
+        if count > 0:
+            likelihood(params)  # Cache first time
             likelihood.cholesky_time = likelihood.cholesky_calls = 0
             interval = timeit.timeit(lambda: likelihood(params), timer=timer, number=count)
-            print(name, " ", 1000*interval/count, " ms/call,",
-                  1000*likelihood.cholesky_time/likelihood.cholesky_calls, "in cholesky")
+            print(
+                name,
+                " ",
+                1000 * interval / count,
+                " ms/call,",
+                1000 * likelihood.cholesky_time / likelihood.cholesky_calls,
+                "in cholesky",
+            )
