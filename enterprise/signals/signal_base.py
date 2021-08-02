@@ -331,11 +331,12 @@ class FastLogLikelihood(object):
 
         return lnlike
 
+
 # This is just FastLogLikelihood with sparse_cholesky=True as the default
 class FastLogLikelihoodSparse(FastLogLikelihood):
     def __init__(self, pta, cholesky_sparse=True, **kwargs):
-        FastLogLikelihood.__init__(self, pta, cholesky_sparse=cholesky_sparse,
-                                 **kwargs)
+        FastLogLikelihood.__init__(self, pta, cholesky_sparse=cholesky_sparse, **kwargs)
+
 
 class LogLikelihood(object):
     def __init__(self, pta, timer=time.process_time):
@@ -408,20 +409,25 @@ class LogLikelihood(object):
 
         return loglike
 
+
 class LikelihoodsDifferentError(Exception):
     def __init__(self, object1, likelihood1, object2, likelihood2):
-        Exception.__init__(self, "Likelihoods too different, {} gave {} while {} gave {}".format(object1, likelihood1, object2, likelihood2))
+        Exception.__init__(
+            self,
+            "Likelihoods too different, {} gave {} while {} gave {}".format(object1, likelihood1, object2, likelihood2),
+        )
+
 
 # Compare different ways of computing the likelihood for time and consistency
 # We make LogLikelihood objects using then given classes or constructors
 # and call all of them.  The return value is from the first object.
 class CompareLogLikelihood(object):
-    def __init__(self, pta, classes=(FastLogLikelihood, LogLikelihood),
-                 timer=time.process_time,
-                 tolerance=1e-3): # Absolute tolerance for likelihood differences
+    def __init__(
+        self, pta, classes=(FastLogLikelihood, LogLikelihood), timer=time.process_time, tolerance=1e-3
+    ):  # Absolute tolerance for likelihood differences
         self.constructors = classes
         self.n_objects = len(classes)
-        self.likelihoods = np.zeros(self.n_objects) # make list for later
+        self.likelihoods = np.zeros(self.n_objects)  # make list for later
         self.timer = timer
         self.tolerance = tolerance
         self.objects = [x(pta, timer=timer) for x in classes]
@@ -429,24 +435,24 @@ class CompareLogLikelihood(object):
 
     # Reset or initialize differences in timers
     def reset(self):
-        self.max_differences = np.zeros((self.n_objects,self.n_objects)) # Differences between pairs of results
+        self.max_differences = np.zeros((self.n_objects, self.n_objects))  # Differences between pairs of results
         self.times = np.zeros(self.n_objects)  # Time in each object
-        self.counts = np.zeros(self.n_objects) # Count of calls to each object
-        for object in self.objects:            # Reset timers in sub-objects
+        self.counts = np.zeros(self.n_objects)  # Count of calls to each object
+        for object in self.objects:  # Reset timers in sub-objects
             self.cholesky_calls = self.cholesky_time = 0
 
     def __call__(self, xs, **kwargs):
         for i in range(self.n_objects):
-            self.times[i] += timeit.timeit(lambda: self.call_object(i, xs, **kwargs),
-                timer=self.timer, number=1)
+            self.times[i] += timeit.timeit(lambda: self.call_object(i, xs, **kwargs), timer=self.timer, number=1)
             self.counts[i] += 1
         for i in range(self.n_objects):
             for j in range(i):
-                diff = abs(self.likelihoods[i]-self.likelihoods[j])
-                self.max_differences[i,j] = max(self.max_differences[i,j], diff)
-                if (diff > self.tolerance):
-                    raise LikelihoodsDifferentError(self.objects[i],self.likelihoods[i],
-                                                    self.objects[j],self.likelihoods[j])
+                diff = abs(self.likelihoods[i] - self.likelihoods[j])
+                self.max_differences[i, j] = max(self.max_differences[i, j], diff)
+                if diff > self.tolerance:
+                    raise LikelihoodsDifferentError(
+                        self.objects[i], self.likelihoods[i], self.objects[j], self.likelihoods[j]
+                    )
         return self.likelihoods[0]
 
     # Call one of our objects and store the resulting likelihood
@@ -456,17 +462,21 @@ class CompareLogLikelihood(object):
     def report(self):
         print("The maximum difference between any two loglikelihoods was {:.3g}".format(np.amax(self.max_differences)))
         for i in range(self.n_objects):
-            print(self.constructors[i].__name__, end=' ')
-            if self.counts[i]>0:
-                print("{} calls, {:.2f} ms/call,".format(
-                    int(self.counts[i]), 1000 * self.times[i] / self.counts[i]), end=' ')
+            print(self.constructors[i].__name__, end=" ")
+            if self.counts[i] > 0:
+                print(
+                    "{} calls, {:.2f} ms/call,".format(int(self.counts[i]), 1000 * self.times[i] / self.counts[i]),
+                    end=" ",
+                )
             else:
-                print("not called,", end=' ')
-            if self.objects[i].cholesky_calls>0:
-                print("{:.2f} in cholesky".format(
-                    1000 * self.objects[i].cholesky_time / self.objects[i].cholesky_calls))
+                print("not called,", end=" ")
+            if self.objects[i].cholesky_calls > 0:
+                print(
+                    "{:.2f} in cholesky".format(1000 * self.objects[i].cholesky_time / self.objects[i].cholesky_calls)
+                )
             else:
                 print("no cholesky calls")
+
 
 """ Example usage of CompareLogLikelihood class:
 c = signal_base.CompareLogLikelihood(pta)
@@ -475,6 +485,7 @@ c.reset()                       # Reset after first use to not include setup tim
 c(x0)                           # Or sample as much as you want
 c.report()
 """
+
 
 class PTA(object):
     # lnlikelihood is generally a class, but can be anything that can
