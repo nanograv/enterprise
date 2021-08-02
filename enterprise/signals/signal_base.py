@@ -423,8 +423,13 @@ class LikelihoodsDifferentError(Exception):
 # and call all of them.  The return value is from the first object.
 class CompareLogLikelihood(object):
     def __init__(
-        self, pta, classes=(FastLogLikelihood, LogLikelihood), timer=time.process_time, tolerance=1e-3
-    ):  # Absolute tolerance for likelihood differences
+        self,
+        pta,
+        classes=(FastLogLikelihood, LogLikelihood),
+        timer=time.process_time,
+        tolerance=1e-3,  # Absolute tolerance for likelihood differences
+    ):
+        self.pta = pta
         self.constructors = classes
         self.n_objects = len(classes)
         self.likelihoods = np.zeros(self.n_objects)  # make list for later
@@ -461,6 +466,16 @@ class CompareLogLikelihood(object):
 
     def report(self):
         print("The maximum difference between any two loglikelihoods was {:.3g}".format(np.amax(self.max_differences)))
+        print(
+            "Running on",
+            platform.node(),
+            cpuinfo.get_cpu_info()["brand_raw"],
+            "with",
+            len(self.pta.pulsars),
+            "pulsars",
+            "using timer",
+            self.timer.__name__,
+        )
         for i in range(self.n_objects):
             print(self.constructors[i].__name__, end=" ")
             if self.counts[i] > 0:
