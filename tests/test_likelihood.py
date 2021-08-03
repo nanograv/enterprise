@@ -219,7 +219,7 @@ class TestLikelihood(unittest.TestCase):
                 phigw = np.zeros(40)
             K = se_kernel(avetoas, log10_sigma=log10_sigmas[ii], log10_lam=log10_lams[ii])
             k = np.diag(np.concatenate((phi + phigw, np.ones(Mmat.shape[1]) * 1e40)))
-            count_1e40 += Mmat.shape[1] # Number of these "infinities"
+            count_1e40 += Mmat.shape[1]  # Number of these "infinities"
             if ik:
                 k = sl.block_diag(k, K)
             phis.append(k)
@@ -260,7 +260,6 @@ class TestLikelihood(unittest.TestCase):
             eloglike = pta.get_lnlikelihood(params, phiinv_method=mth)
             msg = "Incorrect like for npsr={}, phiinv={}".format(npsrs, mth)
             assert np.allclose(eloglike, loglike), msg
-
 
     def test_like_nocorr(self):
         """Test likelihood with no spatial correlations."""
