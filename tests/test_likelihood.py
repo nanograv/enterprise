@@ -137,7 +137,7 @@ class TestLikelihood(unittest.TestCase):
             snew = s + se if ik else s
             models.append(snew(psr))
 
-        pta = signal_base.PTA(models)
+        pta = signal_base.PTA(models, lnlikelihood=signal_base.CompareLogLikelihood)
 
         # set parameters
         pta.set_default_params(params)
@@ -168,6 +168,7 @@ class TestLikelihood(unittest.TestCase):
         GW_log10_A = -15.0
 
         # correct value
+        count_1e40 = 0
         tflags = [sorted(list(np.unique(p.backend_flags))) for p in psrs]
         cfs, logdets, phis, Ts = [], [], [], []
         for ii, (ik, psr, flags) in enumerate(zip(inc_kernel, psrs, tflags)):
@@ -218,6 +219,7 @@ class TestLikelihood(unittest.TestCase):
                 phigw = np.zeros(40)
             K = se_kernel(avetoas, log10_sigma=log10_sigmas[ii], log10_lam=log10_lams[ii])
             k = np.diag(np.concatenate((phi + phigw, np.ones(Mmat.shape[1]) * 1e40)))
+            count_1e40 += Mmat.shape[1] # Number of these "infinities"
             if ik:
                 k = sl.block_diag(k, K)
             phis.append(k)
@@ -250,11 +252,15 @@ class TestLikelihood(unittest.TestCase):
         loglike -= 0.5 * (logdetphi + logdetsigma)
         loglike += 0.5 * np.dot(TNr, expval)
 
+        # New convention (Summer 2021) does not include log(1e40)
+        loglike += 0.5 * count_1e40 * np.log(1e40)
+
         method = ["partition", "sparse", "cliques"]
         for mth in method:
             eloglike = pta.get_lnlikelihood(params, phiinv_method=mth)
             msg = "Incorrect like for npsr={}, phiinv={}".format(npsrs, mth)
             assert np.allclose(eloglike, loglike), msg
+
 
     def test_like_nocorr(self):
         """Test likelihood with no spatial correlations."""
