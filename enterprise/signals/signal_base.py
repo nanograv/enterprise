@@ -342,7 +342,7 @@ class LogLikelihood(object):
     def __init__(self, pta, timer=time.process_time):
         self.pta = pta
         self.timer = timer
-        self.uses_1e40 = True   # Say that we include "infinite" terms
+        self.uses_1e40 = True  # Say that we include "infinite" terms
         self.cholesky_time = 0
         self.cholesky_calls = 0
 
@@ -466,9 +466,9 @@ class CompareLogLikelihood(object):
         likelihood = self.objects[i](xs, **kwargs)
         # If object used 1e40 as infinity and gave determinants using that,
         # remove them now.
-        if getattr(self.objects[i],"uses_1e40",False):
+        if getattr(self.objects[i], "uses_1e40", False):
             for collection in self.pta.pulsarmodels:
-                M = collection.get_basis_M() # Matrix with with timing model rows
+                M = collection.get_basis_M()  # Matrix with with timing model rows
                 likelihood += 0.5 * M.shape[1] * np.log(1e40)
         self.likelihoods[i] = likelihood
 
