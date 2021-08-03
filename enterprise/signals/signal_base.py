@@ -342,6 +342,7 @@ class LogLikelihood(object):
     def __init__(self, pta, timer=time.process_time):
         self.pta = pta
         self.timer = timer
+        self.uses_1e40 = True   # Say that we include "infinite" terms
         self.cholesky_time = 0
         self.cholesky_calls = 0
 
@@ -462,7 +463,14 @@ class CompareLogLikelihood(object):
 
     # Call one of our objects and store the resulting likelihood
     def call_object(self, i, xs, **kwargs):
-        self.likelihoods[i] = self.objects[i](xs, **kwargs)
+        likelihood = self.objects[i](xs, **kwargs)
+        # If object used 1e40 as infinity and gave determinants using that,
+        # remove them now.
+        if getattr(self.objects[i],"uses_1e40",False):
+            for collection in self.pta.pulsarmodels:
+                M = collection.get_basis_M() # Matrix with with timing model rows
+                likelihood += 0.5 * M.shape[1] * np.log(1e40)
+        self.likelihoods[i] = likelihood
 
     def report(self):
         print("The maximum difference between any two loglikelihoods was {:.3g}".format(np.amax(self.max_differences)))
@@ -1532,14 +1540,12 @@ def SignalCollection(metasignals):  # noqa: C901
         @cache_call(["white_params", "delay_params"])
         def get_rDr_logdet(self, params):
             M = self.get_basis_M(params)
-            # infinity matrix determinant -- as seen in old calculation:
             rNr, logdet_N = self.get_rNr_logdet(params)
             if M is None:  # No model parameters so D=N
                 return (rNr, logdet_N)
-            logdet_E = M.shape[1] * np.log(1e40)
             MNr = self.get_MNr(params)
             cf = self.get_MNM_cholesky(params)
-            return (rNr - np.dot(MNr, cf(MNr)), logdet_N + self.get_MNM_logdet(params) + logdet_E)
+            return (rNr - np.dot(MNr, cf(MNr)), logdet_N + self.get_MNM_logdet(params))
 
         # TO DO: cache how?
         def get_logsignalprior(self, params):
