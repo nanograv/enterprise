@@ -183,9 +183,9 @@ det(phi)
 Sigma = phi^-1 + TNT
 Sigma^-1 TNr and det(Sigma) by Cholesky decomposition
 (TNr)^T Sigma^-1 TNr
-Now r^T C^-1 r = rNr + (TNr)^T Sigma^-1 TNr
+Now r^T C^-1 r = rNr - (TNr)^T Sigma^-1 TNr
 and det(C) = det(Sigma) det(phi) det(N).
-lnlikelihood = (1/2)(rCr - ln det(C)).  We do not include the factor (2pi)^N_TOA
+lnlikelihood = -(1/2)(rCr + ln det(C)).  We do not include the factor (2pi)^N_TOA
 
 For the two step procedure, we define also:
 
@@ -202,7 +202,7 @@ r N^-1 r
 F^T N^-1 F
 M^T N^-1 F
 (MNM)^-1 MNF
-F^T D^-1 F = FNF + (MNF)^T (MNM)^-1 MNF
+F^T D^-1 F = FNF - (MNF)^T (MNM)^-1 MNF
 r^T D^-1 r = r N^-1 r  - (MNr)^T (MNM)^-1 MNr
 F^T D^-1 r = F^T N^-1 r - (MNMMNF)^T MNr
 det(D) = det(MNM) det(N).  We don't include the infinite det(E) here.
@@ -212,7 +212,7 @@ chi^-1
 det(chi)
 Sigma = chi^-1 + FDF
 Sigma^-1 and det(Sigma) FDr by Cholesky decomposition.
-Now r C^-1 r = rDr + (FDr)^T Sigma^-1 FDr
+Now r C^-1 r = rDr - (FDr)^T Sigma^-1 FDr
 and det(C) = det(Sigma) det(chi) det(D)
 
 If there are no timing parameters, M and everything that depends on it will be None, and then D = N.
