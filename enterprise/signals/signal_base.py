@@ -377,7 +377,7 @@ class LogLikelihood(object):
             start = self.timer()
             try:
                 cf = cholesky(Sigma)
-            except:
+            except CholmodError:
                 return -np.inf
 
             this_time = self.timer() - start
