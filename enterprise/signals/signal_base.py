@@ -222,10 +222,13 @@ class PTA(object):
     @property
     def params(self):
         # return only one parameter with the same name
-        ret = {par.name: par for signalcollection in self._signalcollections
-                             for param in signalcollection.params
-                             for par in param.params}   
-        
+        ret = {
+            par.name: par
+            for signalcollection in self._signalcollections
+            for param in signalcollection.params
+            for par in param.params
+        }
+
         return sorted(ret.values(), key=lambda par: par.name)
 
     @property
