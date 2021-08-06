@@ -293,6 +293,11 @@ class BasePulsar(object):
         """Return sun position vector at all timestamps"""
         return self._sunssb[self._isort, :]
 
+    @property
+    def telescope(self):
+        """Return telescope vector at all timestamps"""
+        return self._telescope[self._isort]
+
     # infrastructure for sharing Pulsar objects among processes:
     # the Pulsar deflater will copy select numpy arrays to SharedMemory,
     # then replace them with pickleable objects that can be inflated
@@ -461,6 +466,7 @@ class Tempo2Pulsar(BasePulsar):
         self._toaerrs = np.double(t2pulsar.toaerrs) * 1e-6
         self._designmatrix = np.double(t2pulsar.designmatrix())
         self._ssbfreqs = np.double(t2pulsar.ssbfreqs()) / 1e6
+        self._telescope = t2pulsar.telescope()
 
         # fitted parameters
         self.fitpars = ["Offset"] + [str(p) for p in t2pulsar.pars()]
