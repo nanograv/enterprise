@@ -237,7 +237,9 @@ class BasePulsar(object):
     def flags(self):
         """Return a dictionary of tim-file flags."""
 
-        return {flag: self._flags[flag][self._isort] for flag in self._flags.dtype.names}
+        flagnames = self._flags.dtype.names if isinstance(self._flags, np.ndarray) else self._flags.keys()
+
+        return {flag: self._flags[flag][self._isort] for flag in flagnames}
 
     @property
     def backend_flags(self):
@@ -249,19 +251,23 @@ class BasePulsar(object):
 
         """
 
-        ret = np.zeros(len(self._toas), dtype=self._flags.dtype[0])
+        # collect flag names
+        flagnames = self._flags.dtype.names if isinstance(self._flags, np.ndarray) else list(self._flags.keys())
+
+        # allocate array with widest dtype
+        ret = np.zeros(len(self._toas), dtype=max([self._flags[name].dtype for name in flagnames]))
 
         # go through the flags in reverse order of preference
         # setting or replacing values for each TOA
 
-        if "fe" in self._flags.dtype.names and "be" in self._flags.dtype.names:
+        if "fe" in flagnames and "be" in flagnames:
             ret[:] = [(a + "_" + b if (a and b) else "") for a, b in zip(self._flags["fe"], self._flags["be"])]
 
         for flag in ["f", "i", "sys", "g", "group"]:
-            if flag in self._flags.dtype.names:
+            if flag in flagnames:
                 ret[:] = np.where(self._flags[flag] == "", ret, self._flags[flag])
 
-        return ret[self._isort]
+        return ret
 
     @property
     def theta(self):
@@ -345,6 +351,7 @@ class PintPulsar(BasePulsar):
         self._toaerrs = np.array(toas.get_errors().to(u.s), dtype="float64")
         self._designmatrix = model.designmatrix(toas)[0]
         self._ssbfreqs = np.array(model.barycentric_radio_freq(toas), dtype="float64")
+        self._telescope = np.array(toas.get_obss())
 
         # fitted parameters
         self.fitpars = ["Offset"] + [par for par in model.params if not getattr(model, par).frozen]
@@ -466,7 +473,7 @@ class Tempo2Pulsar(BasePulsar):
         self._toaerrs = np.double(t2pulsar.toaerrs) * 1e-6
         self._designmatrix = np.double(t2pulsar.designmatrix())
         self._ssbfreqs = np.double(t2pulsar.ssbfreqs()) / 1e6
-        self._telescope = t2pulsar.telescope()
+        self._telescope = np.char.decode(t2pulsar.telescope(), encoding="ascii")
 
         # fitted parameters
         self.fitpars = ["Offset"] + [str(p) for p in t2pulsar.pars()]
