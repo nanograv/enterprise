@@ -145,8 +145,11 @@ class BasePulsar(object):
         dmx_mask = np.sum(self._designmatrix, axis=0) != 0.0
         self._designmatrix = self._designmatrix[:, dmx_mask]
 
-        for key in self._flags:
-            self._flags[key] = self._flags[key][mask]
+        if isinstance(self._flags, np.ndarray):
+            self._flags = self._flags[mask]
+        else:
+            for key in self._flags:
+                self._flags[key] = self._flags[key][mask]
 
         if self._planetssb is not None:
             self._planetssb = self.planetssb[mask, :, :]
