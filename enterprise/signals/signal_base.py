@@ -10,7 +10,6 @@ try:
 except:
     from collections import Sequence
 
-import itertools
 import logging
 
 import numpy as np
