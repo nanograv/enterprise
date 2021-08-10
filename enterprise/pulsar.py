@@ -14,6 +14,7 @@ from ephem import Ecliptic, Equatorial
 
 import enterprise
 from enterprise.signals import utils
+from enterprise.deflate import PulsarInflater
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +36,6 @@ except ImportError:
 if pint is None and t2 is None:
     err_msg = "Must have either PINT or libstempo timing package installed"
     raise ImportError(err_msg)
-
-from enterprise.deflate import PulsarInflater
 
 
 def get_maxobs(timfile):
@@ -554,31 +553,31 @@ class Tempo2Pulsar(BasePulsar):
     # to numpy arrays with SharedMemory storage
 
     _todeflate = ["_designmatrix", "_planetssb", "_sunssb", "_flags"]
-    _deflated = 'pristine'
+    _deflated = "pristine"
 
     def deflate(psr):
-        if psr._deflated == 'pristine':
+        if psr._deflated == "pristine":
             for attr in psr._todeflate:
                 if isinstance(getattr(psr, attr), np.ndarray):
                     setattr(psr, attr, PulsarInflater(getattr(psr, attr)))
 
-            psr._deflated = 'deflated'
+            psr._deflated = "deflated"
 
     def inflate(psr):
-        if psr._deflated == 'deflated':
+        if psr._deflated == "deflated":
             for attr in psr._todeflate:
                 if isinstance(getattr(psr, attr), PulsarInflater):
                     setattr(psr, attr, getattr(psr, attr).inflate())
 
-            psr._deflated = 'inflated'
+            psr._deflated = "inflated"
 
     def destroy(psr):
-        if psr._deflated == 'deflated':
+        if psr._deflated == "deflated":
             for attr in psr._todeflate:
                 if isinstance(getattr(psr, attr), PulsarInflater):
                     getattr(psr, attr).destroy()
 
-            psr._deflated = 'destroyed'
+            psr._deflated = "destroyed"
 
 
 def Pulsar(*args, **kwargs):

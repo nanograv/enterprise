@@ -13,6 +13,7 @@ class memmap(np.ndarray):
         if self.base is None and hasattr(self, "shm"):
             self.shm.close()
 
+
 # lifecycle of shared pulsar arrays:
 # - begin life as numpy arrays in Pulsar object
 # - upon psr.deflate(), replaced by PulsarInflater objects
@@ -25,6 +26,7 @@ class memmap(np.ndarray):
 #   - a creator, who calls deflate then pickle
 #   - one or more users, who unpickle then inflate
 #   - a destroyer, who unpickles then destroys
+
 
 class PulsarInflater:
     def __init__(self, array):

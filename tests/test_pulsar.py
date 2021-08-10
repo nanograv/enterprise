@@ -130,16 +130,15 @@ class TestPulsar(unittest.TestCase):
         assert np.allclose(self.psr.residuals, pkl_psr.residuals, rtol=1e-10)
 
     def test_deflate_inflate(self):
-        psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
-                     datadir + "/B1855+09_NANOGrav_9yv1.tim")
+        psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
 
         dm = psr._designmatrix.copy()
 
         psr.deflate()
         psr.to_pickle()
-        
+
         with open("B1855+09.pkl", "rb") as f:
-            pkl_psr = pickle.load(f)        
+            pkl_psr = pickle.load(f)
         pkl_psr.inflate()
 
         assert np.allclose(dm, pkl_psr._designmatrix)
@@ -149,8 +148,8 @@ class TestPulsar(unittest.TestCase):
         psr.destroy()
 
         with open("B1855+09.pkl", "rb") as f:
-            pkl_psr = pickle.load(f)        
-        
+            pkl_psr = pickle.load(f)
+
         with self.assertRaises(FileNotFoundError):
             pkl_psr.inflate()
 
