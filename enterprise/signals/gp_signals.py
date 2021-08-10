@@ -336,7 +336,6 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False,
             self._basis, self._labels = self._bases(params=params)
 
         if coefficients:
-
             def _get_coefficient_logprior(self, c, **params):
                 # MV: for correlated GPs, the prior needs to use
                 #     the coefficients for all GPs together;
@@ -772,3 +771,149 @@ def WidebandTimingModel(
             return chi2
 
     return WidebandTimingModel
+
+
+# experimental versions of FourierBasisCommonGP and BasisCommonGP2 that support selections
+# note that Tspan must be provided to FourierBasisCommonGP2, and that 
+
+def FourierBasisCommonGP2(
+    spectrum,
+    orf,
+    coefficients=False,
+    combine=True,
+    selection=Selection(selections.no_selection),
+    components=20,
+    Tspan=None,
+    modes=None,
+    name="common_fourier",
+    pshift=False,
+    pseed=None,
+):
+    if coefficients:
+        raise NotImplementedError("Coefficients are not implemented yet.")
+
+    if Tspan is None:
+        raise ValueError("Please specify Tspan explicitly.")
+
+    basis = utils.createfourierdesignmatrix_red(nmodes=components, Tspan=Tspan, modes=modes, pshift=pshift, pseed=pseed)
+
+    return BasisCommonGP2(spectrum, basis, orf, combine=combine, selection=selection, name=name)
+
+
+def BasisCommonGP2(
+    priorFunction,
+    basisFunction,
+    orfFunction,
+    coefficients=False,
+    combine=True,
+    selection=Selection(selections.no_selection),
+    name=""
+):
+    if coefficients:
+        raise NotImplementedError("Coefficients are not implemented yet.")
+
+    class BasisCommonGP2(signal_base.CommonSignal):
+        signal_type = "common basis"
+        signal_name = "common"
+        signal_id = name
+
+        basis_combine = combine
+
+        def __init__(self, psr):
+            super(BasisCommonGP2, self).__init__(psr)
+            self.name = self.psrname + "_" + self.signal_id
+            self._do_selection(psr, priorFunction, basisFunction, orfFunction, selection)
+            self._psrpos = psr.pos
+
+        def _do_selection(self, psr, priorfn, basisfn, orffn, selection):
+            sel = selection(psr)
+
+            self._keys = sorted(sel.masks.keys())
+            self._masks = [sel.masks[key] for key in self._keys]
+            self._prior, self._bases, self._orf = {}, {}, {}
+            self._params, self._coefficients = {}, {}
+
+            for key, mask in zip(self._keys, self._masks):
+                pnames = [name, key]
+                pname = "_".join([n for n in pnames if n])
+
+                self._prior[key] = priorfn(pname, psr=psr)
+                self._bases[key] = basisfn(pname, psr=psr)
+                self._orf[key] = orffn(pname, psr=psr)
+
+                for par in itertools.chain(
+                    self._prior[key]._params.values(),
+                    self._bases[key]._params.values(),
+                    self._orf[key]._params.values(),
+                ):
+                    self._params[par.name] = par
+
+        @property
+        def basis_params(self):
+            """Get any varying basis parameters."""
+            ret = []
+            for basis in self._bases.values():
+                ret.extend([pp.name for pp in basis.params])
+            return ret
+
+        @signal_base.cache_call("basis_params", limit=1)
+        def _construct_basis(self, params={}):
+            basis, self._labels = {}, {}
+            for key, mask in zip(self._keys, self._masks):
+                basis[key], self._labels[key] = self._bases[key](params=params, mask=mask)
+
+            nc = sum(F.shape[1] for F in basis.values())
+            self._basis = np.zeros((len(self._masks[0]), nc))
+
+            # TODO: should this be defined here? it will cache phi
+            self._phi = KernelMatrix(nc)
+
+            self._slices = {}
+            nctot = 0
+            for key, mask in zip(self._keys, self._masks):
+                Fmat = basis[key]
+                nn = Fmat.shape[1]
+                self._basis[mask, nctot : nn + nctot] = Fmat
+                self._slices.update({key: slice(nctot, nn + nctot)})
+                nctot += nn
+
+        @property
+        def delay_params(self):
+            return []
+
+        def get_delay(self, params={}):
+            return 0
+
+        def get_basis(self, params={}):
+            self._construct_basis(params)
+
+            return self._basis
+
+        def get_phi(self, params):
+            self._construct_basis(params)
+
+            for key, slc in self._slices.items():
+                phislc = self._prior[key](self._labels[key], params=params)
+                orfslc = self._orf[key](self._psrpos, self._psrpos, params=params)
+
+                self._phi = self._phi.set(phislc * orfslc, slc)
+
+            return self._phi
+
+        @classmethod
+        def get_phicross(cls, signal1, signal2, params):
+            sl1, sl2 = [sum(slc.stop - slc.start for slc in signal._slices.values()) for signal in [signal1, signal2]]
+
+            phic = np.zeros((sl1, sl2))
+
+            for key in set(signal1._keys) & set(signal2._keys):
+                phislc = signal1._prior[key](signal1._labels[key], params=params)
+                orfslc = signal1._orf[key](signal1._psrpos, signal2._psrpos, params=params)
+
+                r1, r2 = [range(signal._slices[key].start, signal._slices[key].stop) for signal in [signal1, signal2]]
+
+                phic[r1, r2] = phislc * orfslc
+
+            return phic
+
+    return BasisCommonGP2

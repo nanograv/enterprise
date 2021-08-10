@@ -15,7 +15,7 @@ import numpy as np
 import scipy.linalg as sl
 
 from enterprise.pulsar import Pulsar
-from enterprise.signals import gp_signals, parameter, selections, signal_base, utils
+from enterprise.signals import gp_signals, white_signals, parameter, selections, signal_base, utils
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
 
@@ -685,6 +685,94 @@ class TestGPSignals(unittest.TestCase):
         msg = "Basis matrix shape incorrect size for combined signal."
         assert m.get_basis(params).shape == T.shape, msg
 
+    def test_gp_common_selection(self):
+        psr2 = Pulsar(datadir + "/B1937+21_NANOGrav_9yv1.gls.par", datadir + "/B1937+21_NANOGrav_9yv1.tim")
+
+        mn = white_signals.MeasurementNoise()
+
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-20, -11), gamma=parameter.Uniform(0, 7))
+        orf = utils.hd_orf()
+        Tspan = max(self.psr.toas.max(), psr2.toas.max()) - min(self.psr.toas.min(), psr2.toas.min())
+
+        prn = gp_signals.FourierBasisGP(pl, components=1, Tspan=Tspan)
+        rn = gp_signals.FourierBasisCommonGP2(pl, orf, selection=Selection(selections.by_telescope), components=1, Tspan=Tspan)
+
+        model = mn + prn + rn
+        pta = signal_base.PTA([model(self.psr), model(psr2)])
+
+        telescopes = sorted(np.unique(psr2.telescope))
+
+        parnames = [par.name for par in pta.params]
+        msg = 'Per-telescope common-noise parameters not in PTA'
+        assert all('common_fourier_{}_gamma'.format(telescope) in parnames for telescope in telescopes), msg
+
+        p0 = parameter.sample(pta.params)
+
+        # will throw if there are problems
+        l0 = pta.get_lnlikelihood(params = p0, phiinv_method='sparse')
+        r0 = pta.get_lnprior(params = p0)
+
+        # should throw since phiinv_method is not 'sparse'
+        with self.assertRaises(NotImplementedError):
+            l0b = pta.get_lnlikelihood(params = p0)
+
+        msg = 'Wrong nonzero element count in Phi matrices'
+        assert len(pta.pulsarmodels[0].get_phi(p0)) == 2, msg
+        assert len(pta.pulsarmodels[1].get_phi(p0)) == 6, msg
+
+        Phi = pta.get_phi(p0)
+        assert sum(sum(Phi != 0)) == 12, msg
+
+        # determine order of GP components in psr2
+        b0 = pta.pulsarmodels[1].get_basis()[:,0] != 0
+        b1 = pta.pulsarmodels[1].get_basis()[:,2] != 0
+        b2 = pta.pulsarmodels[1].get_basis()[:,4] != 0
+
+        # a0 is arecibo/ao since telescopes is sorted
+        a0 = [np.all(b == (psr2.telescope == telescopes[0])) for b in [b0,b1,b2]]
+        a1 = [np.all(b == (psr2.telescope == telescopes[1])) for b in [b0,b1,b2]]
+
+        msg = 'Wrong telescope masks for psr2'
+        assert sum(a0) == sum(a1) == 1, msg
+        
+        # check cross-pulsar correlations are in the right place
+        i = len(pta.pulsarmodels[0].get_phi(p0)) + 2*a0.index(True)
+        msg = 'Wrong Phi cross terms'
+        assert Phi[0,i] != 0 and Phi[0,i] == Phi[i,0], msg
+        assert Phi[1,i+1] != 0 and Phi[1,i+1] == Phi[i+1,1], msg
+
+        msg = 'Discrepant Phi inverse'
+        assert np.allclose(pta.get_phiinv(params=p0, method='sparse').toarray(),
+                           np.linalg.inv(pta.get_phi(params=p0))), msg
+
+    def test_fourier_red_noise(self):
+        """Test that red noise signal returns correct values."""
+        # set up signal parameter
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18, -12), gamma=parameter.Uniform(1, 7))
+        rn = gp_signals.FourierBasisGP(spectrum=pl, components=30)
+        rnm = rn(self.psr)
+
+        # parameters
+        log10_A, gamma = -14.5, 4.33
+        params = {"B1855+09_red_noise_log10_A": log10_A, "B1855+09_red_noise_gamma": gamma}
+
+        # basis matrix test
+        F, f2 = utils.createfourierdesignmatrix_red(self.psr.toas, nmodes=30)
+        msg = "F matrix incorrect for GP Fourier signal."
+        assert np.allclose(F, rnm.get_basis(params)), msg
+
+        # spectrum test
+        phi = utils.powerlaw(f2, log10_A=log10_A, gamma=gamma)
+        msg = "Spectrum incorrect for GP Fourier signal."
+        assert np.all(rnm.get_phi(params) == phi), msg
+
+        # inverse spectrum test
+        msg = "Spectrum inverse incorrect for GP Fourier signal."
+        assert np.all(rnm.get_phiinv(params) == 1 / phi), msg
+
+        # test shape
+        msg = "F matrix shape incorrect"
+        assert rnm.get_basis(params).shape == F.shape, msg
 
 class TestGPSignalsPint(TestGPSignals):
     @classmethod
@@ -698,3 +786,7 @@ class TestGPSignalsPint(TestGPSignals):
             ephem="DE430",
             timing_package="pint",
         )
+    
+    # won't work because one PSR will have telescope == 'arecibo', the other 'ao'
+    def test_gp_common_selection(self):
+        pass
