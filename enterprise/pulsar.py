@@ -5,6 +5,7 @@
 import json
 import logging
 import os
+import pickle
 
 import astropy.constants as const
 import astropy.units as u
@@ -13,11 +14,6 @@ from ephem import Ecliptic, Equatorial
 
 import enterprise
 from enterprise.signals import utils
-
-try:
-    import cPickle as pickle
-except:
-    import pickle
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +36,7 @@ if pint is None and t2 is None:
     err_msg = "Must have either PINT or libstempo timing package installed"
     raise ImportError(err_msg)
 
-try:
-    from enterprise.deflate import PulsarInflater
-except:
-    logger.warning("Pulsar deflation/inflation is not available.")
+from enterprise.deflate import PulsarInflater
 
 
 def get_maxobs(timfile):
@@ -307,35 +300,6 @@ class BasePulsar(object):
         """Return telescope vector at all timestamps"""
         return self._telescope[self._isort]
 
-    # infrastructure for sharing Pulsar objects among processes:
-    # the Pulsar deflater will copy select numpy arrays to SharedMemory,
-    # then replace them with pickleable objects that can be inflated
-    # to numpy arrays with SharedMemory storage
-
-    _todeflate = ["_designmatrix", "_planetssb", "_sunssb", "_flags"]
-
-    _deflated = False
-
-    def deflate(psr):
-        if not psr._deflated:
-            for attr in psr._todeflate:
-                if isinstance(getattr(psr, attr), np.ndarray):
-                    setattr(psr, attr, PulsarInflater(getattr(psr, attr)))
-
-            psr._deflated = True
-
-    def inflate(psr):
-        if psr._deflated:
-            for attr in psr._todeflate:
-                if isinstance(getattr(psr, attr), PulsarInflater):
-                    setattr(psr, attr, getattr(psr, attr).inflate())
-
-    def destroy(psr):
-        if psr._deflated:
-            for attr in psr._todeflate:
-                if isinstance(getattr(psr, attr), PulsarInflater):
-                    getattr(psr, attr).destroy()
-
 
 class PintPulsar(BasePulsar):
     def __init__(self, toas, model, sort=True, drop_pintpsr=True, planets=True):
@@ -583,9 +547,41 @@ class Tempo2Pulsar(BasePulsar):
                 sunssb[:, 3:] = utils.ecl2eq_vec(sunssb[:, 3:])
         return sunssb
 
+    # infrastructure for sharing Pulsar objects among processes
+    # (currently Tempo2Pulsar only)
+    # the Pulsar deflater will copy select numpy arrays to SharedMemory,
+    # then replace them with pickleable objects that can be inflated
+    # to numpy arrays with SharedMemory storage
+
+    _todeflate = ["_designmatrix", "_planetssb", "_sunssb", "_flags"]
+    _deflated = 'pristine'
+
+    def deflate(psr):
+        if psr._deflated == 'pristine':
+            for attr in psr._todeflate:
+                if isinstance(getattr(psr, attr), np.ndarray):
+                    setattr(psr, attr, PulsarInflater(getattr(psr, attr)))
+
+            psr._deflated = 'deflated'
+
+    def inflate(psr):
+        if psr._deflated == 'deflated':
+            for attr in psr._todeflate:
+                if isinstance(getattr(psr, attr), PulsarInflater):
+                    setattr(psr, attr, getattr(psr, attr).inflate())
+
+            psr._deflated = 'inflated'
+
+    def destroy(psr):
+        if psr._deflated == 'deflated':
+            for attr in psr._todeflate:
+                if isinstance(getattr(psr, attr), PulsarInflater):
+                    getattr(psr, attr).destroy()
+
+            psr._deflated = 'destroyed'
+
 
 def Pulsar(*args, **kwargs):
-
     ephem = kwargs.get("ephem", None)
     clk = kwargs.get("clk", None)
     bipm_version = kwargs.get("bipm_version", None)

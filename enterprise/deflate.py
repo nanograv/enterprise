@@ -10,11 +10,21 @@ import numpy as np
 
 class memmap(np.ndarray):
     def __del__(self):
-        if hasattr(self, "shm"):
+        if self.base is None and hasattr(self, "shm"):
             self.shm.close()
 
-        super().__del__()
-
+# lifecycle of shared pulsar arrays:
+# - begin life as numpy arrays in Pulsar object
+# - upon psr.deflate(), replaced by PulsarInflater objects
+#   - these objects save the array metadata, create a SharedMemory buffer, copy the arrays into it
+#   - the PulsarInflater objects cannot be used as arrays until re-inflated
+# - upon psr.inflate, the PulsarInflater objects are replaced with ndarray views of the SharedMemory buffers
+#   - the views are special memmap objects that hold a reference to the SharedMemory, and close it on destruction
+# - upon psr.destroy, the SharedMemory objects are unlinked and the arrays become unusable
+# - standard usage requires 3+ processes:
+#   - a creator, who calls deflate then pickle
+#   - one or more users, who unpickle then inflate
+#   - a destroyer, who unpickles then destroys
 
 class PulsarInflater:
     def __init__(self, array):
@@ -32,8 +42,6 @@ class PulsarInflater:
 
     def inflate(self):
         shm = shared_memory.SharedMemory(self.shmname)
-
-        # ret = np.array(shm.buf[:self.nbytes], copy=False).view(dtype=self.dtype).reshape(self.shape).view(memmap)
 
         c = np.ndarray(self.shape, dtype=self.dtype, buffer=shm.buf).view(memmap)
         c.shm = shm
