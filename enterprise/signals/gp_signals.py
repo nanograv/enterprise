@@ -336,6 +336,7 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False,
             self._basis, self._labels = self._bases(params=params)
 
         if coefficients:
+
             def _get_coefficient_logprior(self, c, **params):
                 # MV: for correlated GPs, the prior needs to use
                 #     the coefficients for all GPs together;
@@ -774,7 +775,8 @@ def WidebandTimingModel(
 
 
 # experimental versions of FourierBasisCommonGP and BasisCommonGP2 that support selections
-# note that Tspan must be provided to FourierBasisCommonGP2, and that 
+# note that Tspan must be provided to FourierBasisCommonGP2, and that
+
 
 def FourierBasisCommonGP2(
     spectrum,
@@ -807,7 +809,7 @@ def BasisCommonGP2(
     coefficients=False,
     combine=True,
     selection=Selection(selections.no_selection),
-    name=""
+    name="",
 ):
     if coefficients:
         raise NotImplementedError("Coefficients are not implemented yet.")
