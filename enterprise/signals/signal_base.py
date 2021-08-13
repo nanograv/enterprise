@@ -469,7 +469,10 @@ class CompareLogLikelihood(object):
         if getattr(self.objects[i], "uses_1e40", False):
             for collection in self.pta.pulsarmodels:
                 M = collection.get_basis_M()  # Matrix with with timing model rows
-                likelihood += 0.5 * M.shape[1] * np.log(1e40)
+                if M is not None:
+                    likelihood += 0.5 * M.shape[1] * np.log(1e40)
+                else:
+                    continue
         self.likelihoods[i] = likelihood
 
     def report(self):
