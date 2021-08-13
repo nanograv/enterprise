@@ -1380,7 +1380,7 @@ def SignalCollection(metasignals):  # noqa: C901
         @cache_call([])
         def get_basis_M(self, params={}):
             for signal in self.signals_M:
-                if signal in self._idx:
+                if signal in self._idx_M:
                     self._Fmat_M[:, self._idx_M[signal]] = signal.get_basis({})
             return self._Fmat_M
 
