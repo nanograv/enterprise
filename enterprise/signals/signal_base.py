@@ -221,7 +221,7 @@ If there are no model parameters, F and everything that depends on it will be No
 """
 
 
-class FastLogLikelihood(object):
+class LogLikelihood(object):
     def __init__(self, pta, cholesky_sparse=False, timer=time.process_time):
         self.pta = pta
         self._cholesky_sparse = cholesky_sparse
@@ -332,13 +332,13 @@ class FastLogLikelihood(object):
         return lnlike
 
 
-# This is just FastLogLikelihood with sparse_cholesky=True as the default
-class FastLogLikelihoodSparse(FastLogLikelihood):
+# This is just LogLikelihood with sparse_cholesky=True as the default
+class LogLikelihoodSparse(LogLikelihood):
     def __init__(self, pta, cholesky_sparse=True, **kwargs):
-        FastLogLikelihood.__init__(self, pta, cholesky_sparse=cholesky_sparse, **kwargs)
+        LogLikelihood.__init__(self, pta, cholesky_sparse=cholesky_sparse, **kwargs)
 
 
-class LogLikelihood(object):
+class OldLogLikelihood(object):
     def __init__(self, pta, timer=time.process_time):
         self.pta = pta
         self.timer = timer
@@ -426,7 +426,7 @@ class CompareLogLikelihood(object):
     def __init__(
         self,
         pta,
-        classes=(FastLogLikelihood, LogLikelihood),
+        classes=(LogLikelihood, OldLogLikelihood),
         timer=time.process_time,
         tolerance=1e-3,  # Absolute tolerance for likelihood differences
     ):
@@ -513,7 +513,7 @@ c.report()
 class PTA(object):
     # lnlikelihood is generally a class, but can be anything that can
     # be called with the pta object to return a likelihood object
-    def __init__(self, init, lnlikelihood=FastLogLikelihood):
+    def __init__(self, init, lnlikelihood=LogLikelihood):
         if isinstance(init, Sequence):
             self._signalcollections = list(init)
         else:
