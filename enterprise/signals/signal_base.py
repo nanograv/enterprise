@@ -211,7 +211,7 @@ Then for each set of parameters we compute:
 chi^-1
 det(chi)
 Sigma = chi^-1 + FDF
-Sigma^-1 and det(Sigma) FDr by Cholesky decomposition.
+Sigma^-1 and det(Sigma) by Cholesky decomposition.
 Now r C^-1 r = rDr - (FDr)^T Sigma^-1 FDr
 and det(C) = det(Sigma) det(chi) det(D)
 
@@ -1528,7 +1528,7 @@ def SignalCollection(metasignals):  # noqa: C901
             MNMMNF = self.get_MNMMNF(params)
             MNF = self.get_MNF(params)
             if MNF is None or MNMMNF is None:
-                return None
+                return self.get_FNF(params)
             return self.get_FNF(params) - np.tensordot(MNF, MNMMNF, (0, 0))  # FNF - MNF^T MNM^-1 MNF
 
         @cache_call(["basis_params", "white_params", "delay_params"])
@@ -1536,7 +1536,7 @@ def SignalCollection(metasignals):  # noqa: C901
             MNMMNF = self.get_MNMMNF(params)
             MNr = self.get_MNr(params)
             if MNr is None or MNMMNF is None:
-                return None
+                return self.get_FNr(params)
             return self.get_FNr(params) - np.tensordot(MNMMNF, MNr, (0, 0))  # FNr - MNF^T MNM^-1 MNr
 
         # Returns r^T D^-1 r and ln(det(D))
