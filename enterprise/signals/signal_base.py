@@ -428,7 +428,7 @@ class CompareLogLikelihood(object):
         pta,
         classes=(LogLikelihood, OldLogLikelihood),
         timer=time.process_time,
-        tolerance=1e-3,  # Absolute tolerance for likelihood differences
+        tolerance=1e-2,  # Absolute tolerance for likelihood differences
     ):
         self.pta = pta
         self.constructors = classes
