@@ -433,11 +433,12 @@ class LikelihoodsDifferentError(Exception):
 # Compare different ways of computing the likelihood for time and consistency
 # We make LogLikelihood objects using then given classes or constructors
 # and call all of them.  The return value is from the first object.
-# We call the different likelihood objects in cyclical order starting with
-# object J the Jth time that we are called.  This prevents later objects
+# We call the different likelihood objects in all possible orders, going to
+# the next permutation each  time that we are called.  This prevents later objects
 # from looking better because earlier objects have cached useful values.
 # However, this could be defeated by a resonance between this process
-# and the process calling us.
+# and the process calling us.  If you have n objects, you should do a multiple of
+# n! tests if you want to be precise.
 class CompareLogLikelihood(object):
     def __init__(
         self,
@@ -460,14 +461,16 @@ class CompareLogLikelihood(object):
         self.max_differences = np.zeros((self.n_objects, self.n_objects))  # Differences between pairs of results
         self.times = np.zeros(self.n_objects)  # Time in each object
         self.counts = np.zeros(self.n_objects, dtype=int)  # Count of calls to each object
+        self.orders = tuple(itertools.permutations(list(range(self.n_objects)))) # Possible orders
+        self.order_pointer = 0  # Order to use next
         for object in self.objects:  # Reset timers in sub-objects
-            self.cholesky_calls = self.cholesky_time = 0
+            object.cholesky_calls = object.cholesky_time = 0
 
     def __call__(self, xs, **kwargs):
         # on jth call, go in order j,j+1...n-1, 0, 1, .. j-1.  See above
-        n = self.n_objects
-        for i in itertools.chain(range(self.counts[0] % n, n),
-                                 range(self.counts[0] % n)):
+        order = self.orders[self.order_pointer]
+        self.order_pointer = (self.order_pointer + 1) % len(self.orders) # Ready for next
+        for i in order:
             self.times[i] += timeit.timeit(lambda: self.call_object(i, xs, **kwargs), timer=self.timer, number=1)
             self.counts[i] += 1
         for i in range(self.n_objects):
