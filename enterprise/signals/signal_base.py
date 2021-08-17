@@ -461,7 +461,7 @@ class CompareLogLikelihood(object):
         self.max_differences = np.zeros((self.n_objects, self.n_objects))  # Differences between pairs of results
         self.times = np.zeros(self.n_objects)  # Time in each object
         self.counts = np.zeros(self.n_objects, dtype=int)  # Count of calls to each object
-        self.orders = tuple(itertools.permutations(list(range(self.n_objects)))) # Possible orders
+        self.orders = tuple(itertools.permutations(list(range(self.n_objects))))  # Possible orders
         self.order_pointer = 0  # Order to use next
         for object in self.objects:  # Reset timers in sub-objects
             object.cholesky_calls = object.cholesky_time = 0
@@ -469,7 +469,7 @@ class CompareLogLikelihood(object):
     def __call__(self, xs, **kwargs):
         # on jth call, go in order j,j+1...n-1, 0, 1, .. j-1.  See above
         order = self.orders[self.order_pointer]
-        self.order_pointer = (self.order_pointer + 1) % len(self.orders) # Ready for next
+        self.order_pointer = (self.order_pointer + 1) % len(self.orders)  # Ready for next
         for i in order:
             self.times[i] += timeit.timeit(lambda: self.call_object(i, xs, **kwargs), timer=self.timer, number=1)
             self.counts[i] += 1
@@ -520,8 +520,10 @@ class CompareLogLikelihood(object):
                 print("not called,", end=" ")
             if self.objects[i].cholesky_calls > 0:
                 print(
-                    "{:.2f} of this in a total of {} cholesky calls".format(1000 * self.objects[i].cholesky_time / self.counts[i], self.objects[i].cholesky_calls
-                ))
+                    "{:.2f} of this in a total of {} cholesky calls".format(
+                        1000 * self.objects[i].cholesky_time / self.counts[i], self.objects[i].cholesky_calls
+                    )
+                )
             else:
                 print("no cholesky calls")
 
