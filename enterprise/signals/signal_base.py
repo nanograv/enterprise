@@ -320,11 +320,17 @@ class LogLikelihood(object):
                 chiinv, logdet_chi = pl
                 Sigma = FDF + (np.diag(chiinv) if chiinv.ndim == 1 else chiinv)
 
+                start = self.timer()
+
                 try:
                     cf = sl.cho_factor(Sigma)
                     expval = sl.cho_solve(cf, FDr)
                 except np.linalg.LinAlgError:
                     return -np.inf
+
+                this_time = self.timer() - start
+                self.cholesky_time += this_time
+                self.cholesky_calls += 1
 
                 logdet_sigma = np.sum(2 * np.log(np.diag(cf[0])))
                 lnlike += 0.5 * (np.dot(FDr, expval) - logdet_sigma - logdet_chi)
@@ -398,11 +404,16 @@ class OldLogLikelihood(object):
                 phiinv, logdet_phi = pl
                 Sigma = TNT + (np.diag(phiinv) if phiinv.ndim == 1 else phiinv)
 
+                start = self.timer()
                 try:
                     cf = sl.cho_factor(Sigma)
                     expval = sl.cho_solve(cf, TNr)
                 except:
                     return -np.inf
+
+                this_time = self.timer() - start
+                self.cholesky_time += this_time
+                self.cholesky_calls += 1
 
                 logdet_sigma = np.sum(2 * np.log(np.diag(cf[0])))
 
@@ -422,6 +433,11 @@ class LikelihoodsDifferentError(Exception):
 # Compare different ways of computing the likelihood for time and consistency
 # We make LogLikelihood objects using then given classes or constructors
 # and call all of them.  The return value is from the first object.
+# We call the different likelihood objects in cyclical order starting with
+# object J the Jth time that we are called.  This prevents later objects
+# from looking better because earlier objects have cached useful values.
+# However, this could be defeated by a resonance between this process
+# and the process calling us.
 class CompareLogLikelihood(object):
     def __init__(
         self,
@@ -443,12 +459,15 @@ class CompareLogLikelihood(object):
     def reset(self):
         self.max_differences = np.zeros((self.n_objects, self.n_objects))  # Differences between pairs of results
         self.times = np.zeros(self.n_objects)  # Time in each object
-        self.counts = np.zeros(self.n_objects)  # Count of calls to each object
+        self.counts = np.zeros(self.n_objects, dtype=int)  # Count of calls to each object
         for object in self.objects:  # Reset timers in sub-objects
             self.cholesky_calls = self.cholesky_time = 0
 
     def __call__(self, xs, **kwargs):
-        for i in range(self.n_objects):
+        # on jth call, go in order j,j+1...n-1, 0, 1, .. j-1.  See above
+        n = self.n_objects
+        for i in itertools.chain(range(self.counts[0] % n, n),
+                                 range(self.counts[0] % n)):
             self.times[i] += timeit.timeit(lambda: self.call_object(i, xs, **kwargs), timer=self.timer, number=1)
             self.counts[i] += 1
         for i in range(self.n_objects):
@@ -498,8 +517,8 @@ class CompareLogLikelihood(object):
                 print("not called,", end=" ")
             if self.objects[i].cholesky_calls > 0:
                 print(
-                    "{:.2f} in cholesky".format(1000 * self.objects[i].cholesky_time / self.objects[i].cholesky_calls)
-                )
+                    "{:.2f} of this in a total of {} cholesky calls".format(1000 * self.objects[i].cholesky_time / self.counts[i], self.objects[i].cholesky_calls
+                ))
             else:
                 print("no cholesky calls")
 
