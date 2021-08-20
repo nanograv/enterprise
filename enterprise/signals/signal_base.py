@@ -7,7 +7,19 @@ derived from these base classes.
 import time
 import timeit
 import platform
-import cpuinfo
+
+try:
+    import cpuinfo
+
+    def cpu_model():
+        return cpuinfo.get_cpu_info()["brand_raw"]
+
+
+except ModuleNotFoundError:
+
+    def cpu_model():
+        return "unknown CPU (for better info install cpuinfo)"
+
 
 import collections
 
@@ -502,7 +514,7 @@ class CompareLogLikelihood(object):
         print(
             "Running on",
             platform.node(),
-            cpuinfo.get_cpu_info()["brand_raw"],
+            cpu_model(),
             "with",
             len(self.pta.pulsars),
             "pulsars",
