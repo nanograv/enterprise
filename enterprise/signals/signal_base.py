@@ -4,11 +4,7 @@ Defines the signal base classes and metaclasses. All signals will then be
 derived from these base classes.
 """
 import collections
-
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
+from collections.abc import Sequence
 
 import logging
 
