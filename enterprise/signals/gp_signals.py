@@ -823,7 +823,9 @@ class MarginalizingNmat(object):
     def __radd__(self, other):
         return self.__add__(other)
 
-    @functools.cached_property
+    # in Python 3.8: @functools.cached_property
+    @property
+    @functools.lru_cache()
     def cf(self):
         MNM = sps.csc_matrix(self.Nmat.solve(self.Mmat, left_array=self.Mmat))
         return cholesky(MNM)
