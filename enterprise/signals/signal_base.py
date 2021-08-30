@@ -935,7 +935,6 @@ class csc_matrix_alt(sps.csc_matrix):
         return self._binopt(other_diag, "_plus_")
 
     def __add__(self, other):
-
         if isinstance(other, (np.ndarray, ndarray_alt)) and other.ndim == 1:
             return self._add_diag(other)
         else:
@@ -1066,7 +1065,6 @@ class BlockMatrix(object):
         return logdet
 
     def solve(self, other, left_array=None, logdet=False):
-
         if other.ndim not in [1, 2]:
             raise TypeError
         if left_array is not None:
