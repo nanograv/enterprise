@@ -777,6 +777,7 @@ def WidebandTimingModel(
 # experimental versions of FourierBasisCommonGP and BasisCommonGP2 that support selections
 # note that Tspan must be provided to FourierBasisCommonGP2
 
+
 def FourierBasisCommonGP2(
     spectrum,
     orf,
