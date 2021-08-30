@@ -284,6 +284,11 @@ class BasePulsar(object):
         """Return sun position vector at all timestamps"""
         return self._sunssb[self._isort, :]
 
+    @property
+    def telescope(self):
+        """Return telescope vector at all timestamps"""
+        return self._telescope[self._isort]
+
 
 class PintPulsar(BasePulsar):
     def __init__(self, toas, model, sort=True, drop_pintpsr=True, planets=True):
@@ -302,6 +307,7 @@ class PintPulsar(BasePulsar):
         self._toaerrs = np.array(toas.get_errors().to(u.s), dtype="float64")
         self._designmatrix = model.designmatrix(toas)[0]
         self._ssbfreqs = np.array(model.barycentric_radio_freq(toas), dtype="float64")
+        self._telescope = np.array(toas.get_obss())
 
         # fitted parameters
         self.fitpars = ["Offset"] + [par for par in model.params if not getattr(model, par).frozen]
@@ -423,6 +429,7 @@ class Tempo2Pulsar(BasePulsar):
         self._toaerrs = np.double(t2pulsar.toaerrs) * 1e-6
         self._designmatrix = np.double(t2pulsar.designmatrix())
         self._ssbfreqs = np.double(t2pulsar.ssbfreqs()) / 1e6
+        self._telescope = np.char.decode(t2pulsar.telescope(), encoding="ascii")
 
         # fitted parameters
         self.fitpars = ["Offset"] + [str(p) for p in t2pulsar.pars()]

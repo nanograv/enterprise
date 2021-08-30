@@ -118,6 +118,12 @@ def nanograv_backends(backend_flags):
     return {val: backend_flags == val for val in flagvals}
 
 
+def by_telescope(telescope):
+    """Selection function to split by telescope"""
+    telescopes = np.unique(telescope)
+    return {t: (telescope == t) for t in telescopes}
+
+
 def no_selection(toas):
     """Default selection with no splitting."""
     return {"": np.ones_like(toas, dtype=bool)}

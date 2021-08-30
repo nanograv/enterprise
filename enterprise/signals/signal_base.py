@@ -4,13 +4,8 @@ Defines the signal base classes and metaclasses. All signals will then be
 derived from these base classes.
 """
 import collections
+from collections.abc import Sequence
 
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
-
-import itertools
 import logging
 
 import numpy as np
@@ -226,18 +221,15 @@ class PTA(object):
 
     @property
     def params(self):
-        ret = set()
+        # return only one parameter with the same name
+        ret = {
+            par.name: par
+            for signalcollection in self._signalcollections
+            for param in signalcollection.params
+            for par in param.params
+        }
 
-        for signalcollection in self._signalcollections:
-            for param in signalcollection.params:
-                for par in param.params:
-                    ret.add(par)
-
-        return sorted(list(ret), key=lambda par: par.name)
-
-        # return sorted({par for signalcollection in self._signalcollections
-        #                    for par in signalcollection.params},
-        #               key=lambda par: par.name)
+        return sorted(ret.values(), key=lambda par: par.name)
 
     @property
     def param_names(self):
@@ -392,7 +384,7 @@ class PTA(object):
 
                         if crossdiag.ndim == 2:
                             raise NotImplementedError(
-                                "get_phiinv with method='partition' does not " "support dense phi matrices."
+                                "get_phiinv with method='partition' does not support dense or rectangular phi matrices."
                             )
 
                         invert[:, i, j] += crossdiag
@@ -565,21 +557,23 @@ class PTA(object):
                 if cliques:
                     self._setcliques(slices, csdict)
 
-                # now iterate over all pairs of common signal instances
-                pairs = itertools.combinations(csdict.items(), 2)
+                for cs1, csc1 in csdict.items():
+                    for cs2, csc2 in csdict.items():
+                        if cs1 != cs2:
+                            crossdiag = csclass.get_phicross(cs1, cs2, params)
 
-                for (cs1, csc1), (cs2, csc2) in pairs:
-                    crossdiag = csclass.get_phicross(cs1, cs2, params)
+                            block1, idx1 = slices[csc1], csc1._idx[cs1]
+                            block2, idx2 = slices[csc2], csc2._idx[cs2]
 
-                    block1, idx1 = slices[csc1], csc1._idx[cs1]
-                    block2, idx2 = slices[csc2], csc2._idx[cs2]
+                            if crossdiag.ndim == 1:
+                                Phi[block1, block2][idx1, idx2] += crossdiag
+                            else:
+                                if cliques and crossdiag.shape[0] != crossdiag.shape[1]:
+                                    raise NotImplementedError(
+                                        "get_phi with cliques=True does not support rectangular phicross matrices"
+                                    )
 
-                    if crossdiag.ndim == 1:
-                        Phi[block1, block2][idx1, idx2] += crossdiag
-                        Phi[block2, block1][idx2, idx1] += crossdiag
-                    else:
-                        Phi[block1, block2][np.ix_(idx1, idx2)] += crossdiag
-                        Phi[block2, block1][np.ix_(idx2, idx1)] += crossdiag
+                                Phi[block1, block2][np.ix_(idx1, idx2)] += crossdiag
 
             return Phi
         else:
@@ -605,7 +599,7 @@ class PTA(object):
         return [p.psrname for p in self._signalcollections]
 
     def _set_signal_dict(self):
-        """ Set signal dictionary"""
+        """Set signal dictionary"""
 
         self._signal_dict = {}
         sig_list = []
@@ -625,7 +619,7 @@ class PTA(object):
 
     @property
     def signals(self):
-        """ Return signal dictionary."""
+        """Return signal dictionary."""
         return self._signal_dict
 
     def get_signal(self, name):
@@ -697,7 +691,7 @@ def SignalCollection(metasignals):  # noqa: C901
 
         # TODO: this could be implemented more cleanly
         def _set_cache_parameters(self):
-            """ Sets the cache for various signal types."""
+            """Sets the cache for various signal types."""
 
             self.white_params = []
             self.basis_params = []
@@ -949,7 +943,6 @@ class csc_matrix_alt(sps.csc_matrix):
         return self._binopt(other_diag, "_plus_")
 
     def __add__(self, other):
-
         if isinstance(other, (np.ndarray, ndarray_alt)) and other.ndim == 1:
             return self._add_diag(other)
         else:
@@ -1080,7 +1073,6 @@ class BlockMatrix(object):
         return logdet
 
     def solve(self, other, left_array=None, logdet=False):
-
         if other.ndim not in [1, 2]:
             raise TypeError
         if left_array is not None:
