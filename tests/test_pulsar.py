@@ -130,7 +130,7 @@ class TestPulsar(unittest.TestCase):
 
         assert np.allclose(self.psr.residuals, pkl_psr.residuals, rtol=1e-10)
 
-    @pytest.mark.skipif(sys.version_info < (3,8), reason="Requires Python >= 3.8")
+    @pytest.mark.skipif(sys.version_info < (3, 8), reason="Requires Python >= 3.8")
     def test_deflate_inflate(self):
         psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
 
