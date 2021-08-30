@@ -35,7 +35,7 @@ class TestPulsar(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        shutil.rmtree("pickle_dir")
+        shutil.rmtree("pickle_dir", ignore_errors=True)
 
     def test_residuals(self):
         """Check Residual shape."""
