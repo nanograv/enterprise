@@ -35,6 +35,32 @@ _py_version = version.split(" ")[0]
 logger = logging.getLogger(__name__)
 
 
+def _simplememobyid_keycheck(key, arg):
+    if isinstance(key, Sequence):
+        return isinstance(arg, Sequence) and len(key) == len(arg) and all(e1 is e2 for e1, e2 in zip(key, arg))
+    else:
+        return key is arg
+
+
+def simplememobyid(method):
+    """This decorator caches the last call of a class method that takes
+    a single parameter `arg`. It holds a reference to the last `arg` as `key`,
+    and uses the cached value if `arg is key`. If `arg` is a Sequence,
+    then the decorator uses the cached value if the `is` relation is true
+    element by element."""
+
+    def memoizedfunc(self, arg):
+        cacheloc = "_memo" + method.__name__
+
+        # if not hasattr(self, cacheloc) or self.__dict__[cacheloc][0] is not arg:
+        if not hasattr(self, cacheloc) or not _simplememobyid_keycheck(self.__dict__[cacheloc][0], arg):
+            self.__dict__[cacheloc] = (arg, method(self, arg))
+
+        return self.__dict__[cacheloc][1]
+
+    return memoizedfunc
+
+
 class MetaSignal(type):
     """Metaclass for Signals. Allows addition of ``Signal`` classes."""
 
@@ -143,12 +169,25 @@ class CommonSignal(Signal):
         return None
 
 
-class LogLikelihood(object):
-    def __init__(self, pta):
-        self.pta = pta
+def LogLikelihoodDenseCholesky(pta):
+    return LogLikelihood(pta, cholesky_sparse=False)
 
-    def _make_sigma(self, TNTs, phiinv):
-        return sps.block_diag(TNTs, "csc") + sps.csc_matrix(phiinv)
+
+class LogLikelihood(object):
+    def __init__(self, pta, cholesky_sparse=True):
+        self.pta = pta
+        self.cholesky_sparse = cholesky_sparse
+
+    @simplememobyid
+    def _block_TNT(self, TNTs):
+        if self.cholesky_sparse:
+            return sps.block_diag(TNTs, "csc")
+        else:
+            return sl.block_diag(*TNTs)
+
+    @simplememobyid
+    def _block_TNr(self, TNrs):
+        return np.concatenate(TNrs)
 
     def __call__(self, xs, phiinv_method="cliques"):
         # map parameter vector if needed
@@ -173,16 +212,20 @@ class LogLikelihood(object):
         if self.pta._commonsignals:
             phiinv, logdet_phi = phiinvs
 
-            Sigma = self._make_sigma(TNTs, phiinv)
-            TNr = np.concatenate(TNrs)
+            TNT = self._block_TNT(TNTs)
+            TNr = self._block_TNr(TNrs)
 
             try:
-                cf = cholesky(Sigma)
-                expval = cf(TNr)
+                if self.cholesky_sparse:
+                    cf = cholesky(TNT + sps.csc_matrix(phiinv))  # cf(Sigma)
+                    expval = cf(TNr)
+                    logdet_sigma = cf.logdet()
+                else:
+                    cf = sl.cho_factor(TNT + phiinv)  # cf(Sigma)
+                    expval = sl.cho_solve(cf, TNr)
+                    logdet_sigma = 2 * np.sum(np.log(np.diag(cf[0])))
             except:
                 return -np.inf
-
-            logdet_sigma = cf.logdet()
 
             loglike += 0.5 * (np.dot(TNr, expval) - logdet_sigma - logdet_phi)
         else:
