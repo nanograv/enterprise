@@ -12,5 +12,6 @@ PyYAML>=4.2b1
 pytest>=4.0.0
 sphinx-rtd-theme>=0.4.0
 pytest-cov>=2.7.0
+coverage-conditional-plugin>=0.4.0
 jupyter>=1.0.0
 build==0.3.1.post1

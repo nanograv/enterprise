@@ -9,20 +9,17 @@ Tests for `pulsar` module. Will eventually want to add tests
 for time slicing, PINT integration and pickling.
 """
 
-
+import sys
 import os
 import shutil
 import unittest
+import pickle
+import pytest
 
 import numpy as np
 
 from enterprise.pulsar import Pulsar
 from tests.enterprise_test_data import datadir
-
-try:
-    import cPickle as pickle
-except:
-    import pickle
 
 
 class TestPulsar(unittest.TestCase):
@@ -133,6 +130,31 @@ class TestPulsar(unittest.TestCase):
 
         assert np.allclose(self.psr.residuals, pkl_psr.residuals, rtol=1e-10)
 
+    @pytest.mark.skipif(sys.version_info < (3, 8), reason="Requires Python >= 3.8")
+    def test_deflate_inflate(self):
+        psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+
+        dm = psr._designmatrix.copy()
+
+        psr.deflate()
+        psr.to_pickle()
+
+        with open("B1855+09.pkl", "rb") as f:
+            pkl_psr = pickle.load(f)
+        pkl_psr.inflate()
+
+        assert np.allclose(dm, pkl_psr._designmatrix)
+
+        del pkl_psr
+
+        psr.destroy()
+
+        with open("B1855+09.pkl", "rb") as f:
+            pkl_psr = pickle.load(f)
+
+        with self.assertRaises(FileNotFoundError):
+            pkl_psr.inflate()
+
     def test_wrong_input(self):
         """Test exception when incorrect par(tim) file given."""
 
@@ -182,3 +204,6 @@ class TestPulsarPint(TestPulsar):
 
     def test_pint_toas(self):
         assert hasattr(self.psr, "pint_toas")
+
+    def test_deflate_inflate(self):
+        pass
