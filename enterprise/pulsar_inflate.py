@@ -1,11 +1,16 @@
-# deflate.py
+# pulsar_inflate.py
 """Defines PulsarInflater class: instances copy a numpy array to shared memory,
 and (after pickling) will reinflate to a numpy array that refers to the shared
 data.
 """
 
-from multiprocessing import shared_memory, resource_tracker
 import numpy as np
+
+try:
+    from multiprocessing import shared_memory, resource_tracker
+except:
+    # shared_memory unavailable in Python < 3.8 
+    pass
 
 
 class memmap(np.ndarray):

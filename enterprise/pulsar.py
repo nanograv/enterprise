@@ -15,11 +15,7 @@ from ephem import Ecliptic, Equatorial
 import enterprise
 from enterprise.signals import utils
 
-try:
-    from enterprise.pulsar_inflate import PulsarInflater
-except:
-    # pulsar.[deflate|inflate]() requires Python >= 3.8
-    pass
+from enterprise.pulsar_inflate import PulsarInflater
 
 logger = logging.getLogger(__name__)
 
@@ -553,7 +549,7 @@ class Tempo2Pulsar(BasePulsar):
     _todeflate = ["_designmatrix", "_planetssb", "_sunssb", "_flags"]
     _deflated = "pristine"
 
-    def deflate(psr):
+    def deflate(psr):   # pragma: py-lt-38
         if psr._deflated == "pristine":
             for attr in psr._todeflate:
                 if isinstance(getattr(psr, attr), np.ndarray):
@@ -561,7 +557,7 @@ class Tempo2Pulsar(BasePulsar):
 
             psr._deflated = "deflated"
 
-    def inflate(psr):
+    def inflate(psr):   # pragma: py-lt-38
         if psr._deflated == "deflated":
             for attr in psr._todeflate:
                 if isinstance(getattr(psr, attr), PulsarInflater):
@@ -569,7 +565,7 @@ class Tempo2Pulsar(BasePulsar):
 
             psr._deflated = "inflated"
 
-    def destroy(psr):
+    def destroy(psr):   # pragma: py-lt-38
         if psr._deflated == "deflated":
             for attr in psr._todeflate:
                 if isinstance(getattr(psr, attr), PulsarInflater):
