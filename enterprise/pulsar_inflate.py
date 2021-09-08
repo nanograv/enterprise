@@ -9,7 +9,7 @@ import numpy as np
 try:
     from multiprocessing import shared_memory, resource_tracker
 except:
-    # shared_memory unavailable in Python < 3.8 
+    # shared_memory unavailable in Python < 3.8
     pass
 
 
