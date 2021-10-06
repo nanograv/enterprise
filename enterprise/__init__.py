@@ -1,6 +1,6 @@
 try:
     from .version import version
 except:
-    version = 'unknown'
+    version = "unknown"
 
 __version__ = version
