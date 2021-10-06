@@ -48,8 +48,8 @@ autoclass_content = "both"
 # make order or docs 'groupwise'
 autodoc_member_order = "groupwise"
 
-# no hope of installing these...
-autodoc_mock_imports = ["libstempo", "PINT", "astropy", "healpy", "sksparse"]
+# we won't even try installing these
+autodoc_mock_imports = ["libstempo", "PINT", "astropy", "healpy", "sksparse", "ephem"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -283,7 +283,7 @@ def run_apidoc(_):
     # subprocess.check_call(['jupyter nbconvert --template nb-rst.tpl --to rst',
     #                           nb, '--output-dir', output_path])
 
-    modules = ["../enterprise"]
+    modules = ["../enterprise", "../tests"]
     for module in modules:
         cmd_path = "sphinx-apidoc"
         if hasattr(sys, "real_prefix"):  # Check to see if we are in a virtualenv
