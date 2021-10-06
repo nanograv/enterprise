@@ -101,7 +101,7 @@ class BasePulsar(object):
             decj = np.double(eq.dec)
 
         except TypeError:
-            msg = "WARNING: Cannot fine sky location coordinates "
+            msg = "WARNING: Cannot find sky location coordinates "
             msg += "for PSR {0}. ".format(self.name)
             msg += "Setting values to 0.0"
             logger.warning(msg)
@@ -259,12 +259,12 @@ class BasePulsar(object):
 
     @property
     def pos(self):
-        """Return unit vector to pulsar."""
+        """Return unit vector from SSB to pulsar at fiducial POSEPOCH."""
         return self._pos
 
     @property
     def pos_t(self):
-        """Return unit vector to pulsar as function of time."""
+        """Return unit vector from SSB to pulsar as function of time."""
         return self._pos_t[self._isort, :]
 
     @property
@@ -326,8 +326,12 @@ class PintPulsar(BasePulsar):
         self._planetssb = self._get_planetssb(toas, model)
         self._sunssb = self._get_sunssb(toas, model)
 
-        # TODO: pos_t not currently implemented
-        self._pos_t = np.zeros((len(self._toas), 3))
+        if "AstrometryEquatorial" in model.components.keys():
+            which_astrometry = "AstrometryEquatorial"
+        elif "AstrometryEcliptic" in model.components.keys():
+            which_astrometry = "AstrometryEcliptic"
+
+        self._pos_t = model.components[which_astrometry].ssb_to_psb_xyz_ICRS(model.get_barycentric_toas(toas)).value
 
         self.sort_data()
 
@@ -364,8 +368,8 @@ class PintPulsar(BasePulsar):
     def _get_ssb_lsec(self, toas, obs_planet):
         """Get the planet to SSB vector in lightseconds from Pint table"""
         if obs_planet not in toas.table.colnames:
-            err_msg = f'{obs_planet} is not in toas.table.colnames. Either '
-            err_msg += 'planet flag is not True or further Pint development needed.'
+            err_msg = f"{obs_planet} is not in toas.table.colnames. Either "
+            err_msg += "planet flag is not True or further Pint development needed."
             raise ValueError(err_msg)
         vec = toas.table[obs_planet] + toas.table["ssb_obs_pos"]
         return (vec / const.c).to("s").value
