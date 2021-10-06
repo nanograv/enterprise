@@ -43,11 +43,12 @@ searches, and timing model analysis.
    mdc
    nano9
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Code Documentation   
+
+   :ref:`modindex`
+   :ref:`genindex`
+   :ref:`search`
+
 .. include:: ../AUTHORS.rst
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

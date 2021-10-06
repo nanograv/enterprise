@@ -1,5 +1,6 @@
 
 .. module:: enterprise
+   :noindex:
 
 .. note:: This tutorial was generated from a Jupyter notebook that can be
           downloaded `here <_static/notebooks/mdc.ipynb>`_.
