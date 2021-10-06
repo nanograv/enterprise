@@ -153,10 +153,13 @@ class TestDeterministicSignals(unittest.TestCase):
     def test_physical_ephem_model(self):
         """Tests physical ephemeris model (which is implemented as a deterministic signal)
         four ways:
-        
+
         - computed directly with :func:`enterprise.signals.utils.physical_ephem_delay`;
-        - computed with :meth:`enterprise.signals.deterministic_signals.PhysicalEphemerisSignal.get_delay` with `use_epoch_toas=True` (the default), which reduces computation by evaluating ephemeris corrections once per measurement epoch, and then interpolating to the full `toas` vector;
-        - computed with :meth:`enterprise.signals.deterministic_signals.PhysicalEphemerisSignal.get_delay`, setting `use_epoch_toas=False`;
+        - computed with :meth:`enterprise.signals.deterministic_signals.PhysicalEphemerisSignal.get_delay`
+          with `use_epoch_toas=True` (the default), which reduces computation by evaluating ephemeris corrections
+          once per measurement epoch, and then interpolating to the full `toas` vector;
+        - computed with :meth:`enterprise.signals.deterministic_signals.PhysicalEphemerisSignal.get_delay`,
+          setting `use_epoch_toas=False`;
         - loaded from a golden copy.
         """
 
