@@ -47,7 +47,6 @@ searches, and timing model analysis.
    :maxdepth: 2
    :caption: Code Documentation   
 
-   modules
    enterprise
    tests
 
