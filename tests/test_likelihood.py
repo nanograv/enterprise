@@ -79,8 +79,7 @@ class TestLikelihood(unittest.TestCase):
             Pulsar(datadir + "/J1909-3744_NANOGrav_9yv1.gls.par", datadir + "/J1909-3744_NANOGrav_9yv1.tim"),
         ]
 
-    def compute_like(self, npsrs=1, inc_corr=False, inc_kernel=False):
-
+    def compute_like(self, npsrs=1, inc_corr=False, inc_kernel=False, cholesky_sparse=True, marginalizing_tm=False):
         # get parameters from PAL2 style noise files
         params = get_noise_from_pal2(datadir + "/B1855+09_noise.txt")
         params2 = get_noise_from_pal2(datadir + "/J1909-3744_noise.txt")
@@ -115,7 +114,10 @@ class TestLikelihood(unittest.TestCase):
         orf = utils.hd_orf()
         crn = gp_signals.FourierBasisCommonGP(pl, orf, components=20, name="GW", Tspan=Tspan)
 
-        tm = gp_signals.TimingModel()
+        if marginalizing_tm:
+            tm = gp_signals.MarginalizingTimingModel()
+        else:
+            tm = gp_signals.TimingModel()
 
         log10_sigma = parameter.Uniform(-10, -5)
         log10_lam = parameter.Uniform(np.log10(86400), np.log10(1500 * 86400))
@@ -128,16 +130,21 @@ class TestLikelihood(unittest.TestCase):
             inc_kernel = [inc_kernel] * npsrs
 
         if inc_corr:
-            s = ef + eq + ec + rn + crn + tm
+            s = tm + ef + eq + ec + rn + crn
         else:
-            s = ef + eq + ec + rn + tm
+            s = tm + ef + eq + ec + rn
 
         models = []
         for ik, psr in zip(inc_kernel, psrs):
             snew = s + se if ik else s
             models.append(snew(psr))
 
-        pta = signal_base.PTA(models)
+        if cholesky_sparse:
+            like = signal_base.LogLikelihood
+        else:
+            like = signal_base.LogLikelihoodDenseCholesky
+
+        pta = signal_base.PTA(models, lnlikelihood=like)
 
         # set parameters
         pta.set_default_params(params)
@@ -253,7 +260,9 @@ class TestLikelihood(unittest.TestCase):
         method = ["partition", "sparse", "cliques"]
         for mth in method:
             eloglike = pta.get_lnlikelihood(params, phiinv_method=mth)
-            msg = "Incorrect like for npsr={}, phiinv={}".format(npsrs, mth)
+            msg = "Incorrect like for npsr={}, phiinv={}, csparse={}, mtm={}".format(
+                npsrs, mth, cholesky_sparse, marginalizing_tm
+            )
             assert np.allclose(eloglike, loglike), msg
 
     def test_like_nocorr(self):
@@ -263,7 +272,11 @@ class TestLikelihood(unittest.TestCase):
 
     def test_like_corr(self):
         """Test likelihood with spatial correlations."""
-        self.compute_like(npsrs=2, inc_corr=True)
+        for cholesky_sparse in [True, False]:
+            for marginalizing_tm in [True, False]:
+                self.compute_like(
+                    npsrs=2, inc_corr=True, cholesky_sparse=cholesky_sparse, marginalizing_tm=marginalizing_tm
+                )
 
     def test_like_nocorr_kernel(self):
         """Test likelihood with no spatial correlations and kernel."""
@@ -272,7 +285,8 @@ class TestLikelihood(unittest.TestCase):
 
     def test_like_corr_kernel(self):
         """Test likelihood with spatial correlations and kernel."""
-        self.compute_like(npsrs=2, inc_corr=True, inc_kernel=True)
+        self.compute_like(npsrs=2, inc_corr=True, inc_kernel=True, cholesky_sparse=True)
+        self.compute_like(npsrs=2, inc_corr=True, inc_kernel=True, cholesky_sparse=False)
 
     def test_like_nocorr_one_kernel(self):
         """Test likelihood with no spatial correlations and one kernel."""

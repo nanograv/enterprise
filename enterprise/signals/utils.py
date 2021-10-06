@@ -4,7 +4,7 @@ Utilities module containing various useful
 functions for use in other modules.
 """
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+import logging
 
 import numpy as np
 import scipy.linalg as sl
@@ -13,25 +13,22 @@ import scipy.special as ss
 from pkg_resources import Requirement, resource_filename
 from scipy.integrate import odeint
 from scipy.interpolate import interp1d
+from sksparse.cholmod import cholesky
 
 import enterprise
 from enterprise import constants as const
-from enterprise.signals.parameter import function
-from enterprise.signals.gp_priors import powerlaw, turnover  # noqa: F401
 from enterprise import signals as sigs  # noqa: F401
 from enterprise.signals.gp_bases import (  # noqa: F401
-    createfourierdesignmatrix_red,
     createfourierdesignmatrix_dm,
     createfourierdesignmatrix_env,
-    createfourierdesignmatrix_ephem,
     createfourierdesignmatrix_eph,
+    createfourierdesignmatrix_ephem,
+    createfourierdesignmatrix_red,
 )
+from enterprise.signals.gp_priors import powerlaw, turnover  # noqa: F401
+from enterprise.signals.parameter import function
 
-
-try:
-    from sksparse.cholmod import cholesky
-except:
-    print("You'll need sksparse for get_coefficients() with common signals!")
+logger = logging.getLogger(__name__)
 
 
 def get_coefficients(pta, params, n=1, phiinv_method="cliques", common_sparse=False):

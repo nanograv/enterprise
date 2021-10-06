@@ -9,13 +9,15 @@ import itertools
 import logging
 
 import numpy as np
+import scipy.sparse as sps
+from sksparse.cholmod import cholesky
 
 from enterprise.signals import parameter, selections, signal_base, utils
 from enterprise.signals.parameter import function
 from enterprise.signals.selections import Selection
 from enterprise.signals.utils import KernelMatrix
 
-logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
+# logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -88,7 +90,10 @@ def BasisGP(
                 ret.extend([pp.name for pp in basis.params])
             return ret
 
-        @signal_base.cache_call("basis_params")
+        # since this function has side-effects, it can only be cached
+        # with limit=1, so it will run again if called with params different
+        # than the last time
+        @signal_base.cache_call("basis_params", limit=1)
         def _construct_basis(self, params={}):
             basis, self._labels = {}, {}
             for key, mask in zip(self._keys, self._masks):
@@ -325,7 +330,10 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False,
             """Get any varying basis parameters."""
             return [pp.name for pp in self._bases.params]
 
-        @signal_base.cache_call("basis_params")
+        # since this function has side-effects, it can only be cached
+        # with limit=1, so it will run again if called with params different
+        # than the last time
+        @signal_base.cache_call("basis_params", limit=1)
         def _construct_basis(self, params={}):
             self._basis, self._labels = self._bases(params=params)
 
@@ -425,7 +433,10 @@ def FourierBasisCommonGP(
                 FourierBasisCommonGP._Tmin.append(psr.toas.min())
                 FourierBasisCommonGP._Tmax.append(psr.toas.max())
 
-        @signal_base.cache_call("basis_params")
+        # since this function has side-effects, it can only be cached
+        # with limit=1, so it will run again if called with params different
+        # than the last time
+        @signal_base.cache_call("basis_params", 1)
         def _construct_basis(self, params={}):
             span = Tspan if Tspan is not None else max(FourierBasisCommonGP._Tmax) - min(FourierBasisCommonGP._Tmin)
             self._basis, self._labels = self._bases(params=params, Tspan=span)
@@ -763,3 +774,93 @@ def WidebandTimingModel(
             return chi2
 
     return WidebandTimingModel
+
+
+def MarginalizingTimingModel(name="marginalizing_linear_timing_model"):
+    basisFunction = utils.normed_tm_basis()
+
+    class TimingModel(signal_base.Signal):
+        signal_type = "white noise"
+        signal_name = "marginalizing linear timing model"
+        signal_id = name
+
+        def __init__(self, psr):
+            super(TimingModel, self).__init__(psr)
+            self.name = self.psrname + "_" + self.signal_id
+
+            pname = "_".join([psr.name, name])
+            self.Mmat = basisFunction(pname, psr=psr)
+
+            self._params = {}
+
+        @property
+        def ndiag_params(self):
+            return []
+
+        # there are none, but to be general...
+        @signal_base.cache_call("ndiag_params")
+        def get_ndiag(self, params):
+            return MarginalizingNmat(self.Mmat()[0])
+
+    return TimingModel
+
+
+class MarginalizingNmat(object):
+    def __init__(self, Mmat, Nmat=0):
+        self.Mmat, self.Nmat = Mmat, Nmat
+        self.Mprior = Mmat.shape[1] * np.log(1e40)
+
+    def __add__(self, other):
+        if isinstance(other, MarginalizingNmat):
+            raise ValueError("Cannot combine multiple MarginalizingNmat objects.")
+        elif isinstance(other, np.ndarray) or hasattr(other, "solve"):
+            return MarginalizingNmat(self.Mmat, self.Nmat + other)
+        elif other == 0:
+            return self
+        else:
+            raise TypeError
+
+    def __radd__(self, other):
+        return self.__add__(other)
+
+    # in Python 3.8: @functools.cached_property
+    @property
+    @functools.lru_cache()
+    def cf(self):
+        MNM = sps.csc_matrix(self.Nmat.solve(self.Mmat, left_array=self.Mmat))
+        return cholesky(MNM)
+
+    @signal_base.simplememobyid
+    def MNr(self, res):
+        return self.Nmat.solve(res, left_array=self.Mmat)
+
+    @signal_base.simplememobyid
+    def MNF(self, T):
+        return self.Nmat.solve(T, left_array=self.Mmat)
+
+    @signal_base.simplememobyid
+    def MNMMNF(self, T):
+        return self.cf(self.MNF(T))
+
+    # we're ignoring logdet = True for two-dimensional cases, but OK
+    def solve(self, right, left_array=None, logdet=False):
+        if right.ndim == 1 and left_array is right:
+            res = right
+
+            rNr, logdet_N = self.Nmat.solve(res, left_array=res, logdet=logdet)
+
+            MNr = self.MNr(res)
+            ret = rNr - np.dot(MNr, self.cf(MNr))
+            return (ret, logdet_N + self.cf.logdet() + self.Mprior) if logdet else ret
+        elif right.ndim == 1 and left_array is not None and left_array.ndim == 2:
+            res, T = right, left_array
+
+            TNr = self.Nmat.solve(res, left_array=T)
+            return TNr - np.tensordot(self.MNMMNF(T), self.MNr(res), (0, 0))
+        elif right.ndim == 2 and left_array is right:
+            T = right
+
+            TNT = self.Nmat.solve(T, left_array=T)
+            return TNT - np.tensordot(self.MNF(T), self.MNMMNF(T), (0, 0))
+        else:
+            raise ValueError("Incorrect arguments given to MarginalizingNmat.solve.")

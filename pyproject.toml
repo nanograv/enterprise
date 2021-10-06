@@ -19,7 +19,17 @@ exclude = '''
     | .enterprise
     | enterprise/src
   )/
-  | foo.py           # also separately exclude a file named foo.py in
-                     # the root of the project
+  | enterprise/version.py
 )
 '''
+
+[tool.setuptools_scm]
+write_to = "enterprise/version.py"
+
+[build-system]
+requires = [
+    "setuptools>=40.8.0",
+    "wheel",
+    "setuptools_scm[toml]>=6.0",
+]
+build-backend = "setuptools.build_meta"

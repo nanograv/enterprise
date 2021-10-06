@@ -9,18 +9,17 @@ Tests for `pulsar` module. Will eventually want to add tests
 for time slicing, PINT integration and pickling.
 """
 
-
+import sys
+import os
+import shutil
 import unittest
+import pickle
+import pytest
 
 import numpy as np
 
 from enterprise.pulsar import Pulsar
 from tests.enterprise_test_data import datadir
-
-try:
-    import cPickle as pickle
-except:
-    import pickle
 
 
 class TestPulsar(unittest.TestCase):
@@ -30,6 +29,10 @@ class TestPulsar(unittest.TestCase):
 
         # initialize Pulsar class
         cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree("pickle_dir", ignore_errors=True)
 
     def test_residuals(self):
         """Check Residual shape."""
@@ -117,6 +120,8 @@ class TestPulsar(unittest.TestCase):
         with open("B1855+09.pkl", "rb") as f:
             pkl_psr = pickle.load(f)
 
+        os.remove("B1855+09.pkl")
+
         assert np.allclose(self.psr.residuals, pkl_psr.residuals, rtol=1e-10)
 
         self.psr.to_pickle("pickle_dir")
@@ -124,6 +129,31 @@ class TestPulsar(unittest.TestCase):
             pkl_psr = pickle.load(f)
 
         assert np.allclose(self.psr.residuals, pkl_psr.residuals, rtol=1e-10)
+
+    @pytest.mark.skipif(sys.version_info < (3, 8), reason="Requires Python >= 3.8")
+    def test_deflate_inflate(self):
+        psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+
+        dm = psr._designmatrix.copy()
+
+        psr.deflate()
+        psr.to_pickle()
+
+        with open("B1855+09.pkl", "rb") as f:
+            pkl_psr = pickle.load(f)
+        pkl_psr.inflate()
+
+        assert np.allclose(dm, pkl_psr._designmatrix)
+
+        del pkl_psr
+
+        psr.destroy()
+
+        with open("B1855+09.pkl", "rb") as f:
+            pkl_psr = pickle.load(f)
+
+        with self.assertRaises(FileNotFoundError):
+            pkl_psr.inflate()
 
     def test_wrong_input(self):
         """Test exception when incorrect par(tim) file given."""
@@ -133,6 +163,12 @@ class TestPulsar(unittest.TestCase):
 
             msg = "Cannot find parfile wrong.par or timfile wrong.tim!"
             self.assertTrue(msg in context.exception)
+
+    def test_value_error(self):
+        """Test exception when unknown argument is given"""
+
+        with self.assertRaises(ValueError):
+            Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.time")
 
 
 class TestPulsarPint(TestPulsar):
@@ -145,6 +181,7 @@ class TestPulsarPint(TestPulsar):
             datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
             datadir + "/B1855+09_NANOGrav_9yv1.tim",
             ephem="DE430",
+            drop_pintpsr=False,
             timing_package="pint",
         )
 
@@ -169,6 +206,7 @@ class TestPulsarPint(TestPulsar):
         assert self.psr.toas.shape == (4005,), msg
 
     def test_stoas(self):
+
         """Check STOA shape."""
 
         msg = "stoa shape incorrect"

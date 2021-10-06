@@ -28,12 +28,13 @@ help:
 
 init:
 	@python3 -m venv .enterprise --prompt enterprise
-	@./.enterprise/bin/python3 -m pip install numpy
+	@./.enterprise/bin/python3 -m pip install -U pip setuptools wheel
 	@./.enterprise/bin/python3 -m pip install -r requirements.txt -U
 	@./.enterprise/bin/python3 -m pip install -r requirements_dev.txt -U
-	@./.enterprise/bin/python3 -m pip install libstempo --install-option="--with-tempo2=$(TEMPO2)"
 	@./.enterprise/bin/python3 -m pre_commit install --install-hooks --overwrite
 	@./.enterprise/bin/python3 -m pip install -e .
+	@echo "run source .enterprise/bin/activate to activate environment"
+
 
 format:
 	black .
@@ -61,24 +62,20 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr .tox/
 	rm -f .coverage
 	rm -fr htmlcov/
+	rm -rf coverage.xml
 
-test: ## run tests quickly with the default Python
-	pytest -v --full-trace --cov-config .coveragerc --cov=enterprise tests
+COV_COVERAGE_PERCENT ?= 85
+test: lint ## run tests quickly with the default Python
+	pytest -v --durations=10 --full-trace --cov-report html --cov-report xml \
+		--cov-config .coveragerc --cov-fail-under=$(COV_COVERAGE_PERCENT) \
+		--cov=enterprise tests
 
-#test-all: ## run tests on every Python version with tox
-#	tox
-
-coverage: ## check code coverage quickly with the default Python
-	coverage run --source enterprise setup.py test
-
-	coverage report -m
-	coverage html
+coverage: test ## check code coverage quickly with the default Python
 	$(BROWSER) htmlcov/index.html
 
-jupyter-docs:
+jupyter-docs: ## biuld jupyter notebook docs
 	jupyter nbconvert --template docs/nb-rst.tpl --to rst docs/_static/notebooks/*.ipynb --output-dir docs/
 	cp -r docs/_static/notebooks/img docs/
-	#jupyter nbconvert --template docs/nb-rst.tpl --to rst docs/_static/notebooks/tutorials/*.ipynb --output-dir docs/tutorials/
 
 docs: ## generate Sphinx HTML documentation, including API docs
 	rm -f docs/enterprise*.rst
@@ -92,14 +89,6 @@ docs: ## generate Sphinx HTML documentation, including API docs
 servedocs: docs ## compile the docs watching for changes
 	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
 
-release: clean ## package and upload a release
-	python setup.py sdist upload
-	python setup.py bdist_wheel upload
-
 dist: clean ## builds source and wheel package
-	python setup.py sdist
-	python setup.py bdist_wheel
+	python -m build --sdist --wheel
 	ls -l dist
-
-install: clean ## install the package to the active Python's site-packages
-	python setup.py install

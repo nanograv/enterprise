@@ -74,3 +74,6 @@ target/
 
 # vscode
 .vscode
+
+# scm
+enterprise/version.py
