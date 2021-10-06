@@ -12,6 +12,7 @@ except:
 
 import itertools
 import logging
+from sys import version
 
 import numpy as np
 import scipy.linalg as sl
@@ -19,15 +20,11 @@ import scipy.sparse as sps
 import six
 from sksparse.cholmod import cholesky
 
-# these are defined in parameter.py, but currently imported
-# in various places from signal_base.py
+from enterprise import __version__
 from enterprise.signals.parameter import Function  # noqa: F401
 from enterprise.signals.parameter import function  # noqa: F401
 from enterprise.signals.parameter import ConstantParameter
 from enterprise.signals.utils import KernelMatrix
-
-from enterprise import __version__
-from sys import version
 
 _py_version = version.split(" ")[0]
 
