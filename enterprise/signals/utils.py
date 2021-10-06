@@ -610,21 +610,21 @@ def create_gw_antenna_pattern(pos, gwtheta, gwphi):
 @function
 def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0, gwpol=0.0, t0=55000, antenna_pattern_fn=None):
     """
-    Function that calculates the earth-term gravitational-wave
-    burst-with-memory signal, as described in:
-    Seto et al, van haasteren and Levin, phsirkov et al, Cordes and Jenet.
-    This version uses the F+/Fx polarization modes, as verified with the
-    Continuous Wave and Anisotropy papers.
+    Function that calculates the Earth-term gravitational-wave
+    Burst-With-Memory signal, as described in:
+    Seto et al., van Haasteren and Levin, Pshirkov et al., Cordes and Jenet.
+    This version uses the F+/Fx polarization modes, and matches the
+    continuous-wave and anisotropy papers.
 
-    :param toas: Time-of-arrival measurements [s]
-    :param pos: Unit vector from Earth to pulsar
+    :param toas: time-of-arrival measurements [s]
+    :param pos: unit vector from Earth to pulsar
     :param log10_h: log10 of GW strain
-    :param cos_gwtheta: Cosine of GW polar angle
+    :param cos_gwtheta: cosine of GW polar angle
     :param gwphi: GW azimuthal polar angle [rad]
     :param gwpol: GW polarization angle
-    :param t0: Burst central time [day]
+    :param t0: burst central time [day]
     :param antenna_pattern_fn:
-        User defined function that takes `pos`, `gwtheta`, `gwphi` as
+        user defined function that takes `pos`, `gwtheta`, `gwphi` as
         arguments and returns (fplus, fcross)
 
     :return: the waveform as induced timing residuals (seconds)
