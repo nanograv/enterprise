@@ -48,6 +48,9 @@ autoclass_content = "both"
 # make order or docs 'groupwise'
 autodoc_member_order = "groupwise"
 
+# no hope of installing these...
+autodoc_mock_imports = ["libstempo", "PINT", "astropy", "healpy", "sksparse"]
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
