@@ -47,8 +47,8 @@ searches, and timing model analysis.
    :maxdepth: 2
    :caption: Code Documentation   
 
-   :ref:`modindex`
-   :ref:`genindex`
-   :ref:`search`
+   modules
+   enterprise
+   tests
 
 .. include:: ../AUTHORS.rst
