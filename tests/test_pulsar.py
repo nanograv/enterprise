@@ -204,7 +204,7 @@ class TestPulsarPintRADEC(unittest.TestCase):
 
         # initialize Pulsar class
         cls.psr = Pulsar(
-            datadir + "/J0030+0451_wrong.par",
+            datadir + "/J0030+0451_RADEC_wrong.par",
             datadir + "/J0030+0451_NANOGrav_9yv1.tim",
             ephem="DE430",
             drop_pintpsr=False,
@@ -223,3 +223,4 @@ class TestPulsarPintRADEC(unittest.TestCase):
             msg += "`planet` flag is not True in `toas` or further Pint "
             msg += "development to add additional planets is needed."
             self.assertTrue(msg in context.exception)
+    
