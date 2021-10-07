@@ -22,6 +22,7 @@ from enterprise.pulsar import Pulsar
 from tests.enterprise_test_data import datadir
 from pint.models import get_model_and_toas
 
+
 class TestPulsar(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -215,12 +216,11 @@ class TestPulsarPintRADEC(unittest.TestCase):
         """Test exception when incorrect par(tim) file given."""
 
         with self.assertRaises(ValueError) as context:
-            model, toas = get_model_and_toas(datadir + "/J0030+0451_NANOGrav_9yv1.gls.par",
-                datadir + "/J0030+0451_NANOGrav_9yv1.tim",
-                planets=False)
-            Pulsar(model,toas,planets=True)
+            model, toas = get_model_and_toas(
+                datadir + "/J0030+0451_NANOGrav_9yv1.gls.par", datadir + "/J0030+0451_NANOGrav_9yv1.tim", planets=False
+            )
+            Pulsar(model, toas, planets=True)
             msg = "obs_earth_pos is not in toas.table.colnames. Either "
             msg += "`planet` flag is not True in `toas` or further Pint "
             msg += "development to add additional planets is needed."
             self.assertTrue(msg in context.exception)
-    
