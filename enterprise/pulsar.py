@@ -390,7 +390,8 @@ class PintPulsar(BasePulsar):
         """Get the planet to SSB vector in lightseconds from Pint table"""
         if obs_planet not in toas.table.colnames:
             err_msg = f"{obs_planet} is not in toas.table.colnames. Either "
-            err_msg += "planet flag is not True or further Pint development needed."
+            err_msg += "`planet` flag is not True  in `toas` or further Pint "
+            err_msg += "development to add additional planets is needed."
             raise ValueError(err_msg)
         vec = toas.table[obs_planet] + toas.table["ssb_obs_pos"]
         return (vec / const.c).to("s").value
