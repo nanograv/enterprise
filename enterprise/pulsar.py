@@ -347,7 +347,9 @@ class PintPulsar(BasePulsar):
         self._planetssb = self._get_planetssb(toas, model)
         self._sunssb = self._get_sunssb(toas, model)
 
-        which_astrometry = "AstrometryEquatorial" if "AstrometryEquatorial" in model.components else "AstrometryEcliptic"
+        which_astrometry = (
+            "AstrometryEquatorial" if "AstrometryEquatorial" in model.components else "AstrometryEcliptic"
+        )
 
         self._pos_t = model.components[which_astrometry].ssb_to_psb_xyz_ICRS(model.get_barycentric_toas(toas)).value
 
