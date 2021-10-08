@@ -197,20 +197,21 @@ class TestPulsarPint(TestPulsar):
         assert self.psr.dmx["DMX_0001"]["DMX"] == np.float64("0.015161863"), msg
         assert self.psr.dmx["DMX_0001"]["fit"], msg
 
+    def test_deflate_inflate(self):
+        pass
 
-class TestPulsarPintRADEC(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
+    def test_load_radec_psr(cls):
         """Setup the Pulsar object."""
 
-        # initialize Pulsar class
-        cls.psr = Pulsar(
+        # initialize Pulsar class with RA DEC
+        psr = Pulsar(
             datadir + "/J0030+0451_RADEC_wrong.par",
             datadir + "/J0030+0451_NANOGrav_9yv1.tim",
             ephem="DE430",
             drop_pintpsr=False,
             timing_package="pint",
         )
+        assert "AstrometryEquatorial" in psr.model.components
 
     def test_no_planet(self):
         """Test exception when incorrect par(tim) file given."""
