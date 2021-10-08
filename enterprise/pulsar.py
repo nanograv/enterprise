@@ -347,10 +347,7 @@ class PintPulsar(BasePulsar):
         self._planetssb = self._get_planetssb(toas, model)
         self._sunssb = self._get_sunssb(toas, model)
 
-        if "AstrometryEquatorial" in model.components.keys():
-            which_astrometry = "AstrometryEquatorial"
-        elif "AstrometryEcliptic" in model.components.keys():
-            which_astrometry = "AstrometryEcliptic"
+        which_astrometry = "AstrometryEquatorial" if "AstrometryEquatorial" in model.components else "AstrometryEcliptic"
 
         self._pos_t = model.components[which_astrometry].ssb_to_psb_xyz_ICRS(model.get_barycentric_toas(toas)).value
 
@@ -398,17 +395,20 @@ class PintPulsar(BasePulsar):
 
     def _get_planetssb(self, toas, model):
         planetssb = None
+        """
+        Currently Pint only has position vectors for:
+        [Earth, Jupiter, Saturn, Uranus, Neptune]
+        No velocity vectors available
+        [Mercury, Venus, Mars, Pluto] unavailable pending Pint enhancements.
+        """
         if self.planets:
-            planetssb = np.zeros((len(self._toas), 9, 6))
-            # planetssb[:, 0, :3] = self._get_ssb_lsec(toas, "obs_mercury_pos")
-            # planetssb[:, 1, :3] = self._get_ssb_lsec(toas, "obs_venus_pos")
+            planetssb = np.empty((len(self._toas), 9, 6))
+            planetssb[:] = np.nan
             planetssb[:, 2, :3] = self._get_ssb_lsec(toas, "obs_earth_pos")
-            # planetssb[:, 3, :3] = self._get_ssb_lsec(toas, "obs_mars_pos")
             planetssb[:, 4, :3] = self._get_ssb_lsec(toas, "obs_jupiter_pos")
             planetssb[:, 5, :3] = self._get_ssb_lsec(toas, "obs_saturn_pos")
             planetssb[:, 6, :3] = self._get_ssb_lsec(toas, "obs_uranus_pos")
             planetssb[:, 7, :3] = self._get_ssb_lsec(toas, "obs_neptune_pos")
-            # planetssb[:, 8, :] = self.t2pulsar.pluto_ssb
 
             # if hasattr(model, "ELAT") and hasattr(model, "ELONG"):
             #     for ii in range(9):
