@@ -263,7 +263,7 @@ class BasePulsar(object):
             if flag in flagnames:
                 ret[:] = np.where(self._flags[flag] == "", ret, self._flags[flag])
 
-        return ret
+        return ret[self._isort]
 
     @property
     def theta(self):
