@@ -93,7 +93,7 @@ class TestPulsar(unittest.TestCase):
 
         # for the test pulsar, backend should be the same as 'f'
         msg = "Flag content or sorting incorrect"
-        assert np.all(self.psr._flags["f"][self.psr._isort] == self.backend_flags), msg
+        assert np.all(self.psr._flags["f"][self.psr._isort] == self.psr.backend_flags), msg
 
     def test_sky(self):
         """Check Sky location."""
