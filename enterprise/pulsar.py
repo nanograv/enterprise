@@ -302,11 +302,14 @@ class PintPulsar(BasePulsar):
         self._sort = sort
         self.planets = planets
         self.name = model.PSR.value
+
         if not drop_pintpsr:
             self.model = model
             self.pint_toas = toas
 
-        self._toas = np.array(toas.table["tdbld"], dtype="float64") * 86400
+        # these are TDB but not barycentered
+        # self._toas = np.array(toas.table["tdbld"], dtype="float64") * 86400
+        self._toas = np.array(model.get_barycentric_toas(toas).value, dtype="float64") * 86400
         # saving also stoas (e.g., for DMX comparisons)
         self._stoas = np.array(toas.get_mjds().value, dtype="float64") * 86400
         self._residuals = np.array(resids(toas, model).time_resids.to(u.s), dtype="float64")
