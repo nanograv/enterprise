@@ -263,7 +263,7 @@ class BasePulsar(object):
             if flag in flagnames:
                 ret[:] = np.where(self._flags[flag] == "", ret, self._flags[flag])
 
-        return ret
+        return ret[self._isort]
 
     @property
     def theta(self):
@@ -327,7 +327,6 @@ class PintPulsar(BasePulsar):
         self._flags = {}
         for ii, obsflags in enumerate(toas.get_flags()):
             for jj, flag in enumerate(obsflags):
-
                 if flag not in list(self._flags.keys()):
                     self._flags[flag] = [""] * toas.ntoas
 
