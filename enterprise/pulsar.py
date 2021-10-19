@@ -97,7 +97,7 @@ class BasePulsar(object):
             decj = np.double(eq.dec)
 
         except TypeError:
-            msg = "WARNING: Cannot fine sky location coordinates "
+            msg = "WARNING: Cannot find sky location coordinates "
             msg += "for PSR {0}. ".format(self.name)
             msg += "Setting values to 0.0"
             logger.warning(msg)
@@ -263,7 +263,7 @@ class BasePulsar(object):
             if flag in flagnames:
                 ret[:] = np.where(self._flags[flag] == "", ret, self._flags[flag])
 
-        return ret
+        return ret[self._isort]
 
     @property
     def theta(self):
@@ -277,12 +277,12 @@ class BasePulsar(object):
 
     @property
     def pos(self):
-        """Return unit vector to pulsar."""
+        """Return unit vector from SSB to pulsar at fiducial POSEPOCH."""
         return self._pos
 
     @property
     def pos_t(self):
-        """Return unit vector to pulsar as function of time."""
+        """Return unit vector from SSB to pulsar as function of time."""
         return self._pos_t[self._isort, :]
 
     @property
@@ -302,11 +302,14 @@ class PintPulsar(BasePulsar):
         self._sort = sort
         self.planets = planets
         self.name = model.PSR.value
+
         if not drop_pintpsr:
             self.model = model
             self.pint_toas = toas
 
-        self._toas = np.array(toas.table["tdbld"], dtype="float64") * 86400
+        # these are TDB but not barycentered
+        # self._toas = np.array(toas.table["tdbld"], dtype="float64") * 86400
+        self._toas = np.array(model.get_barycentric_toas(toas).value, dtype="float64") * 86400
         # saving also stoas (e.g., for DMX comparisons)
         self._stoas = np.array(toas.get_mjds().value, dtype="float64") * 86400
         self._residuals = np.array(resids(toas, model).time_resids.to(u.s), dtype="float64")
@@ -347,8 +350,11 @@ class PintPulsar(BasePulsar):
         self._planetssb = self._get_planetssb(toas, model)
         self._sunssb = self._get_sunssb(toas, model)
 
-        # TODO: pos_t not currently implemented
-        self._pos_t = np.zeros((len(self._toas), 3))
+        which_astrometry = (
+            "AstrometryEquatorial" if "AstrometryEquatorial" in model.components else "AstrometryEcliptic"
+        )
+
+        self._pos_t = model.components[which_astrometry].ssb_to_psb_xyz_ICRS(model.get_barycentric_toas(toas)).value
 
         self.sort_data()
 
@@ -384,22 +390,30 @@ class PintPulsar(BasePulsar):
 
     def _get_ssb_lsec(self, toas, obs_planet):
         """Get the planet to SSB vector in lightseconds from Pint table"""
+        if obs_planet not in toas.table.colnames:
+            err_msg = f"{obs_planet} is not in toas.table.colnames. Either "
+            err_msg += "`planet` flag is not True  in `toas` or further Pint "
+            err_msg += "development to add additional planets is needed."
+            raise ValueError(err_msg)
         vec = toas.table[obs_planet] + toas.table["ssb_obs_pos"]
         return (vec / const.c).to("s").value
 
     def _get_planetssb(self, toas, model):
         planetssb = None
+        """
+        Currently Pint only has position vectors for:
+        [Earth, Jupiter, Saturn, Uranus, Neptune]
+        No velocity vectors available
+        [Mercury, Venus, Mars, Pluto] unavailable pending Pint enhancements.
+        """
         if self.planets:
-            planetssb = np.zeros((len(self._toas), 9, 6))
-            # planetssb[:, 0, :] = self.t2pulsar.mercury_ssb
-            # planetssb[:, 1, :] = self.t2pulsar.venus_ssb
+            planetssb = np.empty((len(self._toas), 9, 6))
+            planetssb[:] = np.nan
             planetssb[:, 2, :3] = self._get_ssb_lsec(toas, "obs_earth_pos")
-            # planetssb[:, 3, :] = self.t2pulsar.mars_ssb
             planetssb[:, 4, :3] = self._get_ssb_lsec(toas, "obs_jupiter_pos")
             planetssb[:, 5, :3] = self._get_ssb_lsec(toas, "obs_saturn_pos")
             planetssb[:, 6, :3] = self._get_ssb_lsec(toas, "obs_uranus_pos")
             planetssb[:, 7, :3] = self._get_ssb_lsec(toas, "obs_neptune_pos")
-            # planetssb[:, 8, :] = self.t2pulsar.pluto_ssb
 
             # if hasattr(model, "ELAT") and hasattr(model, "ELONG"):
             #     for ii in range(9):

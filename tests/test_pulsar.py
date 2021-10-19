@@ -20,6 +20,7 @@ import numpy as np
 
 from enterprise.pulsar import Pulsar
 from tests.enterprise_test_data import datadir
+from pint.models import get_model_and_toas
 
 
 class TestPulsar(unittest.TestCase):
@@ -76,16 +77,23 @@ class TestPulsar(unittest.TestCase):
         assert self.psr.freqs.shape == (4005,), msg
 
     def test_flags(self):
-        """Check flags shape."""
+        """Check flags shape and content"""
 
         msg = "Flags shape incorrect"
         assert self.psr.flags["f"].shape == (4005,), msg
 
-    def test_backend_flags(self):
-        """Check backend_flags shape."""
+        msg = "Flag content or sorting incorrect"
+        assert np.all(self.psr._flags["fe"][self.psr._isort] == self.psr.flags["fe"]), msg
 
-        msg = "Backend Flags shape incorrect"
+    def test_backend_flags(self):
+        """Check backend_flags shape and content"""
+
+        msg = "Backend flags shape incorrect"
         assert self.psr.backend_flags.shape == (4005,), msg
+
+        # for the test pulsar, backend should be the same as 'f'
+        msg = "Flag content or sorting incorrect"
+        assert np.all(self.psr._flags["f"][self.psr._isort] == self.psr.backend_flags), msg
 
     def test_sky(self):
         """Check Sky location."""
@@ -185,25 +193,42 @@ class TestPulsarPint(TestPulsar):
             timing_package="pint",
         )
 
-    # exclude tests pending implementation of .stoas, .dm, .dmx in PintPulsar
-
-    def test_stoas(self):
-        assert hasattr(self.psr, "stoas")
-
     def test_dm(self):
-        assert hasattr(self.psr, "dm")
+        """Check DM/DMX access."""
 
-    def test_planetssb(self):
-        assert hasattr(self.psr, "planetssb")
+        msg = "dm value incorrect"
+        assert self.psr.dm == np.longdouble("13.299393"), msg
 
-    def test_sunssb(self):
-        assert hasattr(self.psr, "sunssb")
-
-    def test_model(self):
-        assert hasattr(self.psr, "model")
-
-    def test_pint_toas(self):
-        assert hasattr(self.psr, "pint_toas")
+        msg = "dmx struct incorrect (spotcheck)"
+        assert len(self.psr.dmx) == 72, msg
+        assert self.psr.dmx["DMX_0001"]["DMX"] == np.float64("0.015161863"), msg
+        assert self.psr.dmx["DMX_0001"]["fit"], msg
 
     def test_deflate_inflate(self):
         pass
+
+    def test_load_radec_psr(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class with RA DEC
+        psr = Pulsar(
+            datadir + "/J0030+0451_RADEC_wrong.par",
+            datadir + "/J0030+0451_NANOGrav_9yv1.tim",
+            ephem="DE430",
+            drop_pintpsr=False,
+            timing_package="pint",
+        )
+        assert "AstrometryEquatorial" in psr.model.components
+
+    def test_no_planet(self):
+        """Test exception when incorrect par(tim) file given."""
+
+        with self.assertRaises(ValueError) as context:
+            model, toas = get_model_and_toas(
+                datadir + "/J0030+0451_NANOGrav_9yv1.gls.par", datadir + "/J0030+0451_NANOGrav_9yv1.tim", planets=False
+            )
+            Pulsar(model, toas, planets=True)
+            msg = "obs_earth_pos is not in toas.table.colnames. Either "
+            msg += "`planet` flag is not True in `toas` or further Pint "
+            msg += "development to add additional planets is needed."
+            self.assertTrue(msg in context.exception)
