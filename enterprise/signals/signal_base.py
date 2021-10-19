@@ -220,14 +220,14 @@ class LogLikelihood(object):
                     cf = cholesky(TNT + sps.csc_matrix(phiinv))  # cf(Sigma)
                     expval = cf(TNr)
                     logdet_sigma = cf.logdet()
-                except CholmodError:
+                except CholmodError:  # pragma: no-cover
                     return -np.inf
             else:
                 try:
                     cf = sl.cho_factor(TNT + phiinv)  # cf(Sigma)
                     expval = sl.cho_solve(cf, TNr)
                     logdet_sigma = 2 * np.sum(np.log(np.diag(cf[0])))
-                except sl.LinAlgError:
+                except sl.LinAlgError:  # pragma: no-cover
                     return -np.inf
 
             loglike += 0.5 * (np.dot(TNr, expval) - logdet_sigma - logdet_phi)
@@ -242,7 +242,7 @@ class LogLikelihood(object):
                 try:
                     cf = sl.cho_factor(Sigma)
                     expval = sl.cho_solve(cf, TNr)
-                except sl.LinAlgError:
+                except sl.LinAlgError:  # pragma: no-cover
                     return -np.inf
 
                 logdet_sigma = np.sum(2 * np.log(np.diag(cf[0])))
