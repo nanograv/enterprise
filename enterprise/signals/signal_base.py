@@ -869,10 +869,16 @@ def SignalCollection(metasignals):  # noqa: C901
         # than the last time
         @cache_call("basis_params", limit=1)
         def get_basis(self, params={}):
+            if self._Fmat is None:
+                return None
+
+            Fmat = np.zeros_like(self._Fmat)
+
             for signal in self._signals:
                 if signal in self._idx:
-                    self._Fmat[:, self._idx[signal]] = signal.get_basis(params)
-            return self._Fmat
+                    Fmat[:, self._idx[signal]] = signal.get_basis(params)
+
+            return Fmat
 
         def get_phiinv(self, params):
             return self.get_phi(params).inv()
