@@ -871,13 +871,13 @@ def SignalCollection(metasignals):  # noqa: C901
         def get_basis(self, params={}):
             if self._Fmat is None:
                 return None
-            
+
             Fmat = np.zeros_like(self._Fmat)
-            
+
             for signal in self._signals:
                 if signal in self._idx:
                     Fmat[:, self._idx[signal]] = signal.get_basis(params)
-    
+
             return Fmat
 
         def get_phiinv(self, params):

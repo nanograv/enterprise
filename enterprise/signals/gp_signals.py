@@ -338,6 +338,7 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False,
             self._basis, self._labels = self._bases(params=params)
 
         if coefficients:
+
             def _get_coefficient_logprior(self, c, **params):
                 # MV: for correlated GPs, the prior needs to use
                 #     the coefficients for all GPs together;
@@ -370,6 +371,7 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False,
                 return None
 
         else:
+
             @property
             def delay_params(self):
                 return []
