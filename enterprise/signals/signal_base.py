@@ -300,6 +300,35 @@ class PTA(object):
     def pulsarmodels(self):
         return self._signalcollections
 
+    def __repr__(self):
+        return "<Enterprise PTA object: " + ', '.join(self.keys()) + ">"
+
+    # emulate a dictionary
+
+    def __len__(self):
+        return len(self._signalcollections)
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self._signalcollections[key]
+        else:
+            for sc in self._signalcollections:
+                if sc.psrname == key:
+                    return sc
+
+            raise KeyError('Pulsar model not found')
+
+    def keys(self):
+        return [sc.psrname for sc in self._signalcollections]
+
+    def values(self):
+        return self._signalcollections
+    
+    def items(self):
+        return [(sc.psrname, sc) for sc in self._signalcollections]
+
+    # tensor quantities assembled from individual pulsar models
+
     def get_TNr(self, params):
         return [signalcollection.get_TNr(params) for signalcollection in self._signalcollections]
 
@@ -789,6 +818,35 @@ def SignalCollection(metasignals):  # noqa: C901
         @property
         def signals(self):
             return self._signals
+
+        def __repr__(self):
+            return "<Enterprise SignalCollection object " + self.psrname + ": " + ', '.join(self.keys()) + ">"
+
+        # emulate a dictionary
+
+        def __len__(self):
+            return len(self._signals)
+
+        def __getitem__(self, key):
+            if isinstance(key, int):
+                return self._signals[key]
+            else:
+                for s in self._signals:
+                    if s.signal_id == key:
+                        return s
+
+                raise KeyError('Signal model not found')
+
+        def keys(self):
+            return [s.signal_id for s in self._signals]
+
+        def values(self):
+            return self._signals
+        
+        def items(self):
+            return [(s.signal_id, s) for s in self._signals]
+
+        # set default parameters
 
         def set_default_params(self, params):
             for signal in self._signals:
