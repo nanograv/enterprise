@@ -301,7 +301,7 @@ class PTA(object):
         return self._signalcollections
 
     def __repr__(self):
-        return "<Enterprise PTA object: " + ', '.join(self.keys()) + ">"
+        return "<Enterprise PTA object: " + ", ".join(self.keys()) + ">"
 
     # emulate a dictionary
 
@@ -316,14 +316,14 @@ class PTA(object):
                 if sc.psrname == key:
                     return sc
 
-            raise KeyError('Pulsar model not found')
+            raise KeyError("Pulsar model not found")
 
     def keys(self):
         return [sc.psrname for sc in self._signalcollections]
 
     def values(self):
         return self._signalcollections
-    
+
     def items(self):
         return [(sc.psrname, sc) for sc in self._signalcollections]
 
@@ -820,7 +820,7 @@ def SignalCollection(metasignals):  # noqa: C901
             return self._signals
 
         def __repr__(self):
-            return "<Enterprise SignalCollection object " + self.psrname + ": " + ', '.join(self.keys()) + ">"
+            return "<Enterprise SignalCollection object " + self.psrname + ": " + ", ".join(self.keys()) + ">"
 
         # emulate a dictionary
 
@@ -835,14 +835,14 @@ def SignalCollection(metasignals):  # noqa: C901
                     if s.signal_id == key:
                         return s
 
-                raise KeyError('Signal model not found')
+                raise KeyError("Signal model not found")
 
         def keys(self):
             return [s.signal_id for s in self._signals]
 
         def values(self):
             return self._signals
-        
+
         def items(self):
             return [(s.signal_id, s) for s in self._signals]
 
