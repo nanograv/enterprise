@@ -9,6 +9,8 @@ import itertools
 import logging
 
 import numpy as np
+import scipy.sparse as sps
+from sksparse.cholmod import cholesky
 
 from enterprise.signals import parameter, selections, signal_base, utils
 from enterprise.signals.parameter import function
@@ -135,7 +137,7 @@ def BasisGP(
             def delay_params(self):
                 return [pp.name for pp in self.params if "_coefficients" in pp.name]
 
-            @signal_base.cache_call(["basis_params", "delay_params"])
+            @signal_base.cache_call(["basis_params", "delay_params"], limit=1)
             def get_delay(self, params={}):
                 self._construct_basis(params)
 
@@ -225,7 +227,7 @@ def TimingModel(coefficients=False, name="linear_timing_model", use_svd=False, n
         basis = utils.unnormed_tm_basis()
 
     prior = utils.tm_prior()
-    BaseClass = BasisGP(prior, basis, coefficients=coefficients, name=name + "_svd" if use_svd else name)
+    BaseClass = BasisGP(prior, basis, coefficients=coefficients, name=name)
 
     class TimingModel(BaseClass):
         signal_type = "basis"
@@ -422,6 +424,10 @@ def FourierBasisCommonGP(
     BaseClass = BasisCommonGP(spectrum, basis, orf, coefficients=coefficients, combine=combine, name=name)
 
     class FourierBasisCommonGP(BaseClass):
+        signal_type = "common basis"
+        signal_name = "common red noise"
+        signal_id = name
+
         _Tmin, _Tmax = [], []
 
         def __init__(self, psr):
@@ -774,148 +780,91 @@ def WidebandTimingModel(
     return WidebandTimingModel
 
 
-# experimental versions of FourierBasisCommonGP and BasisCommonGP2 that support selections
-# note that Tspan must be provided to FourierBasisCommonGP2, and that
+def MarginalizingTimingModel(name="marginalizing_linear_timing_model"):
+    basisFunction = utils.normed_tm_basis()
 
-
-def FourierBasisCommonGP2(
-    spectrum,
-    orf,
-    coefficients=False,
-    combine=True,
-    selection=Selection(selections.no_selection),
-    components=20,
-    Tspan=None,
-    modes=None,
-    name="common_fourier",
-    pshift=False,
-    pseed=None,
-):
-    if coefficients:
-        raise NotImplementedError("Coefficients are not implemented yet.")
-
-    if Tspan is None:
-        raise ValueError("Please specify Tspan explicitly.")
-
-    basis = utils.createfourierdesignmatrix_red(nmodes=components, Tspan=Tspan, modes=modes, pshift=pshift, pseed=pseed)
-
-    return BasisCommonGP2(spectrum, basis, orf, combine=combine, selection=selection, name=name)
-
-
-def BasisCommonGP2(
-    priorFunction,
-    basisFunction,
-    orfFunction,
-    coefficients=False,
-    combine=True,
-    selection=Selection(selections.no_selection),
-    name="",
-):
-    if coefficients:
-        raise NotImplementedError("Coefficients are not implemented yet.")
-
-    class BasisCommonGP2(signal_base.CommonSignal):
-        signal_type = "common basis"
-        signal_name = "common"
+    class TimingModel(signal_base.Signal):
+        signal_type = "white noise"
+        signal_name = "marginalizing linear timing model"
         signal_id = name
 
-        basis_combine = combine
-
         def __init__(self, psr):
-            super(BasisCommonGP2, self).__init__(psr)
+            super(TimingModel, self).__init__(psr)
             self.name = self.psrname + "_" + self.signal_id
-            self._do_selection(psr, priorFunction, basisFunction, orfFunction, selection)
-            self._psrpos = psr.pos
 
-        def _do_selection(self, psr, priorfn, basisfn, orffn, selection):
-            sel = selection(psr)
+            pname = "_".join([psr.name, name])
+            self.Mmat = basisFunction(pname, psr=psr)
 
-            self._keys = sorted(sel.masks.keys())
-            self._masks = [sel.masks[key] for key in self._keys]
-            self._prior, self._bases, self._orf = {}, {}, {}
-            self._params, self._coefficients = {}, {}
-
-            for key, mask in zip(self._keys, self._masks):
-                pnames = [name, key]
-                pname = "_".join([n for n in pnames if n])
-
-                self._prior[key] = priorfn(pname, psr=psr)
-                self._bases[key] = basisfn(pname, psr=psr)
-                self._orf[key] = orffn(pname, psr=psr)
-
-                for par in itertools.chain(
-                    self._prior[key]._params.values(),
-                    self._bases[key]._params.values(),
-                    self._orf[key]._params.values(),
-                ):
-                    self._params[par.name] = par
+            self._params = {}
 
         @property
-        def basis_params(self):
-            """Get any varying basis parameters."""
-            ret = []
-            for basis in self._bases.values():
-                ret.extend([pp.name for pp in basis.params])
-            return ret
-
-        @signal_base.cache_call("basis_params", limit=1)
-        def _construct_basis(self, params={}):
-            basis, self._labels = {}, {}
-            for key, mask in zip(self._keys, self._masks):
-                basis[key], self._labels[key] = self._bases[key](params=params, mask=mask)
-
-            nc = sum(F.shape[1] for F in basis.values())
-            self._basis = np.zeros((len(self._masks[0]), nc))
-
-            # TODO: should this be defined here? it will cache phi
-            self._phi = KernelMatrix(nc)
-
-            self._slices = {}
-            nctot = 0
-            for key, mask in zip(self._keys, self._masks):
-                Fmat = basis[key]
-                nn = Fmat.shape[1]
-                self._basis[mask, nctot : nn + nctot] = Fmat
-                self._slices.update({key: slice(nctot, nn + nctot)})
-                nctot += nn
-
-        @property
-        def delay_params(self):
+        def ndiag_params(self):
             return []
 
-        def get_delay(self, params={}):
-            return 0
+        # there are none, but to be general...
+        @signal_base.cache_call("ndiag_params")
+        def get_ndiag(self, params):
+            return MarginalizingNmat(self.Mmat()[0])
 
-        def get_basis(self, params={}):
-            self._construct_basis(params)
+    return TimingModel
 
-            return self._basis
 
-        def get_phi(self, params):
-            self._construct_basis(params)
+class MarginalizingNmat(object):
+    def __init__(self, Mmat, Nmat=0):
+        self.Mmat, self.Nmat = Mmat, Nmat
+        self.Mprior = Mmat.shape[1] * np.log(1e40)
 
-            for key, slc in self._slices.items():
-                phislc = self._prior[key](self._labels[key], params=params)
-                orfslc = self._orf[key](self._psrpos, self._psrpos, params=params)
+    def __add__(self, other):
+        if isinstance(other, MarginalizingNmat):
+            raise ValueError("Cannot combine multiple MarginalizingNmat objects.")
+        elif isinstance(other, np.ndarray) or hasattr(other, "solve"):
+            return MarginalizingNmat(self.Mmat, self.Nmat + other)
+        elif other == 0:
+            return self
+        else:
+            raise TypeError
 
-                self._phi = self._phi.set(phislc * orfslc, slc)
+    def __radd__(self, other):
+        return self.__add__(other)
 
-            return self._phi
+    # in Python 3.8: @functools.cached_property
+    @property
+    @functools.lru_cache()
+    def cf(self):
+        MNM = sps.csc_matrix(self.Nmat.solve(self.Mmat, left_array=self.Mmat))
+        return cholesky(MNM)
 
-        @classmethod
-        def get_phicross(cls, signal1, signal2, params):
-            sl1, sl2 = [sum(slc.stop - slc.start for slc in signal._slices.values()) for signal in [signal1, signal2]]
+    @signal_base.simplememobyid
+    def MNr(self, res):
+        return self.Nmat.solve(res, left_array=self.Mmat)
 
-            phic = np.zeros((sl1, sl2))
+    @signal_base.simplememobyid
+    def MNF(self, T):
+        return self.Nmat.solve(T, left_array=self.Mmat)
 
-            for key in set(signal1._keys) & set(signal2._keys):
-                phislc = signal1._prior[key](signal1._labels[key], params=params)
-                orfslc = signal1._orf[key](signal1._psrpos, signal2._psrpos, params=params)
+    @signal_base.simplememobyid
+    def MNMMNF(self, T):
+        return self.cf(self.MNF(T))
 
-                r1, r2 = [range(signal._slices[key].start, signal._slices[key].stop) for signal in [signal1, signal2]]
+    # we're ignoring logdet = True for two-dimensional cases, but OK
+    def solve(self, right, left_array=None, logdet=False):
+        if right.ndim == 1 and left_array is right:
+            res = right
 
-                phic[r1, r2] = phislc * orfslc
+            rNr, logdet_N = self.Nmat.solve(res, left_array=res, logdet=logdet)
 
-            return phic
+            MNr = self.MNr(res)
+            ret = rNr - np.dot(MNr, self.cf(MNr))
+            return (ret, logdet_N + self.cf.logdet() + self.Mprior) if logdet else ret
+        elif right.ndim == 1 and left_array is not None and left_array.ndim == 2:
+            res, T = right, left_array
 
-    return BasisCommonGP2
+            TNr = self.Nmat.solve(res, left_array=T)
+            return TNr - np.tensordot(self.MNMMNF(T), self.MNr(res), (0, 0))
+        elif right.ndim == 2 and left_array is right:
+            T = right
+
+            TNT = self.Nmat.solve(T, left_array=T)
+            return TNT - np.tensordot(self.MNF(T), self.MNMMNF(T), (0, 0))
+        else:
+            raise ValueError("Incorrect arguments given to MarginalizingNmat.solve.")
