@@ -17,7 +17,7 @@ import numpy as np
 import scipy.linalg as sl
 import scipy.sparse as sps
 import six
-from sksparse.cholmod import cholesky
+from sksparse.cholmod import cholesky, CholmodError
 
 # these are defined in parameter.py, but currently imported
 # in various places from signal_base.py
@@ -215,17 +215,20 @@ class LogLikelihood(object):
             TNT = self._block_TNT(TNTs)
             TNr = self._block_TNr(TNrs)
 
-            try:
-                if self.cholesky_sparse:
+            if self.cholesky_sparse:
+                try:
                     cf = cholesky(TNT + sps.csc_matrix(phiinv))  # cf(Sigma)
                     expval = cf(TNr)
                     logdet_sigma = cf.logdet()
-                else:
+                except CholmodError:  # pragma: no cover
+                    return -np.inf
+            else:
+                try:
                     cf = sl.cho_factor(TNT + phiinv)  # cf(Sigma)
                     expval = sl.cho_solve(cf, TNr)
                     logdet_sigma = 2 * np.sum(np.log(np.diag(cf[0])))
-            except:
-                return -np.inf
+                except sl.LinAlgError:  # pragma: no cover
+                    return -np.inf
 
             loglike += 0.5 * (np.dot(TNr, expval) - logdet_sigma - logdet_phi)
         else:
@@ -239,7 +242,7 @@ class LogLikelihood(object):
                 try:
                     cf = sl.cho_factor(Sigma)
                     expval = sl.cho_solve(cf, TNr)
-                except:
+                except sl.LinAlgError:  # pragma: no cover
                     return -np.inf
 
                 logdet_sigma = np.sum(2 * np.log(np.diag(cf[0])))
@@ -866,10 +869,16 @@ def SignalCollection(metasignals):  # noqa: C901
         # than the last time
         @cache_call("basis_params", limit=1)
         def get_basis(self, params={}):
+            if self._Fmat is None:
+                return None
+
+            Fmat = np.zeros_like(self._Fmat)
+
             for signal in self._signals:
                 if signal in self._idx:
-                    self._Fmat[:, self._idx[signal]] = signal.get_basis(params)
-            return self._Fmat
+                    Fmat[:, self._idx[signal]] = signal.get_basis(params)
+
+            return Fmat
 
         def get_phiinv(self, params):
             return self.get_phi(params).inv()

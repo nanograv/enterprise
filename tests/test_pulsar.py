@@ -77,16 +77,23 @@ class TestPulsar(unittest.TestCase):
         assert self.psr.freqs.shape == (4005,), msg
 
     def test_flags(self):
-        """Check flags shape."""
+        """Check flags shape and content"""
 
         msg = "Flags shape incorrect"
         assert self.psr.flags["f"].shape == (4005,), msg
 
-    def test_backend_flags(self):
-        """Check backend_flags shape."""
+        msg = "Flag content or sorting incorrect"
+        assert np.all(self.psr._flags["fe"][self.psr._isort] == self.psr.flags["fe"]), msg
 
-        msg = "Backend Flags shape incorrect"
+    def test_backend_flags(self):
+        """Check backend_flags shape and content"""
+
+        msg = "Backend flags shape incorrect"
         assert self.psr.backend_flags.shape == (4005,), msg
+
+        # for the test pulsar, backend should be the same as 'f'
+        msg = "Flag content or sorting incorrect"
+        assert np.all(self.psr._flags["f"][self.psr._isort] == self.psr.backend_flags), msg
 
     def test_sky(self):
         """Check Sky location."""
