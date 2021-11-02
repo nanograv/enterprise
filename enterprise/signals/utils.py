@@ -31,7 +31,7 @@ from enterprise.signals.parameter import function
 logger = logging.getLogger(__name__)
 
 
-def get_coefficients(pta, params, n=1, phiinv_method="cliques", common_sparse=False):
+def get_coefficients(pta, params, n=1, phiinv_method="cliques", variance=True, common_sparse=False):
     ret = []
 
     TNrs = pta.get_TNr(params)
@@ -56,7 +56,7 @@ def get_coefficients(pta, params, n=1, phiinv_method="cliques", common_sparse=Fa
             Li = u * np.sqrt(1 / s)
 
         for j in range(n):
-            b = mn + np.dot(Li, np.random.randn(Li.shape[0]))
+            b = mn + (np.dot(Li, np.random.randn(Li.shape[0])) if variance else 0)
 
             pardict, ntot = {}, 0
             for i, model in enumerate(pta.pulsarmodels):
@@ -96,7 +96,7 @@ def get_coefficients(pta, params, n=1, phiinv_method="cliques", common_sparse=Fa
                 Li = u * np.sqrt(1 / s)
 
             for j in range(n):
-                b = mn + np.dot(Li, np.random.randn(Li.shape[0]))
+                b = mn + (np.dot(Li, np.random.randn(Li.shape[0])) if variance else 0)
 
                 pardict, ntot = {}, 0
                 for sig in model._signals:
