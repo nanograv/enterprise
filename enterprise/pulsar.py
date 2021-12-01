@@ -330,7 +330,6 @@ class PintPulsar(BasePulsar):
         self._flags = {}
         for ii, obsflags in enumerate(toas.get_flags()):
             for jj, flag in enumerate(obsflags):
-
                 if flag not in list(self._flags.keys()):
                     self._flags[flag] = [""] * toas.ntoas
 
