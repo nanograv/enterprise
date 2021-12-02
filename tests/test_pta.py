@@ -293,7 +293,7 @@ class TestPTASignals(unittest.TestCase):
         assert np.allclose(phiinv, np.linalg.inv(phit), rtol=1e-15, atol=1e-17), msg
 
     def test_summary(self):
-        """ Test summary table."""
+        """Test PTA summary table as well as its str representation and dict-like interface."""
         T1, T3 = 3.16e8, 3.16e8
         nf1 = 30
 
@@ -305,6 +305,28 @@ class TestPTASignals(unittest.TestCase):
         model = rn + crn
         pta = model(self.psrs[0]) + model(self.psrs[1])
         pta.summary(to_stdout=True)
+
+        # Test also the PTA and SignalCollection dict-like interfaces
+
+        msg = "Incorrect PTA str representation"
+        assert str(pta) == "<Enterprise PTA object: B1855+09, J1909-3744>", msg
+
+        msg = "Incorrect PTA dict-like interface"
+        assert len(pta) == 2, msg
+        assert pta.keys() == pta.pulsars, msg
+        assert pta.values() == pta.pulsarmodels, msg
+        assert pta.items() == list(zip(pta.pulsars, pta.pulsarmodels)), msg
+        assert pta["B1855+09"] == pta.pulsarmodels[0], msg
+
+        msg = "Incorrect SignalCollection str representation"
+        assert str(pta["B1855+09"]) == "<Enterprise SignalCollection object B1855+09: red_noise, gw>", msg
+
+        msg = "Incorrect SignalCollection dict-like interface"
+        assert len(pta["B1855+09"]) == 2, msg
+        assert pta["B1855+09"].keys() == [signal.signal_id for signal in pta.pulsarmodels[0].signals], msg
+        assert pta["B1855+09"].values() == pta.pulsarmodels[0].signals, msg
+        assert pta["B1855+09"].items() == list(zip(pta["B1855+09"].keys(), pta["B1855+09"].values())), msg
+        assert pta["B1855+09"]["red_noise"] == pta.pulsarmodels[0].signals[0], msg
 
 
 class TestPTASignalsPint(TestPTASignals):
