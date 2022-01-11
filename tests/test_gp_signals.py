@@ -530,6 +530,15 @@ class TestGPSignals(unittest.TestCase):
         msg = "M matrix shape incorrect"
         assert tm.get_basis(params).shape == self.psr.Mmat.shape, msg
 
+        # test svd
+        ts = gp_signals.TimingModel(use_svd=True)
+        tm = ts(self.psr)
+
+        u, s, v = np.linalg.svd(self.psr.Mmat, full_matrices=False)
+        msg = "Incorrect SVD timing-model matrix"
+        assert np.allclose(u, tm.get_basis({})), msg
+
+
     def test_pshift_fourier(self):
         """Test Fourier basis with prescribed phase shifts."""
 

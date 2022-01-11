@@ -212,15 +212,17 @@ def FourierBasisGP(
 
 
 def get_timing_model_basis(use_svd=False, normed=True):
-    if normed is True:
-        return utils.normed_tm_basis()
-    elif isinstance(normed, np.ndarray):
-        return utils.normed_tm_basis(norm=normed)
-    elif use_svd is True:
+    print("Normed:", normed, "use_svd", use_svd)
+    
+    if use_svd:
         if normed is not True:
-            msg = "use_svd == True is incompatible with normed != True"
-            raise ValueError(msg)
+            raise ValueError("use_svd == True requires normed == True")
+
         return utils.svd_tm_basis()
+    elif normed is True:
+        return utils.normed_tm_basis()
+    elif normed is not False:
+        return utils.normed_tm_basis(norm=normed)
     else:
         return utils.unnormed_tm_basis()
 
@@ -229,8 +231,8 @@ def TimingModel(coefficients=False, name="linear_timing_model", use_svd=False, n
     """Class factory for marginalized linear timing model signals."""
 
     basis = get_timing_model_basis(use_svd, normed)
-
     prior = utils.tm_prior()
+
     BaseClass = BasisGP(prior, basis, coefficients=coefficients, name=name)
 
     class TimingModel(BaseClass):
