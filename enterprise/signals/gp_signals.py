@@ -211,20 +211,24 @@ def FourierBasisGP(
     return FourierBasisGP
 
 
-def TimingModel(coefficients=False, name="linear_timing_model", use_svd=False, normed=True):
-    """Class factory for marginalized linear timing model signals."""
-
+def get_timing_model_basis(use_svd=False, normed=True):
     if normed is True:
-        basis = utils.normed_tm_basis()
+        return utils.normed_tm_basis()
     elif isinstance(normed, np.ndarray):
-        basis = utils.normed_tm_basis(norm=normed)
+        return utils.normed_tm_basis(norm=normed)
     elif use_svd is True:
         if normed is not True:
             msg = "use_svd == True is incompatible with normed != True"
             raise ValueError(msg)
-        basis = utils.svd_tm_basis()
+        return utils.svd_tm_basis()
     else:
-        basis = utils.unnormed_tm_basis()
+        return utils.unnormed_tm_basis()
+
+
+def TimingModel(coefficients=False, name="linear_timing_model", use_svd=False, normed=True):
+    """Class factory for marginalized linear timing model signals."""
+
+    basis = get_timing_model_basis(use_svd, normed)
 
     prior = utils.tm_prior()
     BaseClass = BasisGP(prior, basis, coefficients=coefficients, name=name)
@@ -780,8 +784,10 @@ def WidebandTimingModel(
     return WidebandTimingModel
 
 
-def MarginalizingTimingModel(name="marginalizing_linear_timing_model"):
-    basisFunction = utils.normed_tm_basis()
+def MarginalizingTimingModel(name="marginalizing_linear_timing_model", use_svd=False, normed=True):
+    """Class factory for marginalizing (fast-likelihood) linear timing model signals."""
+
+    basisFunction = get_timing_model_basis(use_svd, normed)
 
     class TimingModel(signal_base.Signal):
         signal_type = "white noise"
