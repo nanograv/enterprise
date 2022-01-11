@@ -1,11 +1,11 @@
 # parameter.py
 """Contains parameter types for use in `enterprise` ``Signal`` classes."""
 
+import math
 import functools
 import inspect
 
 import numpy as np
-import scipy.stats
 
 from enterprise.signals.selections import selection_func
 
@@ -177,21 +177,16 @@ def _argrepr(typename, **kwargs):
 
 
 def UniformPrior(value, pmin, pmax):
-    """Prior function for Uniform parameters."""
+    """Prior function for Uniform parameters.
+    Accepts vector value and boundaries."""
 
-    # we'll let scipy.stats handle errors in pmin/pmax specification
-    # this handles vectors correctly, if pmin and pmax are scalars,
-    # or if len(value) = len(pmin) = len(pmax)
-    return scipy.stats.uniform.pdf(value, pmin, pmax - pmin)
+    return ((value >= pmin) & (value <= pmax)) / (pmax - pmin)
 
 
 def UniformSampler(pmin, pmax, size=None):
     """Sampling function for Uniform parameters."""
 
-    # we'll let scipy.stats handle errors in pmin/pmax specification
-    # this handles vectors correctly, if pmin and pmax are scalars,
-    # or if len(value) = len(pmin) = len(pmax)
-    return scipy.stats.uniform.rvs(pmin, pmax - pmin, size=size)
+    return np.random.uniform(pmin, pmax, size=size)
 
 
 def Uniform(pmin, pmax, size=None):
@@ -216,31 +211,26 @@ def Uniform(pmin, pmax, size=None):
 
 
 def NormalPrior(value, mu, sigma):
-    """Prior function for Normal parameters."""
+    """Prior function for Normal parameters.
+    Handles scalar mu and sigma, compatible vector value/mu/sigma,
+    vector value/mu and compatible covariance matrix sigma."""
 
-    # we let scipy.stats handle parameter errors
-    # this code handles vectors correctly, if mu and sigma are scalars,
-    # if mu and sigma are vectors with len(value) = len(mu) = len(sigma),
-    # or if len(value) = len(mu) and sigma is len(value) x len(value)
-    cov = sigma if np.ndim(sigma) == 2 else sigma ** 2
-    return scipy.stats.multivariate_normal.pdf(value, mean=mu, cov=cov)
+    if np.ndim(sigma) == 2:
+        dx = value - mu
+        return np.exp(-0.5 * np.dot(dx, np.dot(np.linalg.inv(sigma), dx))) / np.sqrt(np.linalg.det(2 * math.pi * sigma))
+    else:
+        return np.exp(-0.5 * (value - mu) ** 2 / sigma ** 2) / np.sqrt(2 * math.pi * sigma ** 2)
 
 
 def NormalSampler(mu, sigma, size=None):
-    """Sampling function for Normal parameters."""
+    """Sampling function for Normal parameters.
+    Handles scalar mu and sigma, compatible vector value/mu/sigma,
+    vector value/mu and compatible covariance matrix sigma."""
 
-    if np.ndim(mu) == 1 and len(mu) != size:
-        raise ValueError("Size mismatch between Parameter size and distribution arguments")
-
-    # we let scipy.stats handle all other errors
-    # this code handles vectors correctly, if mu and sigma are scalars,
-    # if mu and sigma are vectors with len(value) = len(mu) = len(sigma),
-    # or if len(value) = len(mu) and sigma is len(value) x len(value);
-    # note that scipy.stats.multivariate_normal.rvs infers parameter
-    # size from mu and sigma, so if these are vectors we pass size=None;
-    # otherwise we'd get multiple copies of a jointly-normal vector
-    cov = sigma if np.ndim(sigma) == 2 else sigma ** 2
-    return scipy.stats.multivariate_normal.rvs(mean=mu, cov=cov, size=(None if np.ndim(mu) == 1 else size))
+    if np.ndim(sigma) == 2:
+        return np.random.multivariate_normal(mu, sigma, size=size)
+    else:
+        return np.random.normal(mu, sigma, size=size)
 
 
 def Normal(mu=0, sigma=1, size=None):

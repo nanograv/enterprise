@@ -424,6 +424,10 @@ def FourierBasisCommonGP(
     BaseClass = BasisCommonGP(spectrum, basis, orf, coefficients=coefficients, combine=combine, name=name)
 
     class FourierBasisCommonGP(BaseClass):
+        signal_type = "common basis"
+        signal_name = "common red noise"
+        signal_id = name
+
         _Tmin, _Tmax = [], []
 
         def __init__(self, psr):
