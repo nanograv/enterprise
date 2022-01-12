@@ -538,7 +538,6 @@ class TestGPSignals(unittest.TestCase):
         msg = "Incorrect SVD timing-model matrix"
         assert np.allclose(u, tm.get_basis({})), msg
 
-
     def test_pshift_fourier(self):
         """Test Fourier basis with prescribed phase shifts."""
 
