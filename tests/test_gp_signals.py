@@ -530,6 +530,20 @@ class TestGPSignals(unittest.TestCase):
         msg = "M matrix shape incorrect"
         assert tm.get_basis(params).shape == self.psr.Mmat.shape, msg
 
+        # test unnormed
+        ts = gp_signals.TimingModel(normed=False)
+        tm = ts(self.psr)
+
+        msg = "Incorrect unnormed timing-model matrix"
+        assert np.allclose(self.psr.Mmat, tm.get_basis({})), msg
+
+        # test prescribed norm
+        ts = gp_signals.TimingModel(normed=np.ones(self.psr.Mmat.shape[1]))
+        tm = ts(self.psr)
+
+        msg = "Incorrect prescribed-norm timing-model matrix"
+        assert np.allclose(self.psr.Mmat, tm.get_basis({})), msg
+
         # test svd
         ts = gp_signals.TimingModel(use_svd=True)
         tm = ts(self.psr)
@@ -537,6 +551,9 @@ class TestGPSignals(unittest.TestCase):
         u, s, v = np.linalg.svd(self.psr.Mmat, full_matrices=False)
         msg = "Incorrect SVD timing-model matrix"
         assert np.allclose(u, tm.get_basis({})), msg
+
+        # test incompatible prescription
+        self.assertRaises(ValueError, gp_signals.TimingModel, use_svd=True, normed=False)
 
     def test_pshift_fourier(self):
         """Test Fourier basis with prescribed phase shifts."""
