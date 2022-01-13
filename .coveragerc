@@ -3,3 +3,10 @@ source = enterprise
 omit =
     enterprise/__init__*
     enterprise/signals/__init__*
+plugins =
+    coverage_conditional_plugin
+
+[coverage_conditional_plugin]
+rules =
+    "sys_version_info >= (3, 8)": py-gte-38
+    "sys_version_info < (3, 8)": py-lt-38

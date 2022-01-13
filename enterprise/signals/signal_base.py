@@ -12,7 +12,7 @@ import numpy as np
 import scipy.linalg as sl
 import scipy.sparse as sps
 import six
-from sksparse.cholmod import cholesky
+from sksparse.cholmod import cholesky, CholmodError
 
 # these are defined in parameter.py, but currently imported
 # in various places from signal_base.py
@@ -28,6 +28,32 @@ _py_version = version.split(" ")[0]
 
 # logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def _simplememobyid_keycheck(key, arg):
+    if isinstance(key, Sequence):
+        return isinstance(arg, Sequence) and len(key) == len(arg) and all(e1 is e2 for e1, e2 in zip(key, arg))
+    else:
+        return key is arg
+
+
+def simplememobyid(method):
+    """This decorator caches the last call of a class method that takes
+    a single parameter `arg`. It holds a reference to the last `arg` as `key`,
+    and uses the cached value if `arg is key`. If `arg` is a Sequence,
+    then the decorator uses the cached value if the `is` relation is true
+    element by element."""
+
+    def memoizedfunc(self, arg):
+        cacheloc = "_memo" + method.__name__
+
+        # if not hasattr(self, cacheloc) or self.__dict__[cacheloc][0] is not arg:
+        if not hasattr(self, cacheloc) or not _simplememobyid_keycheck(self.__dict__[cacheloc][0], arg):
+            self.__dict__[cacheloc] = (arg, method(self, arg))
+
+        return self.__dict__[cacheloc][1]
+
+    return memoizedfunc
 
 
 class MetaSignal(type):
@@ -138,12 +164,25 @@ class CommonSignal(Signal):
         return None
 
 
-class LogLikelihood(object):
-    def __init__(self, pta):
-        self.pta = pta
+def LogLikelihoodDenseCholesky(pta):
+    return LogLikelihood(pta, cholesky_sparse=False)
 
-    def _make_sigma(self, TNTs, phiinv):
-        return sps.block_diag(TNTs, "csc") + sps.csc_matrix(phiinv)
+
+class LogLikelihood(object):
+    def __init__(self, pta, cholesky_sparse=True):
+        self.pta = pta
+        self.cholesky_sparse = cholesky_sparse
+
+    @simplememobyid
+    def _block_TNT(self, TNTs):
+        if self.cholesky_sparse:
+            return sps.block_diag(TNTs, "csc")
+        else:
+            return sl.block_diag(*TNTs)
+
+    @simplememobyid
+    def _block_TNr(self, TNrs):
+        return np.concatenate(TNrs)
 
     def __call__(self, xs, phiinv_method="cliques"):
         # map parameter vector if needed
@@ -168,16 +207,23 @@ class LogLikelihood(object):
         if self.pta._commonsignals:
             phiinv, logdet_phi = phiinvs
 
-            Sigma = self._make_sigma(TNTs, phiinv)
-            TNr = np.concatenate(TNrs)
+            TNT = self._block_TNT(TNTs)
+            TNr = self._block_TNr(TNrs)
 
-            try:
-                cf = cholesky(Sigma)
-                expval = cf(TNr)
-            except:
-                return -np.inf
-
-            logdet_sigma = cf.logdet()
+            if self.cholesky_sparse:
+                try:
+                    cf = cholesky(TNT + sps.csc_matrix(phiinv))  # cf(Sigma)
+                    expval = cf(TNr)
+                    logdet_sigma = cf.logdet()
+                except CholmodError:  # pragma: no cover
+                    return -np.inf
+            else:
+                try:
+                    cf = sl.cho_factor(TNT + phiinv)  # cf(Sigma)
+                    expval = sl.cho_solve(cf, TNr)
+                    logdet_sigma = 2 * np.sum(np.log(np.diag(cf[0])))
+                except sl.LinAlgError:  # pragma: no cover
+                    return -np.inf
 
             loglike += 0.5 * (np.dot(TNr, expval) - logdet_sigma - logdet_phi)
         else:
@@ -191,7 +237,7 @@ class LogLikelihood(object):
                 try:
                     cf = sl.cho_factor(Sigma)
                     expval = sl.cho_solve(cf, TNr)
-                except:
+                except sl.LinAlgError:  # pragma: no cover
                     return -np.inf
 
                 logdet_sigma = np.sum(2 * np.log(np.diag(cf[0])))
@@ -245,6 +291,35 @@ class PTA(object):
     @property
     def pulsarmodels(self):
         return self._signalcollections
+
+    def __repr__(self):
+        return "<Enterprise PTA object: " + ", ".join(self.keys()) + ">"
+
+    # emulate a dictionary
+
+    def __len__(self):
+        return len(self._signalcollections)
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self._signalcollections[key]
+        else:
+            for sc in self._signalcollections:
+                if sc.psrname == key:
+                    return sc
+
+            raise KeyError("Pulsar model not found")
+
+    def keys(self):
+        return [sc.psrname for sc in self._signalcollections]
+
+    def values(self):
+        return self._signalcollections
+
+    def items(self):
+        return [(sc.psrname, sc) for sc in self._signalcollections]
+
+    # tensor quantities assembled from individual pulsar models
 
     def get_TNr(self, params):
         return [signalcollection.get_TNr(params) for signalcollection in self._signalcollections]
@@ -738,6 +813,35 @@ def SignalCollection(metasignals):  # noqa: C901
         def signals(self):
             return self._signals
 
+        def __repr__(self):
+            return "<Enterprise SignalCollection object " + self.psrname + ": " + ", ".join(self.keys()) + ">"
+
+        # emulate a dictionary
+
+        def __len__(self):
+            return len(self._signals)
+
+        def __getitem__(self, key):
+            if isinstance(key, int):
+                return self._signals[key]
+            else:
+                for s in self._signals:
+                    if s.signal_id == key:
+                        return s
+
+                raise KeyError("Signal model not found")
+
+        def keys(self):
+            return [s.signal_id for s in self._signals]
+
+        def values(self):
+            return self._signals
+
+        def items(self):
+            return [(s.signal_id, s) for s in self._signals]
+
+        # set default parameters
+
         def set_default_params(self, params):
             for signal in self._signals:
                 signal.set_default_params(params)
@@ -817,10 +921,16 @@ def SignalCollection(metasignals):  # noqa: C901
         # than the last time
         @cache_call("basis_params", limit=1)
         def get_basis(self, params={}):
+            if self._Fmat is None:
+                return None
+
+            Fmat = np.zeros_like(self._Fmat)
+
             for signal in self._signals:
                 if signal in self._idx:
-                    self._Fmat[:, self._idx[signal]] = signal.get_basis(params)
-            return self._Fmat
+                    Fmat[:, self._idx[signal]] = signal.get_basis(params)
+
+            return Fmat
 
         def get_phiinv(self, params):
             return self.get_phi(params).inv()

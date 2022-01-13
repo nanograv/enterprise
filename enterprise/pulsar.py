@@ -5,6 +5,7 @@
 import json
 import logging
 import os
+import pickle
 
 import astropy.constants as const
 import astropy.units as u
@@ -14,10 +15,7 @@ from ephem import Ecliptic, Equatorial
 import enterprise
 from enterprise.signals import utils
 
-try:
-    import cPickle as pickle
-except:
-    import pickle
+from enterprise.pulsar_inflate import PulsarInflater
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +33,6 @@ try:
 except ImportError:
     logger.warning("PINT not installed. Will use libstempo instead.")  # pragma: no cover
     pint = None
-
 
 if pint is None and t2 is None:
     err_msg = "Must have either PINT or libstempo timing package installed"
@@ -100,7 +97,7 @@ class BasePulsar(object):
             decj = np.double(eq.dec)
 
         except TypeError:
-            msg = "WARNING: Cannot fine sky location coordinates "
+            msg = "WARNING: Cannot find sky location coordinates "
             msg += "for PSR {0}. ".format(self.name)
             msg += "Setting values to 0.0"
             logger.warning(msg)
@@ -141,8 +138,11 @@ class BasePulsar(object):
         dmx_mask = np.sum(self._designmatrix, axis=0) != 0.0
         self._designmatrix = self._designmatrix[:, dmx_mask]
 
-        for key in self._flags:
-            self._flags[key] = self._flags[key][mask]
+        if isinstance(self._flags, np.ndarray):
+            self._flags = self._flags[mask]
+        else:
+            for key in self._flags:
+                self._flags[key] = self._flags[key][mask]
 
         if self._planetssb is not None:
             self._planetssb = self.planetssb[mask, :, :]
@@ -233,26 +233,37 @@ class BasePulsar(object):
     def flags(self):
         """Return a dictionary of tim-file flags."""
 
-        return dict((k, v[self._isort]) for k, v in self._flags.items())
+        flagnames = self._flags.dtype.names if isinstance(self._flags, np.ndarray) else self._flags.keys()
+
+        return {flag: self._flags[flag][self._isort] for flag in flagnames}
 
     @property
     def backend_flags(self):
         """Return array of backend flags.
+
         Not all TOAs have the same flags for all data sets. In order to
         facilitate this we have a ranked ordering system that will look
         for flags. The order is `group`, `g`, `sys`, `i`, `f`, `fe`+`be`.
+
         """
 
-        nobs = len(self._toas)
-        bflags = ["flag"] * nobs
-        flags = [["group"], ["g"], ["sys"], ["i"], ["f"], ["fe", "be"]]
-        for ii in range(nobs):
-            # TODO: make this cleaner
-            for f in flags:
-                if np.all([x in self._flags and self._flags[x][ii] != "" for x in f]):
-                    bflags[ii] = "_".join(self._flags[x][ii] for x in f)
-                    break
-        return np.array(bflags)[self._isort]
+        # collect flag names
+        flagnames = self._flags.dtype.names if isinstance(self._flags, np.ndarray) else list(self._flags.keys())
+
+        # allocate array with widest dtype
+        ret = np.zeros(len(self._toas), dtype=max([self._flags[name].dtype for name in flagnames]))
+
+        # go through the flags in reverse order of preference
+        # setting or replacing values for each TOA
+
+        if "fe" in flagnames and "be" in flagnames:
+            ret[:] = [(a + "_" + b if (a and b) else "") for a, b in zip(self._flags["fe"], self._flags["be"])]
+
+        for flag in ["f", "i", "sys", "g", "group"]:
+            if flag in flagnames:
+                ret[:] = np.where(self._flags[flag] == "", ret, self._flags[flag])
+
+        return ret[self._isort]
 
     @property
     def theta(self):
@@ -266,12 +277,12 @@ class BasePulsar(object):
 
     @property
     def pos(self):
-        """Return unit vector to pulsar."""
+        """Return unit vector from SSB to pulsar at fiducial POSEPOCH."""
         return self._pos
 
     @property
     def pos_t(self):
-        """Return unit vector to pulsar as function of time."""
+        """Return unit vector from SSB to pulsar as function of time."""
         return self._pos_t[self._isort, :]
 
     @property
@@ -296,11 +307,14 @@ class PintPulsar(BasePulsar):
         self._sort = sort
         self.planets = planets
         self.name = model.PSR.value
+
         if not drop_pintpsr:
             self.model = model
             self.pint_toas = toas
 
-        self._toas = np.array(toas.table["tdbld"], dtype="float64") * 86400
+        # these are TDB but not barycentered
+        # self._toas = np.array(toas.table["tdbld"], dtype="float64") * 86400
+        self._toas = np.array(model.get_barycentric_toas(toas).value, dtype="float64") * 86400
         # saving also stoas (e.g., for DMX comparisons)
         self._stoas = np.array(toas.get_mjds().value, dtype="float64") * 86400
         self._residuals = np.array(resids(toas, model).time_resids.to(u.s), dtype="float64")
@@ -322,7 +336,6 @@ class PintPulsar(BasePulsar):
         self._flags = {}
         for ii, obsflags in enumerate(toas.get_flags()):
             for jj, flag in enumerate(obsflags):
-
                 if flag not in list(self._flags.keys()):
                     self._flags[flag] = [""] * toas.ntoas
 
@@ -342,8 +355,11 @@ class PintPulsar(BasePulsar):
         self._planetssb = self._get_planetssb(toas, model)
         self._sunssb = self._get_sunssb(toas, model)
 
-        # TODO: pos_t not currently implemented
-        self._pos_t = np.zeros((len(self._toas), 3))
+        which_astrometry = (
+            "AstrometryEquatorial" if "AstrometryEquatorial" in model.components else "AstrometryEcliptic"
+        )
+
+        self._pos_t = model.components[which_astrometry].ssb_to_psb_xyz_ICRS(model.get_barycentric_toas(toas)).value
 
         self.sort_data()
 
@@ -351,14 +367,14 @@ class PintPulsar(BasePulsar):
         pars = [par for par in model.params if not getattr(model, par).frozen]
 
         if hasattr(model, "DM"):
-            self._dm = model["DM"].value
+            self._dm = float(model["DM"].value)
 
         dmx = {
             par: {
-                "DMX": model[par].value,
-                "DMXerr": model[par].uncertainty_value,
-                "DMXR1": model[par[:3] + "R1" + par[3:]].value,
-                "DMXR2": model[par[:3] + "R2" + par[3:]].value,
+                "DMX": float(model[par].value),
+                "DMXerr": float(model[par].uncertainty_value),
+                "DMXR1": float(model[par[:3] + "R1" + par[3:]].value),
+                "DMXR2": float(model[par[:3] + "R2" + par[3:]].value),
                 "fit": par in pars,
             }
             for par in pars
@@ -379,22 +395,30 @@ class PintPulsar(BasePulsar):
 
     def _get_ssb_lsec(self, toas, obs_planet):
         """Get the planet to SSB vector in lightseconds from Pint table"""
+        if obs_planet not in toas.table.colnames:
+            err_msg = f"{obs_planet} is not in toas.table.colnames. Either "
+            err_msg += "`planet` flag is not True  in `toas` or further Pint "
+            err_msg += "development to add additional planets is needed."
+            raise ValueError(err_msg)
         vec = toas.table[obs_planet] + toas.table["ssb_obs_pos"]
         return (vec / const.c).to("s").value
 
     def _get_planetssb(self, toas, model):
         planetssb = None
+        """
+        Currently Pint only has position vectors for:
+        [Earth, Jupiter, Saturn, Uranus, Neptune]
+        No velocity vectors available
+        [Mercury, Venus, Mars, Pluto] unavailable pending Pint enhancements.
+        """
         if self.planets:
-            planetssb = np.zeros((len(self._toas), 9, 6))
-            # planetssb[:, 0, :] = self.t2pulsar.mercury_ssb
-            # planetssb[:, 1, :] = self.t2pulsar.venus_ssb
+            planetssb = np.empty((len(self._toas), 9, 6))
+            planetssb[:] = np.nan
             planetssb[:, 2, :3] = self._get_ssb_lsec(toas, "obs_earth_pos")
-            # planetssb[:, 3, :] = self.t2pulsar.mars_ssb
             planetssb[:, 4, :3] = self._get_ssb_lsec(toas, "obs_jupiter_pos")
             planetssb[:, 5, :3] = self._get_ssb_lsec(toas, "obs_saturn_pos")
             planetssb[:, 6, :3] = self._get_ssb_lsec(toas, "obs_uranus_pos")
             planetssb[:, 7, :3] = self._get_ssb_lsec(toas, "obs_neptune_pos")
-            # planetssb[:, 8, :] = self.t2pulsar.pluto_ssb
 
             # if hasattr(model, "ELAT") and hasattr(model, "ELONG"):
             #     for ii in range(9):
@@ -438,9 +462,14 @@ class Tempo2Pulsar(BasePulsar):
         spars = [str(p) for p in t2pulsar.pars(which="set")]
         self.setpars = [sp for sp in spars if sp not in self.fitpars]
 
-        self._flags = {}
+        flags = {}
         for key in t2pulsar.flags():
-            self._flags[key] = t2pulsar.flagvals(key)
+            flags[key] = t2pulsar.flagvals(key)
+
+        # new-style storage of flags as a numpy record array (previously, psr._flags = flags)
+        self._flags = np.zeros(len(self._toas), dtype=[(key, val.dtype) for key, val in flags.items()])
+        for key, val in flags.items():
+            self._flags[key] = val
 
         self._pdist = self._get_pdist()
         self._raj, self._decj = self._get_radec(t2pulsar)
@@ -465,14 +494,14 @@ class Tempo2Pulsar(BasePulsar):
         pars = t2pulsar.pars(which="set")
 
         if "DM" in pars:
-            self._dm = t2pulsar["DM"].val
+            self._dm = float(t2pulsar["DM"].val)
 
         dmx = {
             par: {
-                "DMX": t2pulsar[par].val,
-                "DMXerr": t2pulsar[par].err,
-                "DMXR1": t2pulsar[par[:3] + "R1" + par[3:]].val,
-                "DMXR2": t2pulsar[par[:3] + "R2" + par[3:]].val,
+                "DMX": float(t2pulsar[par].val),
+                "DMXerr": float(t2pulsar[par].err),
+                "DMXR1": float(t2pulsar[par[:3] + "R1" + par[3:]].val),
+                "DMXR2": float(t2pulsar[par[:3] + "R2" + par[3:]].val),
                 "fit": par in pars,
             }
             for par in pars
@@ -531,9 +560,41 @@ class Tempo2Pulsar(BasePulsar):
                 sunssb[:, 3:] = utils.ecl2eq_vec(sunssb[:, 3:])
         return sunssb
 
+    # infrastructure for sharing Pulsar objects among processes
+    # (currently Tempo2Pulsar only)
+    # the Pulsar deflater will copy select numpy arrays to SharedMemory,
+    # then replace them with pickleable objects that can be inflated
+    # to numpy arrays with SharedMemory storage
+
+    _todeflate = ["_designmatrix", "_planetssb", "_sunssb", "_flags"]
+    _deflated = "pristine"
+
+    def deflate(psr):  # pragma: py-lt-38
+        if psr._deflated == "pristine":
+            for attr in psr._todeflate:
+                if isinstance(getattr(psr, attr), np.ndarray):
+                    setattr(psr, attr, PulsarInflater(getattr(psr, attr)))
+
+            psr._deflated = "deflated"
+
+    def inflate(psr):  # pragma: py-lt-38
+        if psr._deflated == "deflated":
+            for attr in psr._todeflate:
+                if isinstance(getattr(psr, attr), PulsarInflater):
+                    setattr(psr, attr, getattr(psr, attr).inflate())
+
+            psr._deflated = "inflated"
+
+    def destroy(psr):  # pragma: py-lt-38
+        if psr._deflated == "deflated":
+            for attr in psr._todeflate:
+                if isinstance(getattr(psr, attr), PulsarInflater):
+                    getattr(psr, attr).destroy()
+
+            psr._deflated = "destroyed"
+
 
 def Pulsar(*args, **kwargs):
-
     ephem = kwargs.get("ephem", None)
     clk = kwargs.get("clk", None)
     bipm_version = kwargs.get("bipm_version", None)
