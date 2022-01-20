@@ -31,58 +31,98 @@ from enterprise.signals.parameter import function
 logger = logging.getLogger(__name__)
 
 
-def replicate(pta, ptac, p0, coefficients=False):
-    """Create a replicated residuals conditioned on the data.
-    Here pta is standard marginalized-likelihood PTA, and
-    ptac is a hierarchical-likelihood version of pta with
-    coefficients=True for all GPs. This function:
+class ConditionalGP:
+    def __init__(self, pta, phiinv_method="cliques"):
+        """This class allows the computation of conditional means and
+        random draws for all GP coefficients/realizations in a model,
+        given a vector of hyperparameters. It currently requires combine=False
+        for all GPs (or otherwise distinct bases) and does not
+        work with MarginalizingTimingModel (fast new-style likelihood)."""
 
-    - calls utils.get_coefficients(pta, p0) to get a realization
-    of the GP coefficients conditioned on the data and on the
-    hyperparameters in p0;
-    - calls ptac.get_delay() to compute the resulting realized
-    GPs at the toas;
-    - adds measurement noise (including ECORR) consistent with
-    the hyperparameters.
+        self.pta = pta
+        self.phiinv_method = phiinv_method
 
-    To use this (pending further development), you need to set
-    combine=False on the pta/ptac GPs, and method='sparse' on
-    the ptac EcorrKernelNoise.
+    def _make_conditional(self, params):
+        TNrs = self.pta.get_TNr(params)
+        TNTs = self.pta.get_TNT(params)
+        phiinvs = self.pta.get_phiinv(params, logdet=False, method=self.phiinv_method)
 
-    Returns a list of replicated residuals, one list element
-    per pulsar."""
+        # TO DO: all this could be more efficient
+        #        also it's unclear if it works with MarginalizingTimingModel
+        if self.pta._commonsignals:
+            TNr = np.concatenate(TNrs)
+            Sigma = sps.block_diag(TNTs, "csc") + sps.csc_matrix(phiinvs)
 
-    # GP delays
-    if not coefficients:
-        p0 = get_coefficients(pta, p0)
+            ch = cholesky(Sigma)
+            mn = ch(TNr)
+            chL = ch.L()
+            # Li = sps.linalg.inv(ch.L()).toarray()
 
-    ds = ptac.get_delay(params=p0)
-
-    # note: the proper way to cache the Nmat computation is to give
-    # a `sample` method to csc_matrix_alt and ndarray_alt, which
-    # would then save the factorization in the instance
-
-    nmats = ptac.get_ndiag(params=p0)
-    for d, nmat in zip(ds, nmats):
-        if isinstance(nmat, sps.csc_matrix):
-            # add EFAC/EQUAD/ECORR noise
-            # use xx' = I => (Lx)(Lx)' = LL' with LL' = PNP'
-            # hence N[P[:, np.newaxis], P[np.newaxis, :]] = LL'
-            # see https://scikit-sparse.readthedocs.io/en/latest/cholmod.html
-            ch = cholesky(nmat)
-            d[ch.P()] += ch.L() @ np.random.randn(len(d))
-        elif isinstance(nmat, np.ndarray):
-            # diagonal case, nmat will be ndarray_alt instance
-            d += np.sqrt(nmat) * np.random.randn(len(d))
+            return mn, chL
         else:
-            raise NotImplementedError(
-                "Cannot take Nmat factor; " "you may need to set the EcorrKernelNoise to 'sparse'."
-            )
+            mns, chLs = [], []
+            for TNr, TNT, phiinv in zip(TNrs, TNTs, phiinvs):
+                Sigma = TNT + (np.diag(phiinv) if phiinv.ndim == 1 else phiinv)
 
-    return ds
+                ch = sl.cho_factor(Sigma, lower=True)
+                mns.append(sl.cho_solve(ch, TNr))
+                chLs.append(np.tril(ch[0]))
+                # Lis.append(sl.inv(np.tril(ch[0])))
+
+            return mns, chLs
+
+    def _sample_conditional(self, params, n=1, gp=False, variance=True):
+        mn, chL = self._make_conditional(params)
+
+        ret = []
+        for j in range(n):
+            # since Sigma = L L^T, Sigma^-1 = L^-T L^-1
+            # and L^-T x has variance L^-T L^-1 for normal x
+            if self.pta._commonsignals:
+                # b = mn + np.dot(np.random.randn(Li.shape[0]), Li)
+                b = mn + (sps.linalg.spsolve_triangular(chL.T, lower=False) if variance else 0)
+            else:
+                b = np.concatenate(mn)
+                if variance:
+                    b = b + np.concatenate(
+                        [sl.solve_triangular(c.T, np.random.randn(c.shape[0]), lower=False) for c in chL]
+                    )
+
+            pardict, ntot = {}, 0
+            for i, model in enumerate(self.pta.pulsarmodels):
+                for sig in model._signals:
+                    if sig.signal_type in ["basis", "common basis"]:
+                        sb = sig.get_basis(params=params)
+                        nb = sb.shape[1]
+
+                        if nb + ntot > len(b):
+                            raise IndexError("Missing parameters! You need to set combine=False in your GPs.")
+
+                        if gp:
+                            pardict[sig.name] = np.dot(sb, b[ntot : nb + ntot])
+                        else:
+                            pardict[sig.name + "_coefficients"] = b[ntot : nb + ntot]
+
+                        ntot += nb
+
+            ret.append(pardict)
+
+        return ret
+
+    def get_mean_coefficients(self, params):
+        return self._sample_conditional(params, n=1, gp=False, variance=False)[0]
+
+    def sample_coefficients(self, params, n=1):
+        return self._sample_conditional(params, n, gp=False, variance=True)
+
+    def get_mean_processes(self, params):
+        return self._sample_conditional(params, n=1, gp=True, variance=False)[0]
+
+    def sample_processes(self, params, n=1):
+        return self._sample_conditional(params, n, gp=True, variance=True)
 
 
-def get_coefficients(pta, params, n=1, phiinv_method="cliques", common_sparse=False):
+def get_coefficients(pta, params, n=1, phiinv_method="cliques", variance=True, common_sparse=False):
     ret = []
 
     TNrs = pta.get_TNr(params)
@@ -96,19 +136,7 @@ def get_coefficients(pta, params, n=1, phiinv_method="cliques", common_sparse=Fa
 
             ch = cholesky(Sigma)
             mn = ch(TNr)
-
-            # Li = sps.linalg.inv(ch.L()).toarray()
-            # this was wrong... it neglects the permutation ch.P()
-            # and omits a transpose... if Sigma = L L' then
-            # Sigma^-1 = (L')^-1 L^-1 = (L^-1)' (L^-1) = U U'
-            # and z = (L^-1)' x has covariance
-            # z z^T = (L^-1)^T (x x^T) (L^-1) = Sigma^-1
-
-            Li = np.zeros(Sigma.shape)
-            Li[ch.P(), :] = sps.linalg.inv(ch.L()).T.toarray()
-            # since Sigma[P[:, np.newaxis], P[np.newaxis, :]] = LL'
-            # and (Sigma^-1)[P[:, new], P[new, :]] = (L^-1)' L
-            # but Li multiplies a permutation-invariant randn
+            Li = sps.linalg.inv(ch.L()).toarray().T
         else:
             Sigma = sl.block_diag(*TNTs) + phiinvs
             TNr = np.concatenate(TNrs)
@@ -118,7 +146,7 @@ def get_coefficients(pta, params, n=1, phiinv_method="cliques", common_sparse=Fa
             Li = u * np.sqrt(1 / s)
 
         for j in range(n):
-            b = mn + np.dot(Li, np.random.randn(Li.shape[0]))
+            b = mn + (np.dot(Li, np.random.randn(Li.shape[0])) if variance else 0)
 
             pardict, ntot = {}, 0
             for i, model in enumerate(pta.pulsarmodels):
@@ -160,7 +188,7 @@ def get_coefficients(pta, params, n=1, phiinv_method="cliques", common_sparse=Fa
                 Li = u * np.sqrt(1 / s)
 
             for j in range(n):
-                b = mn + np.dot(Li, np.random.randn(Li.shape[0]))
+                b = mn + (np.dot(Li, np.random.randn(Li.shape[0])) if variance else 0)
 
                 pardict, ntot = {}, 0
                 for sig in model._signals:
@@ -674,21 +702,21 @@ def create_gw_antenna_pattern(pos, gwtheta, gwphi):
 @function
 def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0, gwpol=0.0, t0=55000, antenna_pattern_fn=None):
     """
-    Function that calculates the earth-term gravitational-wave
-    burst-with-memory signal, as described in:
-    Seto et al, van haasteren and Levin, phsirkov et al, Cordes and Jenet.
-    This version uses the F+/Fx polarization modes, as verified with the
-    Continuous Wave and Anisotropy papers.
+    Function that calculates the Earth-term gravitational-wave
+    Burst-With-Memory signal, as described in:
+    Seto et al., van Haasteren and Levin, Pshirkov et al., Cordes and Jenet.
+    This version uses the F+/Fx polarization modes, and matches the
+    continuous-wave and anisotropy papers.
 
-    :param toas: Time-of-arrival measurements [s]
-    :param pos: Unit vector from Earth to pulsar
+    :param toas: time-of-arrival measurements [s]
+    :param pos: unit vector from Earth to pulsar
     :param log10_h: log10 of GW strain
-    :param cos_gwtheta: Cosine of GW polar angle
+    :param cos_gwtheta: cosine of GW polar angle
     :param gwphi: GW azimuthal polar angle [rad]
     :param gwpol: GW polarization angle
-    :param t0: Burst central time [day]
+    :param t0: burst central time [day]
     :param antenna_pattern_fn:
-        User defined function that takes `pos`, `gwtheta`, `gwphi` as
+        user defined function that takes `pos`, `gwtheta`, `gwphi` as
         arguments and returns (fplus, fcross)
 
     :return: the waveform as induced timing residuals (seconds)

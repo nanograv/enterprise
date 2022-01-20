@@ -336,7 +336,6 @@ class PintPulsar(BasePulsar):
         self._flags = {}
         for ii, obsflags in enumerate(toas.get_flags()):
             for jj, flag in enumerate(obsflags):
-
                 if flag not in list(self._flags.keys()):
                     self._flags[flag] = [""] * toas.ntoas
 
@@ -368,14 +367,14 @@ class PintPulsar(BasePulsar):
         pars = [par for par in model.params if not getattr(model, par).frozen]
 
         if hasattr(model, "DM"):
-            self._dm = model["DM"].value
+            self._dm = float(model["DM"].value)
 
         dmx = {
             par: {
-                "DMX": model[par].value,
-                "DMXerr": model[par].uncertainty_value,
-                "DMXR1": model[par[:3] + "R1" + par[3:]].value,
-                "DMXR2": model[par[:3] + "R2" + par[3:]].value,
+                "DMX": float(model[par].value),
+                "DMXerr": float(model[par].uncertainty_value),
+                "DMXR1": float(model[par[:3] + "R1" + par[3:]].value),
+                "DMXR2": float(model[par[:3] + "R2" + par[3:]].value),
                 "fit": par in pars,
             }
             for par in pars
@@ -495,14 +494,14 @@ class Tempo2Pulsar(BasePulsar):
         pars = t2pulsar.pars(which="set")
 
         if "DM" in pars:
-            self._dm = t2pulsar["DM"].val
+            self._dm = float(t2pulsar["DM"].val)
 
         dmx = {
             par: {
-                "DMX": t2pulsar[par].val,
-                "DMXerr": t2pulsar[par].err,
-                "DMXR1": t2pulsar[par[:3] + "R1" + par[3:]].val,
-                "DMXR2": t2pulsar[par[:3] + "R2" + par[3:]].val,
+                "DMX": float(t2pulsar[par].val),
+                "DMXerr": float(t2pulsar[par].err),
+                "DMXR1": float(t2pulsar[par[:3] + "R1" + par[3:]].val),
+                "DMXR2": float(t2pulsar[par[:3] + "R2" + par[3:]].val),
                 "fit": par in pars,
             }
             for par in pars
