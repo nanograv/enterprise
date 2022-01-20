@@ -13,6 +13,8 @@ import logging
 import unittest
 
 import numpy as np
+import scipy.sparse as sps
+from sksparse.cholmod import cholesky
 
 from enterprise.pulsar import Pulsar
 from enterprise.signals import (
@@ -271,6 +273,110 @@ class TestGPCoefficients(unittest.TestCase):
         # I don't know how to integrate l2 to match l1...
         msg = "Marginal and hierarchical likelihoods should be different."
         assert l1 != l2, msg
+
+    def test_conditional_gp(self):
+        ef = white_signals.MeasurementNoise(efac=parameter.Uniform(0.1, 5.0))
+        tm = gp_signals.TimingModel()
+        ec = gp_signals.EcorrBasisModel(log10_ecorr=parameter.Uniform(-10, -5))
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18, -12), gamma=parameter.Uniform(1, 7))
+        rn = gp_signals.FourierBasisGP(spectrum=pl, components=10, combine=False)
+
+        model = ef + tm + ec + rn
+        pta = signal_base.PTA([model(self.psr), model(self.psr2)])
+
+        p0 = {
+            "B1855+09_basis_ecorr_log10_ecorr": -6.051740765663904,
+            "B1855+09_efac": 2.9027266737466095,
+            "B1855+09_red_noise_gamma": 6.9720332277819725,
+            "B1855+09_red_noise_log10_A": -16.749192700991543,
+            "B1937+21_basis_ecorr_log10_ecorr": -9.726747733721872,
+            "B1937+21_efac": 3.959178240268702,
+            "B1937+21_red_noise_gamma": 2.9030772884814797,
+            "B1937+21_red_noise_log10_A": -17.978562921948992,
+        }
+
+        c = utils.ConditionalGP(pta)
+        cmean = c.get_mean_coefficients(p0)
+
+        # build index for the global coefficient vector
+        idx, ntot = {}, 0
+        for l, v in cmean.items():
+            idx[l] = slice(ntot, ntot + len(v))
+            ntot = ntot + len(v)
+
+        # repeat the computation using the common-signal formalism
+        TNrs = pta.get_TNr(p0)
+        TNTs = pta.get_TNT(p0)
+        phiinvs = pta.get_phiinv(p0, logdet=False, method="cliques")
+
+        TNr = np.concatenate(TNrs)
+        Sigma = sps.block_diag(TNTs, "csc") + sps.block_diag([np.diag(phiinvs[0]), np.diag(phiinvs[1])])
+
+        ch = cholesky(Sigma)
+        mn = ch(TNr)
+        iSigma = sps.linalg.inv(Sigma)
+
+        # check mean values
+        msg = "Conditional GP coefficient value does not match"
+        for l, v in cmean.items():
+            assert np.allclose(mn[idx[l]], v, atol=1e-4, rtol=1e-4), msg
+
+        # check variances
+        par = "B1937+21_linear_timing_model_coefficients"
+        c1 = np.cov(np.array([cs[par] for cs in c.sample_coefficients(p0, n=10000)]).T)
+        c2 = iSigma[idx[par], idx[par]].toarray().T
+        msg = "Conditional GP coefficient variance does not match"
+        assert np.allclose(c1, c2, atol=1e-4, rtol=1e-4), msg
+
+        # check mean processes
+        proc = "B1937+21_linear_timing_model"
+        p1 = c.get_mean_processes(p0)[proc]
+        p2 = np.dot(pta["B1937+21"]["linear_timing_model"].get_basis(), mn[idx[par]])
+        msg = "Conditional GP time series does not match"
+        assert np.allclose(p1, p2, atol=1e-4, rtol=1e-4), msg
+
+        # check mean of sampled processes
+        p2 = np.mean(np.array([pc[proc] for pc in c.sample_processes(p0, n=1000)]), axis=0)
+        msg = "Mean of sampled conditional GP processes does not match"
+        assert np.allclose(p1, p2, atol=1e-4, rtol=1e-4)
+
+        # now try with a common process
+
+        crn = gp_signals.FourierBasisCommonGP(spectrum=pl, orf=utils.hd_orf(), components=10, combine=False)
+
+        model = ef + tm + ec + crn
+        pta = signal_base.PTA([model(self.psr), model(self.psr2)])
+
+        p0 = {
+            "B1855+09_basis_ecorr_log10_ecorr": -5.861847220080768,
+            "B1855+09_efac": 4.588342210948306,
+            "B1937+21_basis_ecorr_log10_ecorr": -9.151872649912377,
+            "B1937+21_efac": 0.8947815819783302,
+            "common_fourier_gamma": 6.638289750637263,
+            "common_fourier_log10_A": -15.68180643904114,
+        }
+
+        c = utils.ConditionalGP(pta)
+        cmean = c.get_mean_coefficients(p0)
+
+        idx, ntot = {}, 0
+        for l, v in cmean.items():
+            idx[l] = slice(ntot, ntot + len(v))
+            ntot = ntot + len(v)
+
+        TNrs = pta.get_TNr(p0)
+        TNTs = pta.get_TNT(p0)
+        phiinvs = pta.get_phiinv(p0, logdet=False, method="cliques")
+
+        TNr = np.concatenate(TNrs)
+        Sigma = sps.block_diag(TNTs, "csc") + sps.csc_matrix(phiinvs)
+
+        ch = cholesky(Sigma)
+        mn = ch(TNr)
+
+        msg = "Conditional GP coefficient value does not match for common GP"
+        for l, v in cmean.items():
+            assert np.allclose(mn[idx[l]], v)
 
 
 class TestGPCoefficientsPint(TestGPCoefficients):

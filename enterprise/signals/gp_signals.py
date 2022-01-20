@@ -212,8 +212,6 @@ def FourierBasisGP(
 
 
 def get_timing_model_basis(use_svd=False, normed=True):
-    print("Normed:", normed, "use_svd", use_svd)
-
     if use_svd:
         if normed is not True:
             raise ValueError("use_svd == True requires normed == True")
