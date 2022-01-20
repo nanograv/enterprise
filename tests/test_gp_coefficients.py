@@ -319,26 +319,26 @@ class TestGPCoefficients(unittest.TestCase):
         # check mean values
         msg = "Conditional GP coefficient value does not match"
         for l, v in cmean.items():
-            assert np.allclose(mn[idx[l]], v, atol=1e-5), msg
+            assert np.allclose(mn[idx[l]], v, atol=1e-4, rtol=1e-4), msg
 
         # check variances
         par = "B1937+21_linear_timing_model_coefficients"
         c1 = np.cov(np.array([cs[par] for cs in c.sample_coefficients(p0, n=10000)]).T)
         c2 = iSigma[idx[par], idx[par]].toarray().T
         msg = "Conditional GP coefficient variance does not match"
-        assert np.allclose(c1, c2, atol=1e-5), msg
+        assert np.allclose(c1, c2, atol=1e-4, rtol=1e-4), msg
 
         # check mean processes
         proc = "B1937+21_linear_timing_model"
         p1 = c.get_mean_processes(p0)[proc]
         p2 = np.dot(pta["B1937+21"]["linear_timing_model"].get_basis(), mn[idx[par]])
         msg = "Conditional GP time series does not match"
-        assert np.allclose(p1, p2, atol=1e-5), msg
+        assert np.allclose(p1, p2, atol=1e-4, rtol=1e-4), msg
 
         # check mean of sampled processes
         p2 = np.mean(np.array([pc[proc] for pc in c.sample_processes(p0, n=1000)]), axis=0)
         msg = "Mean of sampled conditional GP processes does not match"
-        assert np.allclose(p1, p2, atol=1e-5)
+        assert np.allclose(p1, p2, atol=1e-4, rtol=1e-4)
 
         # now try with a common process
 
