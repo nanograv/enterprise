@@ -137,7 +137,7 @@ def BasisGP(
             def delay_params(self):
                 return [pp.name for pp in self.params if "_coefficients" in pp.name]
 
-            @signal_base.cache_call(["basis_params", "delay_params"], limit=1)
+            @signal_base.cache_call(["basis_params", "delay_params"])
             def get_delay(self, params={}):
                 self._construct_basis(params)
 

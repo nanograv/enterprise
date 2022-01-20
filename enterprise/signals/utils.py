@@ -129,6 +129,7 @@ def get_coefficients(pta, params, n=1, phiinv_method="cliques", variance=True, c
     TNTs = pta.get_TNT(params)
     phiinvs = pta.get_phiinv(params, logdet=False, method=phiinv_method)
 
+    # ...repeated code in the two if branches... refactor at will!
     if pta._commonsignals:
         if common_sparse:
             Sigma = sps.block_diag(TNTs, "csc") + sps.csc_matrix(phiinvs)
@@ -179,8 +180,6 @@ def get_coefficients(pta, params, n=1, phiinv_method="cliques", variance=True, c
                 mn = np.dot(u, np.dot(u.T, d) / s)
                 Li = u * np.sqrt(1 / s)
             except np.linalg.LinAlgError:
-                # MV: not sure about this, should verify it...
-
                 Q, R = sl.qr(Sigma)
                 Sigi = sl.solve(R, Q.T)
                 mn = np.dot(Sigi, d)
