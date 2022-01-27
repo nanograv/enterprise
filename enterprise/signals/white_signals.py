@@ -93,9 +93,12 @@ def combined_ndiag(toaerrs, efac=1.0, log10_equad=-8):
     return efac ** 2 * (toaerrs ** 2 + 10 ** (2 * log10_equad))
 
 
-def CombinedWhiteNoise(efac=parameter.Uniform(0.5, 1.5),
-                       log10_equad=parameter.Uniform(-10, -5),
-                       selection=Selection(selections.no_selection), name=""):
+def CombinedWhiteNoise(
+    efac=parameter.Uniform(0.5, 1.5),
+    log10_equad=parameter.Uniform(-10, -5),
+    selection=Selection(selections.no_selection),
+    name="",
+):
 
     """Class factory for EFAC+EQUAD measurement noise
     (with tempo/tempo2 parameter convention)."""
