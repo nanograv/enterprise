@@ -241,6 +241,67 @@ class TestWhiteSignals(unittest.TestCase):
         msg = "EFAC/EQUAD 2D2 solve incorrect."
         assert np.allclose(N.solve(T, left_array=T), np.dot(T.T, T / nvec0[:, None]), rtol=1e-10), msg
 
+    def test_efac_equad_combined_backend(self):
+        """Test that the combined EFAC + EQUAD noise (tempo2 definition)
+        returns the correct covariance.
+        """
+        selection = Selection(selections.by_backend)
+
+        efac = parameter.Uniform(0.1, 5)
+        equad = parameter.Uniform(-10, -5)
+        efq = white_signals.CombinedWhiteNoise(efac=efac, log10_equad=equad, selection=selection)
+        m = efq(self.psr)
+
+        # set parameters
+        efacs = [1.3, 1.4, 1.5, 1.6]
+        equads = [-6.1, -6.2, -6.3, -6.4]
+        params = {
+            "B1855+09_430_ASP_efac": efacs[0],
+            "B1855+09_430_PUPPI_efac": efacs[1],
+            "B1855+09_L-wide_ASP_efac": efacs[2],
+            "B1855+09_L-wide_PUPPI_efac": efacs[3],
+            "B1855+09_430_ASP_log10_equad": equads[0],
+            "B1855+09_430_PUPPI_log10_equad": equads[1],
+            "B1855+09_L-wide_ASP_log10_equad": equads[2],
+            "B1855+09_L-wide_PUPPI_log10_equad": equads[3],
+        }
+
+        # correct value
+        flags = ["430_ASP", "430_PUPPI", "L-wide_ASP", "L-wide_PUPPI"]
+        nvec0 = np.zeros_like(self.psr.toas)
+        for ct, flag in enumerate(np.unique(flags)):
+            ind = flag == self.psr.backend_flags
+            nvec0[ind] = efacs[ct] ** 2 * (self.psr.toaerrs[ind] ** 2 + 10 ** (2 * equads[ct]) * np.ones(np.sum(ind)))
+
+        logdet = np.sum(np.log(nvec0))
+
+        # test
+        msg = "EFAC+EQUAD covariance incorrect."
+        assert np.all(m.get_ndiag(params) == nvec0), msg
+
+        msg = "EFAC+EQUAD logdet incorrect."
+        N = m.get_ndiag(params)
+        assert np.allclose(N.solve(self.psr.residuals, logdet=True)[1], logdet, rtol=1e-10), msg
+
+        msg = "EFAC+EQUAD D1 solve incorrect."
+        assert np.allclose(N.solve(self.psr.residuals), self.psr.residuals / nvec0, rtol=1e-10), msg
+
+        msg = "EFAC+EQUAD 1D1 solve incorrect."
+        assert np.allclose(
+            N.solve(self.psr.residuals, left_array=self.psr.residuals),
+            np.dot(self.psr.residuals / nvec0, self.psr.residuals),
+            rtol=1e-10,
+        ), msg
+
+        msg = "EFAC+EQUAD 2D1 solve incorrect."
+        T = self.psr.Mmat
+        assert np.allclose(
+            N.solve(self.psr.residuals, left_array=T), np.dot(T.T, self.psr.residuals / nvec0), rtol=1e-10
+        ), msg
+
+        msg = "EFAC+EQUAD 2D2 solve incorrect."
+        assert np.allclose(N.solve(T, left_array=T), np.dot(T.T, T / nvec0[:, None]), rtol=1e-10), msg
+
     def _ecorr_test(self, method="sparse"):
         """Test of sparse/sherman-morrison ecorr signal and solve methods."""
         selection = Selection(selections.by_backend)
