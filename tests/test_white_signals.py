@@ -106,39 +106,39 @@ class TestWhiteSignals(unittest.TestCase):
         msg = "EFAC covariance incorrect."
         assert np.all(efm.get_ndiag(params) == nvec0), msg
 
-    def test_equad(self):
-        """Test that equad signal returns correct covariance."""
+    def test_tnequad(self):
+        """Test that tnequad signal returns correct covariance."""
         # set up signal and parameters
-        equad = parameter.Uniform(-10, -5)
-        eq = white_signals.EquadNoise(log10_equad=equad)
+        tnequad = parameter.Uniform(-10, -5)
+        eq = white_signals.TNEquadNoise(log10_tnequad=tnequad)
         eqm = eq(self.psr)
 
         # parameters
-        equad = -6.4
-        params = {"B1855+09_log10_equad": equad}
+        tnequad = -6.4
+        params = {"B1855+09_log10_tnequad": tnequad}
 
         # correct value
-        nvec0 = 10 ** (2 * equad) * np.ones_like(self.psr.toas)
+        nvec0 = 10 ** (2 * tnequad) * np.ones_like(self.psr.toas)
 
         # test
-        msg = "EQUAD covariance incorrect."
+        msg = "TNEQUAD covariance incorrect."
         assert np.all(eqm.get_ndiag(params) == nvec0), msg
 
-    def test_equad_backend(self):
+    def test_tnequad_backend(self):
         """Test that backend-equad signal returns correct covariance."""
         # set up signal and parameters
-        equad = parameter.Uniform(-10, -5)
+        tnequad = parameter.Uniform(-10, -5)
         selection = Selection(selections.by_backend)
-        eq = white_signals.EquadNoise(log10_equad=equad, selection=selection)
+        eq = white_signals.TNEquadNoise(log10_tnequad=tnequad, selection=selection)
         eqm = eq(self.psr)
 
         # parameters
-        equads = [-6.1, -6.2, -6.3, -6.4]
+        tnequads = [-6.1, -6.2, -6.3, -6.4]
         params = {
-            "B1855+09_430_ASP_log10_equad": equads[0],
-            "B1855+09_430_PUPPI_log10_equad": equads[1],
-            "B1855+09_L-wide_ASP_log10_equad": equads[2],
-            "B1855+09_L-wide_PUPPI_log10_equad": equads[3],
+            "B1855+09_430_ASP_log10_tnequad": tnequads[0],
+            "B1855+09_430_PUPPI_log10_tnequad": tnequads[1],
+            "B1855+09_L-wide_ASP_log10_tnequad": tnequads[2],
+            "B1855+09_L-wide_PUPPI_log10_tnequad": tnequads[3],
         }
 
         # correct value
@@ -146,62 +146,62 @@ class TestWhiteSignals(unittest.TestCase):
         nvec0 = np.zeros_like(self.psr.toas)
         for ct, flag in enumerate(np.unique(flags)):
             ind = flag == self.psr.backend_flags
-            nvec0[ind] = 10 ** (2 * equads[ct]) * np.ones(np.sum(ind))
+            nvec0[ind] = 10 ** (2 * tnequads[ct]) * np.ones(np.sum(ind))
 
         # test
-        msg = "EQUAD covariance incorrect."
+        msg = "TNEQUAD covariance incorrect."
         assert np.all(eqm.get_ndiag(params) == nvec0), msg
 
-    def test_add_efac_equad(self):
-        """Test that addition of efac and equad signal returns
+    def test_add_efac_tnequad(self):
+        """Test that addition of efac and tnequad signal returns
         correct covariance.
         """
         # set up signals
         efac = parameter.Uniform(0.1, 5)
         ef = white_signals.MeasurementNoise(efac=efac)
-        equad = parameter.Uniform(-10, -5)
-        eq = white_signals.EquadNoise(log10_equad=equad)
+        tnequad = parameter.Uniform(-10, -5)
+        eq = white_signals.TNEquadNoise(log10_tnequad=tnequad)
         s = ef + eq
         m = s(self.psr)
 
         # set parameters
         efac = 1.5
-        equad = -6.4
-        params = {"B1855+09_efac": efac, "B1855+09_log10_equad": equad}
+        tnequad = -6.4
+        params = {"B1855+09_efac": efac, "B1855+09_log10_tnequad": tnequad}
 
         # correct value
         nvec0 = efac ** 2 * self.psr.toaerrs ** 2
-        nvec0 += 10 ** (2 * equad) * np.ones_like(self.psr.toas)
+        nvec0 += 10 ** (2 * tnequad) * np.ones_like(self.psr.toas)
 
         # test
-        msg = "EFAC/EQUAD covariance incorrect."
+        msg = "EFAC/TNEQUAD covariance incorrect."
         assert np.all(m.get_ndiag(params) == nvec0), msg
 
-    def test_add_efac_equad_backend(self):
-        """Test that addition of efac-backend and equad-backend signal returns
+    def test_add_efac_tnequad_backend(self):
+        """Test that addition of efac-backend and tnequad-backend signal returns
         correct covariance.
         """
         selection = Selection(selections.by_backend)
 
         efac = parameter.Uniform(0.1, 5)
-        equad = parameter.Uniform(-10, -5)
+        tnequad = parameter.Uniform(-10, -5)
         ef = white_signals.MeasurementNoise(efac=efac, selection=selection)
-        eq = white_signals.EquadNoise(log10_equad=equad, selection=selection)
+        eq = white_signals.TNEquadNoise(log10_tnequad=tnequad, selection=selection)
         s = ef + eq
         m = s(self.psr)
 
         # set parameters
         efacs = [1.3, 1.4, 1.5, 1.6]
-        equads = [-6.1, -6.2, -6.3, -6.4]
+        tnequads = [-6.1, -6.2, -6.3, -6.4]
         params = {
             "B1855+09_430_ASP_efac": efacs[0],
             "B1855+09_430_PUPPI_efac": efacs[1],
             "B1855+09_L-wide_ASP_efac": efacs[2],
             "B1855+09_L-wide_PUPPI_efac": efacs[3],
-            "B1855+09_430_ASP_log10_equad": equads[0],
-            "B1855+09_430_PUPPI_log10_equad": equads[1],
-            "B1855+09_L-wide_ASP_log10_equad": equads[2],
-            "B1855+09_L-wide_PUPPI_log10_equad": equads[3],
+            "B1855+09_430_ASP_log10_tnequad": tnequads[0],
+            "B1855+09_430_PUPPI_log10_tnequad": tnequads[1],
+            "B1855+09_L-wide_ASP_log10_tnequad": tnequads[2],
+            "B1855+09_L-wide_PUPPI_log10_tnequad": tnequads[3],
         }
 
         # correct value
@@ -210,46 +210,46 @@ class TestWhiteSignals(unittest.TestCase):
         for ct, flag in enumerate(np.unique(flags)):
             ind = flag == self.psr.backend_flags
             nvec0[ind] = efacs[ct] ** 2 * self.psr.toaerrs[ind] ** 2
-            nvec0[ind] += 10 ** (2 * equads[ct]) * np.ones(np.sum(ind))
+            nvec0[ind] += 10 ** (2 * tnequads[ct]) * np.ones(np.sum(ind))
 
         logdet = np.sum(np.log(nvec0))
 
         # test
-        msg = "EFAC/EQUAD covariance incorrect."
+        msg = "EFAC/TNEQUAD covariance incorrect."
         assert np.all(m.get_ndiag(params) == nvec0), msg
 
-        msg = "EFAC/EQUAD logdet incorrect."
+        msg = "EFAC/TNEQUAD logdet incorrect."
         N = m.get_ndiag(params)
         assert np.allclose(N.solve(self.psr.residuals, logdet=True)[1], logdet, rtol=1e-10), msg
 
-        msg = "EFAC/EQUAD D1 solve incorrect."
+        msg = "EFAC/TNEQUAD D1 solve incorrect."
         assert np.allclose(N.solve(self.psr.residuals), self.psr.residuals / nvec0, rtol=1e-10), msg
 
-        msg = "EFAC/EQUAD 1D1 solve incorrect."
+        msg = "EFAC/TNEQUAD 1D1 solve incorrect."
         assert np.allclose(
             N.solve(self.psr.residuals, left_array=self.psr.residuals),
             np.dot(self.psr.residuals / nvec0, self.psr.residuals),
             rtol=1e-10,
         ), msg
 
-        msg = "EFAC/EQUAD 2D1 solve incorrect."
+        msg = "EFAC/TNEQUAD 2D1 solve incorrect."
         T = self.psr.Mmat
         assert np.allclose(
             N.solve(self.psr.residuals, left_array=T), np.dot(T.T, self.psr.residuals / nvec0), rtol=1e-10
         ), msg
 
-        msg = "EFAC/EQUAD 2D2 solve incorrect."
+        msg = "EFAC/TNEQUAD 2D2 solve incorrect."
         assert np.allclose(N.solve(T, left_array=T), np.dot(T.T, T / nvec0[:, None]), rtol=1e-10), msg
 
     def test_efac_equad_combined_backend(self):
-        """Test that the combined EFAC + EQUAD noise (tempo2 definition)
+        """Test that the combined EFAC + EQUAD noise (tempo/tempo2/pint definition)
         returns the correct covariance.
         """
         selection = Selection(selections.by_backend)
 
         efac = parameter.Uniform(0.1, 5)
-        equad = parameter.Uniform(-10, -5)
-        efq = white_signals.CombinedWhiteNoise(efac=efac, log10_equad=equad, selection=selection)
+        t2equad = parameter.Uniform(-10, -5)
+        efq = white_signals.MeasurementNoise(efac=efac, log10_t2equad=t2equad, selection=selection)
         m = efq(self.psr)
 
         # set parameters
@@ -260,10 +260,10 @@ class TestWhiteSignals(unittest.TestCase):
             "B1855+09_430_PUPPI_efac": efacs[1],
             "B1855+09_L-wide_ASP_efac": efacs[2],
             "B1855+09_L-wide_PUPPI_efac": efacs[3],
-            "B1855+09_430_ASP_log10_equad": equads[0],
-            "B1855+09_430_PUPPI_log10_equad": equads[1],
-            "B1855+09_L-wide_ASP_log10_equad": equads[2],
-            "B1855+09_L-wide_PUPPI_log10_equad": equads[3],
+            "B1855+09_430_ASP_log10_t2equad": equads[0],
+            "B1855+09_430_PUPPI_log10_t2equad": equads[1],
+            "B1855+09_L-wide_ASP_log10_t2equad": equads[2],
+            "B1855+09_L-wide_PUPPI_log10_t2equad": equads[3],
         }
 
         # correct value

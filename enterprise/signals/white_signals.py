@@ -57,60 +57,55 @@ def efac_ndiag(toaerrs, efac=1.0):
     return efac ** 2 * toaerrs ** 2
 
 
-def MeasurementNoise(efac=parameter.Uniform(0.5, 1.5), selection=Selection(selections.no_selection), name=""):
-    """Class factory for EFAC type measurement noise."""
+@function
+def combined_ndiag(toaerrs, efac=1.0, log10_t2equad=-8):
+    return efac ** 2 * (toaerrs ** 2 + 10 ** (2 * log10_t2equad))
 
-    varianceFunction = efac_ndiag(efac=efac)
+
+def MeasurementNoise(
+    efac=parameter.Uniform(0.5, 1.5), log10_t2equad=None, selection=Selection(selections.no_selection), name="",
+):
+
+    """Class factory for EFAC+EQUAD measurement noise
+    (with tempo/tempo2/pint parameter convention, variance = efac^2 (toaerr^2 + t2equad^2)).
+    Leave out log10_t2equad to use EFAC noise only."""
+
+    varianceFunction = (
+        efac_ndiag(efac=efac) if log10_t2equad is None else combined_ndiag(efac=efac, log10_t2equad=log10_t2equad)
+    )
     BaseClass = WhiteNoise(varianceFunction, selection=selection, name=name)
 
     class MeasurementNoise(BaseClass):
-        signal_name = "efac"
-        signal_id = "efac_" + name if name else "efac"
+        signal_name = "measurement_noise"
+        signal_id = "measurement_noise_" + name if name else "measurement_noise"
 
     return MeasurementNoise
 
 
 @function
-def equad_ndiag(toas, log10_equad=-8):
-    return np.ones_like(toas) * 10 ** (2 * log10_equad)
+def tnequad_ndiag(toas, log10_tnequad=-8):
+    return np.ones_like(toas) * 10 ** (2 * log10_tnequad)
 
 
-def EquadNoise(log10_equad=parameter.Uniform(-10, -5), selection=Selection(selections.no_selection), name=""):
-    """Class factory for EQUAD type measurement noise."""
+def TNEquadNoise(log10_tnequad=parameter.Uniform(-10, -5), selection=Selection(selections.no_selection), name=""):
+    """Class factory for TNEQUAD type measurement noise (legacy, not multiplied by EFAC)."""
 
-    varianceFunction = equad_ndiag(log10_equad=log10_equad)
+    varianceFunction = tnequad_ndiag(log10_tnequad=log10_tnequad)
     BaseClass = WhiteNoise(varianceFunction, selection=selection, name=name)
 
-    class EquadNoise(BaseClass):
-        signal_name = "equad"
-        signal_id = "equad_" + name if name else "equad"
+    class TNEquadNoise(BaseClass):
+        signal_name = "tnequad"
+        signal_id = "tnequad_" + name if name else "tnequad"
 
-    return EquadNoise
-
-
-@function
-def combined_ndiag(toaerrs, efac=1.0, log10_equad=-8):
-    return efac ** 2 * (toaerrs ** 2 + 10 ** (2 * log10_equad))
+    return TNEquadNoise
 
 
-def CombinedWhiteNoise(
-    efac=parameter.Uniform(0.5, 1.5),
-    log10_equad=parameter.Uniform(-10, -5),
-    selection=Selection(selections.no_selection),
-    name="",
-):
-
-    """Class factory for EFAC+EQUAD measurement noise
-    (with tempo/tempo2 parameter convention)."""
-
-    varianceFunction = combined_ndiag(efac=efac, log10_equad=log10_equad)
-    BaseClass = WhiteNoise(varianceFunction, selection=selection, name=name)
-
-    class CombinedWhiteNoise(BaseClass):
-        signal_name = "efacequad"
-        signal_id = "efacequad_" + name if name else "efacequad"
-
-    return CombinedWhiteNoise
+def EquadNoise(*args, **kwargs):
+    raise NotImplementedError(
+        "EquadNoise was removed in enterprise v3.3."
+        " Use MeasurementNoise to implement tempo/tempo2/pint definition [efac^2 (toaerr^2 + t2equad^2)]"
+        " or TNEquadNoise to obtain legacy enterprise definition for EQUAD only [tnequad^2]."
+    )
 
 
 def EcorrKernelNoise(
