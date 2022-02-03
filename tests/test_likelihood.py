@@ -46,7 +46,7 @@ def get_noise_from_pal2(noisefile):
             par = "efac"
             flag = ln[0].split("efac-")[-1]
         elif "equad" in line:
-            par = "log10_equad"
+            par = "log10_t2equad"
             flag = ln[0].split("equad-")[-1]
         elif "jitter_q" in line:
             par = "log10_ecorr"
@@ -104,8 +104,7 @@ class TestLikelihood(unittest.TestCase):
 
         selection = Selection(selections.by_backend)
 
-        ef = white_signals.MeasurementNoise(efac=efac, selection=selection)
-        eq = white_signals.EquadNoise(log10_equad=equad, selection=selection)
+        ms = white_signals.MeasurementNoise(efac=efac, log10_t2equad=equad, selection=selection)
         ec = white_signals.EcorrKernelNoise(log10_ecorr=ecorr, selection=selection)
 
         pl = utils.powerlaw(log10_A=log10_A, gamma=gamma)
@@ -130,9 +129,9 @@ class TestLikelihood(unittest.TestCase):
             inc_kernel = [inc_kernel] * npsrs
 
         if inc_corr:
-            s = tm + ef + eq + ec + rn + crn
+            s = tm + ms + ec + rn + crn
         else:
-            s = tm + ef + eq + ec + rn
+            s = tm + ms + ec + rn
 
         models = []
         for ik, psr in zip(inc_kernel, psrs):
@@ -181,8 +180,9 @@ class TestLikelihood(unittest.TestCase):
             nvec0 = np.zeros_like(psr.toas)
             for ct, flag in enumerate(flags):
                 ind = psr.backend_flags == flag
-                nvec0[ind] = efacs[ii][ct] ** 2 * psr.toaerrs[ind] ** 2
-                nvec0[ind] += 10 ** (2 * equads[ii][ct]) * np.ones(np.sum(ind))
+                nvec0[ind] = efacs[ii][ct] ** 2 * (
+                    psr.toaerrs[ind] ** 2 + 10 ** (2 * equads[ii][ct]) * np.ones(np.sum(ind))
+                )
 
             # get the basis
             bflags = psr.backend_flags

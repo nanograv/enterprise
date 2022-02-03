@@ -106,6 +106,11 @@ class TestWhiteSignals(unittest.TestCase):
         msg = "EFAC covariance incorrect."
         assert np.all(efm.get_ndiag(params) == nvec0), msg
 
+    def test_equad(self):
+        """Test that the deprecated EquadNoise is not available."""
+
+        self.assertRaises(NotImplementedError, white_signals.EquadNoise)
+
     def test_tnequad(self):
         """Test that tnequad signal returns correct covariance."""
         # set up signal and parameters
