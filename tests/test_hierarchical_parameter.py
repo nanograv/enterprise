@@ -125,15 +125,15 @@ class TestHierarchicalParameter(unittest.TestCase):
         def log10(A=10 ** -16):
             return np.log10(A)
 
-        fquad = white_signals.EquadNoise(
-            log10_equad=parameter.Function(log10, A=parameter.Uniform(10 ** -17, 10 ** -14))
+        fquad = white_signals.TNEquadNoise(
+            log10_tnequad=parameter.Function(log10, A=parameter.Uniform(10 ** -17, 10 ** -14))
         )
 
         fquad1 = fquad(self.psr)
 
-        repr_A = "[B1855+09_log10_equad_A:Uniform(pmin=1e-17, pmax=1e-14)]"
-        repr_B = "[B1855+09_log10_equad_A:Uniform(pmax=1e-14, pmin=1e-17)]"
+        repr_A = "[B1855+09_log10_tnequad_A:Uniform(pmin=1e-17, pmax=1e-14)]"
+        repr_B = "[B1855+09_log10_tnequad_A:Uniform(pmax=1e-14, pmin=1e-17)]"
         assert str(fquad1.params) == repr_A or str(fquad1.params) == repr_B
         assert np.allclose(
-            fquad1.get_ndiag(params={"B1855+09_log10_equad_A": 10 ** -14})[:3], np.array([1e-28, 1e-28, 1e-28])
+            fquad1.get_ndiag(params={"B1855+09_log10_tnequad_A": 10 ** -14})[:3], np.array([1e-28, 1e-28, 1e-28])
         )

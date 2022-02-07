@@ -63,11 +63,11 @@ class TestPulsar(unittest.TestCase):
         """Check DM/DMX access."""
 
         msg = "dm value incorrect"
-        assert self.psr.dm == np.longdouble("13.299393"), msg
+        assert self.psr.dm == 13.299393, msg
 
         msg = "dmx struct incorrect (spotcheck)"
         assert len(self.psr.dmx) == 72, msg
-        assert self.psr.dmx["DMX_0001"]["DMX"] == np.longdouble("0.015161863"), msg
+        assert self.psr.dmx["DMX_0001"]["DMX"] == 0.015161863, msg
         assert self.psr.dmx["DMX_0001"]["fit"], msg
 
     def test_freqs(self):
@@ -192,17 +192,6 @@ class TestPulsarPint(TestPulsar):
             drop_pintpsr=False,
             timing_package="pint",
         )
-
-    def test_dm(self):
-        """Check DM/DMX access."""
-
-        msg = "dm value incorrect"
-        assert self.psr.dm == np.longdouble("13.299393"), msg
-
-        msg = "dmx struct incorrect (spotcheck)"
-        assert len(self.psr.dmx) == 72, msg
-        assert self.psr.dmx["DMX_0001"]["DMX"] == np.float64("0.015161863"), msg
-        assert self.psr.dmx["DMX_0001"]["fit"], msg
 
     def test_deflate_inflate(self):
         pass
