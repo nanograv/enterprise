@@ -110,6 +110,9 @@ class Signal(object):
                 ret.append(p.name)
         return ret
 
+    def __repr__(self):
+        return "<Enterprise Signal object " + self.signal_id + "[" + ", ".join(p.name for p in self.params) + "]>"
+
     def get(self, parname, params={}):
         try:
             return params[self._params[parname].name]
