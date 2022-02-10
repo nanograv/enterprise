@@ -55,37 +55,35 @@ class ConditionalGP:
 
             ch = cholesky(Sigma)
             mn = ch(TNr)
-            chL = ch.L()
-            # Li = sps.linalg.inv(ch.L()).toarray()
 
-            return mn, chL
+            return ch, mn
         else:
-            mns, chLs = [], []
+            mns, chs = [], []
             for TNr, TNT, phiinv in zip(TNrs, TNTs, phiinvs):
                 Sigma = TNT + (np.diag(phiinv) if phiinv.ndim == 1 else phiinv)
 
                 ch = sl.cho_factor(Sigma, lower=True)
                 mns.append(sl.cho_solve(ch, TNr))
-                chLs.append(np.tril(ch[0]))
-                # Lis.append(sl.inv(np.tril(ch[0])))
+                chs.append(np.tril(ch[0]))
 
-            return mns, chLs
+            return chs, mns
 
     def _sample_conditional(self, params, n=1, gp=False, variance=True):
-        mn, chL = self._make_conditional(params)
+        ch, mn = self._make_conditional(params)
 
         ret = []
         for j in range(n):
             # since Sigma = L L^T, Sigma^-1 = L^-T L^-1
             # and L^-T x has variance L^-T L^-1 for normal x
             if self.pta._commonsignals:
-                # b = mn + np.dot(np.random.randn(Li.shape[0]), Li)
-                b = mn + (sps.linalg.spsolve_triangular(chL.T, lower=False) if variance else 0)
+                b = mn
+                if variance:
+                    b = b + ch.apply_Pt(ch.solve_Lt(np.random.randn(mn.shape[0]), use_LDLt_decomposition=False))
             else:
                 b = np.concatenate(mn)
                 if variance:
                     b = b + np.concatenate(
-                        [sl.solve_triangular(c.T, np.random.randn(c.shape[0]), lower=False) for c in chL]
+                        [sl.solve_triangular(c.T, np.random.randn(c.shape[0]), lower=False) for c in ch]
                     )
 
             pardict, ntot = {}, 0
