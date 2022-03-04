@@ -228,7 +228,7 @@ def NormalSampler(mu, sigma, size=None):
     vector value/mu and compatible covariance matrix sigma."""
 
     if np.ndim(sigma) == 2:
-        return np.random.multivariate_normal(mu, sigma, size=size)
+        return np.random.multivariate_normal(mu, sigma)
     else:
         return np.random.normal(mu, sigma, size=size)
 
