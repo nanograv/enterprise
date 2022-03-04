@@ -98,6 +98,3 @@ class TestParameter(unittest.TestCase):
 
         x1, x2 = NormalSampler(mu, sigma), scipy.stats.multivariate_normal.rvs(mean=mu, cov=sigma)
         assert x1.shape == x2.shape, msg2
-
-        x1, x2 = NormalSampler(mu, sigma, size=10), scipy.stats.multivariate_normal.rvs(mean=mu, cov=sigma, size=10)
-        assert x1.shape == x2.shape, msg2
