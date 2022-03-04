@@ -203,7 +203,7 @@ class TestPulsarPint(TestPulsar):
 
         with self.assertRaises(pint.models.timing_model.TimingModelError):
             # initialize Pulsar class with RAJ DECJ and PMLAMBDA, PMBETA
-            psr = Pulsar(
+            Pulsar(
                 datadir + "/J0030+0451_RADEC_wrong.par",
                 datadir + "/J0030+0451_NANOGrav_9yv1.tim",
                 ephem="DE430",
