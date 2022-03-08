@@ -20,6 +20,8 @@ import numpy as np
 
 from enterprise.pulsar import Pulsar
 from tests.enterprise_test_data import datadir
+
+import pint.models.timing_model
 from pint.models import get_model_and_toas
 
 
@@ -196,18 +198,18 @@ class TestPulsarPint(TestPulsar):
     def test_deflate_inflate(self):
         pass
 
-    def test_load_radec_psr(cls):
+    def test_load_radec_psr(self):
         """Setup the Pulsar object."""
 
-        # initialize Pulsar class with RA DEC
-        psr = Pulsar(
-            datadir + "/J0030+0451_RADEC_wrong.par",
-            datadir + "/J0030+0451_NANOGrav_9yv1.tim",
-            ephem="DE430",
-            drop_pintpsr=False,
-            timing_package="pint",
-        )
-        assert "AstrometryEquatorial" in psr.model.components
+        with self.assertRaises(pint.models.timing_model.TimingModelError):
+            # initialize Pulsar class with RAJ DECJ and PMLAMBDA, PMBETA
+            Pulsar(
+                datadir + "/J0030+0451_RADEC_wrong.par",
+                datadir + "/J0030+0451_NANOGrav_9yv1.tim",
+                ephem="DE430",
+                drop_pintpsr=False,
+                timing_package="pint",
+            )
 
     def test_no_planet(self):
         """Test exception when incorrect par(tim) file given."""
