@@ -683,7 +683,7 @@ class PTA(object):
         return [p.psrname for p in self._signalcollections]
 
     def _set_signal_dict(self):
-        """ Set signal dictionary"""
+        """Set signal dictionary"""
 
         self._signal_dict = {}
         sig_list = []
@@ -703,7 +703,7 @@ class PTA(object):
 
     @property
     def signals(self):
-        """ Return signal dictionary."""
+        """Return signal dictionary."""
         return self._signal_dict
 
     def get_signal(self, name):
@@ -775,7 +775,7 @@ def SignalCollection(metasignals):  # noqa: C901
 
         # TODO: this could be implemented more cleanly
         def _set_cache_parameters(self):
-            """ Sets the cache for various signal types."""
+            """Sets the cache for various signal types."""
 
             self.white_params = []
             self.basis_params = []

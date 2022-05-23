@@ -164,9 +164,9 @@ def createfourierdesignmatrix_env(
     )
 
     # compute gaussian envelope
-    A = 10 ** log10_Amp
-    Q = 10 ** log10_Q * 86400
-    env = A * np.exp(-((toas - t0) ** 2) / 2 / Q ** 2)
+    A = 10**log10_Amp
+    Q = 10**log10_Q * 86400
+    env = A * np.exp(-((toas - t0) ** 2) / 2 / Q**2)
     return F * env[:, None], Ffreqs
 
 

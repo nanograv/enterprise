@@ -45,7 +45,7 @@ def create_quant_matrix(toas, dt=1):
 def se_kernel(etoas, log10_sigma=-7, log10_lam=np.log10(30 * 86400)):
     tm = np.abs(etoas[None, :] - etoas[:, None])
     d = np.eye(tm.shape[0]) * 10 ** (2 * (log10_sigma - 1.5))
-    return 10 ** (2 * log10_sigma) * np.exp(-(tm ** 2) / 2 / 10 ** (2 * log10_lam)) + d
+    return 10 ** (2 * log10_sigma) * np.exp(-(tm**2) / 2 / 10 ** (2 * log10_lam)) + d
 
 
 class TestGPCoefficients(unittest.TestCase):

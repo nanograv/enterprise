@@ -13,7 +13,7 @@ from enterprise.signals.selections import Selection
 
 
 def WhiteNoise(varianceFunction, selection=Selection(selections.no_selection), name=""):
-    """ Class factory for generic white noise signals."""
+    """Class factory for generic white noise signals."""
 
     class WhiteNoise(signal_base.Signal):
         signal_type = "white noise"
@@ -54,16 +54,19 @@ def WhiteNoise(varianceFunction, selection=Selection(selections.no_selection), n
 
 @function
 def efac_ndiag(toaerrs, efac=1.0):
-    return efac ** 2 * toaerrs ** 2
+    return efac**2 * toaerrs**2
 
 
 @function
 def combined_ndiag(toaerrs, efac=1.0, log10_t2equad=-8):
-    return efac ** 2 * (toaerrs ** 2 + 10 ** (2 * log10_t2equad))
+    return efac**2 * (toaerrs**2 + 10 ** (2 * log10_t2equad))
 
 
 def MeasurementNoise(
-    efac=parameter.Uniform(0.5, 1.5), log10_t2equad=None, selection=Selection(selections.no_selection), name="",
+    efac=parameter.Uniform(0.5, 1.5),
+    log10_t2equad=None,
+    selection=Selection(selections.no_selection),
+    name="",
 ):
 
     """Class factory for EFAC+EQUAD measurement noise
