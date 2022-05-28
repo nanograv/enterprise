@@ -305,7 +305,7 @@ def create_stabletimingdesignmatrix(designmat, fastDesign=True):
 
     if fastDesign:
 
-        norm = np.sqrt(np.sum(Mm ** 2, axis=0))
+        norm = np.sqrt(np.sum(Mm**2, axis=0))
         Mm /= norm
 
     else:
@@ -353,7 +353,7 @@ def get_edot(F, mc, e):
     # chirp mass
     mc *= const.Tsun
 
-    dedt = -304 / (15 * mc) * (2 * np.pi * mc * F) ** (8 / 3) * e * (1 + 121 / 304 * e ** 2) / ((1 - e ** 2) ** (5 / 2))
+    dedt = -304 / (15 * mc) * (2 * np.pi * mc * F) ** (8 / 3) * e * (1 + 121 / 304 * e**2) / ((1 - e**2) ** (5 / 2))
 
     return dedt
 
@@ -374,10 +374,10 @@ def get_Fdot(F, mc, e):
 
     dFdt = (
         48
-        / (5 * np.pi * mc ** 2)
+        / (5 * np.pi * mc**2)
         * (2 * np.pi * mc * F) ** (11 / 3)
-        * (1 + 73 / 24 * e ** 2 + 37 / 96 * e ** 4)
-        / ((1 - e ** 2) ** (7 / 2))
+        * (1 + 73 / 24 * e**2 + 37 / 96 * e**4)
+        / ((1 - e**2) ** (7 / 2))
     )
 
     return dFdt
@@ -406,8 +406,8 @@ def get_gammadot(F, mc, q, e):
         * np.pi
         * F
         * (2 * np.pi * F * m) ** (2 / 3)
-        / (1 - e ** 2)
-        * (1 + 0.25 * (2 * np.pi * F * m) ** (2 / 3) / (1 - e ** 2) * (26 - 15 * e ** 2))
+        / (1 - e**2)
+        * (1 + 0.25 * (2 * np.pi * F * m) ** (2 / 3) / (1 - e**2) * (26 - 15 * e**2))
     )
 
     return dgdt
@@ -579,7 +579,7 @@ def get_bn(n, mc, dl, h0, F, e):
     elif h0 is not None:
         amp = n * h0 / 2.0
 
-    ret = -amp * np.sqrt(1 - e ** 2) * (ss.jn(n - 2, n * e) - 2 * ss.jn(n, n * e) + ss.jn(n + 2, n * e))
+    ret = -amp * np.sqrt(1 - e**2) * (ss.jn(n - 2, n * e) - 2 * ss.jn(n, n * e) + ss.jn(n + 2, n * e))
 
     return ret
 
@@ -720,7 +720,7 @@ def bwm_delay(toas, pos, log10_h=-14.0, cos_gwtheta=0.0, gwphi=0.0, gwpol=0.0, t
     """
 
     # convert
-    h = 10 ** log10_h
+    h = 10**log10_h
     gwtheta = np.arccos(cos_gwtheta)
     t0 *= const.day
 
@@ -870,7 +870,7 @@ def unnormed_tm_basis(Mmat):
 @function
 def normed_tm_basis(Mmat, norm=None):
     if norm is None:
-        norm = np.sqrt(np.sum(Mmat ** 2, axis=0))
+        norm = np.sqrt(np.sum(Mmat**2, axis=0))
 
     nmat = Mmat / norm
     nmat[:, norm == 0] = 0
@@ -985,7 +985,7 @@ def dmass(planet, dm_over_Msun):
 @function
 def physicalephem_spectrum(sigmas):
     # note the creative use of the "labels" (the very sigmas, not frequencies)
-    return sigmas ** 2
+    return sigmas**2
 
 
 @function

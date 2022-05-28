@@ -24,9 +24,9 @@ from tests.enterprise_test_data import datadir
 def sine_wave(toas, log10_A=-7, log10_f=-8, phase=0.0):
     """A simple sine wave Enterprise function object. When instantiated,
     it will create named Parameters for `log10_A`, `log10_f`, `phase`,
-    and it will automatically extract `toas` from the linked `Pulsar` object. """
+    and it will automatically extract `toas` from the linked `Pulsar` object."""
 
-    return 10 ** log10_A * np.sin(2 * np.pi * toas * 10 ** log10_f + phase)
+    return 10**log10_A * np.sin(2 * np.pi * toas * 10**log10_f + phase)
 
 
 class TestDeterministicSignals(unittest.TestCase):

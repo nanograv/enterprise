@@ -61,7 +61,7 @@ class TestParameter(unittest.TestCase):
         x = 0.5
 
         msg1 = "Enterprise and scipy priors do not match"
-        assert NormalPrior(x, mu, sigma) == scipy.stats.multivariate_normal.pdf(x, mean=mu, cov=sigma ** 2), msg1
+        assert NormalPrior(x, mu, sigma) == scipy.stats.multivariate_normal.pdf(x, mean=mu, cov=sigma**2), msg1
 
         msg2 = "Enterprise samples have wrong value, type, or size"
         x1 = NormalSampler(mu, sigma)
@@ -72,12 +72,12 @@ class TestParameter(unittest.TestCase):
         x = np.array([-0.2, 0.1, 0.5])
 
         assert np.allclose(
-            NormalPrior(x, mu, sigma), scipy.stats.multivariate_normal.pdf(x, mean=mu, cov=sigma ** 2)
+            NormalPrior(x, mu, sigma), scipy.stats.multivariate_normal.pdf(x, mean=mu, cov=sigma**2)
         ), msg1
 
         x1, x2 = (
             NormalSampler(mu, sigma, size=10),
-            scipy.stats.multivariate_normal.rvs(mean=mu, cov=sigma ** 2, size=10),
+            scipy.stats.multivariate_normal.rvs(mean=mu, cov=sigma**2, size=10),
         )
         assert x1.shape == x2.shape, msg2
 
@@ -85,10 +85,10 @@ class TestParameter(unittest.TestCase):
         # which returns a vector consistently with `UniformPrior`
         mu, sigma = np.array([0.1, 0.15, 0.2]), np.array([2, 1, 2])
         assert np.allclose(
-            np.prod(NormalPrior(x, mu, sigma)), scipy.stats.multivariate_normal.pdf(x, mean=mu, cov=sigma ** 2)
+            np.prod(NormalPrior(x, mu, sigma)), scipy.stats.multivariate_normal.pdf(x, mean=mu, cov=sigma**2)
         ), msg1
 
-        x1, x2 = NormalSampler(mu, sigma), scipy.stats.multivariate_normal.rvs(mean=mu, cov=sigma ** 2)
+        x1, x2 = NormalSampler(mu, sigma), scipy.stats.multivariate_normal.rvs(mean=mu, cov=sigma**2)
         assert x1.shape == x2.shape, msg2
 
         # matrix covariance
