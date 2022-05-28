@@ -1089,7 +1089,7 @@ class ndarray_alt(np.ndarray):
 
     def __new__(cls, inputarr):
         if inputarr.ndim != 1:
-            raise NotImplementedError("ndarray_alt does not support non-diagonal arrays") 
+            raise NotImplementedError("ndarray_alt does not support non-diagonal arrays")
 
         obj = np.asarray(inputarr).view(cls)
 
