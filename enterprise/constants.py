@@ -35,8 +35,8 @@ Gpc = pc * 1.0e9
 # solar mass in kg and m,s natural units
 GMsun = 1.327124400e20  # measured more precisely than Msun alone!
 Msun = GMsun / G
-Rsun = GMsun / (c ** 2)
-Tsun = GMsun / (c ** 3)
+Rsun = GMsun / (c**2)
+Tsun = GMsun / (c**3)
 
 # other useful conversions in mks
 erg = sc.erg

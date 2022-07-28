@@ -32,7 +32,7 @@ def create_quant_matrix(toas, dt=1):
 def se_kernel(etoas, log10_sigma=-7, log10_lam=np.log10(30 * 86400)):
     tm = np.abs(etoas[None, :] - etoas[:, None])
     d = np.eye(tm.shape[0]) * 10 ** (2 * (log10_sigma - 1.5))
-    return 10 ** (2 * log10_sigma) * np.exp(-(tm ** 2) / 2 / 10 ** (2 * log10_lam)) + d
+    return 10 ** (2 * log10_sigma) * np.exp(-(tm**2) / 2 / 10 ** (2 * log10_lam)) + d
 
 
 class TestGPSignals(unittest.TestCase):
@@ -511,7 +511,7 @@ class TestGPSignals(unittest.TestCase):
 
         # basis matrix test
         M = self.psr.Mmat.copy()
-        norm = np.sqrt(np.sum(M ** 2, axis=0))
+        norm = np.sqrt(np.sum(M**2, axis=0))
         M /= norm
         params = {}
         msg = "M matrix incorrect for Timing Model signal."
@@ -679,7 +679,7 @@ class TestGPSignals(unittest.TestCase):
         # combined basis matrix
         U = utils.create_quantization_matrix(self.psr.toas)[0]
         M = self.psr.Mmat.copy()
-        norm = np.sqrt(np.sum(M ** 2, axis=0))
+        norm = np.sqrt(np.sum(M**2, axis=0))
         M /= norm
         F, f2 = utils.createfourierdesignmatrix_red(self.psr.toas, nmodes=30)
         U2, avetoas = create_quant_matrix(self.psr.toas, dt=7 * 86400)

@@ -683,7 +683,7 @@ class PTA(object):
         return [p.psrname for p in self._signalcollections]
 
     def _set_signal_dict(self):
-        """ Set signal dictionary"""
+        """Set signal dictionary"""
 
         self._signal_dict = {}
         sig_list = []
@@ -703,7 +703,7 @@ class PTA(object):
 
     @property
     def signals(self):
-        """ Return signal dictionary."""
+        """Return signal dictionary."""
         return self._signal_dict
 
     def get_signal(self, name):
@@ -775,7 +775,7 @@ def SignalCollection(metasignals):  # noqa: C901
 
         # TODO: this could be implemented more cleanly
         def _set_cache_parameters(self):
-            """ Sets the cache for various signal types."""
+            """Sets the cache for various signal types."""
 
             self.white_params = []
             self.basis_params = []
@@ -1088,7 +1088,11 @@ class ndarray_alt(np.ndarray):
     """Sub-class of ``np.ndarray`` with custom ``solve`` method."""
 
     def __new__(cls, inputarr):
+        if inputarr.ndim != 1:
+            raise NotImplementedError("ndarray_alt does not support non-diagonal arrays")
+
         obj = np.asarray(inputarr).view(cls)
+
         return obj
 
     def __add__(self, other):
@@ -1285,7 +1289,6 @@ class ShermanMorrison(object):
         return logdet
 
     def solve(self, other, left_array=None, logdet=False):
-
         if other.ndim == 1:
             if left_array is None:
                 ret = self._solve_D1(other)
@@ -1297,7 +1300,7 @@ class ShermanMorrison(object):
                 raise TypeError
         elif other.ndim == 2:
             if left_array is None:
-                raise TypeError
+                raise NotImplementedError("ShermanMorrison does not implement _solve_D2")
             elif left_array is not None and left_array.ndim == 2:
                 ret = self._solve_2D2(other, left_array)
             elif left_array is not None and left_array.ndim == 1:
