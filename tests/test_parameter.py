@@ -95,7 +95,9 @@ class TestParameter(unittest.TestCase):
         x = 0.5
 
         msg1 = "Enterprise and scipy priors do not match"
-        assert np.allclose(NormalPrior(x, mu, sigma), scipy.stats.multivariate_normal.pdf(x, mean=mu, cov=sigma**2)), msg1
+        assert np.allclose(
+            NormalPrior(x, mu, sigma), scipy.stats.multivariate_normal.pdf(x, mean=mu, cov=sigma**2)
+        ), msg1
 
         msg2 = "Enterprise samples have wrong value, type, or size"
         x1 = NormalSampler(mu, sigma)
