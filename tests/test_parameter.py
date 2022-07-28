@@ -27,7 +27,7 @@ class TestParameter(unittest.TestCase):
         x = 0.5
 
         msg1 = "Enterprise and scipy priors do not match"
-        assert UniformPrior(x, p_min, p_max) == scipy.stats.uniform.pdf(x, p_min, p_max - p_min), msg1
+        assert np.allclose(UniformPrior(x, p_min, p_max), scipy.stats.uniform.pdf(x, p_min, p_max - p_min)), msg1
 
         msg2 = "Enterprise samples have wrong value, type, or size"
         x1 = UniformSampler(p_min, p_max)
@@ -61,7 +61,7 @@ class TestParameter(unittest.TestCase):
         p_min, p_max = 1, 3
         x = 2
         msg1 = "Scalar prior does not match"
-        assert LinearExpPrior(x, p_min, p_max) == np.log(10) * 10**2 / (10**3 - 10**1), msg1
+        assert np.allclose(LinearExpPrior(x, p_min, p_max), np.log(10) * 10**2 / (10**3 - 10**1)), msg1
 
         x = LinearExpSampler(p_min, p_max)
         msg1b = "Scalar sampler out of range"
@@ -95,7 +95,7 @@ class TestParameter(unittest.TestCase):
         x = 0.5
 
         msg1 = "Enterprise and scipy priors do not match"
-        assert NormalPrior(x, mu, sigma) == scipy.stats.multivariate_normal.pdf(x, mean=mu, cov=sigma**2), msg1
+        assert np.allclose(NormalPrior(x, mu, sigma), scipy.stats.multivariate_normal.pdf(x, mean=mu, cov=sigma**2)), msg1
 
         msg2 = "Enterprise samples have wrong value, type, or size"
         x1 = NormalSampler(mu, sigma)
