@@ -266,7 +266,7 @@ def LinearExpPrior(value, pmin, pmax):
     return ((pmin <= value) & (value <= pmax)) * np.log(10) * 10**value / (10**pmax - 10**pmin)
 
 
-def LinearExpSampler(pmin, pmax, size):
+def LinearExpSampler(pmin, pmax, size=None):
     """Sampling function for LinearExp parameters."""
 
     if np.any(pmin >= pmax):
