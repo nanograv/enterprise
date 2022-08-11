@@ -87,7 +87,7 @@ class TestHierarchicalParameter(unittest.TestCase):
 
     def test_powerlaw(self):
         def powerlaw(f, log10_A=-15):
-            return (10 ** log10_A) * f ** 2
+            return (10**log10_A) * f**2
 
         pl = parameter.Function(powerlaw, log10_A=parameter.Uniform(0, 5))
 
@@ -103,10 +103,10 @@ class TestHierarchicalParameter(unittest.TestCase):
         assert np.allclose(pl1(fs, log10_A=-16), np.array([1e-16, 4e-16, 9e-16]))
         assert np.allclose(pl1(fs, params={"pl1_log10_A": -17}), np.array([1e-16, 4e-16, 9e-16]))
 
-        def log10(A=10 ** -16):
+        def log10(A=10**-16):
             return np.log10(A)
 
-        log10f = parameter.Function(log10, A=parameter.Uniform(10 ** -17, 10 ** -14))
+        log10f = parameter.Function(log10, A=parameter.Uniform(10**-17, 10**-14))
         pm = parameter.Function(powerlaw, log10_A=log10f)
 
         pm1 = pm("pm1")
@@ -116,17 +116,17 @@ class TestHierarchicalParameter(unittest.TestCase):
         assert str(pm1) == repr_A or str(pm1) == repr_B
 
         assert np.allclose(pm1(fs, log10_A=-13), np.array([1e-13, 4e-13, 9e-13]))
-        assert np.allclose(pm1(fs, params={"pm1_log10_A_A": 10 ** -19}), np.array([1e-19, 4e-19, 9e-19]))
+        assert np.allclose(pm1(fs, params={"pm1_log10_A_A": 10**-19}), np.array([1e-19, 4e-19, 9e-19]))
 
     def test_powerlaw_equad(self):
         def powerlaw(f, log10_A=-15):
-            return (10 ** log10_A) * f ** 2
+            return (10**log10_A) * f**2
 
-        def log10(A=10 ** -16):
+        def log10(A=10**-16):
             return np.log10(A)
 
         fquad = white_signals.TNEquadNoise(
-            log10_tnequad=parameter.Function(log10, A=parameter.Uniform(10 ** -17, 10 ** -14))
+            log10_tnequad=parameter.Function(log10, A=parameter.Uniform(10**-17, 10**-14))
         )
 
         fquad1 = fquad(self.psr)
@@ -135,5 +135,5 @@ class TestHierarchicalParameter(unittest.TestCase):
         repr_B = "[B1855+09_log10_tnequad_A:Uniform(pmax=1e-14, pmin=1e-17)]"
         assert str(fquad1.params) == repr_A or str(fquad1.params) == repr_B
         assert np.allclose(
-            fquad1.get_ndiag(params={"B1855+09_log10_tnequad_A": 10 ** -14})[:3], np.array([1e-28, 1e-28, 1e-28])
+            fquad1.get_ndiag(params={"B1855+09_log10_tnequad_A": 10**-14})[:3], np.array([1e-28, 1e-28, 1e-28])
         )

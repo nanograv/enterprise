@@ -72,7 +72,7 @@ class TestWhiteSignals(unittest.TestCase):
         params = {"B1855+09_efac": efac}
 
         # correct value
-        nvec0 = efac ** 2 * self.psr.toaerrs ** 2
+        nvec0 = efac**2 * self.psr.toaerrs**2
 
         # test
         msg = "EFAC covariance incorrect."
@@ -175,7 +175,7 @@ class TestWhiteSignals(unittest.TestCase):
         params = {"B1855+09_efac": efac, "B1855+09_log10_tnequad": tnequad}
 
         # correct value
-        nvec0 = efac ** 2 * self.psr.toaerrs ** 2
+        nvec0 = efac**2 * self.psr.toaerrs**2
         nvec0 += 10 ** (2 * tnequad) * np.ones_like(self.psr.toas)
 
         # test
@@ -412,7 +412,7 @@ class TestWhiteSignals(unittest.TestCase):
         }
 
         # get EFAC Nvec
-        nvec0 = efacs[0] ** 2 * self.ipsr.toaerrs ** 2
+        nvec0 = efacs[0] ** 2 * self.ipsr.toaerrs**2
 
         # get the basis
         flags = ["ASP-L", "ASP-S", "GASP-8", "GASP-L", "GUPPI-8", "GUPPI-L", "PUPPI-L", "PUPPI-S"]

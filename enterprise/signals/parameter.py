@@ -219,7 +219,7 @@ def NormalPrior(value, mu, sigma):
         dx = value - mu
         return np.exp(-0.5 * np.dot(dx, np.dot(np.linalg.inv(sigma), dx))) / np.sqrt(np.linalg.det(2 * math.pi * sigma))
     else:
-        return np.exp(-0.5 * (value - mu) ** 2 / sigma ** 2) / np.sqrt(2 * math.pi * sigma ** 2)
+        return np.exp(-0.5 * (value - mu) ** 2 / sigma**2) / np.sqrt(2 * math.pi * sigma**2)
 
 
 def NormalSampler(mu, sigma, size=None):
@@ -263,10 +263,10 @@ def LinearExpPrior(value, pmin, pmax):
 
     # works with vectors if pmin and pmax are either scalars,
     # or len(value) vectors
-    return ((pmin <= value) & (value <= pmax)) * np.log(10) * 10 ** value / (10 ** pmax - 10 ** pmin)
+    return ((pmin <= value) & (value <= pmax)) * np.log(10) * 10**value / (10**pmax - 10**pmin)
 
 
-def LinearExpSampler(pmin, pmax, size):
+def LinearExpSampler(pmin, pmax, size=None):
     """Sampling function for LinearExp parameters."""
 
     if np.any(pmin >= pmax):
@@ -274,7 +274,7 @@ def LinearExpSampler(pmin, pmax, size):
 
     # works with vectors if pmin and pmax are either scalars
     # or vectors, in which case one must have len(pmin) = len(pmax) = size
-    return np.log10(np.random.uniform(10 ** pmin, 10 ** pmax, size))
+    return np.log10(np.random.uniform(10**pmin, 10**pmax, size))
 
 
 def LinearExp(pmin, pmax, size=None):

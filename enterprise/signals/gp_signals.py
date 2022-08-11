@@ -670,7 +670,7 @@ def WidebandTimingModel(
             for dmx, which in zip(self._dmx, self._dmwhich):
                 dm_delay[which] = avg_dm[which] - (self._dmpar + dmx)
 
-            return dm_delay / (2.41e-4 * self._freqs ** 2)
+            return dm_delay / (2.41e-4 * self._freqs**2)
 
         @signal_base.cache_call(["delay_params"])
         def get_dm(self, params):
@@ -694,7 +694,7 @@ def WidebandTimingModel(
                     for efac, mask in zip(self._dmefacs, self._dmefac_masks)
                 )
                 ** 2
-                * self._dmerr ** 2
+                * self._dmerr**2
                 + (
                     10
                     ** sum(
@@ -744,7 +744,7 @@ def WidebandTimingModel(
 
             # now this is a bit wasteful, because it makes copies of the mean DMX and DMXERR
             # and only uses the first value, but it shouldn't cost us too much
-            expterm = -0.5 * np.sum(dm ** 2 / dme ** 2)
+            expterm = -0.5 * np.sum(dm**2 / dme**2)
             expterm += 0.5 * sum(mean_dm[which][0] ** 2 / mean_dme[which][0] ** 2 for which in self._dmwhich)
 
             # sum_i [-0.5 * log(dmerr**2)] = -sum_i log dmerr; same for mean_dmerr

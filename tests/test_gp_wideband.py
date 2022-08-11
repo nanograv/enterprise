@@ -126,9 +126,9 @@ class TestWidebandTimingModel(unittest.TestCase):
         for key, mask in sel.masks.items():
             dmefac = p1["J1832-0836_" + key + "_dmefac"]
             log10_dmequad = p1["J1832-0836_" + key + "_log10_dmequad"]
-            dmequad = 10 ** log10_dmequad
+            dmequad = 10**log10_dmequad
             dme_flags_var[mask] *= dmefac
-            dme_flags_var[mask] = (dme_flags_var[mask] ** 2 + dmequad ** 2) ** 0.5
+            dme_flags_var[mask] = (dme_flags_var[mask] ** 2 + dmequad**2) ** 0.5
 
         for index, par in enumerate(self.psr.fitpars):
             if "DMX" not in par:
