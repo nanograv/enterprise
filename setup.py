@@ -11,9 +11,9 @@ requirements = [
     "scipy>=1.2.0",
     "ephem>=3.7.6.0",
     "healpy>=1.14.0",
-    "scikit-sparse>=0.4.5",
+    "scikit-sparse @ git+https://github.com/vallis/scikit-sparse@master",  # was >=0.4.5
     "pint-pulsar>=0.8.3",
-    "libstempo>=2.4.4",
+    "libstempo @ git+https://github.com/vallis/libstempo@master",  # was >=2.4.4
 ]
 
 test_requirements = []
@@ -30,7 +30,7 @@ setup(
     package_dir={"enterprise": "enterprise"},
     include_package_data=True,
     package_data={"enterprise": ["datafiles/*", "datafiles/ephemeris/*", "datafiles/ng9/*", "datafiles/mdc_open1/*"]},
-    python_requires=">=3.7, <3.10",
+    python_requires=">=3.7, <3.11",
     install_requires=requirements,
     license="MIT license",
     zip_safe=False,
@@ -45,6 +45,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Topic :: Scientific/Engineering :: Astronomy",
         "Topic :: Scientific/Engineering :: Physics",
     ],
