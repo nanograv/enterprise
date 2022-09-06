@@ -14,8 +14,8 @@ import numpy as np
 import scipy.stats
 
 from enterprise.signals.parameter import UniformPrior, UniformSampler
-from enterprise.signals.parameter import NormalPrior, NormalSampler
-from enterprise.signals.parameter import TruncNormalPrior, TruncNormalSampler
+from enterprise.signals.parameter import NormalPrior, NormalSampler, Normal
+from enterprise.signals.parameter import TruncNormalPrior, TruncNormalSampler, TruncNormal
 from enterprise.signals.parameter import LinearExpPrior, LinearExpSampler
 
 
@@ -178,3 +178,13 @@ class TestParameter(unittest.TestCase):
 
         x1, x2 = TruncNormalSampler(mu, sigma, pmin, pmax), scipy.stats.truncnorm.rvs(a, b, mu, sigma)
         assert x1.shape == x2.shape, msg2
+
+    def test_normalandtruncnormal(self):
+        mu, sigma = 0, 1
+
+        msg3 = "Normal and [-inf, inf] TruncNormal do not match"
+
+        paramA = Normal(mu, sigma)("A")
+        paramB = TruncNormal(mu, sigma, -np.inf, np.inf)("B")
+        xs = np.linspace(-3, 3, 20)
+        assert np.allclose(paramA.get_pdf(xs), paramB.get_pdf(xs)), msg3
