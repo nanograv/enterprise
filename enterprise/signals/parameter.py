@@ -262,11 +262,12 @@ def TruncNormalPrior(value, mu, sigma, pmin, pmax, norm=None):
     """
     if norm is None:
         norm = (
-			2 / np.sqrt(2 * np.pi) / sigma
-            / (_erf((pmax - mu) / sigma / np.sqrt(2)) 
-			   - _erf((pmin - mu) / sigma / np.sqrt(2)))
-		)
-    arg = -0.5 * ((value - mu) / sigma)**2
+            2
+            / np.sqrt(2 * np.pi)
+            / sigma
+            / (_erf((pmax - mu) / sigma / np.sqrt(2)) - _erf((pmin - mu) / sigma / np.sqrt(2)))
+        )
+    arg = -0.5 * ((value - mu) / sigma) ** 2
     return norm * np.exp(arg) * ((value > pmin) & (value < pmax))
 
 
@@ -281,8 +282,7 @@ def TruncNormalSampler(mu, sigma, pmin, pmax, norm=None, size=None):
         mask = np.logical_or(samp > pmax, samp < pmin)
         while np.any(mask):
             if isinstance(mu, np.ndarray):
-                samp[mask] = np.random.normal(mu[mask], sigma[mask],
-                                              size=sum(mask))
+                samp[mask] = np.random.normal(mu[mask], sigma[mask], size=sum(mask))
             else:
                 samp[mask] = np.random.normal(mu, sigma, size=sum(mask))
             mask = np.logical_or(samp > pmax, samp < pmin)
@@ -308,13 +308,13 @@ def TruncNormal(mu=0, sigma=1, pmin=-2, pmax=2, size=None):
 
     class TruncNormal(Parameter):
         _norm = (
-			2 / np.sqrt(2 * np.pi) / sigma
-            / (_erf((pmax - mu) / sigma / np.sqrt(2)) 
-			   - _erf((pmin - mu) / sigma / np.sqrt(2)))
+            2
+            / np.sqrt(2 * np.pi)
+            / sigma
+            / (_erf((pmax - mu) / sigma / np.sqrt(2)) - _erf((pmin - mu) / sigma / np.sqrt(2)))
         )
         _size = size
-        _prior = Function(TruncNormalPrior, mu=mu, sigma=sigma, 
-                          pmin=pmin, pmax=pmax, norm=_norm)
+        _prior = Function(TruncNormalPrior, mu=mu, sigma=sigma, pmin=pmin, pmax=pmax, norm=_norm)
         _sampler = staticmethod(TruncNormalSampler)
         _typename = _argrepr("TruncNormal", mu=mu, sigma=sigma, pmin=pmin, pmax=pmax)
 

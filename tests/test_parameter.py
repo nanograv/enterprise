@@ -135,7 +135,7 @@ class TestParameter(unittest.TestCase):
 
         x1, x2 = NormalSampler(mu, sigma), scipy.stats.multivariate_normal.rvs(mean=mu, cov=sigma)
         assert x1.shape == x2.shape, msg2
-    
+
     def test_truncnormal(self):
         """Test TruncNormal parameter prior and sampler for various combinations of scalar and vector arguments."""
 
@@ -146,8 +146,7 @@ class TestParameter(unittest.TestCase):
 
         msg1 = "Enterprise and scipy priors do not match"
         assert np.allclose(
-            TruncNormalPrior(x, mu, sigma, pmin, pmax),
-            scipy.stats.truncnorm.pdf(x, a, b, mu, sigma)
+            TruncNormalPrior(x, mu, sigma, pmin, pmax), scipy.stats.truncnorm.pdf(x, a, b, mu, sigma)
         ), msg1
 
         msg2 = "Enterprise samples have wrong value, type, or size"
@@ -159,13 +158,12 @@ class TestParameter(unittest.TestCase):
         x = np.array([-0.2, 0.1, 0.5])
 
         assert np.allclose(
-            TruncNormalPrior(x, mu, sigma, pmin, pmax),
-            scipy.stats.truncnorm.pdf(x, a, b, mu, sigma)
+            TruncNormalPrior(x, mu, sigma, pmin, pmax), scipy.stats.truncnorm.pdf(x, a, b, mu, sigma)
         ), msg1
 
         x1, x2 = (
             TruncNormalSampler(mu, sigma, pmin, pmax, size=10),
-            scipy.stats.truncnorm.rvs(a, b, mu, sigma, size=10)
+            scipy.stats.truncnorm.rvs(a, b, mu, sigma, size=10),
         )
         assert x1.shape == x2.shape, msg2
 
@@ -175,12 +173,8 @@ class TestParameter(unittest.TestCase):
         pmin, pmax = np.array([-2, -2, -3]), np.array([1, 2, 1])
         a, b = (pmin - mu) / sigma, (pmax - mu) / sigma
         assert np.allclose(
-            TruncNormalPrior(x, mu, sigma, pmin, pmax),
-            scipy.stats.truncnorm.pdf(x, a, b, mu, sigma)
+            TruncNormalPrior(x, mu, sigma, pmin, pmax), scipy.stats.truncnorm.pdf(x, a, b, mu, sigma)
         ), msg1
 
-        x1, x2 = (
-            TruncNormalSampler(mu, sigma, pmin, pmax),
-            scipy.stats.truncnorm.rvs(a, b, mu, sigma)
-        )
+        x1, x2 = TruncNormalSampler(mu, sigma, pmin, pmax), scipy.stats.truncnorm.rvs(a, b, mu, sigma)
         assert x1.shape == x2.shape, msg2
