@@ -1,7 +1,6 @@
 # parameter.py
 """Contains parameter types for use in `enterprise` ``Signal`` classes."""
 
-import math
 import functools
 import inspect
 
@@ -218,9 +217,9 @@ def NormalPrior(value, mu, sigma):
 
     if np.ndim(sigma) == 2:
         dx = value - mu
-        return np.exp(-0.5 * np.dot(dx, np.dot(np.linalg.inv(sigma), dx))) / np.sqrt(np.linalg.det(2 * math.pi * sigma))
+        return np.exp(-0.5 * np.dot(dx, np.dot(np.linalg.inv(sigma), dx))) / np.sqrt(np.linalg.det(2 * np.pi * sigma))
     else:
-        return np.exp(-0.5 * (value - mu) ** 2 / sigma**2) / np.sqrt(2 * math.pi * sigma**2)
+        return np.exp(-0.5 * (value - mu) ** 2 / sigma**2) / np.sqrt(2 * np.pi * sigma**2)
 
 
 def NormalSampler(mu, sigma, size=None):
