@@ -307,12 +307,15 @@ def TruncNormal(mu=0, sigma=1, pmin=-2, pmax=2, size=None):
     """
 
     class TruncNormal(Parameter):
-        _norm = (
-            2
-            / np.sqrt(2 * np.pi)
-            / sigma
-            / (_erf((pmax - mu) / sigma / np.sqrt(2)) - _erf((pmin - mu) / sigma / np.sqrt(2)))
-        )
+        try:
+            _norm = (
+                2
+                / np.sqrt(2 * np.pi)
+                / sigma
+                / (_erf((pmax - mu) / sigma / np.sqrt(2)) - _erf((pmin - mu) / sigma / np.sqrt(2)))
+            )
+        except TypeError:
+            _norm = None
         _size = size
         _prior = Function(TruncNormalPrior, mu=mu, sigma=sigma, pmin=pmin, pmax=pmax, norm=_norm)
         _sampler = staticmethod(TruncNormalSampler)
