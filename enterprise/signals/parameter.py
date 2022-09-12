@@ -273,8 +273,8 @@ def TruncNormalPrior(value, mu, sigma, pmin, pmax, norm=None):
 
 def TruncNormalSampler(mu, sigma, pmin, pmax, norm=None, size=None):
     """Sampling function for TruncNormal parameters.
-    Handles scalar mu and sigma, compatible vector value/mu/sigma,
-    vector value/mu and compatible covariance matrix sigma.
+    Handles scalar mu/sigma/pmin/pmax or compatible vector
+    value/mu/sigma/pmin/pmax/.
     Implements rejection sampling on a normal distribution.
     """
     samp = np.random.normal(mu, sigma, size)
