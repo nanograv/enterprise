@@ -13,7 +13,7 @@ import unittest
 import numpy as np
 import scipy.stats
 
-from enterprise.signals.parameter import UniformPrior, UniformSampler
+from enterprise.signals.parameter import UniformPrior, UniformSampler, Uniform
 from enterprise.signals.parameter import NormalPrior, NormalSampler, Normal
 from enterprise.signals.parameter import TruncNormalPrior, TruncNormalSampler, TruncNormal
 from enterprise.signals.parameter import LinearExpPrior, LinearExpSampler
@@ -188,3 +188,15 @@ class TestParameter(unittest.TestCase):
         paramB = TruncNormal(mu, sigma, -np.inf, np.inf)("B")
         xs = np.linspace(-3, 3, 20)
         assert np.allclose(paramA.get_pdf(xs), paramB.get_pdf(xs)), msg3
+    
+    def test_metaparam(self):
+        mu = Uniform(-1, 1)("mean")
+        sigma = 2
+        pmin, pmax = -3, 3
+
+        msg4 = "problem with meta-parameter in TruncNormal"
+        zeros = np.zeros(2)
+
+        paramA = TruncNormal(mu, sigma, pmin, pmax)("A")
+        xs = np.array([-3.5, 3.5])
+        assert np.alltrue(paramA.get_pdf(xs, mu=mu.sample()) == zeros), msg4
