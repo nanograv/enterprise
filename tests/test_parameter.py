@@ -188,7 +188,7 @@ class TestParameter(unittest.TestCase):
         paramB = TruncNormal(mu, sigma, -np.inf, np.inf)("B")
         xs = np.linspace(-3, 3, 20)
         assert np.allclose(paramA.get_pdf(xs), paramB.get_pdf(xs)), msg3
-    
+
     def test_metaparam(self):
         mu = Uniform(-1, 1)("mean")
         sigma = 2
