@@ -1,11 +1,11 @@
 # parameter.py
 """Contains parameter types for use in `enterprise` ``Signal`` classes."""
 
-import math
 import functools
 import inspect
 
 import numpy as np
+from scipy.special import erf as _erf
 
 from enterprise.signals.selections import selection_func
 
@@ -217,9 +217,9 @@ def NormalPrior(value, mu, sigma):
 
     if np.ndim(sigma) == 2:
         dx = value - mu
-        return np.exp(-0.5 * np.dot(dx, np.dot(np.linalg.inv(sigma), dx))) / np.sqrt(np.linalg.det(2 * math.pi * sigma))
+        return np.exp(-0.5 * np.dot(dx, np.dot(np.linalg.inv(sigma), dx))) / np.sqrt(np.linalg.det(2 * np.pi * sigma))
     else:
-        return np.exp(-0.5 * (value - mu) ** 2 / sigma**2) / np.sqrt(2 * math.pi * sigma**2)
+        return np.exp(-0.5 * (value - mu) ** 2 / sigma**2) / np.sqrt(2 * np.pi * sigma**2)
 
 
 def NormalSampler(mu, sigma, size=None):
@@ -253,6 +253,75 @@ def Normal(mu=0, sigma=1, size=None):
         _typename = _argrepr("Normal", mu=mu, sigma=sigma)
 
     return Normal
+
+
+def TruncNormalPrior(value, mu, sigma, pmin, pmax, norm=None):
+    """Prior function for TruncNormal parameters.
+    Handles scalar mu/sigma/pmin/pmax or compatible vector
+    value/mu/sigma/pmin/pmax/.
+    """
+    if norm is None:
+        norm = (
+            2
+            / np.sqrt(2 * np.pi)
+            / sigma
+            / (_erf((pmax - mu) / sigma / np.sqrt(2)) - _erf((pmin - mu) / sigma / np.sqrt(2)))
+        )
+    arg = -0.5 * ((value - mu) / sigma) ** 2
+    return norm * np.exp(arg) * ((value > pmin) & (value < pmax))
+
+
+def TruncNormalSampler(mu, sigma, pmin, pmax, norm=None, size=None):
+    """Sampling function for TruncNormal parameters.
+    Handles scalar mu/sigma/pmin/pmax or compatible vector
+    value/mu/sigma/pmin/pmax/.
+    Implements rejection sampling on a normal distribution.
+    """
+    samp = np.random.normal(mu, sigma, size)
+    if isinstance(samp, np.ndarray):
+        mask = np.logical_or(samp > pmax, samp < pmin)
+        while np.any(mask):
+            if isinstance(mu, np.ndarray):
+                samp[mask] = np.random.normal(mu[mask], sigma[mask], size=sum(mask))
+            else:
+                samp[mask] = np.random.normal(mu, sigma, size=sum(mask))
+            mask = np.logical_or(samp > pmax, samp < pmin)
+    else:
+        while samp > pmax or samp < pmin:
+            samp = np.random.normal(mu, sigma)
+    return samp
+
+
+def TruncNormal(mu=0, sigma=1, pmin=-2, pmax=2, size=None):
+    """Class factory for TruncNormal parameters
+    (with pdf(x) ~ N(``mu``,``sigma``) on a finite, truncated domain).
+    Handles vectors correctly if ``size == len(mu) == len(sigma)``,
+    in which case ``sigma`` is taken as the sqrt of the diagonal
+    of the covariance matrix.
+    :param mu:    center of normal distribution
+    :param sigma: standard deviation of normal distribution
+    :param pmin:  lower bound of domain
+    :param pmax:  upper bound of domain
+    :param size:  length for vector parameter
+    :return:      `TruncNormal`` parameter class
+    """
+
+    class TruncNormal(Parameter):
+        try:
+            _norm = (
+                2
+                / np.sqrt(2 * np.pi)
+                / sigma
+                / (_erf((pmax - mu) / sigma / np.sqrt(2)) - _erf((pmin - mu) / sigma / np.sqrt(2)))
+            )
+        except TypeError:
+            _norm = None
+        _size = size
+        _prior = Function(TruncNormalPrior, mu=mu, sigma=sigma, pmin=pmin, pmax=pmax, norm=_norm)
+        _sampler = staticmethod(TruncNormalSampler)
+        _typename = _argrepr("TruncNormal", mu=mu, sigma=sigma, pmin=pmin, pmax=pmax)
+
+    return TruncNormal
 
 
 def LinearExpPrior(value, pmin, pmax):

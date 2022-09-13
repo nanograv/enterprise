@@ -13,8 +13,9 @@ import unittest
 import numpy as np
 import scipy.stats
 
-from enterprise.signals.parameter import UniformPrior, UniformSampler
-from enterprise.signals.parameter import NormalPrior, NormalSampler
+from enterprise.signals.parameter import UniformPrior, UniformSampler, Uniform
+from enterprise.signals.parameter import NormalPrior, NormalSampler, Normal
+from enterprise.signals.parameter import TruncNormalPrior, TruncNormalSampler, TruncNormal
 from enterprise.signals.parameter import LinearExpPrior, LinearExpSampler
 
 
@@ -134,3 +135,68 @@ class TestParameter(unittest.TestCase):
 
         x1, x2 = NormalSampler(mu, sigma), scipy.stats.multivariate_normal.rvs(mean=mu, cov=sigma)
         assert x1.shape == x2.shape, msg2
+
+    def test_truncnormal(self):
+        """Test TruncNormal parameter prior and sampler for various combinations of scalar and vector arguments."""
+
+        # scalar
+        mu, sigma, pmin, pmax = 0.1, 2, -2, 3
+        x = 0.5
+        a, b = (pmin - mu) / sigma, (pmax - mu) / sigma
+
+        msg1 = "Enterprise and scipy priors do not match"
+        assert np.allclose(
+            TruncNormalPrior(x, mu, sigma, pmin, pmax), scipy.stats.truncnorm.pdf(x, a, b, mu, sigma)
+        ), msg1
+
+        msg2 = "Enterprise samples have wrong value, type, or size"
+        x1 = TruncNormalSampler(mu, sigma, pmin, pmax)
+        # this should almost never fail
+        assert -5 < (x1 - mu) / sigma < 5, msg2
+
+        # vector argument
+        x = np.array([-0.2, 0.1, 0.5])
+
+        assert np.allclose(
+            TruncNormalPrior(x, mu, sigma, pmin, pmax), scipy.stats.truncnorm.pdf(x, a, b, mu, sigma)
+        ), msg1
+
+        x1, x2 = (
+            TruncNormalSampler(mu, sigma, pmin, pmax, size=10),
+            scipy.stats.truncnorm.rvs(a, b, mu, sigma, size=10),
+        )
+        assert x1.shape == x2.shape, msg2
+
+        # vector bounds; note the different semantics from `NormalPrior`,
+        # which returns a vector consistently with `UniformPrior`
+        mu, sigma = np.array([0.1, 0.15, 0.2]), np.array([2, 1, 2])
+        pmin, pmax = np.array([-2, -2, -3]), np.array([1, 2, 1])
+        a, b = (pmin - mu) / sigma, (pmax - mu) / sigma
+        assert np.allclose(
+            TruncNormalPrior(x, mu, sigma, pmin, pmax), scipy.stats.truncnorm.pdf(x, a, b, mu, sigma)
+        ), msg1
+
+        x1, x2 = TruncNormalSampler(mu, sigma, pmin, pmax), scipy.stats.truncnorm.rvs(a, b, mu, sigma)
+        assert x1.shape == x2.shape, msg2
+
+    def test_normalandtruncnormal(self):
+        mu, sigma = 0, 1
+
+        msg3 = "Normal and [-inf, inf] TruncNormal do not match"
+
+        paramA = Normal(mu, sigma)("A")
+        paramB = TruncNormal(mu, sigma, -np.inf, np.inf)("B")
+        xs = np.linspace(-3, 3, 20)
+        assert np.allclose(paramA.get_pdf(xs), paramB.get_pdf(xs)), msg3
+
+    def test_metaparam(self):
+        mu = Uniform(-1, 1)("mean")
+        sigma = 2
+        pmin, pmax = -3, 3
+
+        msg4 = "problem with meta-parameter in TruncNormal"
+        zeros = np.zeros(2)
+
+        paramA = TruncNormal(mu, sigma, pmin, pmax)("A")
+        xs = np.array([-3.5, 3.5])
+        assert np.alltrue(paramA.get_pdf(xs, mu=mu.sample()) == zeros), msg4
