@@ -519,9 +519,14 @@ def WidebandTimingModel(
     name="wideband_timing_model",
 ):
     """Class factory for marginalized linear timing model signals
-    that take wideband TOAs and DMs. DM noise can be adjusted in analogy to
-    the tempo/tempo2/pint parameter convention, variance = dmefac^2 (dmerr^2 + equad^2).
-    Currently assumes DMX for DM model."""
+    that take wideband TOAs and DMs. Works in tandem with DMX parameters,
+    by effectively setting their prior mean and variance.
+    DM noise can be adjusted in analogy to the tempo/tempo2/PINT parameter
+    convention, with variance = dmefac^2 (dmerr^2 + dmequad^2).
+    DM noise can be segmented with `selection` (e.g., backends).
+    DM jumps can also be added for each `dmjump_selection`;
+    setting `dmjump_ref` to one of the selection labels keeps the
+    corresponding jump to zero."""
 
     basis = utils.unnormed_tm_basis()  # will need to normalize phi otherwise
     prior = utils.tm_prior()  # standard
