@@ -52,7 +52,12 @@ def selection_func(func):
 
 
 def Selection(func):
-    """Class factory for TOA selection."""
+    """Class factory for residual selection."""
+
+    # if we wished to pre-wrap standard selections below with the decorator @Selection,
+    # here we would make sure they are not wrapped twice
+    # if hasattr(func, 'masks'):
+    #     return func
 
     class Selection(object):
         def __init__(self, psr):
