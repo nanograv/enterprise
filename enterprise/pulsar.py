@@ -237,6 +237,14 @@ class BasePulsar(object):
 
         return {flag: self._flags[flag][self._isort] for flag in flagnames}
 
+    def set_flags(self, flagname, values):
+        """Set value of existing or new flags."""
+
+        if isinstance(self._flags, np.ndarray):
+            raise NotImplementedError("Cannot set flags when stored as numpy.ndarray.")
+        else:
+            self._flags[flagname] = values[self._iisort]
+
     @property
     def backend_flags(self):
         """Return array of backend flags.

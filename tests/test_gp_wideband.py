@@ -33,10 +33,9 @@ class TestWidebandTimingModel(unittest.TestCase):
 
         dm = gp_signals.WidebandTimingModel(
             dmefac=parameter.Uniform(0.9, 1.1),
-            dmefac_selection=Selection(selections.by_backend),
             log10_dmequad=parameter.Uniform(-7.0, 0.0),
-            log10_dmequad_selection=Selection(selections.by_backend),
             dmjump=parameter.Normal(0, 1),
+            selection=Selection(selections.by_backend),
             dmjump_selection=Selection(selections.by_frontend),
             dmjump_ref=None,
             name="wideband_timing_model",
@@ -52,11 +51,8 @@ class TestWidebandTimingModel(unittest.TestCase):
 
         dmtiming = pta.pulsarmodels[0].signals[1]
 
-        msg = "DMEFAC masks do not cover the data."
-        assert np.all(sum(dmtiming._dmefac_masks) == 1), msg
-
-        msg = "DMEQUAD masks do not cover the data."
-        assert np.all(sum(dmtiming._log10_dmequad_masks) == 1), msg
+        msg = "DM masks do not cover the data."
+        assert np.all(sum(dmtiming._dm_masks) == 1), msg
 
         msg = "DMJUMP masks do not cover the data."
         assert np.all(sum(dmtiming._dmjump_masks) == 1), msg
@@ -127,8 +123,7 @@ class TestWidebandTimingModel(unittest.TestCase):
             dmefac = p1["J1832-0836_" + key + "_dmefac"]
             log10_dmequad = p1["J1832-0836_" + key + "_log10_dmequad"]
             dmequad = 10**log10_dmequad
-            dme_flags_var[mask] *= dmefac
-            dme_flags_var[mask] = (dme_flags_var[mask] ** 2 + dmequad**2) ** 0.5
+            dme_flags_var[mask] = np.sqrt(dmefac**2 * (dme_flags_var[mask] ** 2 + dmequad**2))
 
         for index, par in enumerate(self.psr.fitpars):
             if "DMX" not in par:

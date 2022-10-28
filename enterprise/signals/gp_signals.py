@@ -513,14 +513,20 @@ def WidebandTimingModel(
     dmefac=parameter.Uniform(pmin=0.1, pmax=10.0),
     log10_dmequad=parameter.Uniform(pmin=-7.0, pmax=0.0),
     dmjump=parameter.Uniform(pmin=-0.01, pmax=0.01),
-    dmefac_selection=Selection(selections.no_selection),
-    log10_dmequad_selection=Selection(selections.no_selection),
+    selection=Selection(selections.no_selection),
     dmjump_selection=Selection(selections.no_selection),
     dmjump_ref=None,
     name="wideband_timing_model",
 ):
     """Class factory for marginalized linear timing model signals
-    that take wideband TOAs and DMs.  Currently assumes DMX for DM model."""
+    that take wideband TOAs and DMs. Works in tandem with DMX parameters,
+    by effectively setting their prior mean and variance.
+    DM noise can be adjusted in analogy to the tempo/tempo2/PINT parameter
+    convention, with variance = dmefac^2 (dmerr^2 + dmequad^2).
+    DM noise can be segmented with `selection` (e.g., backends).
+    DM jumps can also be added for each `dmjump_selection`;
+    setting `dmjump_ref` to one of the selection labels keeps the
+    corresponding jump to zero."""
 
     basis = utils.unnormed_tm_basis()  # will need to normalize phi otherwise
     prior = utils.tm_prior()  # standard
@@ -537,15 +543,10 @@ def WidebandTimingModel(
             super(WidebandTimingModel, self).__init__(psr)
             self.name = self.psrname + "_" + self.signal_id
 
-            # make selection for DMEFACs
-            dmefac_select = dmefac_selection(psr)
-            self._dmefac_keys = list(sorted(dmefac_select.masks.keys()))
-            self._dmefac_masks = [dmefac_select.masks[key] for key in self._dmefac_keys]
-
-            # make selection for DMEQUADs
-            log10_dmequad_select = log10_dmequad_selection(psr)
-            self._log10_dmequad_keys = list(sorted(log10_dmequad_select.masks.keys()))
-            self._log10_dmequad_masks = [log10_dmequad_select.masks[key] for key in self._log10_dmequad_keys]
+            # make selection for DMEFAC and DMEQUADs
+            dm_select = selection(psr)
+            self._dm_keys = list(sorted(dm_select.masks.keys()))
+            self._dm_masks = [dm_select.masks[key] for key in self._dm_keys]
 
             # make selection for DMJUMPs
             dmjump_select = dmjump_selection(psr)
@@ -559,32 +560,27 @@ def WidebandTimingModel(
 
             self._params = {}
 
-            self._dmefacs = []
-            for key in self._dmefac_keys:
+            self._dmefacs, self._log10_dmequads = [], []
+            for key in self._dm_keys:
                 pname = "_".join([n for n in [psr.name, key, "dmefac"] if n])
                 param = dmefac(pname)
 
                 self._dmefacs.append(param)
                 self._params[param.name] = param
 
-            self._log10_dmequads = []
-            for key in self._log10_dmequad_keys:
-                pname = "_".join([n for n in [psr.name, key, "log10_dmequad"] if n])
-                param = log10_dmequad(pname)
+                if log10_dmequad is not None:
+                    pname = "_".join([n for n in [psr.name, key, "log10_dmequad"] if n])
+                    param = log10_dmequad(pname)
 
-                self._log10_dmequads.append(param)
-                self._params[param.name] = param
+                    self._log10_dmequads.append(param)
+                    self._params[param.name] = param
 
             self._dmjumps = []
             if dmjump is not None:
                 for key in self._dmjump_keys:
                     pname = "_".join([n for n in [psr.name, key, "dmjump"] if n])
-                    if dmjump_ref is not None:
-                        if pname == psr.name + "_" + dmjump_ref + "_dmjump":
-                            fixed_dmjump = parameter.Constant(val=0.0)
-                            param = fixed_dmjump(pname)
-                        else:
-                            param = dmjump(pname)
+                    if dmjump_ref is not None and key == dmjump_ref:
+                        param = parameter.Constant(val=0.0)(pname)
                     else:
                         param = dmjump(pname)
 
@@ -688,22 +684,20 @@ def WidebandTimingModel(
         def get_dme(self, params):
             """Return EFAC- and EQUAD-weighted DM errors."""
 
-            return (
-                sum(
-                    (params[efac.name] if efac.name in params else efac.value) * mask
-                    for efac, mask in zip(self._dmefacs, self._dmefac_masks)
+            efac_vec = sum(
+                (params[efac.name] if efac.name in params else efac.value) * mask
+                for efac, mask in zip(self._dmefacs, self._dm_masks)
+            )
+
+            if self._log10_dmequads:
+                equad_vec = sum(
+                    10 ** (params[equad.name] if equad.name in params else equad.value) * mask
+                    for equad, mask in zip(self._log10_dmequads, self._dm_masks)
                 )
-                ** 2
-                * self._dmerr**2
-                + (
-                    10
-                    ** sum(
-                        (params[equad.name] if equad.name in params else equad.value) * mask
-                        for equad, mask in zip(self._log10_dmequads, self._log10_dmequad_masks)
-                    )
-                )
-                ** 2
-            ) ** 0.5
+
+                return np.sqrt(efac_vec**2 * (self._dmerr**2 + equad_vec**2))
+            else:
+                return np.sqrt(efac_vec**2 * self._dmerr**2)
 
         @signal_base.cache_call(["delay_params"])
         def get_mean_dm(self, params):

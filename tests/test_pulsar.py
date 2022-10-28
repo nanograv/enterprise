@@ -79,13 +79,20 @@ class TestPulsar(unittest.TestCase):
         assert self.psr.freqs.shape == (4005,), msg
 
     def test_flags(self):
-        """Check flags shape and content"""
+        """Check flags shape, content, and setting"""
 
         msg = "Flags shape incorrect"
         assert self.psr.flags["f"].shape == (4005,), msg
 
         msg = "Flag content or sorting incorrect"
         assert np.all(self.psr._flags["fe"][self.psr._isort] == self.psr.flags["fe"]), msg
+
+        # only possible if flags are stored as dict
+        if isinstance(self.psr._flags, dict):
+            self.psr.set_flags("name2", self.psr.flags["name"])
+
+            msg = "Setting flags returns incorrect match"
+            assert np.all(self.psr.flags["name"] == self.psr.flags["name2"])
 
     def test_backend_flags(self):
         """Check backend_flags shape and content"""
