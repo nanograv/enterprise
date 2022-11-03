@@ -27,7 +27,7 @@ def Deterministic(waveform, selection=Selection(selections.no_selection), name="
             sel = selection(psr)
             self._keys = sorted(sel.masks.keys())
             self._masks = [sel.masks[key] for key in self._keys]
-            self._delay = np.zeros(len(psr.toas))
+            self._ntoas = len(psr.toas)
             self._wf, self._params = {}, {}
             for key, mask in zip(self._keys, self._masks):
                 pnames = [psr.name, name, key]
@@ -45,9 +45,10 @@ def Deterministic(waveform, selection=Selection(selections.no_selection), name="
         @signal_base.cache_call("delay_params")
         def get_delay(self, params):
             """Return signal delay."""
+            delay = np.zeros(self._ntoas)
             for key, mask in zip(self._keys, self._masks):
-                self._delay[mask] = self._wf[key](params=params, mask=mask)
-            return self._delay
+                delay[mask] = self._wf[key](params=params, mask=mask)
+            return delay
 
     return Deterministic
 
