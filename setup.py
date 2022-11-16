@@ -11,9 +11,9 @@ requirements = [
     "scipy>=1.2.0",
     "ephem>=3.7.6.0",
     "healpy>=1.14.0",
-    "scikit-sparse @ git+https://github.com/vallis/scikit-sparse@master",  # was >=0.4.5
+    "scikit-sparse>=0.4.5",
     "pint-pulsar>=0.8.3",
-    "libstempo @ git+https://github.com/vallis/libstempo@master",  # was >=2.4.4
+    "libstempo>=2.4.4",
 ]
 
 test_requirements = []
