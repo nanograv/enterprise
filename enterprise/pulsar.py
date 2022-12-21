@@ -380,7 +380,7 @@ class PintPulsar(BasePulsar):
         dmx = {
             par: {
                 "DMX": float(model[par].value),
-                "DMXerr": float(model[par].uncertainty_value),
+                "DMXerr": None if model[par].uncertainty_value is None else float(model[par].uncertainty_value),
                 "DMXR1": float(model[par[:3] + "R1" + par[3:]].value),
                 "DMXR2": float(model[par[:3] + "R2" + par[3:]].value),
                 "fit": par in pars,
