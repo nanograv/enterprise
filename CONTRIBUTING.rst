@@ -75,7 +75,7 @@ Start with an empty virtual environment, in this case called ``ent_dev``::
 
 Now install things by running the commands::
 
-    $ conda install -c conda-forge enterprise-pulsar black sphinx sphinx_rtd_theme
+    $ conda install -c conda-forge enterprise-pulsar black flake8 sphinx sphinx_rtd_theme
     $ conda remove enterprise-pulsar --force
 
 Without the dependencies you can still edit the source code, but you won't be able to run tests to see if your changes work!
