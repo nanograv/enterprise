@@ -57,12 +57,38 @@ If you are proposing a feature:
 Get Started!
 ------------
 
-Ready to contribute? Here's how to set up `enterprise` for local development.
+Ready to contribute? Here's how to set up ``enterprise`` for local development.
 
-1. Fork the `enterprise` repo on GitHub.
+Install the dependencies
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+``enterprise`` relies on a lot of other software to function.
+If you use the Anaconda distribution of Python, you can get all of this software using ``conda``.
+First, you install the latest stable version of ``enterprise``, which will come with all of the dependencies.
+Then you remove ``enterprise`` leaving everything else intact.
+This way you can use your development version of ``enterprise`` instead of the stable version.
+
+Start with an empty virtual environment, in this case called ``ent_dev``::
+
+    $ conda create -n ent_dev -y -c conda-forge python=3.9
+    $ conda activate ent_dev
+
+Now install things by running the commands::
+
+    $ conda install -c conda-forge enterprise-pulsar black sphinx sphinx_rtd_theme
+    $ conda remove enterprise-pulsar --force
+
+Without the dependencies you can still edit the source code, but you won't be able to run tests to see if your changes work!
+
+
+Get the enterprise source code and get to work!
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1. Fork the ``enterprise`` repo on GitHub.
 2. Clone your fork locally::
 
     $ git clone git@github.com:your_name_here/enterprise.git
+    $ cd enterprise/
     
 3. Set `enterprise/master` as upstream remote::
     
@@ -73,16 +99,21 @@ Ready to contribute? Here's how to set up `enterprise` for local development.
     $ git pull upstream master
 
 4. This is how you set up your fork for local development:
-
+    
     .. note:: 
-        You will need to have ``tempo`` and ``suitesparse`` installed before  
-        running the commands below. 
+        You will need to have ``tempo2`` and ``suitesparse`` installed before  
+        running these commands.
 
- ::
+    If you set up a ``conda`` virtual environment with the dependencies already,
+    you can add your local fork of ``enterprise`` to it by running::
 
-    $ cd enterprise/
+    $ pip install -e .
+
+    If you manually installed the dependencies you can do this::
+    
     $ make init
     $ source .enterprise/bin/activate  
+
 
 5. Create a branch for local development::
 
@@ -114,9 +145,8 @@ Before you submit a pull request, check that it meets these guidelines:
 1. The pull request should include tests.
 2. If the pull request adds functionality, the docs should be updated. Put
    your new functionality into a function with a docstring.
-3. The pull request should work for Python 2.6, 2.7, 3.3, 3.4 and 3.5, and for PyPy. Check
-   https://travis-ci.org/nanograv/enterprise/pull_requests
-   and make sure that the tests pass for all supported Python versions.
+3. The pull request should work for all supported versions of Python: 3.7, 3.8, 3.9, and 3.10. You
+   can see the progress of the tests in the `Checks` tab of your GitHub pull request.
 
 Tips
 ----
@@ -130,3 +160,4 @@ To track and checkout another user's branch::
     $ git remote add other-user-username https://github.com/other-user-username/enterprise.git
     $ git fetch other-user-username
     $ git checkout --track -b branch-name other-user-username/branch-name
+

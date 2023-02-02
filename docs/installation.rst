@@ -23,6 +23,17 @@ Installation
 .. .. _Python installation guide: http://docs.python-guide.org/en/latest/starting/installation/
 
 
+Using conda
+-----------
+
+``enterprise`` is available via conda-forge as `enterprise-pulsar <https://anaconda.org/conda-forge/enterprise-pulsar>`_.
+If you use the Anaconda distribution of Python, we strongly recommend installing via the ``conda`` command:
+
+.. code-block:: console
+
+    $ conda install -c conda-forge enterprise-pulsar
+
+
 From sources
 ------------
 
@@ -54,6 +65,7 @@ If you want to run tests or do any other development then also run:
 .. code-block:: console
 
     $ pip install -r requirements_dev.txt
+
 
 .. _Github repo: https://github.com/nanograv/enterprise
 .. _tarball: https://github.com/nanograv/enterprise/tarball/master
