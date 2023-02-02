@@ -67,6 +67,7 @@ If you use the Anaconda distribution of Python, you can get all of this software
 First, you install the latest stable version of ``enterprise``, which will come with all of the dependencies.
 Then you remove ``enterprise`` leaving everything else intact.
 This way you can use your development version of ``enterprise`` instead of the stable version.
+We will also need some additional software that is required to run the tests.
 
 Start with an empty virtual environment, in this case called ``ent_dev``::
 
@@ -75,8 +76,10 @@ Start with an empty virtual environment, in this case called ``ent_dev``::
 
 Now install things by running the commands::
 
-    $ conda install -c conda-forge enterprise-pulsar black flake8 sphinx sphinx_rtd_theme
+    $ conda install -c conda-forge enterprise-pulsar
     $ conda remove enterprise-pulsar --force
+    $ conda install -c conda-forge  black=22.3.0 flake8 sphinx_rtd_theme pytest-cov
+    $ pip install coverage-conditional-plugin
 
 Without the dependencies you can still edit the source code, but you won't be able to run tests to see if your changes work!
 
@@ -104,12 +107,15 @@ Get the enterprise source code and get to work!
         You will need to have ``tempo2`` and ``suitesparse`` installed before  
         running these commands.
 
+        If you installed the dependencies via conda, you are good to go!
+
     If you set up a ``conda`` virtual environment with the dependencies already,
     you can add your local fork of ``enterprise`` to it by running::
 
     $ pip install -e .
 
-    If you manually installed the dependencies you can do this::
+    If you manually installed the dependencies, this will make and activate a 
+    Python3 virtual env with your local fork of ``enterprise``::
     
     $ make init
     $ source .enterprise/bin/activate  
