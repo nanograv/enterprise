@@ -71,6 +71,8 @@ target/
 
 # virtual environment
 .enterprise
+# standard-ish virtual environment for VSCode
+.venv
 
 # vscode
 .vscode
