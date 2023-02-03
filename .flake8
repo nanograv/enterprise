@@ -18,3 +18,4 @@ exclude =
     docs
     .enterprise
     enterprise/src
+    .venv
