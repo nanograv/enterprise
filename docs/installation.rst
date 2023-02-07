@@ -66,6 +66,13 @@ If you want to run tests or do any other development then also run:
 
     $ pip install -r requirements_dev.txt
 
-
 .. _Github repo: https://github.com/nanograv/enterprise
 .. _tarball: https://github.com/nanograv/enterprise/tarball/master
+
+
+Tips
+----
+
+If you have a computer with an Apple Silicon chip, see `these instructions`_ on how to install Apple Intel packages using Rosetta.
+
+.. _these instructions: https://conda-forge.org/docs/user/tipsandtricks.html#installing-apple-intel-packages-on-apple-silicon
