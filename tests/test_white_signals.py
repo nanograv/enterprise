@@ -17,7 +17,7 @@ import scipy.linalg as sl
 
 try:
     import libstempo as t2
-except (ImportError, RuntimeError) as e:
+except (ImportError, RuntimeError):
     t2 = None
 
 from enterprise.pulsar import Pulsar

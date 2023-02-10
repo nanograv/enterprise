@@ -20,7 +20,7 @@ import numpy as np
 
 try:
     import libstempo as t2
-except (ImportError, RuntimeError) as e:
+except (ImportError, RuntimeError):
     t2 = None
 
 from enterprise.pulsar import Pulsar
@@ -28,6 +28,7 @@ from tests.enterprise_test_data import datadir
 
 import pint.models.timing_model
 from pint.models import get_model_and_toas
+
 
 # FIXME: these really should all be run for all available Pulsar types
 # But that's an annoying conversion
