@@ -8,8 +8,8 @@ test_gp_priors
 Tests for GP priors and bases.
 """
 
-
 import unittest
+
 import numpy as np
 
 from tests.enterprise_test_data import datadir

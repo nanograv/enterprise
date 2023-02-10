@@ -24,6 +24,9 @@ try:
 except ImportError:
     logger.warning("libstempo not installed. Will use PINT instead.")  # pragma: no cover
     t2 = None
+except RuntimeError as e:
+    logger.warning(f"Unable to find TEMPO2: {e} Will use PINT instead.")  # pragma: no cover
+    t2 = None
 
 try:
     import pint
@@ -557,8 +560,8 @@ class Tempo2Pulsar(BasePulsar):
         sunssb = None
         if self.planets:
             # for ii in range(1, 10):
-            #     tag = 'DMASSPLANET' + str(ii)
-            #     self.t2pulsar[tag].val = 0.0
+            #     tag = 'DMASSPLANET' + str(ii)@pytest.mark.skipif(t2 is None, reason="TEMPO2/libstempo not available")
+
             self.t2pulsar.formbats()
             sunssb = np.zeros((len(self._toas), 6))
             sunssb[:, :] = self.t2pulsar.sun_ssb
@@ -570,6 +573,7 @@ class Tempo2Pulsar(BasePulsar):
 
     # infrastructure for sharing Pulsar objects among processes
     # (currently Tempo2Pulsar only)
+    # FIXME: why?
     # the Pulsar deflater will copy select numpy arrays to SharedMemory,
     # then replace them with pickleable objects that can be inflated
     # to numpy arrays with SharedMemory storage
@@ -610,7 +614,7 @@ def Pulsar(*args, **kwargs):
     sort = kwargs.get("sort", True)
     drop_t2pulsar = kwargs.get("drop_t2pulsar", True)
     drop_pintpsr = kwargs.get("drop_pintpsr", True)
-    timing_package = kwargs.get("timing_package", "tempo2")
+    timing_package = kwargs.get("timing_package", "either").lower()
 
     if pint is not None:
         toas = [x for x in args if isinstance(x, TOAs)]
@@ -640,26 +644,24 @@ def Pulsar(*args, **kwargs):
 
         # get current directory
         cwd = os.getcwd()
-
-        # Change directory to the base directory of the tim-file to deal with
-        # INCLUDE statements in the tim-file
-        os.chdir(dirname)
-
-        if timing_package.lower() == "pint":
-            if (clk is not None) and (bipm_version is None):
-                bipm_version = clk.split("(")[1][:-1]
-            model, toas = get_model_and_toas(
-                relparfile, reltimfile, ephem=ephem, bipm_version=bipm_version, planets=planets
-            )
+        try:
+            # Change directory to the base directory of the tim-file to deal with
+            # INCLUDE statements in the tim-file
+            os.chdir(dirname)
+            if timing_package == "tempo2" or (t2 is not None and timing_package == "either"):
+                # hack to set maxobs
+                maxobs = get_maxobs(reltimfile) + 100
+                t2pulsar = t2.tempopulsar(relparfile, reltimfile, maxobs=maxobs, ephem=ephem, clk=clk)
+                return Tempo2Pulsar(t2pulsar, sort=sort, drop_t2pulsar=drop_t2pulsar, planets=planets)
+            elif timing_package.lower() in ["pint", "either"]:
+                if (clk is not None) and (bipm_version is None):
+                    bipm_version = clk.split("(")[1][:-1]
+                model, toas = get_model_and_toas(
+                    relparfile, reltimfile, ephem=ephem, bipm_version=bipm_version, planets=planets
+                )
+                os.chdir(cwd)
+                return PintPulsar(toas, model, sort=sort, drop_pintpsr=drop_pintpsr, planets=planets)
+        finally:
             os.chdir(cwd)
-            return PintPulsar(toas, model, sort=sort, drop_pintpsr=drop_pintpsr, planets=planets)
 
-        elif timing_package.lower() == "tempo2":
-
-            # hack to set maxobs
-            maxobs = get_maxobs(reltimfile) + 100
-            t2pulsar = t2.tempopulsar(relparfile, reltimfile, maxobs=maxobs, ephem=ephem, clk=clk)
-            os.chdir(cwd)
-            return Tempo2Pulsar(t2pulsar, sort=sort, drop_t2pulsar=drop_t2pulsar, planets=planets)
-
-    raise ValueError("Unknown arguments {}".format(args))
+    raise ValueError(f"Unknown arguments {args}")

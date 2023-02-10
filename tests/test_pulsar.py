@@ -18,13 +18,19 @@ import pytest
 
 import numpy as np
 
+try:
+    import libstempo as t2
+except (ImportError, RuntimeError) as e:
+    t2 = None
+
 from enterprise.pulsar import Pulsar
 from tests.enterprise_test_data import datadir
 
 import pint.models.timing_model
 from pint.models import get_model_and_toas
 
-
+# FIXME: these really should all be run for all available Pulsar types
+# But that's an annoying conversion
 class TestPulsar(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -147,45 +153,77 @@ class TestPulsar(unittest.TestCase):
 
         assert np.allclose(self.psr.residuals, pkl_psr.residuals, rtol=1e-10)
 
-    @pytest.mark.skipif(sys.version_info < (3, 8), reason="Requires Python >= 3.8")
-    def test_deflate_inflate(self):
-        psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
 
-        dm = psr._designmatrix.copy()
+@pytest.mark.skipif(sys.version_info < (3, 8), reason="Requires Python >= 3.8")
+@pytest.mark.parametrize(
+    "timing_package",
+    [
+        pytest.param("tempo2", marks=pytest.mark.skipif(t2 is None, reason="TEMPO2 not available")),
+        pytest.param("pint", marks=pytest.mark.xfail(reason="FIXME: PintPulsar doesn't do deflate/inflate yet")),
+    ],
+)
+def test_deflate_inflate(timing_package):
+    psr = Pulsar(
+        datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
+        datadir + "/B1855+09_NANOGrav_9yv1.tim",
+        timing_package=timing_package,
+    )
 
-        psr.deflate()
-        psr.to_pickle()
+    dm = psr._designmatrix.copy()
 
-        with open("B1855+09.pkl", "rb") as f:
-            pkl_psr = pickle.load(f)
+    psr.deflate()
+    psr.to_pickle()
+
+    with open("B1855+09.pkl", "rb") as f:
+        pkl_psr = pickle.load(f)
+    pkl_psr.inflate()
+
+    assert np.array_equal(dm, pkl_psr._designmatrix)
+
+    del pkl_psr
+
+    psr.destroy()
+
+    with open("B1855+09.pkl", "rb") as f:
+        pkl_psr = pickle.load(f)
+
+    with pytest.raises(FileNotFoundError):
         pkl_psr.inflate()
 
-        assert np.allclose(dm, pkl_psr._designmatrix)
 
-        del pkl_psr
+@pytest.mark.parametrize(
+    "timing_package",
+    [
+        pytest.param("tempo2", marks=pytest.mark.skipif(t2 is None, reason="TEMPO2 not available")),
+        "pint",
+    ],
+)
+def test_wrong_input(timing_package):
+    """Test exception when incorrect par(tim) file given."""
 
-        psr.destroy()
+    with pytest.raises(IOError) as context:
+        Pulsar("wrong.par", "wrong.tim", timing_package=timing_package)
 
-        with open("B1855+09.pkl", "rb") as f:
-            pkl_psr = pickle.load(f)
+        msg = "Cannot find parfile wrong.par or timfile wrong.tim!"
+        assert msg in context.exception
 
-        with self.assertRaises(FileNotFoundError):
-            pkl_psr.inflate()
 
-    def test_wrong_input(self):
-        """Test exception when incorrect par(tim) file given."""
+@pytest.mark.parametrize(
+    "timing_package",
+    [
+        pytest.param("tempo2", marks=pytest.mark.skipif(t2 is None, reason="TEMPO2 not available")),
+        "pint",
+    ],
+)
+def test_value_error(timing_package):
+    """Test exception when unknown argument is given"""
 
-        with self.assertRaises(IOError) as context:
-            Pulsar("wrong.par", "wrong.tim")
-
-            msg = "Cannot find parfile wrong.par or timfile wrong.tim!"
-            self.assertTrue(msg in context.exception)
-
-    def test_value_error(self):
-        """Test exception when unknown argument is given"""
-
-        with self.assertRaises(ValueError):
-            Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.time")
+    with pytest.raises(ValueError):
+        Pulsar(
+            datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
+            datadir + "/B1855+09_NANOGrav_9yv1.time",
+            timing_package=timing_package,
+        )
 
 
 class TestPulsarPint(TestPulsar):

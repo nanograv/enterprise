@@ -12,7 +12,13 @@ Tests for white signal modules.
 import unittest
 
 import numpy as np
+import pytest
 import scipy.linalg as sl
+
+try:
+    import libstempo as t2
+except (ImportError, RuntimeError) as e:
+    t2 = None
 
 from enterprise.pulsar import Pulsar
 from enterprise.signals import gp_signals, parameter, selections, utils, white_signals
@@ -49,6 +55,8 @@ class Woodbury(object):
         return ld
 
 
+# FIXME: not all use ipsr so some tests could run; convert to pytest-style fixtures to fix
+@pytest.mark.skipif(t2 is None, reason="TEMPO2 not available")
 class TestWhiteSignals(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
