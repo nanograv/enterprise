@@ -76,7 +76,7 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
         python -m pip install -r requirements_dev.txt
         python -m pip install -e .
-        python -m pip uninstall libstempo
+        python -m pip uninstall -y libstempo
     - name: Display Python, pip, setuptools, and all installed versions
       run: |
         python -c "import sys; print(f'Python {sys.version}')"
