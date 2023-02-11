@@ -9,8 +9,6 @@ Tests for white signal modules.
 """
 
 
-import unittest
-
 import numpy as np
 import pytest
 import scipy.linalg as sl
@@ -63,15 +61,15 @@ def psr(request):
     if timing_package == "pint":
         # Why specify the ephemeris for PINT? Faster?
         return Pulsar(
-            datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
-            datadir + "/B1855+09_NANOGrav_9yv1.tim",
+            f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par",
+            f"{datadir}/B1855+09_NANOGrav_9yv1.tim",
             ephem="DE430",
             timing_package=timing_package,
         )
     else:
         return Pulsar(
-            datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
-            datadir + "/B1855+09_NANOGrav_9yv1.tim",
+            f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par",
+            f"{datadir}/B1855+09_NANOGrav_9yv1.tim",
             timing_package=timing_package,
         )
 
@@ -410,25 +408,25 @@ def test_ecorr(psr, method):
     wd = Woodbury(nvec0, U, jvec)
 
     # test
-    msg = "EFAC/ECORR {} logdet incorrect.".format(method)
+    msg = f"EFAC/ECORR {method} logdet incorrect."
     N = m.get_ndiag(params)
     assert np.allclose(N.solve(psr.residuals, logdet=True)[1], wd.logdet(), rtol=1e-10), msg
 
-    msg = "EFAC/ECORR {} D1 solve incorrect.".format(method)
+    msg = f"EFAC/ECORR {method} D1 solve incorrect."
     assert np.allclose(N.solve(psr.residuals), wd.solve(psr.residuals), rtol=1e-10), msg
 
-    msg = "EFAC/ECORR {} 1D1 solve incorrect.".format(method)
+    msg = f"EFAC/ECORR {method} 1D1 solve incorrect."
     assert np.allclose(
         N.solve(psr.residuals, left_array=psr.residuals),
         np.dot(psr.residuals, wd.solve(psr.residuals)),
         rtol=1e-10,
     ), msg
 
-    msg = "EFAC/ECORR {} 2D1 solve incorrect.".format(method)
+    msg = f"EFAC/ECORR {method} 2D1 solve incorrect."
     T = m.get_basis()
     assert np.allclose(N.solve(psr.residuals, left_array=T), np.dot(T.T, wd.solve(psr.residuals)), rtol=1e-10), msg
 
-    msg = "EFAC/ECORR {} 2D2 solve incorrect.".format(method)
+    msg = f"EFAC/ECORR {method} 2D2 solve incorrect."
     assert np.allclose(N.solve(T, left_array=T), np.dot(T.T, wd.solve(T)), rtol=1e-10), msg
 
 
@@ -488,23 +486,23 @@ def test_ecorr_ipta(ipsr, method):
     wd = Woodbury(nvec0, U, jvec)
 
     # test
-    msg = "EFAC/ECORR {} logdet incorrect.".format(method)
+    msg = f"EFAC/ECORR {method} logdet incorrect."
     N = m.get_ndiag(params)
     assert np.allclose(N.solve(ipsr.residuals, logdet=True)[1], wd.logdet(), rtol=1e-8), msg
 
-    msg = "EFAC/ECORR {} D1 solve incorrect.".format(method)
+    msg = f"EFAC/ECORR {method} D1 solve incorrect."
     assert np.allclose(N.solve(ipsr.residuals), wd.solve(ipsr.residuals), rtol=1e-8), msg
 
-    msg = "EFAC/ECORR {} 1D1 solve incorrect.".format(method)
+    msg = f"EFAC/ECORR {method} 1D1 solve incorrect."
     assert np.allclose(
         N.solve(ipsr.residuals, left_array=ipsr.residuals),
         np.dot(ipsr.residuals, wd.solve(ipsr.residuals)),
         rtol=1e-8,
     ), msg
 
-    msg = "EFAC/ECORR {} 2D1 solve incorrect.".format(method)
+    msg = f"EFAC/ECORR {method} 2D1 solve incorrect."
     T = m.get_basis()
     assert np.allclose(N.solve(ipsr.residuals, left_array=T), np.dot(T.T, wd.solve(ipsr.residuals)), rtol=1e-8), msg
 
-    msg = "EFAC/ECORR {} 2D2 solve incorrect.".format(method)
+    msg = f"EFAC/ECORR {method} 2D2 solve incorrect."
     assert np.allclose(N.solve(T, left_array=T), np.dot(T.T, wd.solve(T)), rtol=1e-8), msg
