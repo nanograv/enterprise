@@ -339,3 +339,22 @@ def test_open_from_random_directory_with_enterprise(tmp_path):
 def test_designmatrix_order_matches_fitparams(pint_psr):
     des, params, units = pint_psr.model.designmatrix(pint_psr.pint_toas)
     assert params == pint_psr.fitpars
+
+
+def test_pulsar_clk_converts_to_bipm():
+    Pulsar(
+        f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par",
+        f"{datadir}/B1855+09_NANOGrav_9yv1.tim",
+        timing_package="pint",
+        ephem="DE430",
+        clk="TT(BIPM2020)",
+    )
+    with pytest.raises(ValueError) as e:
+        Pulsar(
+            f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par",
+            f"{datadir}/B1855+09_NANOGrav_9yv1.tim",
+            timing_package="pint",
+            ephem="DE430",
+            clk="TT(BOGUS)",
+        )
+    assert "bogus" in str(e.value).lower()

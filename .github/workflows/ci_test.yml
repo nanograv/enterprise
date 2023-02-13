@@ -90,6 +90,39 @@ jobs:
     - name: Codecov
       uses: codecov/codecov-action@v3
 
+  test_no_pint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    - name: Install non-python dependencies
+      run: |
+        sudo apt-get install libsuitesparse-dev
+        curl -sSL https://raw.githubusercontent.com/vallis/libstempo/master/install_tempo2.sh | sh
+    - name: Install dependencies and package
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install -r requirements_dev.txt
+        python -m pip install -e .
+        python -m pip uninstall -y pint-pulsar
+    - name: Display Python, pip, setuptools, and all installed versions
+      run: |
+        python -c "import sys; print(f'Python {sys.version}')"
+        python -c "import pip; print(f'pip {pip.__version__}')"
+        python -c "import setuptools; print(f'setuptools {setuptools.__version__}')"
+        python -m pip freeze
+    - name: Run lint
+      run: make lint
+    - name: Test with pytest
+      run: make test
+    - name: Codecov
+      uses: codecov/codecov-action@v3
+
   build:
     needs: [tests]
     name: Build source distribution

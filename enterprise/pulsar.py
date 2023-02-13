@@ -24,7 +24,7 @@ try:
 except (ImportError, RuntimeError) as e:
     # ImportError happens if libstempo isn't installed
     # RuntimeError happens if libstempo is installed but can't find TEMPO2
-    logger.warning(f"Unable to use TEMPO2: {e} Will use PINT instead.")  # pragma: no cover
+    logger.warning(f"Unable to use TEMPO2: {e} Will use PINT instead.")
     t2 = None
 
 try:
@@ -33,7 +33,7 @@ try:
     from pint.residuals import Residuals as resids
     from pint.toa import TOAs
 except ImportError:
-    logger.warning("PINT not installed. Will use libstempo instead.")  # pragma: no cover
+    logger.warning("PINT not installed. Will use libstempo instead.")
     pint = None
 
 if pint is None and t2 is None:
