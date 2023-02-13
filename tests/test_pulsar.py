@@ -217,7 +217,7 @@ def test_wrong_input(timing_package):
         Pulsar("wrong.par", "wrong.tim", timing_package=timing_package)
 
     msg = "Cannot find parfile wrong.par or timfile wrong.tim!"
-    assert msg in context.exception
+    assert msg in str(context.value)
 
 
 @pytest.mark.parametrize(
