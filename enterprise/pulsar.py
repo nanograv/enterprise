@@ -611,7 +611,7 @@ def Pulsar(*args, **kwargs):
     sort = kwargs.get("sort", True)
     drop_t2pulsar = kwargs.get("drop_t2pulsar", True)
     drop_pintpsr = kwargs.get("drop_pintpsr", True)
-    timing_package = kwargs.get("timing_package", "either").lower()
+    timing_package = kwargs.get("timing_package", None).lower()
 
     if pint is not None:
         toas = [x for x in args if isinstance(x, TOAs)]
@@ -639,18 +639,26 @@ def Pulsar(*args, **kwargs):
         reltimfile = timfiletup[-1]
         relparfile = os.path.relpath(parfile[0], dirname)
 
+        if timing_package is None:
+            if t2 is not None:
+                timing_package = "tempo2"
+            elif pint is not None:
+                timing_package = "pint"
+            else:
+                raise ValueError("No timing package available with which to load a pulsar")
+
         # get current directory
         cwd = os.getcwd()
         try:
             # Change directory to the base directory of the tim-file to deal with
             # INCLUDE statements in the tim-file
             os.chdir(dirname)
-            if timing_package == "tempo2" or (t2 is not None and timing_package == "either"):
+            if timing_package == "tempo2":
                 # hack to set maxobs
                 maxobs = get_maxobs(reltimfile) + 100
                 t2pulsar = t2.tempopulsar(relparfile, reltimfile, maxobs=maxobs, ephem=ephem, clk=clk)
                 return Tempo2Pulsar(t2pulsar, sort=sort, drop_t2pulsar=drop_t2pulsar, planets=planets)
-            elif timing_package.lower() in ["pint", "either"]:
+            elif timing_package.lower() == "pint":
                 if (clk is not None) and (bipm_version is None):
                     bipm_version = clk.split("(")[1][:-1]
                 model, toas = get_model_and_toas(
@@ -658,6 +666,8 @@ def Pulsar(*args, **kwargs):
                 )
                 os.chdir(cwd)
                 return PintPulsar(toas, model, sort=sort, drop_pintpsr=drop_pintpsr, planets=planets)
+            else:
+                raise ValueError(f"Unknown timing package {timing_package}")
         finally:
             os.chdir(cwd)
 

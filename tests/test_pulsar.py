@@ -305,7 +305,6 @@ def test_create_pulsar_surplus_arguments_raises():
         )
 
 
-@pytest.mark.xfail
 def test_create_pulsar_bogus_timing_package_reports_bogus_value():
     with pytest.raises(ValueError) as context:
         Pulsar(
