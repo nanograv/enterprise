@@ -604,14 +604,16 @@ class Tempo2Pulsar(BasePulsar):
 
 
 def Pulsar(*args, **kwargs):
-    ephem = kwargs.get("ephem", None)
-    clk = kwargs.get("clk", None)
-    bipm_version = kwargs.get("bipm_version", None)
+    ephem = kwargs.get("ephem")
+    clk = kwargs.get("clk")
+    bipm_version = kwargs.get("bipm_version")
     planets = kwargs.get("planets", True)
     sort = kwargs.get("sort", True)
     drop_t2pulsar = kwargs.get("drop_t2pulsar", True)
     drop_pintpsr = kwargs.get("drop_pintpsr", True)
-    timing_package = kwargs.get("timing_package", None).lower()
+    timing_package = kwargs.get("timing_package")
+    if timing_package is not None:
+        timing_package = timing_package.lower()
 
     if pint is not None:
         toas = [x for x in args if isinstance(x, TOAs)]
