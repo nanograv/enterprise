@@ -17,6 +17,7 @@ import pickle
 import pytest
 
 import numpy as np
+from packaging import version
 
 try:
     import libstempo as t2
@@ -30,7 +31,6 @@ try:
     import pint.models.timing_model
     from pint.models import get_model_and_toas
 except ImportError:
-    logger.warning("PINT not installed. Will use libstempo instead.")
     pint = None
 
 
@@ -249,7 +249,7 @@ def test_value_error(timing_package):
         )
 
 
-@pytest.mark.skipif(pint is None, "PINT not available")
+@pytest.mark.skipif(pint is None, reason="PINT not available")
 # This repeats all tests specifically for PintPulsar
 class TestPulsarPint(TestPulsar):
     @classmethod
@@ -340,7 +340,11 @@ def test_designmatrix_order_matches_fitparams(pint_psr):
     assert params == pint_psr.fitpars
 
 
-@pytest.mark.skipif(pint is None, "PINT not available")
+@pytest.mark.skipif(pint is None, reason="PINT not available")
+@pytest.mark.skipif(
+    pint is not None and version.parse(pint.__version__) < version.parse("0.9"),
+    reason="Old PINT did not check BIPM versions",
+)
 def test_pulsar_clk_converts_to_bipm():
     Pulsar(
         f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par",

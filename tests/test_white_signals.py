@@ -18,7 +18,7 @@ try:
 except (ImportError, RuntimeError):
     t2 = None
 
-from enterprise.pulsar import Pulsar
+from enterprise.pulsar import Pulsar, pint
 from enterprise.signals import gp_signals, parameter, selections, utils, white_signals
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
