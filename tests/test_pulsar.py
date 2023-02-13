@@ -216,9 +216,9 @@ def test_wrong_input(timing_package):
     with pytest.raises(IOError) as context:
         Pulsar("wrong.par", "wrong.tim", timing_package=timing_package)
 
-    # FIXME: less specific about message!
-    msg = "Cannot find parfile wrong.par or timfile wrong.tim!"
-    assert msg in str(context.value)
+    message = str(context.value)
+    assert "wrong.par" in message or "wrong.tim" in message
+    assert "cannot find" in message.lower()
 
 
 @pytest.mark.parametrize(
