@@ -26,8 +26,12 @@ except (ImportError, RuntimeError):
 from enterprise.pulsar import Pulsar
 from tests.enterprise_test_data import datadir
 
-import pint.models.timing_model
-from pint.models import get_model_and_toas
+try:
+    import pint.models.timing_model
+    from pint.models import get_model_and_toas
+except ImportError:
+    logger.warning("PINT not installed. Will use libstempo instead.")
+    pint = None
 
 
 @pytest.fixture(scope="module")
@@ -171,7 +175,13 @@ class TestPulsar(unittest.TestCase):
     "timing_package",
     [
         pytest.param("tempo2", marks=pytest.mark.skipif(t2 is None, reason="TEMPO2 not available")),
-        pytest.param("pint", marks=pytest.mark.xfail(reason="FIXME: PintPulsar doesn't do deflate/inflate yet")),
+        pytest.param(
+            "pint",
+            marks=[
+                pytest.mark.xfail(reason="FIXME: PintPulsar doesn't do deflate/inflate yet"),
+                pytest.mark.skipif(pint is None, reason="PINT not available"),
+            ],
+        ),
     ],
 )
 def test_deflate_inflate(timing_package):
@@ -225,7 +235,7 @@ def test_wrong_input(timing_package):
     "timing_package",
     [
         pytest.param("tempo2", marks=pytest.mark.skipif(t2 is None, reason="TEMPO2 not available")),
-        "pint",
+        pytest.param("pint", marks=pytest.mark.skipif(pint is None, reason="PINT not available")),
     ],
 )
 def test_value_error(timing_package):
@@ -239,6 +249,7 @@ def test_value_error(timing_package):
         )
 
 
+@pytest.mark.skipif(pint is None, "PINT not available")
 # This repeats all tests specifically for PintPulsar
 class TestPulsarPint(TestPulsar):
     @classmethod
@@ -312,25 +323,13 @@ def test_create_pulsar_no_args_raises():
 
 
 def test_open_from_random_directory(tmp_path):
+    # FIXME: do we have a tim file with INCLUDE?
     par = os.path.abspath(f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par")
     tim = os.path.abspath(f"{datadir}/B1855+09_NANOGrav_9yv1.tim")
 
     cwd = os.getcwd()
     try:
         os.chdir(tmp_path)
-        Pulsar(par, tim)
-    finally:
-        os.chdir(cwd)
-
-
-def test_open_from_random_directory_with_enterprise(tmp_path):
-    par = os.path.abspath(f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par")
-    tim = os.path.abspath(f"{datadir}/B1855+09_NANOGrav_9yv1.tim")
-
-    cwd = os.getcwd()
-    try:
-        os.chdir(tmp_path)
-        os.mkdir("enterprise")
         Pulsar(par, tim)
     finally:
         os.chdir(cwd)
@@ -341,6 +340,7 @@ def test_designmatrix_order_matches_fitparams(pint_psr):
     assert params == pint_psr.fitpars
 
 
+@pytest.mark.skipif(pint is None, "PINT not available")
 def test_pulsar_clk_converts_to_bipm():
     Pulsar(
         f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par",

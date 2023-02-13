@@ -58,6 +58,8 @@ def psr(request):
     timing_package = request.param
     if t2 is None and timing_package == "tempo2":
         pytest.skip("TEMPO2 not available")
+    if pint is None and timing_package == "pint":
+        pytest.skip("PINT not available")
     if timing_package == "pint":
         # Why specify the ephemeris for PINT? Faster?
         return Pulsar(
@@ -82,6 +84,8 @@ def ipsr(request):
     timing_package = request.param
     if t2 is None and timing_package == "tempo2":
         pytest.skip("TEMPO2 not available")
+    if pint is None and timing_package == "pint":
+        pytest.skip("PINT not available")
     # FIXME: this was supposed to be tested with PINT but PINT does not support
     # the T2 timing model; a typo made this problem invisible.
     # IPTA-like pulsar
