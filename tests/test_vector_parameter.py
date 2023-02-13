@@ -12,8 +12,9 @@ Tests for vector parameter functionality
 import unittest
 
 import numpy as np
+import pytest
 
-from enterprise.pulsar import Pulsar
+from enterprise.pulsar import Pulsar, pint, t2
 from enterprise.signals import gp_signals, parameter, signal_base, white_signals
 from enterprise.signals.parameter import function
 from tests.enterprise_test_data import datadir
@@ -102,6 +103,8 @@ class TestVectorParameter(unittest.TestCase):
         assert pta.param_names == pnames
 
 
+@pytest.mark.skipif(pint is None, reason="PINT not available")
+@pytest.mark.skipif(t2 is None, reason="Without TEMPO2 these tests are duplicates")
 class TestVectorParameterPint(TestVectorParameter):
     @classmethod
     def setUpClass(cls):
@@ -109,8 +112,8 @@ class TestVectorParameterPint(TestVectorParameter):
 
         # initialize Pulsar class
         cls.psr = Pulsar(
-            datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
-            datadir + "/B1855+09_NANOGrav_9yv1.tim",
+            f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par",
+            f"{datadir}/B1855+09_NANOGrav_9yv1.tim",
             ephem="DE430",
             timing_package="pint",
         )

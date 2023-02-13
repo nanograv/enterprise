@@ -251,6 +251,7 @@ def test_value_error(timing_package):
 
 @pytest.mark.skipif(pint is None, reason="PINT not available")
 # This repeats all tests specifically for PintPulsar
+# FIXME: most of these tests are duplicates if TEMPO2 is not available
 class TestPulsarPint(TestPulsar):
     @classmethod
     def setUpClass(cls):
