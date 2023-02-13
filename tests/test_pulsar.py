@@ -30,8 +30,19 @@ import pint.models.timing_model
 from pint.models import get_model_and_toas
 
 
+@pytest.fixture(scope="module")
+def pint_psr():
+    return Pulsar(
+        f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par",
+        f"{datadir}/B1855+09_NANOGrav_9yv1.tim",
+        ephem="DE430",
+        drop_pintpsr=False,
+        timing_package="pint",
+    )
+
+
 # FIXME: these really should all be run for all available Pulsar types
-# But that's an annoying conversion
+# Not so hard with pytest's parametrized fixtures (see test_white_signals.py)
 class TestPulsar(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -227,6 +238,7 @@ def test_value_error(timing_package):
         )
 
 
+# This repeats all tests specifically for PintPulsar
 class TestPulsarPint(TestPulsar):
     @classmethod
     def setUpClass(cls):
@@ -296,3 +308,33 @@ def test_create_pulsar_no_args_raises():
     # unfortunately this raises "Unkown arguments ()" rather than "no par/tim files provided" or something
     with pytest.raises(ValueError):
         Pulsar()
+
+
+def test_open_from_random_directory(tmp_path):
+    par = os.path.abspath(f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par")
+    tim = os.path.abspath(f"{datadir}/B1855+09_NANOGrav_9yv1.tim")
+
+    cwd = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        Pulsar(par, tim)
+    finally:
+        os.chdir(cwd)
+
+
+def test_open_from_random_directory_with_enterprise(tmp_path):
+    par = os.path.abspath(f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par")
+    tim = os.path.abspath(f"{datadir}/B1855+09_NANOGrav_9yv1.tim")
+
+    cwd = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        os.mkdir("enterprise")
+        Pulsar(par, tim)
+    finally:
+        os.chdir(cwd)
+
+
+def test_designmatrix_order_matches_fitparams(pint_psr):
+    des, params, units = pint_psr.model.designmatrix(pint_psr.pint_toas)
+    assert params == pint_psr.fitpars

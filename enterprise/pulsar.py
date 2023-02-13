@@ -329,20 +329,17 @@ class PintPulsar(BasePulsar):
         self._stoas = np.array(toas.get_mjds().value, dtype="float64") * 86400
         self._residuals = np.array(resids(toas, model).time_resids.to(u.s), dtype="float64")
         self._toaerrs = np.array(toas.get_errors().to(u.s), dtype="float64")
-        self._designmatrix = model.designmatrix(toas)[0]
+        self._designmatrix, self.fitpars, units = model.designmatrix(toas)
         self._ssbfreqs = np.array(model.barycentric_radio_freq(toas), dtype="float64")
         self._telescope = np.array(toas.get_obss())
-
-        # fitted parameters
-        self.fitpars = ["Offset"] + [par for par in model.params if not getattr(model, par).frozen]
 
         # gather DM/DMX information if available
         self._set_dm(model)
 
         # set parameters
-        spars = [par for par in model.params]
-        self.setpars = [sp for sp in spars if sp not in self.fitpars]
+        self.setpars = [sp for sp in model.params if sp not in self.fitpars]
 
+        # FIXME: this can be done more cleanly using PINT
         self._flags = {}
         for ii, obsflags in enumerate(toas.get_flags()):
             for jj, flag in enumerate(obsflags):
@@ -353,6 +350,7 @@ class PintPulsar(BasePulsar):
 
         # convert flags to arrays
         # TODO probably better way to do this
+        # in fact PINT always stores flags as strings
         for key, val in self._flags.items():
             if isinstance(val[0], u.quantity.Quantity):
                 self._flags[key] = np.array([v.value for v in val])
