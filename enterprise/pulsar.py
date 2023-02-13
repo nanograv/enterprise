@@ -21,11 +21,10 @@ logger = logging.getLogger(__name__)
 
 try:
     import libstempo as t2
-except ImportError:
-    logger.warning("libstempo not installed. Will use PINT instead.")  # pragma: no cover
-    t2 = None
-except RuntimeError as e:
-    logger.warning(f"Unable to find TEMPO2: {e} Will use PINT instead.")  # pragma: no cover
+except (ImportError, RuntimeError) as e:
+    # ImportError happens if libstempo isn't installed
+    # RuntimeError happens if libstempo is installed but can't find TEMPO2
+    logger.warning(f"Unable to use TEMPO2: {e} Will use PINT instead.")  # pragma: no cover
     t2 = None
 
 try:

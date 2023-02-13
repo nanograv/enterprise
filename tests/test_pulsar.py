@@ -205,8 +205,8 @@ def test_wrong_input(timing_package):
     with pytest.raises(IOError) as context:
         Pulsar("wrong.par", "wrong.tim", timing_package=timing_package)
 
-        msg = "Cannot find parfile wrong.par or timfile wrong.tim!"
-        assert msg in context.exception
+    msg = "Cannot find parfile wrong.par or timfile wrong.tim!"
+    assert msg in context.exception
 
 
 @pytest.mark.parametrize(
@@ -269,3 +269,30 @@ class TestPulsarPint(TestPulsar):
             msg += "`planet` flag is not True in `toas` or further Pint "
             msg += "development to add additional planets is needed."
             self.assertTrue(msg in context.exception)
+
+
+@pytest.mark.xfail
+def test_create_pulsar_surplus_arguments_raises():
+    with pytest.raises(ValueError):
+        Pulsar(
+            f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par",
+            f"{datadir}/B1855+09_NANOGrav_9yv1.tim",
+            bogus_argument=17,
+        )
+
+
+@pytest.mark.xfail
+def test_create_pulsar_bogus_timing_package_reports_bogus_value():
+    with pytest.raises(ValueError) as context:
+        Pulsar(
+            f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par",
+            f"{datadir}/B1855+09_NANOGrav_9yv1.tim",
+            timing_package="witchcraft",
+        )
+    assert "witchcraft" in str(context.value)
+
+
+def test_create_pulsar_no_args_raises():
+    # unfortunately this raises "Unkown arguments ()" rather than "no par/tim files provided" or something
+    with pytest.raises(ValueError):
+        Pulsar()
