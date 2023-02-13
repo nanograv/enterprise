@@ -670,5 +670,4 @@ def Pulsar(*args, **kwargs):
                 raise ValueError(f"Unknown timing package {timing_package}")
         finally:
             os.chdir(cwd)
-
-    raise ValueError(f"Unknown arguments {args}")
+    raise ValueError("Pulsar (par/tim) not specified in {args} or {kwargs}")
