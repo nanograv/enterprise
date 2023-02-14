@@ -104,7 +104,6 @@ class TestVectorParameter(unittest.TestCase):
 
 
 @pytest.mark.skipif(pint is None, reason="PINT not available")
-@pytest.mark.skipif(t2 is None, reason="Without TEMPO2 these tests are duplicates")
 class TestVectorParameterPint(TestVectorParameter):
     @classmethod
     def setUpClass(cls):

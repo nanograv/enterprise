@@ -656,11 +656,15 @@ def Pulsar(*args, **kwargs):
             # INCLUDE statements in the tim-file
             os.chdir(dirname)
             if timing_package == "tempo2":
+                if t2 is None:
+                    raise ValueError("tempo2 requested but tempo2 is not available")
                 # hack to set maxobs
                 maxobs = get_maxobs(reltimfile) + 100
                 t2pulsar = t2.tempopulsar(relparfile, reltimfile, maxobs=maxobs, ephem=ephem, clk=clk)
                 return Tempo2Pulsar(t2pulsar, sort=sort, drop_t2pulsar=drop_t2pulsar, planets=planets)
             elif timing_package.lower() == "pint":
+                if pint is None:
+                    raise ValueError("PINT requested but PINT is not available")
                 if (clk is not None) and (bipm_version is None):
                     bipm_version = clk.split("(")[1][:-1]
                 model, toas = get_model_and_toas(
