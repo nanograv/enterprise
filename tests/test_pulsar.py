@@ -19,12 +19,7 @@ import pytest
 import numpy as np
 from packaging import version
 
-try:
-    import libstempo as t2
-except (ImportError, RuntimeError):
-    t2 = None
-
-from enterprise.pulsar import Pulsar
+from enterprise.pulsar import Pulsar, t2
 from tests.enterprise_test_data import datadir
 
 try:
@@ -36,6 +31,8 @@ except ImportError:
 
 @pytest.fixture(scope="module")
 def pint_psr():
+    if pint is None:
+        pytest.skip(reason="PINT not available")
     return Pulsar(
         f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par",
         f"{datadir}/B1855+09_NANOGrav_9yv1.tim",
