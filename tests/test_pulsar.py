@@ -153,10 +153,14 @@ class TestPulsar(unittest.TestCase):
     def test_to_pickle(self):
         """Place holder for to_pickle tests."""
         self.psr.to_pickle()
-        with open("B1855+09.pkl", "rb") as f:
-            pkl_psr = pickle.load(f)
-
-        os.remove("B1855+09.pkl")
+        try:
+            with open("B1855+09.pkl", "rb") as f:
+                pkl_psr = pickle.load(f)
+        finally:
+            try:
+                os.remove("B1855+09.pkl")
+            except FileNotFoundError:
+                pass
 
         assert np.allclose(self.psr.residuals, pkl_psr.residuals, rtol=1e-10)
 
@@ -188,26 +192,32 @@ def test_deflate_inflate(timing_package):
         timing_package=timing_package,
     )
 
-    dm = psr._designmatrix.copy()
+    try:
+        dm = psr._designmatrix.copy()
 
-    psr.deflate()
-    psr.to_pickle()
+        psr.deflate()
+        psr.to_pickle()
 
-    with open("B1855+09.pkl", "rb") as f:
-        pkl_psr = pickle.load(f)
-    pkl_psr.inflate()
-
-    assert np.array_equal(dm, pkl_psr._designmatrix)
-
-    del pkl_psr
-
-    psr.destroy()
-
-    with open("B1855+09.pkl", "rb") as f:
-        pkl_psr = pickle.load(f)
-
-    with pytest.raises(FileNotFoundError):
+        with open("B1855+09.pkl", "rb") as f:
+            pkl_psr = pickle.load(f)
         pkl_psr.inflate()
+
+        assert np.array_equal(dm, pkl_psr._designmatrix)
+
+        del pkl_psr
+
+        psr.destroy()
+
+        with open("B1855+09.pkl", "rb") as f:
+            pkl_psr = pickle.load(f)
+
+        with pytest.raises(FileNotFoundError):
+            pkl_psr.inflate()
+    finally:
+        try:
+            os.remove("B1855+09.pkl")
+        except FileNotFoundError:
+            pass
 
 
 @pytest.mark.parametrize(
