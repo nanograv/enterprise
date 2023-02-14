@@ -91,10 +91,7 @@ def write_dict_to_hdf5(h5group: h5py.Group, name: str, d: dict):
 def read_dict_from_hdf5(h5group: h5py.Group) -> dict:
     r = dict(h5group.attrs)
     for k, v in h5group.items():
-        if isinstance(v, h5py.Group):
-            r[k] = read_dict_from_hdf5(v)
-        else:
-            r[k] = np.array(v)
+        r[k] = read_dict_from_hdf5(v) if isinstance(v, h5py.Group) else np.array(v)
     return r
 
 
