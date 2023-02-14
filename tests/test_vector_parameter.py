@@ -14,7 +14,7 @@ import unittest
 import numpy as np
 import pytest
 
-from enterprise.pulsar import Pulsar, pint, t2
+from enterprise.pulsar import Pulsar, pint
 from enterprise.signals import gp_signals, parameter, signal_base, white_signals
 from enterprise.signals.parameter import function
 from tests.enterprise_test_data import datadir

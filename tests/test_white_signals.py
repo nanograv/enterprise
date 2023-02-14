@@ -13,12 +13,7 @@ import numpy as np
 import pytest
 import scipy.linalg as sl
 
-try:
-    import libstempo as t2
-except (ImportError, RuntimeError):
-    t2 = None
-
-from enterprise.pulsar import Pulsar, pint
+from enterprise.pulsar import Pulsar, pint, t2
 from enterprise.signals import gp_signals, parameter, selections, utils, white_signals
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir

@@ -15,8 +15,9 @@ import itertools
 import unittest
 
 import numpy as np
+import pytest
 
-from enterprise.pulsar import Pulsar
+from enterprise.pulsar import Pulsar, pint
 from enterprise.signals import gp_signals, parameter, signal_base, utils, white_signals
 
 from .enterprise_test_data import datadir
@@ -329,6 +330,7 @@ class TestPTASignals(unittest.TestCase):
         assert pta["B1855+09"]["red_noise"] == pta.pulsarmodels[0].signals[0], msg
 
 
+@pytest.mark.skipif(pint is None, reason="PINT not available")
 class TestPTASignalsPint(TestPTASignals):
     @classmethod
     def setUpClass(cls):

@@ -12,9 +12,10 @@ Tests of likelihood module
 import unittest
 
 import numpy as np
+import pytest
 import scipy.linalg as sl
 
-from enterprise.pulsar import Pulsar
+from enterprise.pulsar import Pulsar, pint
 from enterprise.signals import gp_signals, parameter, selections, signal_base, utils, white_signals
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
@@ -327,6 +328,7 @@ class TestLikelihood(unittest.TestCase):
         assert np.allclose(l1, l2), msg
 
 
+@pytest.mark.skipif(pint is None, reason="PINT not available")
 class TestLikelihoodPint(TestLikelihood):
     @classmethod
     def setUpClass(cls):

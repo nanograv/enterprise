@@ -12,9 +12,10 @@ Tests of setting constant parameters
 import unittest
 
 import numpy as np
+import pytest
 import scipy.linalg as sl
 
-from enterprise.pulsar import Pulsar
+from enterprise.pulsar import Pulsar, pint
 from enterprise.signals import gp_signals, parameter, selections, utils, white_signals
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
@@ -278,6 +279,7 @@ class TestSetParameters(unittest.TestCase):
             assert np.all(pphiinv == 1 / phi), msg
 
 
+@pytest.mark.skipif(pint is None, reason="PINT not available")
 class TestSetParametersPint(TestSetParameters):
     @classmethod
     def setUpClass(cls):

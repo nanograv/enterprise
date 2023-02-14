@@ -11,9 +11,10 @@ All tests in this module are run on `B1855+09_NANOGrav_9yv1`.
 import unittest
 
 import numpy as np
+import pytest
 
 import enterprise
-from enterprise.pulsar import Pulsar
+from enterprise.pulsar import Pulsar, pint
 from enterprise.signals import deterministic_signals, parameter, selections, utils
 from enterprise.signals.parameter import function
 from enterprise.signals.selections import Selection
@@ -259,6 +260,7 @@ class TestDeterministicSignals(unittest.TestCase):
         assert np.allclose(d1, d2, rtol=1e-10), msg2
 
 
+@pytest.mark.skipif(pint is None, reason="PINT not available")
 class TestDeterministicSignalsPint(TestDeterministicSignals):
     """Tests deterministic signals with a PINT Pulsar object."""
 
