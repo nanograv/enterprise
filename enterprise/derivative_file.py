@@ -49,22 +49,22 @@ def derivative_format(
             their uncertainties, and the residuals - the difference in time or
             phase between the predicted zero phase and the observed zero phase.
 
-            For some applications, for example searching for a 
+            For some applications, for example searching for a
             gravitational-wave background, it is vital to include not just
             these residuals but their derivative with respect to each of the
             fit parameters. This allows construction of a linearized version
             of the timing model, which can often be analytically marginalized,
-            resulting in tremendous speedups. Other applications for such 
+            resulting in tremendous speedups. Other applications for such
             linearized models include parameter searches in photon data.
 
             The purpose of this file is to provide the derivatives needed
             to construct this linear model, plus all other supporting data.
-            It is stored in HDF5, a widely portable binary format that is 
+            It is stored in HDF5, a widely portable binary format that is
             extensible enough to permit project-specific information to be
             stored alongside standard values.
 
             This text should accompany a collection of such files in
-            plain-text form, and it should also be included in all such 
+            plain-text form, and it should also be included in all such
             files as an attribute called "README".
 
             ## File contents
@@ -94,8 +94,8 @@ def derivative_format(
                 Pulse time-of-arrival data, in Modified Julian Days. These
                 values are barycentered, that is, converted to times
                 that the pulses would have reached the solar system barycenter.
-                (This depends on the pulsar sky position.) Note 
-                that this array has only about microsecond resolution 
+                (This depends on the pulsar sky position.) Note
+                that this array has only about microsecond resolution
                 and so is insufficient to do precision timing.
                 """,
         )
@@ -121,7 +121,7 @@ def derivative_format(
             attribute="_toaerrs",
             use_dataset=True,
             description="""\
-                Uncertainties on pulse time-of-arrival data (and thus on 
+                Uncertainties on pulse time-of-arrival data (and thus on
                 residuals), in seconds.
                 """,
         )
@@ -141,7 +141,7 @@ def derivative_format(
             use_dataset=True,
             description="""\
                 Radio frequency at which each TOA is observed, in MHz. This
-                frequency is corrected for Doppler shift due to the 
+                frequency is corrected for Doppler shift due to the
                 observatory's motion around the Sun.
                 """,
         )
@@ -165,9 +165,9 @@ def derivative_format(
             attribute="_designmatrix",
             use_dataset=True,
             description="""\
-                Design matrix. This is an array that is (number of TOAs) by 
-                (number of fit parameters). Each column is the derivative of 
-                the residual (in seconds) with respect to the corresponding 
+                Design matrix. This is an array that is (number of TOAs) by
+                (number of fit parameters). Each column is the derivative of
+                the residual (in seconds) with respect to the corresponding
                 fit parameter.
                 """,
         )
@@ -249,8 +249,8 @@ def derivative_format(
             attribute="_sunssb",
             use_dataset=True,
             description="""\
-                Sun positions (and possibly velocities) relative to 
-                the solar system barycenter, in light-seconds. This array 
+                Sun positions (and possibly velocities) relative to
+                the solar system barycenter, in light-seconds. This array
                 will be (number of TOAs) by 6. If the Sun velocities are
                 unavailable they will be set to zero.
                 """,
@@ -263,8 +263,8 @@ def derivative_format(
             use_dataset=True,
             required=False,
             description="""\
-                Planet positions (and possibly velocities) relative to 
-                the solar system barycenter, in light-seconds. This array 
+                Planet positions (and possibly velocities) relative to
+                the solar system barycenter, in light-seconds. This array
                 will be (number of TOAs) by 9 by 6. The planets are in order
                 outward from the Sun, including Pluto. If not all planet
                 positions or velocities are available, the unknown entries will
@@ -285,7 +285,7 @@ def derivative_format(
                 a delta-DM that should be added to the pulsar's overall DM value
                 within the corresponding time interval. This will be recorded in
                 the HDF5 file as a group, with a sub-group for each DMX piece;
-                the relevant values are recorded as attributes of this 
+                the relevant values are recorded as attributes of this
                 sub-group.
                 """,
         )
@@ -300,7 +300,7 @@ def derivative_format(
                 list of flags to be associated with each TOA; these often record
                 details like the observing frontend and backend. There is a
                 list of flags recommended by the International Pulsar Timing
-                Array. This entry is an HDF5 group, which contains an HDF5 
+                Array. This entry is an HDF5 group, which contains an HDF5
                 dataset for each flag that occurs in the file; the dataset
                 contains UTF-8-encoded string values for that flag for each TOA.
                 """,

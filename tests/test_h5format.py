@@ -6,10 +6,10 @@ from typing import Any
 import pytest
 
 pytest.importorskip("h5py", reason="h5py not available")
-import h5py
-import numpy as np
+import h5py  # noqa: E402
+import numpy as np  # noqa: E402
 
-from enterprise.h5format import H5Format, H5Entry, MissingAttribute, MissingName
+from enterprise.h5format import H5Format, H5Entry, MissingAttribute, MissingName  # noqa: E402
 
 
 @dataclass
@@ -311,7 +311,6 @@ def test_no_stray_entries(simple_format, tmp_path):
     thing.an_entry = "a value"
     simple_format.save_to_hdf5(h5path, thing)
 
-    another_thing = Thing()
     with h5py.File(h5path, "r") as f:
         names = set(simple_format.all_names)
         attr_names = set(f.attrs.keys())

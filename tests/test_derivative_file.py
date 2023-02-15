@@ -5,9 +5,9 @@ import pytest
 from numpy.testing import assert_array_equal
 
 pytest.importorskip("enterprise.derivative_file", reason="HDF5 not available")
-import enterprise.pulsar
-from enterprise.derivative_file import derivative_format, FilePulsar
-from tests.enterprise_test_data import datadir as datadir_str
+import enterprise.pulsar  # noqa: E402
+from enterprise.derivative_file import FilePulsar  # noqa: E402
+from tests.enterprise_test_data import datadir as datadir_str  # noqa: E402
 
 datadir = Path(datadir_str)
 
