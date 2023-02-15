@@ -184,6 +184,7 @@ def test_write_read_dict_raises(tmp_path, simple_format, value):
         [1, 2, 3],
         [1.7, 2.3, 0.1],
         np.zeros((2, 3, 4)),
+        ["english", "français", "nederlandse"],
     ],
 )
 def test_write_read_vector_dataset(tmp_path, simple_format, value):

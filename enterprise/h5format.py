@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
@@ -7,8 +8,14 @@ from typing import Optional, Callable, List, IO, Union
 import h5py
 import numpy as np
 
+logger = logging.getLogger(__name__)
+
 
 class MissingAttribute(ValueError):
+    pass
+
+
+class MissingName(ValueError):
     pass
 
 
@@ -25,17 +32,20 @@ class H5Entry:
     def write_to_hdf5(self, h5file: h5py.File, thing):
         attribute = self.name if self.attribute is None else self.attribute
         if self.write is not None:
-            return self.write(h5file, thing, attribute)
+            return self.write(h5file, self.name, thing, attribute)
         if not hasattr(thing, attribute):
             if self.required:
                 raise MissingAttribute(f"Attribute {attribute} needed for HDF5 {self.name} missing from {thing}")
-            else:
-                return
+            logger.debug(f"Not writing {self.name} because attribute {attribute} is missing")
+            return
         value = getattr(thing, attribute)
         if self.use_dataset:
             if isinstance(value, dict):
                 write_dict_to_hdf5(h5file, self.name, value)
             else:
+                value = np.asarray(value)
+                if value.dtype.kind == "U":
+                    value = np.char.encode(value, "utf-8")
                 h5file.create_dataset(
                     self.name,
                     data=value,
@@ -49,16 +59,25 @@ class H5Entry:
                 raise TypeError(f"Invalid type for storage in an attribute: {type(getattr(thing,attribute))}") from e
 
     def read_from_hdf5(self, h5file: h5py.File, thing):
+        if self.name not in (h5file if self.use_dataset else h5file.attrs):
+            if self.required:
+                raise MissingName(f"Entry {self.name} missing from HDF5")
+            logger.debug(f"Not reading {attribute} because attribute {self.name} is missing")
+            return
         attribute = self.name if self.attribute is None else self.attribute
         if self.read is not None:
-            return self.read(h5file, thing, attribute)
+            return self.read(h5file, self.name, thing, attribute)
         try:
             if self.use_dataset:
                 value = h5file[self.name]
                 if isinstance(value, h5py.Group):
                     value = read_dict_from_hdf5(value)
                 else:
+                    print(self.name, type(value))
                     value = np.array(value)
+                    print(value.dtype)
+                    if value.dtype.kind == "S":
+                        value = np.char.decode(value, "utf-8")
             else:
                 value = h5file.attrs[self.name]
         except KeyError:
@@ -70,11 +89,10 @@ class H5Entry:
 
     def write_description(self, f: IO[str]):
         tags = ["dataset" if self.use_dataset else "attribute"]
-        # tag for type
-        # tag for attribute/dataset
-        # tag for required/optional
-        print(f"* `{self.name}` {', '.join(tags)}", file=f)
-        f.write(indent(dedent(self.description), 4 * " "))
+        if not self.required:
+            tags.append("optional")
+        print(f"* `{self.name}` ({', '.join(tags)})", file=f)
+        print(indent(dedent(self.description).strip(), 4 * " "), file=f)
 
 
 def write_dict_to_hdf5(h5group: h5py.Group, name: str, d: dict):
@@ -102,6 +120,7 @@ class H5Format:
         self.entries = [] if entries is None else entries
 
     def add_entry(self, entry: H5Entry):
+        logger.debug(f"Added entry {entry.name} ({entry.attribute})")
         self.entries.append(entry)
 
     def write_description(self, f: IO[str]):
