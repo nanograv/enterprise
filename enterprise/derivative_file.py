@@ -1,10 +1,11 @@
 from io import StringIO
-from typing import Optional, List
+from typing import List, Optional
 
-from astropy import units as u
+import numpy as np
 from astropy import constants as c
+from astropy import units as u
 
-from enterprise.h5format import H5Format, H5Entry
+from enterprise.h5format import H5Entry, H5Format, write_dict_to_hdf5
 from enterprise.pulsar import BasePulsar
 
 # light-second unit
@@ -24,6 +25,14 @@ def write_unit_list(h5file, name, thing, attribute):
 def read_unit_list(h5file, name, thing, attribute):
     ls = h5file.attrs[name]
     setattr(thing, attribute, [u.Unit(s) for s in ls])
+
+
+def write_flags(h5file, name, thing, attribute):
+    value = getattr(thing, attribute)
+    if isinstance(value, np.ndarray):
+        # t2pulsar uses a structured dtype instead of a dictionary
+        value = {flag: value[flag] for flag in value.dtype.names}
+    write_dict_to_hdf5(h5file, name, value)
 
 
 def derivative_format(
@@ -167,6 +176,7 @@ def derivative_format(
         H5Entry(
             name="Design matrix units",
             attribute="designmatrix_units",
+            required=False,
             description="""\
                 Units of design matrix entries. These are strings in Astropy's
                 "generic" format, which is based on that used in FITS. Astropy
@@ -294,6 +304,7 @@ def derivative_format(
                 dataset for each flag that occurs in the file; the dataset
                 contains UTF-8-encoded string values for that flag for each TOA.
                 """,
+            write=write_flags,
         )
     )
 

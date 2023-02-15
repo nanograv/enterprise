@@ -12,16 +12,27 @@ from tests.enterprise_test_data import datadir as datadir_str
 datadir = Path(datadir_str)
 
 
-@pytest.fixture(scope="module")
-def psr_roundtrip():
+@pytest.fixture(scope="module", params=["tempo2", "pint"])
+def psr_roundtrip(request):
+    timing_package = request.param
     with tempfile.TemporaryDirectory(prefix="enterprise-testing-") as d:
         h5path = Path(d) / "test.hdf5"
-        psr = enterprise.pulsar.Pulsar(
-            str(datadir / "B1855+09_NANOGrav_9yv1.gls.par"),
-            str(datadir / "B1855+09_NANOGrav_9yv1.tim"),
-            timing_package="pint",
-            drop_pintpsr=False,
-        )
+        if timing_package == "pint":
+            if enterprise.pulsar.pint is None:
+                pytest.skip(reason="PINT is not available")
+            psr = enterprise.pulsar.Pulsar(
+                str(datadir / "B1855+09_NANOGrav_9yv1.gls.par"),
+                str(datadir / "B1855+09_NANOGrav_9yv1.tim"),
+                timing_package="pint",
+                drop_pintpsr=False,
+            )
+        if timing_package == "tempo2":
+            if enterprise.pulsar.t2 is None:
+                pytest.skip(reason="TEMPO2 is not available")
+            psr = enterprise.pulsar.Pulsar(
+                str(datadir / "B1855+09_NANOGrav_9yv1.gls.par"),
+                str(datadir / "B1855+09_NANOGrav_9yv1.tim"),
+            )
         psr.to_hdf5(h5path)
         new_psr = FilePulsar.from_hdf5(h5path)
         yield psr, new_psr

@@ -31,13 +31,13 @@ class H5Entry:
 
     def write_to_hdf5(self, h5file: h5py.File, thing):
         attribute = self.name if self.attribute is None else self.attribute
-        if self.write is not None:
-            return self.write(h5file, self.name, thing, attribute)
         if not hasattr(thing, attribute):
             if self.required:
                 raise MissingAttribute(f"Attribute {attribute} needed for HDF5 {self.name} missing from {thing}")
             logger.debug(f"Not writing {self.name} because attribute {attribute} is missing")
             return
+        if self.write is not None:
+            return self.write(h5file, self.name, thing, attribute)
         value = getattr(thing, attribute)
         if self.use_dataset:
             if isinstance(value, dict):
