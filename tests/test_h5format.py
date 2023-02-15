@@ -165,9 +165,7 @@ def test_write_read_vector(
         dict(fish="cod", fowl="pheasant"),
     ],
 )
-def test_write_read_dict_raises(
-    tmp_path: Path, simple_format: H5Format, value: dict[int, int] | dict[str, int] | dict[str, str]
-):
+def test_write_read_dict_raises(tmp_path: Path, simple_format: H5Format, value: Any):
     h5path = tmp_path / "test.hdf5"
     simple_format.add_entry(
         H5Entry(
@@ -227,11 +225,7 @@ def test_write_read_vector_dataset(
         dict(fish=np.array(["a", "b", "c"]), fowl=dict(hare=1, hounds="dogs")),
     ],
 )
-def test_write_read_dict_dataset(
-    tmp_path: Path,
-    simple_format: H5Format,
-    value: dict[str, int] | dict[str, str] | dict[str, list[int] | dict[str, int | str]],
-):
+def test_write_read_dict_dataset(tmp_path: Path, simple_format: H5Format, value: Any):
     h5path = tmp_path / "test.hdf5"
     simple_format.add_entry(
         H5Entry(

@@ -136,16 +136,20 @@ class H5Format:
         f.write("\n")
         f.write(self.description_finale)
 
-    def save_to_hdf5(self, h5path: Union[Path, str], thing):
-        with h5py.File(h5path, "w") as f:
-            f.attrs["description"] = self.description
-            for entry in self.entries:
-                entry.write_to_hdf5(f, thing)
+    def save_to_hdf5(self, h5: Union[Path, str, h5py.Group], thing):
+        if not isinstance(h5, h5py.Group):
+            with h5py.File(h5, "w") as f:
+                return self.save_to_hdf5(f, thing)
+        h5.attrs["README"] = self.description
+        for entry in self.entries:
+            entry.write_to_hdf5(h5, thing)
 
-    def load_from_hdf5(self, h5path: Union[Path, str], thing):
-        with h5py.File(h5path, "r") as f:
-            for entry in self.entries:
-                entry.read_from_hdf5(f, thing)
+    def load_from_hdf5(self, h5: Union[Path, str, h5py.Group], thing):
+        if not isinstance(h5, h5py.Group):
+            with h5py.File(h5, "r") as f:
+                return self.load_from_hdf5(f, thing)
+        for entry in self.entries:
+            entry.read_from_hdf5(h5, thing)
 
     @property
     def description(self) -> str:

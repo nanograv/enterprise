@@ -65,7 +65,7 @@ def derivative_format(
 
             This text should accompany a collection of such files in
             plain-text form, and it should also be included in all such 
-            files.
+            files as an attribute called "README".
 
             ## File contents
 
