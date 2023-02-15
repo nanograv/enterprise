@@ -156,3 +156,7 @@ class H5Format:
         f = StringIO()
         self.write_description(f)
         return f.getvalue()
+
+    @property
+    def all_names(self) -> List[str]:
+        return ["README"] + [e.name for e in self.entries]

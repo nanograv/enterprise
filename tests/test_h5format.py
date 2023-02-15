@@ -4,6 +4,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+
+pytest.importorskip("h5py", reason="h5py not available")
+import h5py
 import numpy as np
 
 from enterprise.h5format import H5Format, H5Entry, MissingAttribute, MissingName
@@ -293,3 +296,25 @@ def test_read_missing_required(simple_format, tmp_path):
     with pytest.raises(MissingName) as e:
         simple_format.load_from_hdf5(h5path, another_thing)
     assert "another_entry" in str(e.value)
+
+
+def test_no_stray_entries(simple_format, tmp_path):
+    h5path = tmp_path / "test.hdf5"
+    simple_format.add_entry(
+        H5Entry(
+            name="an_entry",
+            description="This is a sample entry.",
+        )
+    )
+
+    thing = Thing()
+    thing.an_entry = "a value"
+    simple_format.save_to_hdf5(h5path, thing)
+
+    another_thing = Thing()
+    with h5py.File(h5path, "r") as f:
+        names = set(simple_format.all_names)
+        attr_names = set(f.attrs.keys())
+        data_group_names = set(f.keys())
+        assert not attr_names.intersection(data_group_names)
+        assert names == attr_names.union(data_group_names)
