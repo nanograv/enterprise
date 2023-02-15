@@ -79,7 +79,8 @@ class H5Entry:
         tags = ["dataset" if self.use_dataset else "attribute"]
         if not self.required:
             tags.append("optional")
-        print(f"* `{self.name}` ({', '.join(tags)})", file=f)
+        # End with two spaces to arrange for a Markdown line break
+        print(f"* `{self.name}` ({', '.join(tags)})  ", file=f)
         print(indent(dedent(self.description).strip(), 4 * " "), file=f)
 
 
