@@ -223,6 +223,8 @@ def test_write_read_vector_dataset(
         dict(fish=1, fowl=2),
         dict(fish="cod", fowl="pheasant"),
         dict(fish=[1, 2, 3], fowl=dict(hare=1, hounds="dogs")),
+        dict(fish=np.array([1, 2, 3]), fowl=dict(hare=1, hounds="dogs")),
+        dict(fish=np.array(["a", "b", "c"]), fowl=dict(hare=1, hounds="dogs")),
     ],
 )
 def test_write_read_dict_dataset(

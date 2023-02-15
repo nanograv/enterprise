@@ -2,19 +2,21 @@
 """Class containing pulsar data from timing package [tempo2/PINT].
 """
 
+
 import json
 import logging
 import os
 import pickle
+from io import StringIO
 
 import astropy.constants as const
 import astropy.units as u
+import contextlib
 import numpy as np
 from ephem import Ecliptic, Equatorial
 
 import enterprise
 from enterprise.signals import utils
-
 from enterprise.pulsar_inflate import PulsarInflater
 
 logger = logging.getLogger(__name__)
@@ -24,7 +26,7 @@ try:
 except (ImportError, RuntimeError) as e:
     # ImportError happens if libstempo isn't installed
     # RuntimeError happens if libstempo is installed but can't find TEMPO2
-    logger.warning(f"Unable to use TEMPO2: {e} Will use PINT instead.")
+    logger.warning(f"Unable to use TEMPO2: {e}. Will use PINT instead.")
     t2 = None
 
 try:
@@ -36,9 +38,15 @@ except ImportError:
     logger.warning("PINT not installed. Will use libstempo instead.")
     pint = None
 
+# FIXME: maybe not needed if we have HDF5?
 if pint is None and t2 is None:
-    err_msg = "Must have either PINT or libstempo timing package installed"
-    raise ImportError(err_msg)
+    raise ImportError("Must have either PINT or libstempo timing package installed")
+
+# try:
+#     import enterprise.derivative_file
+# except ImportError as e:
+#     logger.warning(f"HDF5 library not available; consider installing h5py ({e})")
+#     enterprise.derivative_file = None
 
 
 def get_maxobs(timfile):
@@ -307,8 +315,20 @@ class BasePulsar(object):
 
     @property
     def telescope(self):
-        """Return telescope vector at all timestamps"""
+        """Return telescope name at all timestamps"""
         return self._telescope[self._isort]
+
+    def to_hdf5(self, h5path, initial_entries=None, final_entries=None):
+        try:
+            # Circular import if we're not careful
+            import enterprise.derivative_file
+        except ImportError as e:
+            raise ImportError("HDF5 library not available; consider installing h5py") from e
+        fmt = enterprise.derivative_file.derivative_format(
+            initial_entries=initial_entries,
+            final_entries=final_entries,
+        )
+        fmt.save_to_hdf5(h5path, self)
 
 
 class PintPulsar(BasePulsar):
@@ -320,7 +340,11 @@ class PintPulsar(BasePulsar):
 
         if not drop_pintpsr:
             self.model = model
+            self.parfile = model.as_parfile()
             self.pint_toas = toas
+            with StringIO() as tim:
+                toas.write_TOA_file(tim)
+                self.tim_lines = np.array(tim.getvalue().split("\n"))
 
         # these are TDB but not barycentered
         # self._toas = np.array(toas.table["tdbld"], dtype="float64") * 86400
@@ -329,7 +353,7 @@ class PintPulsar(BasePulsar):
         self._stoas = np.array(toas.get_mjds().value, dtype="float64") * 86400
         self._residuals = np.array(resids(toas, model).time_resids.to(u.s), dtype="float64")
         self._toaerrs = np.array(toas.get_errors().to(u.s), dtype="float64")
-        self._designmatrix, self.fitpars, units = model.designmatrix(toas)
+        self._designmatrix, self.fitpars, self.designmatrix_units = model.designmatrix(toas)
         self._ssbfreqs = np.array(model.barycentric_radio_freq(toas), dtype="float64")
         self._telescope = np.array(toas.get_obss())
 
@@ -370,6 +394,13 @@ class PintPulsar(BasePulsar):
         self._pos_t = model.components[which_astrometry].ssb_to_psb_xyz_ICRS(model.get_barycentric_toas(toas)).value
 
         self.sort_data()
+
+    def drop_pintpsr(self):
+        with contextlib.suppress(NameError):
+            del self.model
+            del self.parfile
+            del self.pint_toas
+            del self.tim_lines
 
     def _set_dm(self, model):
         pars = [par for par in model.params if not getattr(model, par).frozen]

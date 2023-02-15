@@ -43,15 +43,7 @@ class H5Entry:
             if isinstance(value, dict):
                 write_dict_to_hdf5(h5file, self.name, value)
             else:
-                value = np.asarray(value)
-                if value.dtype.kind == "U":
-                    value = np.char.encode(value, "utf-8")
-                h5file.create_dataset(
-                    self.name,
-                    data=value,
-                    compression="gzip",
-                    compression_opts=9,
-                )
+                write_array_to_hdf5_dataset(h5file, self.name, np.asarray(value))
         else:
             try:
                 h5file.attrs[self.name] = value
@@ -73,11 +65,7 @@ class H5Entry:
                 if isinstance(value, h5py.Group):
                     value = read_dict_from_hdf5(value)
                 else:
-                    print(self.name, type(value))
-                    value = np.array(value)
-                    print(value.dtype)
-                    if value.dtype.kind == "S":
-                        value = np.char.decode(value, "utf-8")
+                    value = decode_array_if_necessary(np.array(value))
             else:
                 value = h5file.attrs[self.name]
         except KeyError:
@@ -95,13 +83,30 @@ class H5Entry:
         print(indent(dedent(self.description).strip(), 4 * " "), file=f)
 
 
+def write_array_to_hdf5_dataset(h5group: h5py.Group, name: str, value: np.ndarray):
+    if value.dtype.kind == "U":
+        value = np.char.encode(value, "utf-8")
+    h5group.create_dataset(
+        name,
+        data=value,
+        compression="gzip",
+        compression_opts=9,
+    )
+
+
+def decode_array_if_necessary(value: np.ndarray):
+    if value.dtype.kind == "S":
+        value = np.char.decode(value, "utf-8")
+    return value
+
+
 def write_dict_to_hdf5(h5group: h5py.Group, name: str, d: dict):
     g = h5group.create_group(name)
     for k, v in d.items():
         if isinstance(v, dict):
             write_dict_to_hdf5(g, k, v)
         elif isinstance(v, np.ndarray):
-            g.create_dataset(k, data=v, compression="gzip", compression_level=9)
+            write_array_to_hdf5_dataset(g, k, v)
         else:
             g.attrs[k] = v
 
@@ -109,7 +114,7 @@ def write_dict_to_hdf5(h5group: h5py.Group, name: str, d: dict):
 def read_dict_from_hdf5(h5group: h5py.Group) -> dict:
     r = dict(h5group.attrs)
     for k, v in h5group.items():
-        r[k] = read_dict_from_hdf5(v) if isinstance(v, h5py.Group) else np.array(v)
+        r[k] = read_dict_from_hdf5(v) if isinstance(v, h5py.Group) else decode_array_if_necessary(np.array(v))
     return r
 
 
