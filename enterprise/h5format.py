@@ -59,12 +59,12 @@ class H5Entry:
                 raise TypeError(f"Invalid type for storage in an attribute: {type(getattr(thing,attribute))}") from e
 
     def read_from_hdf5(self, h5file: h5py.File, thing):
+        attribute = self.name if self.attribute is None else self.attribute
         if self.name not in (h5file if self.use_dataset else h5file.attrs):
             if self.required:
                 raise MissingName(f"Entry {self.name} missing from HDF5")
             logger.debug(f"Not reading {attribute} because attribute {self.name} is missing")
             return
-        attribute = self.name if self.attribute is None else self.attribute
         if self.read is not None:
             return self.read(h5file, self.name, thing, attribute)
         try:

@@ -1,10 +1,17 @@
+from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
+from typing import Any
 
 import pytest
 import numpy as np
 
-from enterprise.h5format import H5Format, H5Entry
+from enterprise.h5format import H5Format, H5Entry, MissingAttribute, MissingName
+
+
+@dataclass
+class Thing:
+    an_entry: Any = None
 
 
 @pytest.fixture
@@ -78,9 +85,6 @@ def test_write_succeeds(tmp_path: Path, simple_format: H5Format):
         )
     )
 
-    class Thing:
-        pass
-
     thing = Thing()
     thing.an_entry = "fish"
     simple_format.save_to_hdf5(h5path, thing)
@@ -97,7 +101,11 @@ def test_write_succeeds(tmp_path: Path, simple_format: H5Format):
         np.float64(1.7),
     ],
 )
-def test_write_read_scalar(tmp_path, simple_format, value):
+def test_write_read_scalar(
+    tmp_path: Path,
+    simple_format: H5Format,
+    value: Any,
+):
     h5path = tmp_path / "test.hdf5"
     simple_format.add_entry(
         H5Entry(
@@ -105,9 +113,6 @@ def test_write_read_scalar(tmp_path, simple_format, value):
             description="This is a sample entry.",
         )
     )
-
-    class Thing:
-        pass
 
     thing = Thing()
     thing.an_entry = value
@@ -128,7 +133,11 @@ def test_write_read_scalar(tmp_path, simple_format, value):
         np.zeros((2, 3, 4)),
     ],
 )
-def test_write_read_vector(tmp_path, simple_format, value):
+def test_write_read_vector(
+    tmp_path: Path,
+    simple_format: H5Format,
+    value: Any,
+):
     h5path = tmp_path / "test.hdf5"
     simple_format.add_entry(
         H5Entry(
@@ -136,9 +145,6 @@ def test_write_read_vector(tmp_path, simple_format, value):
             description="This is a sample entry.",
         )
     )
-
-    class Thing:
-        pass
 
     thing = Thing()
     thing.an_entry = value
@@ -159,7 +165,9 @@ def test_write_read_vector(tmp_path, simple_format, value):
         dict(fish="cod", fowl="pheasant"),
     ],
 )
-def test_write_read_dict_raises(tmp_path, simple_format, value):
+def test_write_read_dict_raises(
+    tmp_path: Path, simple_format: H5Format, value: dict[int, int] | dict[str, int] | dict[str, str]
+):
     h5path = tmp_path / "test.hdf5"
     simple_format.add_entry(
         H5Entry(
@@ -167,9 +175,6 @@ def test_write_read_dict_raises(tmp_path, simple_format, value):
             description="This is a sample entry.",
         )
     )
-
-    class Thing:
-        pass
 
     thing = Thing()
     thing.an_entry = value
@@ -187,7 +192,11 @@ def test_write_read_dict_raises(tmp_path, simple_format, value):
         ["english", "français", "nederlandse"],
     ],
 )
-def test_write_read_vector_dataset(tmp_path, simple_format, value):
+def test_write_read_vector_dataset(
+    tmp_path: Path,
+    simple_format: H5Format,
+    value: Any,
+):
     h5path = tmp_path / "test.hdf5"
     simple_format.add_entry(
         H5Entry(
@@ -196,9 +205,6 @@ def test_write_read_vector_dataset(tmp_path, simple_format, value):
             use_dataset=True,
         )
     )
-
-    class Thing:
-        pass
 
     thing = Thing()
     thing.an_entry = value
@@ -219,7 +225,11 @@ def test_write_read_vector_dataset(tmp_path, simple_format, value):
         dict(fish=[1, 2, 3], fowl=dict(hare=1, hounds="dogs")),
     ],
 )
-def test_write_read_dict_dataset(tmp_path, simple_format, value):
+def test_write_read_dict_dataset(
+    tmp_path: Path,
+    simple_format: H5Format,
+    value: dict[str, int] | dict[str, str] | dict[str, list[int] | dict[str, int | str]],
+):
     h5path = tmp_path / "test.hdf5"
     simple_format.add_entry(
         H5Entry(
@@ -228,9 +238,6 @@ def test_write_read_dict_dataset(tmp_path, simple_format, value):
             use_dataset=True,
         )
     )
-
-    class Thing:
-        pass
 
     thing = Thing()
     thing.an_entry = value
@@ -252,3 +259,41 @@ def test_write_read_dict_dataset(tmp_path, simple_format, value):
                 assert v1 == v2
 
     compare_dicts(recovered_thing.an_entry, thing.an_entry)
+
+
+def test_write_missing(simple_format, tmp_path):
+    h5path = tmp_path / "test.hdf5"
+    thing = Thing()
+    simple_format.add_entry(H5Entry(name="another_entry", description="", required=False))
+    simple_format.save_to_hdf5(h5path, thing)
+    # Should not raise an exception
+
+
+def test_write_missing_required(simple_format, tmp_path):
+    h5path = tmp_path / "test.hdf5"
+    thing = Thing()
+    simple_format.add_entry(H5Entry(name="another_entry", description=""))
+    with pytest.raises(MissingAttribute) as e:
+        simple_format.save_to_hdf5(h5path, thing)
+    assert "another_entry" in str(e.value)
+
+
+def test_read_missing(simple_format, tmp_path):
+    h5path = tmp_path / "test.hdf5"
+    thing = Thing()
+    simple_format.save_to_hdf5(h5path, thing)
+    simple_format.add_entry(H5Entry(name="another_entry", description="", required=False))
+    another_thing = Thing()
+    simple_format.load_from_hdf5(h5path, another_thing)
+    assert not hasattr(another_thing, "another_entry")
+
+
+def test_read_missing_required(simple_format, tmp_path):
+    h5path = tmp_path / "test.hdf5"
+    thing = Thing()
+    simple_format.save_to_hdf5(h5path, thing)
+    simple_format.add_entry(H5Entry(name="another_entry", description=""))
+    another_thing = Thing()
+    with pytest.raises(MissingName) as e:
+        simple_format.load_from_hdf5(h5path, another_thing)
+    assert "another_entry" in str(e.value)
