@@ -16,6 +16,8 @@ requirements = [
     "libstempo>=2.4.4",
 ]
 
+extras_require = dict(hdf5=["h5py"])
+
 test_requirements = []
 
 setup(
@@ -51,4 +53,5 @@ setup(
     ],
     test_suite="tests",
     tests_require=test_requirements,
+    extras_require=extras_require,
 )

@@ -41,7 +41,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip setuptools wheel
         python -m pip install -r requirements_dev.txt
-        python -m pip install -e .
+        python -m pip install -e .[hdf5]
     - name: Display Python, pip, setuptools, and all installed versions
       run: |
         python -c "import sys; print(f'Python {sys.version}')"
@@ -75,7 +75,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip setuptools wheel
         python -m pip install -r requirements_dev.txt
-        python -m pip install -e .
+        python -m pip install -e .[hdf5]
         python -m pip uninstall -y libstempo
     - name: Display Python, pip, setuptools, and all installed versions
       run: |
@@ -108,7 +108,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip setuptools wheel
         python -m pip install -r requirements_dev.txt
-        python -m pip install -e .
+        python -m pip install -e .[hdf5]
         python -m pip uninstall -y pint-pulsar
     - name: Display Python, pip, setuptools, and all installed versions
       run: |
@@ -144,6 +144,7 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
         pip install -r requirements.txt
         pip install -r requirements_dev.txt
+        pip install h5py
         make dist
     - name: Test deployability
       run: |

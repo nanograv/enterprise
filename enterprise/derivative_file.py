@@ -314,6 +314,9 @@ def derivative_format(
     return f
 
 
+# FIXME: format version?
+# Current format version could be set in this file
+# Reading a file with a version that might not be compatible should emit a warning
 class FilePulsar(BasePulsar):
     @classmethod
     def from_hdf5(cls, h5path, sort=True, planets=True):
