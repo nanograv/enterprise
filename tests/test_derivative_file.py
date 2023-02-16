@@ -1,12 +1,13 @@
 import tempfile
 from pathlib import Path
 
+import packaging.version
 import pytest
 from numpy.testing import assert_array_equal
 
 pytest.importorskip("enterprise.derivative_file", reason="HDF5 not available")
 import enterprise.pulsar  # noqa: E402
-from enterprise.derivative_file import FilePulsar  # noqa: E402
+from enterprise.derivative_file import FilePulsar, format_version  # noqa: E402
 from tests.enterprise_test_data import datadir as datadir_str  # noqa: E402
 
 datadir = Path(datadir_str)
@@ -56,3 +57,13 @@ def test_flags_unchanged(psr_roundtrip):
     for k, v1 in psr.flags.items():
         v2 = new_psr.flags[k]
         assert_array_equal(v2, v1)
+
+
+def test_format_version_set(psr_roundtrip):
+    psr, new_psr = psr_roundtrip
+    assert hasattr(new_psr, "format_version")
+    assert new_psr.format_version == format_version
+    assert isinstance(
+        packaging.version.parse(new_psr.format_version),
+        packaging.version.Version,
+    )

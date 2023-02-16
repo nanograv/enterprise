@@ -9,7 +9,7 @@ pytest.importorskip("h5py", reason="h5py not available")
 import h5py  # noqa: E402
 import numpy as np  # noqa: E402
 
-from enterprise.h5format import H5Format, H5Entry, MissingAttribute, MissingName  # noqa: E402
+from enterprise.h5format import H5Format, H5Entry, H5ConstantEntry, MissingAttribute, MissingName  # noqa: E402
 
 
 @dataclass
@@ -317,3 +317,27 @@ def test_no_stray_entries(simple_format, tmp_path):
         data_group_names = set(f.keys())
         assert not attr_names.intersection(data_group_names)
         assert names == attr_names.union(data_group_names)
+
+
+@pytest.mark.parametrize("value", [17, "fish"])
+def test_constant_write(simple_format, tmp_path, value):
+    h5path = tmp_path / "test.hdf5"
+    simple_format.add_entry(
+        H5ConstantEntry(
+            name="a_constant_entry",
+            description="This is a constant entry.",
+            value=value,
+        )
+    )
+    assert "constant" in simple_format.description
+    assert str(value) in simple_format.description
+
+    thing = Thing()
+
+    simple_format.save_to_hdf5(h5path, thing)
+
+    another_thing = Thing()
+    simple_format.load_from_hdf5(h5path, another_thing)
+
+    assert hasattr(another_thing, "a_constant_entry")
+    assert another_thing.a_constant_entry == value

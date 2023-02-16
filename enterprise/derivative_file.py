@@ -1,12 +1,15 @@
 from io import StringIO
+from textwrap import dedent
 from typing import List, Optional
 
 import numpy as np
 from astropy import constants as c
 from astropy import units as u
 
-from enterprise.h5format import H5Entry, H5Format, write_dict_to_hdf5
+from enterprise.h5format import H5Entry, H5Format, H5ConstantEntry, write_dict_to_hdf5
 from enterprise.pulsar import BasePulsar
+
+format_version = "0.1.0"
 
 # light-second unit
 ls = u.def_unit("ls", c.c * 1.0 * u.s)
@@ -15,6 +18,34 @@ ls = u.def_unit("ls", c.c * 1.0 * u.s)
 dmu = u.def_unit("dmu", u.pc * u.cm**-3)
 
 u.add_enabled_units([ls, dmu])
+
+standard_introduction = dedent(
+    """\
+    Pulsar timing begins with a set of pulse arrival times
+    and fits a model to those arrival times. The usual output
+    from this process is the best-fit model parameters and
+    their uncertainties, and the residuals - the difference in time or
+    phase between the predicted zero phase and the observed zero phase.
+
+    For some applications, for example searching for a
+    gravitational-wave background, it is vital to include not just
+    these residuals but their derivative with respect to each of the
+    fit parameters. This allows construction of a linearized version
+    of the timing model, which can often be analytically marginalized,
+    resulting in tremendous speedups. Other applications for such
+    linearized models include parameter searches in photon data.
+
+    The purpose of this file is to provide the derivatives needed
+    to construct this linear model, plus all other supporting data.
+    It is stored in HDF5, a widely portable binary format that is
+    extensible enough to permit project-specific information to be
+    stored alongside standard values.
+
+    This text should accompany a collection of such files in
+    plain-text form, and it should also be included in all such
+    files as an attribute called "README".
+    """
+)
 
 
 def write_unit_list(h5file, name, thing, attribute):
@@ -40,36 +71,22 @@ def derivative_format(
     final_entries: Optional[List[H5Entry]] = None,
 ) -> H5Format:
     f = H5Format(
-        description_intro="""\
+        description_intro=(
+            dedent(
+                """\
             # Derivative information for pulsar timing
 
-            Pulsar timing begins with a set of pulse arrival times
-            and fits a model to those arrival times. The usual output
-            from this process is the best-fit model parameters and
-            their uncertainties, and the residuals - the difference in time or
-            phase between the predicted zero phase and the observed zero phase.
-
-            For some applications, for example searching for a
-            gravitational-wave background, it is vital to include not just
-            these residuals but their derivative with respect to each of the
-            fit parameters. This allows construction of a linearized version
-            of the timing model, which can often be analytically marginalized,
-            resulting in tremendous speedups. Other applications for such
-            linearized models include parameter searches in photon data.
-
-            The purpose of this file is to provide the derivatives needed
-            to construct this linear model, plus all other supporting data.
-            It is stored in HDF5, a widely portable binary format that is
-            extensible enough to permit project-specific information to be
-            stored alongside standard values.
-
-            This text should accompany a collection of such files in
-            plain-text form, and it should also be included in all such
-            files as an attribute called "README".
+            """
+            )
+            + standard_introduction
+            + dedent(
+                """\
 
             ## File contents
 
-            """,
+            """
+            )
+        ),
         entries=initial_entries,
         description_finale="""\
             """,
@@ -305,6 +322,18 @@ def derivative_format(
                 contains UTF-8-encoded string values for that flag for each TOA.
                 """,
             write=write_flags,
+        )
+    )
+    f.add_entry(
+        H5ConstantEntry(
+            name="format_version",
+            required=False,
+            description="""\
+                Version of this file format used here. This can be used as a semantic
+                version number to determine whether it is likely that your software
+                can read the structure of this HDF5 file.
+                """,
+            value=format_version,
         )
     )
 

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
 from textwrap import indent, dedent
-from typing import Optional, Callable, List, IO, Union
+from typing import Optional, Callable, List, IO, Union, Any
 
 import h5py
 import numpy as np
@@ -38,7 +38,9 @@ class H5Entry:
             return
         if self.write is not None:
             return self.write(h5file, self.name, thing, attribute)
-        value = getattr(thing, attribute)
+        self._write_value_to_hdf5(h5file, getattr(thing, attribute))
+
+    def _write_value_to_hdf5(self, h5file: h5py.File, value: Any):
         if self.use_dataset:
             if isinstance(value, dict):
                 write_dict_to_hdf5(h5file, self.name, value)
@@ -48,7 +50,7 @@ class H5Entry:
             try:
                 h5file.attrs[self.name] = value
             except TypeError as e:
-                raise TypeError(f"Invalid type for storage in an attribute: {type(getattr(thing,attribute))}") from e
+                raise TypeError(f"Invalid type for storage in an attribute: {type(value)}") from e
 
     def read_from_hdf5(self, h5file: h5py.File, thing):
         attribute = self.name if self.attribute is None else self.attribute
@@ -79,6 +81,23 @@ class H5Entry:
         tags = ["dataset" if self.use_dataset else "attribute"]
         if not self.required:
             tags.append("optional")
+        # End with two spaces to arrange for a Markdown line break
+        print(f"* `{self.name}` ({', '.join(tags)})  ", file=f)
+        print(indent(dedent(self.description).strip(), 4 * " "), file=f)
+
+
+@dataclass
+class H5ConstantEntry(H5Entry):
+    value: Any = None
+
+    def write_to_hdf5(self, h5file: h5py.File, thing):
+        self._write_value_to_hdf5(h5file, self.value)
+
+    def write_description(self, f: IO[str]):
+        tags = ["dataset" if self.use_dataset else "attribute"]
+        if not self.required:
+            tags.append("optional")
+        tags.append(f'constant value="{self.value}"')
         # End with two spaces to arrange for a Markdown line break
         print(f"* `{self.name}` ({', '.join(tags)})  ", file=f)
         print(indent(dedent(self.description).strip(), 4 * " "), file=f)
