@@ -67,11 +67,13 @@ def write_flags(h5file, name, thing, attribute):
 
 
 def derivative_format(
+    description_intro: Optional[str] = None,
+    description_finale: Optional[str] = None,
     initial_entries: Optional[List[H5Entry]] = None,
     final_entries: Optional[List[H5Entry]] = None,
 ) -> H5Format:
-    f = H5Format(
-        description_intro=(
+    if description_intro is None:
+        description_intro = (
             dedent(
                 """\
             # Derivative information for pulsar timing
@@ -86,10 +88,13 @@ def derivative_format(
 
             """
             )
-        ),
+        )
+    if description_finale is None:
+        description_finale = "\n"
+    f = H5Format(
+        description_intro=description_intro,
         entries=initial_entries,
-        description_finale="""\
-            """,
+        description_finale=description_finale,
     )
     f.add_entry(H5Entry(name="Name", attribute="name", description="Pulsar name."))
     f.add_entry(H5Entry(name="RAJ", attribute="_raj", description="Right ascension in the Julian system. In radians."))
