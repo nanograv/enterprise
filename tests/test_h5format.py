@@ -30,6 +30,8 @@ def simple_format() -> H5Format:
 
             You can add some ending comments here.
             """,
+        format_name="simple_format",
+        format_version="1.0.0",
     )
 
 
@@ -341,3 +343,91 @@ def test_constant_write(simple_format, tmp_path, value):
 
     assert hasattr(another_thing, "a_constant_entry")
     assert another_thing.a_constant_entry == value
+
+
+def test_warn_format_name(simple_format, tmp_path, caplog):
+    h5path = tmp_path / "test.hdf5"
+
+    thing = Thing()
+    simple_format.save_to_hdf5(h5path, thing)
+
+    other_format = H5Format(
+        description_intro="",
+        description_finale="",
+        format_name="other_format",
+        format_version="1.0.0",
+    )
+
+    another_thing = Thing()
+    other_format.load_from_hdf5(h5path, another_thing)
+
+    print(caplog.records)
+    assert "different formats" in caplog.records[0].msg
+    assert "simple_format" in caplog.records[0].msg
+    assert "other_format" in caplog.records[0].msg
+
+
+def test_warn_major_format(simple_format, tmp_path, caplog):
+    h5path = tmp_path / "test.hdf5"
+
+    thing = Thing()
+    simple_format.save_to_hdf5(h5path, thing)
+
+    other_format = H5Format(
+        description_intro="",
+        description_finale="",
+        format_name="simple_format",
+        format_version="2.0.0",
+    )
+
+    another_thing = Thing()
+    other_format.load_from_hdf5(h5path, another_thing)
+
+    print(caplog.records)
+    assert "major version" in caplog.records[0].msg
+    assert "1.0.0" in caplog.records[0].msg
+    assert "2.0.0" in caplog.records[0].msg
+
+
+def test_no_warn_minor_format_newer(simple_format, tmp_path, caplog):
+    h5path = tmp_path / "test.hdf5"
+
+    thing = Thing()
+
+    other_format = H5Format(
+        description_intro="",
+        description_finale="",
+        format_name="simple_format",
+        format_version="1.1.0",
+    )
+
+    another_thing = Thing()
+
+    simple_format.save_to_hdf5(h5path, thing)
+    other_format.load_from_hdf5(h5path, another_thing)
+
+    print(caplog.records)
+    assert not caplog.records
+
+
+def test_warn_minor_format_older(simple_format, tmp_path, caplog):
+    h5path = tmp_path / "test.hdf5"
+
+    thing = Thing()
+
+    other_format = H5Format(
+        description_intro="",
+        description_finale="",
+        format_name="simple_format",
+        format_version="1.1.0",
+    )
+
+    another_thing = Thing()
+
+    other_format.save_to_hdf5(h5path, thing)
+    simple_format.load_from_hdf5(h5path, another_thing)
+
+    print(caplog.records)
+    assert "minor version" in caplog.records[0].msg
+    assert "1.0.0" in caplog.records[0].msg
+    assert "1.1.0" in caplog.records[0].msg

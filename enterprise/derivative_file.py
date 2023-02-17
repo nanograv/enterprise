@@ -6,10 +6,11 @@ import numpy as np
 from astropy import constants as c
 from astropy import units as u
 
-from enterprise.h5format import H5Entry, H5Format, H5ConstantEntry, write_dict_to_hdf5
+from enterprise.h5format import H5Entry, H5Format, write_dict_to_hdf5
 from enterprise.pulsar import BasePulsar
 
-format_version = "0.1.0"
+format_name = "derivative_file"
+format_version = "0.2.0"
 
 # light-second unit
 ls = u.def_unit("ls", c.c * 1.0 * u.s)
@@ -95,6 +96,8 @@ def derivative_format(
         description_intro=description_intro,
         entries=initial_entries,
         description_finale=description_finale,
+        format_name=format_name,
+        format_version=format_version,
     )
     f.add_entry(H5Entry(name="Name", attribute="name", description="Pulsar name."))
     f.add_entry(H5Entry(name="RAJ", attribute="_raj", description="Right ascension in the Julian system. In radians."))
@@ -194,6 +197,7 @@ def derivative_format(
                 """,
         )
     )
+    # FIXME: arrange for fitpars to be stored as an attribute of the design matrix
     f.add_entry(
         H5Entry(
             name="Design matrix units",
@@ -327,18 +331,6 @@ def derivative_format(
                 contains UTF-8-encoded string values for that flag for each TOA.
                 """,
             write=write_flags,
-        )
-    )
-    f.add_entry(
-        H5ConstantEntry(
-            name="format_version",
-            required=False,
-            description="""\
-                Version of this file format used here. This can be used as a semantic
-                version number to determine whether it is likely that your software
-                can read the structure of this HDF5 file.
-                """,
-            value=format_version,
         )
     )
 

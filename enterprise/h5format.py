@@ -7,6 +7,7 @@ from typing import Optional, Callable, List, IO, Union, Any
 
 import h5py
 import numpy as np
+import packaging.version
 
 logger = logging.getLogger(__name__)
 
@@ -139,10 +140,44 @@ def read_dict_from_hdf5(h5group: h5py.Group) -> dict:
 
 
 class H5Format:
-    def __init__(self, description_intro: str, entries: Optional[List[H5Entry]] = None, description_finale: str = ""):
+    def __init__(
+        self,
+        description_intro: str,
+        entries: Optional[List[H5Entry]] = None,
+        description_finale: str = "",
+        format_name: Optional[str] = None,
+        format_version: Optional[str] = None,
+    ):
         self.description_intro = dedent(description_intro)
         self.description_finale = dedent(description_finale)
-        self.entries = [] if entries is None else entries
+        self.format_name = format_name
+        self.format_version = format_version
+        self.entries: List[H5Entry] = []
+        if self.format_name is not None:
+            self.entries.append(
+                H5ConstantEntry(
+                    name="format_name",
+                    required=False,
+                    description="The name of this particular HDF5 format.",
+                    value=self.format_name,
+                )
+            )
+        if self.format_version is not None:
+            if not isinstance(packaging.version.parse(self.format_version), packaging.version.Version):
+                raise ValueError(f"Unable to parse format_version {self.format_version}")
+            self.entries.append(
+                H5ConstantEntry(
+                    name="format_version",
+                    required=False,
+                    description="""\
+                        Version number indicating the compatibility of this file with
+                        other readers of this format.
+                        """,
+                    value=self.format_version,
+                )
+            )
+        if entries is not None:
+            self.entries.extend(entries)
 
     def add_entry(self, entry: H5Entry):
         logger.debug(f"Added entry {entry.name} ({entry.attribute})")
@@ -169,6 +204,23 @@ class H5Format:
                 return self.load_from_hdf5(f, thing)
         for entry in self.entries:
             entry.read_from_hdf5(h5, thing)
+        if self.format_name is not None and getattr(thing, "format_name") != self.format_name:
+            logger.warning(
+                f"Apparently different formats: file is in format "
+                f"{getattr(thing, 'format_name')} while this reader expects "
+                f"format {self.format_name}."
+            )
+        if self.format_version is not None and hasattr(thing, "format_version"):
+            s = packaging.version.parse(self.format_version)
+            o = packaging.version.parse(thing.format_version)
+            if s.major != o.major:
+                logger.warning(
+                    f"Incompatible major versions for the format ({self.format_version} and {thing.format_version})"
+                )
+            if s.minor < o.minor:
+                logger.warning(
+                    f"File has newer format minor version than reader ({self.format_version} and {thing.format_version})"
+                )
 
     @property
     def description(self) -> str:
