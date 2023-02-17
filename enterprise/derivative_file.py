@@ -227,24 +227,27 @@ def derivative_format(
         H5Entry(
             name="Par file",
             attribute="parfile",
+            use_dataset=True,
             required=False,
             description="""\
                 A `.par` file describing the timing model, as a string.
                 This can be quite long if the model has many DMX parameters.
+                The value is stored as an array of UTF-8 byte strings, one
+                per line.
                 """,
         )
     )
     f.add_entry(
         H5Entry(
             name="Tim file",
-            attribute="tim_lines",
+            attribute="timfile",
             required=False,
             use_dataset=True,
             description="""\
                 A `.tim` file recording the full TOA information. This is
-                in the form of an array of strings (UTF-8 encoded). The file
-                is in TEMPO2 format, so will normally contain more lines than
-                there are TOAs.
+                in the form of an array of strings (UTF-8 encoded), one per
+                line. The file is in TEMPO2 format, so will normally contain
+                more lines than there are TOAs.
                 """,
         )
     )
@@ -364,7 +367,7 @@ class FilePulsar(BasePulsar):
             # I think these are preserved in the model?
             self._model, self._pint_toas = get_model_and_toas(
                 parfile=StringIO(self.parfile),
-                timfile=StringIO("\n".join(self.tim_lines)),
+                timfile=StringIO(self.timfile),
             )
 
     @property

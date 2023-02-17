@@ -344,7 +344,7 @@ class PintPulsar(BasePulsar):
             self.pint_toas = toas
             with StringIO() as tim:
                 toas.write_TOA_file(tim)
-                self.tim_lines = np.array(tim.getvalue().split("\n"))
+                self.timfile = tim.getvalue()
 
         # these are TDB but not barycentered
         # self._toas = np.array(toas.table["tdbld"], dtype="float64") * 86400
@@ -400,7 +400,7 @@ class PintPulsar(BasePulsar):
             del self.model
             del self.parfile
             del self.pint_toas
-            del self.tim_lines
+            del self.timfile
 
     def _set_dm(self, model):
         pars = [par for par in model.params if not getattr(model, par).frozen]
