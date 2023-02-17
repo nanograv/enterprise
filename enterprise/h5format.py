@@ -45,6 +45,8 @@ class H5Entry:
         if self.use_dataset:
             if isinstance(value, dict):
                 write_dict_to_hdf5(h5file, self.name, value)
+            elif isinstance(value, str):
+                write_string_to_hdf5_dataset(h5file, self.name, value)
             else:
                 write_array_to_hdf5_dataset(h5file, self.name, np.asarray(value))
         else:
@@ -68,7 +70,10 @@ class H5Entry:
                 if isinstance(value, h5py.Group):
                     value = read_dict_from_hdf5(value)
                 else:
-                    value = decode_array_if_necessary(np.array(value))
+                    value = decode_array_if_necessary(
+                        np.array(value),
+                        lines=h5file[self.name].attrs.get("lines", False),
+                    )
             else:
                 value = h5file.attrs[self.name]
         except KeyError:
@@ -115,9 +120,20 @@ def write_array_to_hdf5_dataset(h5group: h5py.Group, name: str, value: np.ndarra
     )
 
 
-def decode_array_if_necessary(value: np.ndarray):
+def write_string_to_hdf5_dataset(h5group: h5py.Group, name: str, value: str):
+    value_as_array = np.array([s.encode("utf-8") for s in value.split("\n")])
+    print(f"converted {repr(value)} to {repr(value_as_array)}")
+    write_array_to_hdf5_dataset(h5group, name, value_as_array)
+    h5group[name].attrs["lines"] = True
+
+
+def decode_array_if_necessary(value: np.ndarray, lines=False) -> Any:
+    print(f"Decoding {repr(value)} with {lines=}")
     if value.dtype.kind == "S":
-        value = np.char.decode(value, "utf-8")
+        if lines:
+            value = "\n".join([s.decode("utf-8") for s in value])
+        else:
+            value = np.char.decode(value, "utf-8")
     return value
 
 

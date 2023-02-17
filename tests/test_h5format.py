@@ -223,6 +223,43 @@ def test_write_read_vector_dataset(
 @pytest.mark.parametrize(
     "value",
     [
+        "fish",
+        "fish\n",
+        "fish\nfowl",
+        "fish\nfowl\n",
+        """
+        Long message with random whitespace and some français.
+        """,
+    ],
+)
+def test_write_read_string_dataset(
+    tmp_path: Path,
+    simple_format: H5Format,
+    value: Any,
+):
+    h5path = tmp_path / "test.hdf5"
+    simple_format.add_entry(
+        H5Entry(
+            name="an_entry",
+            description="This is a sample entry.",
+            use_dataset=True,
+        )
+    )
+
+    thing = Thing()
+    thing.an_entry = value
+    simple_format.save_to_hdf5(h5path, thing)
+
+    recovered_thing = Thing()
+    simple_format.load_from_hdf5(h5path, recovered_thing)
+
+    assert isinstance(recovered_thing.an_entry, str)
+    assert recovered_thing.an_entry == thing.an_entry
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
         dict(fish=1, fowl=2),
         dict(fish="cod", fowl="pheasant"),
         dict(fish=[1, 2, 3], fowl=dict(hare=1, hounds="dogs")),
