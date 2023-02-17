@@ -10,7 +10,7 @@ from enterprise.h5format import H5Entry, H5Format, write_dict_to_hdf5
 from enterprise.pulsar import BasePulsar
 
 format_name = "derivative_file"
-format_version = "0.2.0"
+format_version = "0.3.0"
 
 # light-second unit
 ls = u.def_unit("ls", c.c * 1.0 * u.s)
