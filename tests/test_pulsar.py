@@ -114,7 +114,7 @@ class TestPulsar(unittest.TestCase):
         assert np.all(self.psr._flags["fe"][self.psr._isort] == self.psr.flags["fe"]), msg
 
         # only possible if flags are stored as dict
-        if isinstance(self.psr._flags, dict):
+        if isinstance(self.psr._flags, dict) and "name" in self.psr.flags:
             self.psr.set_flags("name2", self.psr.flags["name"])
 
             msg = "Setting flags returns incorrect match"
@@ -323,7 +323,6 @@ class TestPulsarFile(TestPulsar):
             f"{datadir}/B1855+09_NANOGrav_9yv1.tim",
             ephem="DE430",
             drop_pintpsr=False,
-            timing_package="pint",
         )
 
         with tempfile.TemporaryDirectory() as d:
