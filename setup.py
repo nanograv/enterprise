@@ -16,6 +16,9 @@ requirements = [
     "libstempo>=2.4.4",
 ]
 
+# We could add optional requirements here - pip install enterprise[pint,tempo2] 
+# Sadly you can't have default-on extra requirements.
+
 test_requirements = []
 
 setup(
