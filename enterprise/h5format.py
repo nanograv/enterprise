@@ -106,7 +106,7 @@ class H5ConstantEntry(H5Entry):
         self._write_value_to_hdf5(h5file, self.value)
 
     def write_description(self, f: IO[str], extra_tags: Optional[List[str]] = None):
-        tags = [f'constant value="{self.value}"']
+        tags = [f"constant value={repr(self.value)}"]
         if extra_tags is not None:
             tags.extend(extra_tags)
         super().write_description(f, extra_tags=tags)
