@@ -2,8 +2,8 @@ import logging
 from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
-from textwrap import indent, dedent
-from typing import Optional, Callable, List, IO, Union, Any
+from textwrap import dedent, indent
+from typing import IO, Any, Callable, List, Optional, Union
 
 import h5py
 import numpy as np

@@ -71,7 +71,9 @@ def write_designmatrix(h5file, name, thing, attribute):
     if attribute != "_designmatrix":
         raise ValueError(f"Trying to write {attribute} as if it were the design matrix")
     write_array_to_hdf5_dataset(h5file, name=name, value=getattr(thing, attribute))
-    write_unit_list(h5file[name], name="units", thing=thing, attribute="designmatrix_units")
+    if hasattr(thing, "designmatrix_units"):
+        # T2Pulsar objects don't have this
+        write_unit_list(h5file[name], name="units", thing=thing, attribute="designmatrix_units")
     h5file[name].attrs["labels"] = thing.fitpars
 
 
