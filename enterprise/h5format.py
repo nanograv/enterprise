@@ -155,7 +155,7 @@ def decode_array_dataset_if_necessary(dataset: h5py.Dataset) -> Any:
     type_ = dataset.attrs.get("type", "")
     coding = dataset.attrs.get("coding", "")
 
-    logger.debug(f"Decoding {dataset} with {type_=} {coding=} {lines=}")
+    logger.debug(f"Decoding {dataset} with type={type_} coding={coding} lines={lines}")
     if type_ == "str":
         if lines:
             return "\n".join([s.decode(coding) for s in dataset])
