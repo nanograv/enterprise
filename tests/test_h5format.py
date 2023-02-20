@@ -132,6 +132,41 @@ def test_write_read_scalar(
 @pytest.mark.parametrize(
     "value",
     [
+        "fish",
+        7,
+        7.0,
+        np.float16(2.3),
+        np.float32(2.5),
+        np.float64(1.7),
+    ],
+)
+def test_write_read_scalar_dataset(
+    tmp_path: Path,
+    simple_format: H5Format,
+    value: Any,
+):
+    h5path = tmp_path / "test.hdf5"
+    simple_format.add_entry(
+        H5Entry(
+            name="an_entry",
+            use_dataset=True,
+            description="This is a sample entry.",
+        )
+    )
+
+    thing = Thing()
+    thing.an_entry = value
+    simple_format.save_to_hdf5(h5path, thing)
+
+    recovered_thing = Thing()
+    simple_format.load_from_hdf5(h5path, recovered_thing)
+
+    assert recovered_thing.an_entry == thing.an_entry
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
         [1, 2, 3],
         ["cod", "plaice"],
         [1.7, 2.3, 0.1],
@@ -483,3 +518,30 @@ def test_constant_extra_tags():
     assert "aquatic" in f.getvalue()
     assert "definition" in f.getvalue()
     assert "cod" in f.getvalue()
+
+
+@pytest.mark.parametrize(
+    "extras",
+    [
+        dict(),
+        dict(units="s"),
+        dict(fish="carp", fowl=17.3),
+    ],
+)
+def test_extra_attributes_dataset(simple_format, tmp_path, extras):
+    h5path = tmp_path / "test.hdf5"
+    simple_format.add_entry(
+        H5Entry(
+            name="an_entry",
+            description="This is a sample entry.",
+            use_dataset=True,
+            extra_attributes=extras,
+        )
+    )
+
+    thing = Thing()
+    thing.an_entry = 17
+    simple_format.save_to_hdf5(h5path, thing)
+
+    with h5py.File(h5path, "r") as f:
+        assert dict(f["an_entry"].attrs) == extras

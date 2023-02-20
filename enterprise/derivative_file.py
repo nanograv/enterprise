@@ -10,7 +10,7 @@ from enterprise.h5format import H5Entry, H5Format, write_dict_to_hdf5, write_arr
 from enterprise.pulsar import BasePulsar
 
 format_name = "derivative_file"
-format_version = "0.4.0"
+format_version = "0.5.0"
 
 # light-second unit
 ls = u.def_unit("ls", c.c * 1.0 * u.s)
@@ -107,20 +107,46 @@ def derivative_format(
         format_name=format_name,
         format_version=format_version,
     )
-    f.add_entry(H5Entry(name="Name", attribute="name", description="Pulsar name."))
-    f.add_entry(H5Entry(name="RAJ", attribute="_raj", description="Right ascension in the Julian system. In radians."))
-    f.add_entry(H5Entry(name="DECJ", attribute="_decj", description="Declination in the Julian system. In radians."))
-    f.add_entry(H5Entry(name="DM", attribute="_dm", description="Best-fit dispersion measure, in pc/cm^3."))
+    f.add_entry(H5Entry(name="Name", attribute="name", use_dataset=True, description="Pulsar name."))
     f.add_entry(
         H5Entry(
-            name="Estimated distance",
-            attribute="_pdist",
-            description="Estimated distance and uncertainty in kiloparsecs.",
+            name="RAJ",
+            attribute="_raj",
+            use_dataset=True,
+            description="Right ascension in the Julian system. In radians.",
+            extra_attributes=dict(units="rad"),
         )
     )
     f.add_entry(
         H5Entry(
-            name="TOAs",
+            name="DECJ",
+            attribute="_decj",
+            use_dataset=True,
+            description="Declination in the Julian system. In radians.",
+            extra_attributes=dict(units="rad"),
+        )
+    )
+    f.add_entry(
+        H5Entry(
+            name="DM",
+            attribute="_dm",
+            use_dataset=True,
+            description="Best-fit dispersion measure, in pc/cm^3.",
+            extra_attributes=dict(units="pc/cm3"),
+        )
+    )
+    f.add_entry(
+        H5Entry(
+            name="Estimated distance",
+            attribute="_pdist",
+            use_dataset=True,
+            description="Estimated distance and uncertainty in kiloparsecs.",
+            extra_attributes=dict(units="kpc"),
+        )
+    )
+    f.add_entry(
+        H5Entry(
+            name="TOAs in seconds",
             attribute="_toas",
             use_dataset=True,
             description="""\
@@ -131,6 +157,7 @@ def derivative_format(
                 that this array has only about microsecond resolution
                 and so is insufficient to do precision timing.
                 """,
+            extra_attributes=dict(units="s"),
         )
     )
     f.add_entry(
@@ -146,6 +173,7 @@ def derivative_format(
                 that is, the Modified Julian Date has been multiplied by 86400.
                 This array too has only about microsecond precision.
                 """,
+            extra_attributes=dict(units="s"),
         )
     )
     f.add_entry(
@@ -157,6 +185,7 @@ def derivative_format(
                 Uncertainties on pulse time-of-arrival data (and thus on
                 residuals), in seconds.
                 """,
+            extra_attributes=dict(units="s"),
         )
     )
     f.add_entry(
@@ -165,6 +194,7 @@ def derivative_format(
             attribute="_residuals",
             use_dataset=True,
             description="Residuals (model minus data, in seconds).",
+            extra_attributes=dict(units="s"),
         )
     )
     f.add_entry(
@@ -177,6 +207,7 @@ def derivative_format(
                 frequency is corrected for Doppler shift due to the
                 observatory's motion around the Sun.
                 """,
+            extra_attributes=dict(units="MHz"),
         )
     )
     f.add_entry(
@@ -191,7 +222,7 @@ def derivative_format(
                 """,
         )
     )
-    f.add_entry(H5Entry(name="Fit parameters", attribute="fitpars", description="Fitted parameters."))
+    f.add_entry(H5Entry(name="Fit parameters", attribute="fitpars", use_dataset=True, description="Fitted parameters."))
     f.add_entry(
         H5Entry(
             name="Design matrix",
@@ -215,6 +246,7 @@ def derivative_format(
         H5Entry(
             name="Design matrix units",
             attribute="designmatrix_units",
+            use_dataset=True,
             required=False,
             description="""\
                 Units of design matrix entries. These are strings in Astropy's
@@ -230,6 +262,7 @@ def derivative_format(
         H5Entry(
             name="Set parameters",
             attribute="setpars",
+            use_dataset=True,
             description="""\
                 Parameters of the timing model that were fixed during fitting.
                 Not all of these even have numeric values.
@@ -296,6 +329,7 @@ def derivative_format(
                 will be (number of TOAs) by 6. If the Sun velocities are
                 unavailable they will be set to zero.
                 """,
+            extra_attributes=dict(units="ls"),
         )
     )
     f.add_entry(
@@ -313,6 +347,7 @@ def derivative_format(
                 contain NaNs. PINT generally computes only positions and only
                 for the Earth, Jupiter, Saturn, Uranus, and Neptune.
                 """,
+            extra_attributes=dict(units="ls"),
         )
     )
     f.add_entry(

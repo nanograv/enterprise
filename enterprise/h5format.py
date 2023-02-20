@@ -29,6 +29,7 @@ class H5Entry:
     attribute: Optional[str] = None
     write: Optional[Callable] = None
     read: Optional[Callable] = None
+    extra_attributes: Optional[dict] = None
 
     def write_to_hdf5(self, h5file: h5py.File, thing):
         attribute = self.name if self.attribute is None else self.attribute
@@ -49,11 +50,15 @@ class H5Entry:
                 write_string_to_hdf5_dataset(h5file, self.name, value)
             else:
                 write_array_to_hdf5_dataset(h5file, self.name, np.asarray(value))
+            if self.extra_attributes is not None:
+                h5file[self.name].attrs.update(self.extra_attributes)
         else:
             try:
                 h5file.attrs[self.name] = value
             except TypeError as e:
                 raise TypeError(f"Invalid type for storage in an attribute: {type(value)}") from e
+            if self.extra_attributes is not None:
+                raise ValueError(f"Cannot apply extra attributes to attribute: {self.extra_attributes}")
 
     def read_from_hdf5(self, h5file: h5py.File, thing):
         attribute = self.name if self.attribute is None else self.attribute
@@ -84,6 +89,8 @@ class H5Entry:
         tags = ["dataset" if self.use_dataset else "attribute"]
         if not self.required:
             tags.append("optional")
+        if self.extra_attributes is not None and "units" in self.extra_attributes:
+            tags.append(f"units={self.extra_attributes['units']}")
         if extra_tags is not None:
             tags.extend(extra_tags)
         # End with two spaces to arrange for a Markdown line break
@@ -112,14 +119,21 @@ def write_array_to_hdf5_dataset(h5group: h5py.Group, name: str, value: np.ndarra
         value = np.char.encode(value, "utf-8")
     else:
         encoded = False
-    d = h5group.create_dataset(
-        name,
-        data=value,
-        compression="gzip",
-        compression_opts=9,
-        shuffle=True,
-        track_order=True,
-    )
+    if value.shape == ():
+        d = h5group.create_dataset(
+            name,
+            data=value,
+            track_order=True,
+        )
+    else:
+        d = h5group.create_dataset(
+            name,
+            data=value,
+            compression="gzip",
+            compression_opts=9,
+            shuffle=True,
+            track_order=True,
+        )
     if encoded:
         logger.debug(f"Recording attributes for {name}")
         d.attrs["lines"] = False
