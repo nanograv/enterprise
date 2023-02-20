@@ -117,6 +117,8 @@ def write_array_to_hdf5_dataset(h5group: h5py.Group, name: str, value: np.ndarra
         data=value,
         compression="gzip",
         compression_opts=9,
+        shuffle=True,
+        track_order=True,
     )
     if encoded:
         logger.debug(f"Recording attributes for {name}")
@@ -148,7 +150,7 @@ def decode_array_dataset_if_necessary(dataset: h5py.Dataset) -> Any:
 
 
 def write_dict_to_hdf5(h5group: h5py.Group, name: str, d: dict):
-    g = h5group.create_group(name)
+    g = h5group.create_group(name, track_order=True)
     for k, v in d.items():
         if isinstance(v, dict):
             write_dict_to_hdf5(g, k, v)
@@ -218,7 +220,9 @@ class H5Format:
 
     def save_to_hdf5(self, h5: Union[Path, str, h5py.Group], thing):
         if not isinstance(h5, h5py.Group):
-            with h5py.File(h5, "w") as f:
+            # This requests the the file preserve insertion order;
+            # it may not work on read: https://github.com/h5py/h5py/issues/1577
+            with h5py.File(h5, "w", track_order=True) as f:
                 return self.save_to_hdf5(f, thing)
         h5.attrs["README"] = self.description
         for entry in self.entries:
@@ -245,7 +249,8 @@ class H5Format:
                 )
             if s.minor < o.minor:
                 logger.warning(
-                    f"File has newer format minor version than reader ({self.format_version} and {thing.format_version})"
+                    f"File has newer format minor version than reader "
+                    f"({self.format_version} and {thing.format_version})"
                 )
 
     @property
