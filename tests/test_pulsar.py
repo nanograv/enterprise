@@ -9,14 +9,16 @@ Tests for `pulsar` module. Will eventually want to add tests
 for time slicing, PINT integration and pickling.
 """
 
-import sys
 import os
-import shutil
-import unittest
 import pickle
-import pytest
+import shutil
+import sys
+import tempfile
+import unittest
+from pathlib import Path
 
 import numpy as np
+import pytest
 from packaging import version
 
 from enterprise.pulsar import Pulsar, t2
@@ -27,6 +29,11 @@ try:
     from pint.models import get_model_and_toas
 except ImportError:
     pint = None
+
+try:
+    import enterprise.derivative_file as derivative_file
+except ImportError:
+    derivative_file = None
 
 
 @pytest.fixture(scope="module")
@@ -301,6 +308,31 @@ class TestPulsarPint(TestPulsar):
             msg += "`planet` flag is not True in `toas` or further Pint "
             msg += "development to add additional planets is needed."
             self.assertTrue(msg in context.exception)
+
+
+@pytest.mark.skipif(derivative_file is None, reason="HDF5 not available")
+# This repeats all tests specifically for FilePulsar
+class TestPulsarFile(TestPulsar):
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        psr = Pulsar(
+            f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par",
+            f"{datadir}/B1855+09_NANOGrav_9yv1.tim",
+            ephem="DE430",
+            drop_pintpsr=False,
+            timing_package="pint",
+        )
+
+        with tempfile.TemporaryDirectory() as d:
+            h5 = Path(d) / "test.hdf5"
+            derivative_file.derivative_format().save_to_hdf5(h5, psr)
+            cls.psr = derivative_file.FilePulsar.from_hdf5(h5)
+
+    def test_deflate_inflate(self):
+        pass
 
 
 @pytest.mark.xfail

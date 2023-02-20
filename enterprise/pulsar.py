@@ -2,7 +2,7 @@
 """Class containing pulsar data from timing package [tempo2/PINT].
 """
 
-
+import contextlib
 import json
 import logging
 import os
@@ -11,7 +11,6 @@ from io import StringIO
 
 import astropy.constants as const
 import astropy.units as u
-import contextlib
 import numpy as np
 from ephem import Ecliptic, Equatorial
 
@@ -42,6 +41,7 @@ except ImportError:
 if pint is None and t2 is None:
     raise ImportError("Must have either PINT or libstempo timing package installed")
 
+# Causes a circular import
 # try:
 #     import enterprise.derivative_file
 # except ImportError as e:
@@ -159,20 +159,18 @@ class BasePulsar(object):
 
         self.sort_data()
 
+    def drop_not_picklable(self):
+        """Drop all attributes that cannot be pickled.
+
+        Derived classes should implement this if they have
+        any such attributes.
+        """
+        pass
+
     def to_pickle(self, outdir=None):
         """Save object to pickle file."""
 
-        # drop t2pulsar object
-        if hasattr(self, "t2pulsar"):
-            del self.t2pulsar
-            msg = "t2pulsar object cannot be pickled and has been removed."
-            logger.warning(msg)
-
-        if hasattr(self, "pint_toas"):
-            del self.pint_toas
-            del self.model
-            msg = "pint_toas and model objects cannot be pickled and have been removed."
-            logger.warning(msg)
+        self.drop_not_picklable()
 
         if outdir is None:
             outdir = os.getcwd()
@@ -328,6 +326,15 @@ class BasePulsar(object):
             initial_entries=initial_entries,
             final_entries=final_entries,
         )
+        if hasattr(self, "pint_toas"):
+            tdbs = [t.tdb for t in self.pint_toas["mjd"]]
+            jd1, jd2 = np.array([(t.jd1, t.jd2) for t in tdbs]).T
+            mjd1 = jd1 - 2400000
+            mjd2 = jd2 - 0.5
+            mjd1 += mjd2 // 1
+            mjd2 = mjd2 % 1
+            self.mjdi = mjd1.astype(np.int64)
+            self.mjdf = mjd2
         fmt.save_to_hdf5(h5path, self)
 
 
@@ -401,6 +408,14 @@ class PintPulsar(BasePulsar):
             del self.parfile
             del self.pint_toas
             del self.timfile
+
+    def drop_not_picklable(self):
+        with contextlib.suppress(AttributeError):
+            del self.model
+            del self.pint_toas
+            logger.warning("pint_toas and model objects cannot be pickled and have been removed.")
+
+        return super().drop_not_picklable()
 
     def _set_dm(self, model):
         pars = [par for par in model.params if not getattr(model, par).frozen]
@@ -605,6 +620,12 @@ class Tempo2Pulsar(BasePulsar):
     # the Pulsar deflater will copy select numpy arrays to SharedMemory,
     # then replace them with pickleable objects that can be inflated
     # to numpy arrays with SharedMemory storage
+
+    def drop_not_picklable(self):
+        with contextlib.suppress(AttributeError):
+            del self.t2pulsar
+            logger.warning("t2pulsar object cannot be pickled and has been removed.")
+        return super().drop_not_picklable()
 
     _todeflate = ["_designmatrix", "_planetssb", "_sunssb", "_flags"]
     _deflated = "pristine"

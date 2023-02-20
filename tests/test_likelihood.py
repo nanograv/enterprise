@@ -8,8 +8,9 @@ test_likelihood
 Tests of likelihood module
 """
 
-
+import tempfile
 import unittest
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -19,6 +20,11 @@ from enterprise.pulsar import Pulsar, pint
 from enterprise.signals import gp_signals, parameter, selections, signal_base, utils, white_signals
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
+
+try:
+    import enterprise.derivative_file as derivative_file
+except ImportError:
+    derivative_file = None
 
 
 @signal_base.function
@@ -349,3 +355,33 @@ class TestLikelihoodPint(TestLikelihood):
                 timing_package="pint",
             ),
         ]
+
+
+@pytest.mark.skipif(derivative_file is None, reason="HDF5 not available")
+class TestLikelihoodFile(TestLikelihood):
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        psrs = [
+            Pulsar(
+                datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
+                datadir + "/B1855+09_NANOGrav_9yv1.tim",
+                ephem="DE430",
+                timing_package="pint",
+            ),
+            Pulsar(
+                datadir + "/J1909-3744_NANOGrav_9yv1.gls.par",
+                datadir + "/J1909-3744_NANOGrav_9yv1.tim",
+                ephem="DE430",
+                timing_package="pint",
+            ),
+        ]
+
+        cls.psrs = []
+        with tempfile.TemporaryDirectory() as d:
+            for psr in psrs:
+                h5 = Path(d) / f"{psr.name}.hdf5"
+                derivative_file.derivative_format().save_to_hdf5(h5, psr)
+                cls.psrs.append(derivative_file.FilePulsar.from_hdf5(h5))

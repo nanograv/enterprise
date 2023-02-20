@@ -1,3 +1,5 @@
+import contextlib
+import logging
 from io import StringIO
 from textwrap import dedent
 from typing import List, Optional
@@ -8,6 +10,8 @@ from astropy import units as u
 
 from enterprise.h5format import H5Entry, H5Format, write_dict_to_hdf5, write_array_to_hdf5_dataset
 from enterprise.pulsar import BasePulsar
+
+logger = logging.getLogger(__name__)
 
 format_name = "derivative_file"
 format_version = "0.5.0"
@@ -148,6 +152,38 @@ def derivative_format(
             use_dataset=True,
             description="Estimated distance and uncertainty in kiloparsecs.",
             extra_attributes=dict(units="kpc"),
+        )
+    )
+    f.add_entry(
+        H5Entry(
+            name="TOA integer part",
+            attribute="mjdi",
+            required=False,
+            use_dataset=True,
+            description="""\
+                This is the exact TOA, converted to TDB (barycentric dynamical time)
+                but not corrected for travel time in any way. In order to retain
+                nanosecond accuracy, this is split into two arrays: the integer
+                and the fractional parts of the MJD. This dataset contains the
+                integer part.
+                """,
+            extra_attributes=dict(units="day"),
+        )
+    )
+    f.add_entry(
+        H5Entry(
+            name="TOA fractional part",
+            attribute="mjdf",
+            required=False,
+            use_dataset=True,
+            description="""\
+                This is the exact TOA, converted to TDB (barycentric dynamical time)
+                but not corrected for travel time in any way. In order to retain
+                nanosecond accuracy, this is split into two arrays: the integer
+                and the fractional parts of the MJD. This dataset contains the
+                fractional part.
+                """,
+            extra_attributes=dict(units="day"),
         )
     )
     f.add_entry(
@@ -422,3 +458,11 @@ class FilePulsar(BasePulsar):
     # FIXME: we can pickle these objects if we ditch the pint objects,
     # then regenerate the pint objects if we need them (though this is
     # expensive).
+
+    def drop_not_picklable(self):
+        with contextlib.suppress(AttributeError):
+            del self._model
+            del self._pint_toas
+            logger.warning("pint_toas and model objects cannot be pickled and have been removed.")
+
+        return super().drop_not_picklable()
