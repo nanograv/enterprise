@@ -468,3 +468,18 @@ def test_warn_minor_format_older(simple_format, tmp_path, caplog):
     assert "minor version" in caplog.records[0].msg
     assert "1.0.0" in caplog.records[0].msg
     assert "1.1.0" in caplog.records[0].msg
+
+
+def test_constant_extra_tags():
+    f = StringIO()
+    e = H5ConstantEntry(
+        name="fish",
+        description="One of a number of aquatic species",
+        value="cod",
+    )
+    e.write_description(f, extra_tags=["definition"])
+
+    assert "fish" in f.getvalue()
+    assert "aquatic" in f.getvalue()
+    assert "definition" in f.getvalue()
+    assert "cod" in f.getvalue()

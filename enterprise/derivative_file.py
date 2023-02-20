@@ -6,11 +6,11 @@ import numpy as np
 from astropy import constants as c
 from astropy import units as u
 
-from enterprise.h5format import H5Entry, H5Format, write_dict_to_hdf5
+from enterprise.h5format import H5Entry, H5Format, write_dict_to_hdf5, write_array_to_hdf5_dataset
 from enterprise.pulsar import BasePulsar
 
 format_name = "derivative_file"
-format_version = "0.3.0"
+format_version = "0.4.0"
 
 # light-second unit
 ls = u.def_unit("ls", c.c * 1.0 * u.s)
@@ -65,6 +65,23 @@ def write_flags(h5file, name, thing, attribute):
         # t2pulsar uses a structured dtype instead of a dictionary
         value = {flag: value[flag] for flag in value.dtype.names}
     write_dict_to_hdf5(h5file, name, value)
+
+
+def write_designmatrix(h5file, name, thing, attribute):
+    if attribute != "_designmatrix":
+        raise ValueError(f"Trying to write {attribute} as if it were the design matrix")
+    write_array_to_hdf5_dataset(
+        h5file,
+        name=name,
+        value=getattr(thing, attribute),
+    )
+    write_unit_list(
+        h5file[name],
+        name="units",
+        thing=thing,
+        attribute=f"designmatrix_units",
+    )
+    h5file[name].attrs["labels"] = thing.fitpars
 
 
 def derivative_format(
@@ -193,8 +210,13 @@ def derivative_format(
                 Design matrix. This is an array that is (number of TOAs) by
                 (number of fit parameters). Each column is the derivative of
                 the residual (in seconds) with respect to the corresponding
-                fit parameter.
+                fit parameter. This dataset has an attribute `labels` that
+                indicates the labels of the design matrix entries (which will
+                be identical to the fit parameters) and `units` giving the units
+                of the design matrix entres (which will be equal to the
+                units attribute of the whole file).
                 """,
+            write=write_designmatrix,
         )
     )
     # FIXME: arrange for fitpars to be stored as an attribute of the design matrix

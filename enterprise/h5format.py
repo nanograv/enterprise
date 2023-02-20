@@ -70,10 +70,7 @@ class H5Entry:
                 if isinstance(value, h5py.Group):
                     value = read_dict_from_hdf5(value)
                 else:
-                    value = decode_array_if_necessary(
-                        np.array(value),
-                        lines=h5file[self.name].attrs.get("lines", False),
-                    )
+                    value = decode_array_dataset_if_necessary(value)
             else:
                 value = h5file.attrs[self.name]
         except KeyError:
@@ -83,10 +80,12 @@ class H5Entry:
         else:
             setattr(thing, attribute, value)
 
-    def write_description(self, f: IO[str]):
+    def write_description(self, f: IO[str], extra_tags: Optional[List[str]] = None):
         tags = ["dataset" if self.use_dataset else "attribute"]
         if not self.required:
             tags.append("optional")
+        if extra_tags is not None:
+            tags.extend(extra_tags)
         # End with two spaces to arrange for a Markdown line break
         print(f"* `{self.name}` ({', '.join(tags)})  ", file=f)
         print(indent(dedent(self.description).strip(), 4 * " "), file=f)
@@ -99,42 +98,53 @@ class H5ConstantEntry(H5Entry):
     def write_to_hdf5(self, h5file: h5py.File, thing):
         self._write_value_to_hdf5(h5file, self.value)
 
-    def write_description(self, f: IO[str]):
-        tags = ["dataset" if self.use_dataset else "attribute"]
-        if not self.required:
-            tags.append("optional")
-        tags.append(f'constant value="{self.value}"')
-        # End with two spaces to arrange for a Markdown line break
-        print(f"* `{self.name}` ({', '.join(tags)})  ", file=f)
-        print(indent(dedent(self.description).strip(), 4 * " "), file=f)
+    def write_description(self, f: IO[str], extra_tags: Optional[List[str]] = None):
+        tags = [f'constant value="{self.value}"']
+        if extra_tags is not None:
+            tags.extend(extra_tags)
+        super().write_description(f, extra_tags=tags)
 
 
 def write_array_to_hdf5_dataset(h5group: h5py.Group, name: str, value: np.ndarray):
     if value.dtype.kind == "U":
+        logger.debug(f"Encoding {name} {value} as dataset in utf-8")
+        encoded = True
         value = np.char.encode(value, "utf-8")
-    h5group.create_dataset(
+    else:
+        encoded = False
+    d = h5group.create_dataset(
         name,
         data=value,
         compression="gzip",
         compression_opts=9,
     )
+    if encoded:
+        logger.debug(f"Recording attributes for {name}")
+        d.attrs["lines"] = False
+        d.attrs["coding"] = "utf-8"
+        d.attrs["type"] = "str"
 
 
 def write_string_to_hdf5_dataset(h5group: h5py.Group, name: str, value: str):
     value_as_array = np.array([s.encode("utf-8") for s in value.split("\n")])
-    print(f"converted {repr(value)} to {repr(value_as_array)}")
+    logger.debug(f"converted {repr(value)} to {repr(value_as_array)}")
     write_array_to_hdf5_dataset(h5group, name, value_as_array)
     h5group[name].attrs["lines"] = True
+    h5group[name].attrs["coding"] = "utf-8"
+    h5group[name].attrs["type"] = "str"
 
 
-def decode_array_if_necessary(value: np.ndarray, lines=False) -> Any:
-    print(f"Decoding {repr(value)} with {lines=}")
-    if value.dtype.kind == "S":
+def decode_array_dataset_if_necessary(dataset: h5py.Dataset) -> Any:
+    lines = dataset.attrs.get("lines", False)
+    type_ = dataset.attrs.get("type", "")
+    coding = dataset.attrs.get("coding", "")
+
+    logger.debug(f"Decoding {dataset} with {type_=} {coding=} {lines=}")
+    if type_ == "str":
         if lines:
-            value = "\n".join([s.decode("utf-8") for s in value])
-        else:
-            value = np.char.decode(value, "utf-8")
-    return value
+            return "\n".join([s.decode(coding) for s in dataset])
+        return np.char.decode(dataset, coding)
+    return np.array(dataset)
 
 
 def write_dict_to_hdf5(h5group: h5py.Group, name: str, d: dict):
@@ -151,7 +161,7 @@ def write_dict_to_hdf5(h5group: h5py.Group, name: str, d: dict):
 def read_dict_from_hdf5(h5group: h5py.Group) -> dict:
     r = dict(h5group.attrs)
     for k, v in h5group.items():
-        r[k] = read_dict_from_hdf5(v) if isinstance(v, h5py.Group) else decode_array_if_necessary(np.array(v))
+        r[k] = read_dict_from_hdf5(v) if isinstance(v, h5py.Group) else decode_array_dataset_if_necessary(v)
     return r
 
 
