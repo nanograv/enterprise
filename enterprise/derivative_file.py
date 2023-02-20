@@ -54,11 +54,6 @@ def write_unit_list(h5file, name, thing, attribute):
     h5file.attrs[name] = [li.to_string() for li in ls]
 
 
-def read_unit_list(h5file, name, thing, attribute):
-    ls = h5file.attrs[name]
-    setattr(thing, attribute, [u.Unit(s) for s in ls])
-
-
 def write_flags(h5file, name, thing, attribute):
     value = getattr(thing, attribute)
     if isinstance(value, np.ndarray):
@@ -75,6 +70,15 @@ def write_designmatrix(h5file, name, thing, attribute):
         # T2Pulsar objects don't have this
         write_unit_list(h5file[name], name="units", thing=thing, attribute="designmatrix_units")
     h5file[name].attrs["labels"] = thing.fitpars
+
+
+def read_designmatrix(h5file, name, thing, attribute):
+    if attribute != "_designmatrix":
+        raise ValueError(f"Trying to write {attribute} as if it were the design matrix")
+    setattr(thing, attribute, np.array(h5file[name]))
+    units = h5file[name].attrs.get("units")
+    if units is not None:
+        thing.designmatrix_units = [u.Unit(s) for s in units]
 
 
 def derivative_format(
@@ -237,27 +241,11 @@ def derivative_format(
                 fit parameter. This dataset has an attribute `labels` that
                 indicates the labels of the design matrix entries (which will
                 be identical to the fit parameters) and `units` giving the units
-                of the design matrix entres (which will be equal to the
-                units attribute of the whole file).
+                of the design matrix entries. These units are stored in Astropy's
+                "generic" string format for units, which is based on that used in
+                FITS files.
                 """,
             write=write_designmatrix,
-        )
-    )
-    # FIXME: arrange for fitpars to be stored as an attribute of the design matrix
-    f.add_entry(
-        H5Entry(
-            name="Design matrix units",
-            attribute="designmatrix_units",
-            use_dataset=True,
-            required=False,
-            description="""\
-                Units of design matrix entries. These are strings in Astropy's
-                "generic" format, which is based on that used in FITS. Astropy
-                can parse these back into Unit objects. There is one entry here
-                for each corresponding fit parameter.
-                """,
-            read=read_unit_list,
-            write=write_unit_list,
         )
     )
     f.add_entry(
@@ -303,6 +291,7 @@ def derivative_format(
         H5Entry(
             name="Pulsar sky position",
             attribute="_pos",
+            use_dataset=True,
             description="""\
                 Unit vector pointing to the pulsar's sky position, in equatorial
                 coordinates.
