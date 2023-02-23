@@ -33,6 +33,8 @@ def psr_roundtrip(request):
             psr = enterprise.pulsar.Pulsar(
                 str(datadir / "B1855+09_NANOGrav_9yv1.gls.par"),
                 str(datadir / "B1855+09_NANOGrav_9yv1.tim"),
+                timing_package="tempo2",
+                drop_t2pulsar=False,
             )
         psr.to_hdf5(h5path)
         new_psr = FilePulsar.from_hdf5(h5path)
@@ -67,3 +69,14 @@ def test_format_version_set(psr_roundtrip):
         packaging.version.parse(new_psr.format_version),
         packaging.version.Version,
     )
+
+
+def test_par_tim_files_preserved(psr_roundtrip):
+    psr, new_psr = psr_roundtrip
+    assert hasattr(new_psr, "parfile")
+    assert new_psr.parfile == psr.parfile
+    assert hasattr(new_psr, "timfile")
+    assert new_psr.timfile == psr.timfile
+    assert "PSR" in new_psr.parfile
+    assert new_psr.name in new_psr.parfile
+    assert "FORMAT 1" in new_psr.timfile
