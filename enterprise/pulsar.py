@@ -493,7 +493,15 @@ class PintPulsar(BasePulsar):
 
 
 class Tempo2Pulsar(BasePulsar):
-    def __init__(self, t2pulsar, sort=True, drop_t2pulsar=True, planets=True):
+    def __init__(
+        self,
+        t2pulsar,
+        sort=True,
+        drop_t2pulsar=True,
+        planets=True,
+        par_name=None,
+        tim_name=None,
+    ):
 
         self._sort = sort
         self.t2pulsar = t2pulsar
@@ -542,6 +550,11 @@ class Tempo2Pulsar(BasePulsar):
 
         if drop_t2pulsar:
             del self.t2pulsar
+        else:
+            if par_name is not None and os.path.exists(par_name):
+                self.parfile = open(par_name).read()
+            if tim_name is not None and os.path.exists(tim_name):
+                self.timfile = open(tim_name).read()
 
     # gather DM/DMX information if available
     def _set_dm(self, t2pulsar):
@@ -713,7 +726,14 @@ def Pulsar(*args, **kwargs):
                 # hack to set maxobs
                 maxobs = get_maxobs(reltimfile) + 100
                 t2pulsar = t2.tempopulsar(relparfile, reltimfile, maxobs=maxobs, ephem=ephem, clk=clk)
-                return Tempo2Pulsar(t2pulsar, sort=sort, drop_t2pulsar=drop_t2pulsar, planets=planets)
+                return Tempo2Pulsar(
+                    t2pulsar,
+                    sort=sort,
+                    drop_t2pulsar=drop_t2pulsar,
+                    planets=planets,
+                    par_name=relparfile,
+                    tim_name=reltimfile,
+                )
             elif timing_package.lower() == "pint":
                 if pint is None:
                     raise ValueError("PINT requested but PINT is not available")
