@@ -1,3 +1,19 @@
+"""A file format for storing Pulsar objects in HDF5.
+
+The key information a Pulsar object needs is the residuals
+and their derivatives with respect to the parameters. This
+establishes an HDF5 file to efficiently store that information
+along with all other information needed to have a functioning
+Pulsar object.
+
+The key class introduced by this file is FilePulsar. A
+FilePulsar object can be created from an HDF5 file, and
+should then be usable interchangeably with the Pulsar
+object that was used to create it.
+
+This file also introduces a function, derivative_format,
+that constructs an object describing the file format.
+"""
 import contextlib
 import logging
 from io import StringIO
@@ -54,11 +70,21 @@ standard_introduction = dedent(
 
 
 def write_unit_list(h5file, name, thing, attribute):
+    """Write a list of Astropy units to an HDF5 file.
+
+    This list is in a format that Astropy can parse, based
+    on the format traditionally used in FITS files.
+    """
     ls = getattr(thing, attribute)
     h5file.attrs[name] = [li.to_string() for li in ls]
 
 
 def write_flags(h5file, name, thing, attribute):
+    """Write a set of Pulsar flags to an HDF5 file.
+
+    These files are written as an HDF5 group whose datasets
+    are the flags and their values.
+    """
     value = getattr(thing, attribute)
     if isinstance(value, np.ndarray):
         # t2pulsar uses a structured dtype instead of a dictionary
@@ -67,6 +93,12 @@ def write_flags(h5file, name, thing, attribute):
 
 
 def write_designmatrix(h5file, name, thing, attribute):
+    """Write a design matrix to an HDF5 file.
+
+    This writes the design matrix as an HDF5 dataset but
+    also attaches attributes indicating the entry labels
+    and the units.
+    """
     if attribute != "_designmatrix":
         raise ValueError(f"Trying to write {attribute} as if it were the design matrix")
     write_array_to_hdf5_dataset(h5file, name=name, value=getattr(thing, attribute))
@@ -77,6 +109,10 @@ def write_designmatrix(h5file, name, thing, attribute):
 
 
 def read_designmatrix(h5file, name, thing, attribute):
+    """Read a design matrix from an HDF5 file.
+
+    This will parse the units, if available, back into Astropy unit objects.
+    """
     if attribute != "_designmatrix":
         raise ValueError(f"Trying to write {attribute} as if it were the design matrix")
     setattr(thing, attribute, np.array(h5file[name]))
@@ -91,6 +127,12 @@ def derivative_format(
     initial_entries: Optional[List[H5Entry]] = None,
     final_entries: Optional[List[H5Entry]] = None,
 ) -> H5Format:
+    """Construct an object describing a derivative file format.
+
+    The returned object can be used to read and write derivative objects.
+    This function allows for additional entries or description to be
+    added to suit particular projects.
+    """
     if description_intro is None:
         description_intro = (
             dedent(
@@ -422,10 +464,14 @@ def derivative_format(
 # Current format version could be set in this file
 # Reading a file with a version that might not be compatible should emit a warning
 class FilePulsar(BasePulsar):
+    """A Pulsar object created from the data in an HDF5 file."""
+
     @classmethod
-    def from_hdf5(cls, h5path, sort=True, planets=True):
+    def from_hdf5(cls, h5path, sort=True, planets=True, fmt: h5format.H5Format = None):
+        """Build a FilePulsar from an HDF5 file."""
         psr = cls()
-        fmt = derivative_format()
+        if fmt is None:
+            fmt = derivative_format()
         fmt.load_from_hdf5(h5path, psr)
         psr._sort = sort
         psr.sort_data()
@@ -447,11 +493,13 @@ class FilePulsar(BasePulsar):
 
     @property
     def model(self):
+        """Return the PINT timing model, parsing the stored par file if necessary."""
         self._parse_pint()
         return self._model
 
     @property
     def pint_toas(self):
+        """Return the PINT TOAs object, parsing the stored tim file if necessary."""
         self._parse_pint()
         return self._pint_toas
 
@@ -460,6 +508,12 @@ class FilePulsar(BasePulsar):
     # expensive).
 
     def drop_not_picklable(self):
+        """Discard objects that are not pickleable.
+
+        This is the PINT TOAs and TimingModel objects, if present.
+        These can be reconstituted from the saved par and tim files,
+        if those are present.
+        """
         with contextlib.suppress(AttributeError):
             del self._model
             del self._pint_toas

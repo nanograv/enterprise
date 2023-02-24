@@ -316,16 +316,16 @@ class BasePulsar(object):
         """Return telescope name at all timestamps"""
         return self._telescope[self._isort]
 
-    def to_hdf5(self, h5path, initial_entries=None, final_entries=None):
+    def to_hdf5(self, h5path, fmt=None):
+        """Save this object to an HDF5 format."""
         try:
             # Circular import if we're not careful
             import enterprise.derivative_file
         except ImportError as e:
             raise ImportError("HDF5 library not available; consider installing h5py") from e
-        fmt = enterprise.derivative_file.derivative_format(
-            initial_entries=initial_entries,
-            final_entries=final_entries,
-        )
+        if fmt is None:
+            fmt = enterprise.derivative_file.derivative_format()
+        # Save MJDI, MJDF to retain full accuracy without longdouble
         if hasattr(self, "pint_toas"):
             tdbs = [t.tdb for t in self.pint_toas["mjd"]]
             jd1, jd2 = np.array([(t.jd1, t.jd2) for t in tdbs]).T
