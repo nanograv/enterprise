@@ -30,7 +30,7 @@ from enterprise.pulsar import BasePulsar
 logger = logging.getLogger(__name__)
 
 format_name = "derivative_file"
-format_version = "0.5.0"
+format_version = "0.6.0"
 
 # light-second unit
 ls = u.def_unit("ls", c.c * 1.0 * u.s)
@@ -64,7 +64,7 @@ standard_introduction = dedent(
 
     This text should accompany a collection of such files in
     plain-text form, and it should also be included in all such
-    files as an attribute called "README".
+    files as a dataset called "README".
     """
 )
 
@@ -89,7 +89,7 @@ def write_flags(h5file, name, thing, attribute):
     if isinstance(value, np.ndarray):
         # t2pulsar uses a structured dtype instead of a dictionary
         value = {flag: value[flag] for flag in value.dtype.names}
-    write_dict_to_hdf5(h5file, name, value)
+    return write_dict_to_hdf5(h5file, name, value)
 
 
 def write_designmatrix(h5file, name, thing, attribute):
@@ -101,11 +101,12 @@ def write_designmatrix(h5file, name, thing, attribute):
     """
     if attribute != "_designmatrix":
         raise ValueError(f"Trying to write {attribute} as if it were the design matrix")
-    write_array_to_hdf5_dataset(h5file, name=name, value=getattr(thing, attribute))
+    new_dataset = write_array_to_hdf5_dataset(h5file, name=name, value=getattr(thing, attribute))
     if hasattr(thing, "designmatrix_units"):
         # T2Pulsar objects don't have this
-        write_unit_list(h5file[name], name="units", thing=thing, attribute="designmatrix_units")
-    h5file[name].attrs["labels"] = thing.fitpars
+        write_unit_list(new_dataset, name="units", thing=thing, attribute="designmatrix_units")
+    new_dataset.attrs["labels"] = thing.fitpars
+    return new_dataset
 
 
 def read_designmatrix(h5file, name, thing, attribute):
@@ -466,19 +467,16 @@ def derivative_format(
 class FilePulsar(BasePulsar):
     """A Pulsar object created from the data in an HDF5 file."""
 
-    @classmethod
-    def from_hdf5(cls, h5path, sort=True, planets=True, fmt: h5format.H5Format = None):
+    def __init__(self, h5path, sort=True, planets=True, fmt: Optional[H5Format] = None):
         """Build a FilePulsar from an HDF5 file."""
-        psr = cls()
         if fmt is None:
             fmt = derivative_format()
-        fmt.load_from_hdf5(h5path, psr)
-        psr._sort = sort
-        psr.sort_data()
-        psr.planets = planets
-        psr._model = None
-        psr._pint_toas = None
-        return psr
+        fmt.load_from_hdf5(h5path, self)
+        self._sort = sort
+        self.sort_data()
+        self.planets = planets
+        self._model = None
+        self._pint_toas = None
 
     def _parse_pint(self):
         from pint.models import get_model_and_toas

@@ -37,7 +37,7 @@ def psr_roundtrip(request):
                 drop_t2pulsar=False,
             )
         psr.to_hdf5(h5path)
-        new_psr = FilePulsar.from_hdf5(h5path)
+        new_psr = FilePulsar(h5path)
         yield psr, new_psr
 
 

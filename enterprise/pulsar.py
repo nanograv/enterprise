@@ -327,6 +327,7 @@ class BasePulsar(object):
             fmt = enterprise.derivative_file.derivative_format()
         # Save MJDI, MJDF to retain full accuracy without longdouble
         if hasattr(self, "pint_toas"):
+            logger.info("Creating MJDI/MJDF parameters")
             tdbs = [t.tdb for t in self.pint_toas["mjd"]]
             jd1, jd2 = np.array([(t.jd1, t.jd2) for t in tdbs]).T
             mjd1 = jd1 - 2400000
@@ -336,6 +337,7 @@ class BasePulsar(object):
             self.mjdi = mjd1.astype(np.int64)
             self.mjdf = mjd2
         fmt.save_to_hdf5(h5path, self)
+        # FIXME: try/finally to remove mjdi/mjdf?
 
 
 class PintPulsar(BasePulsar):

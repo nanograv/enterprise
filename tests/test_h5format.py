@@ -544,4 +544,6 @@ def test_extra_attributes_dataset(simple_format, tmp_path, extras):
     simple_format.save_to_hdf5(h5path, thing)
 
     with h5py.File(h5path, "r") as f:
-        assert dict(f["an_entry"].attrs) == extras
+        attrs = dict(f["an_entry"].attrs)
+        assert "sample" in attrs.pop("Description")
+        assert attrs == extras
