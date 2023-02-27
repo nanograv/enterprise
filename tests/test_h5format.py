@@ -164,6 +164,30 @@ def test_write_read_scalar_dataset(
     assert recovered_thing.an_entry == thing.an_entry
 
 
+def test_write_read_str(
+    tmp_path: Path,
+    simple_format: H5Format,
+):
+    value = "a string"
+    h5path = tmp_path / "test.hdf5"
+    simple_format.add_entry(
+        H5Entry(
+            name="an_entry",
+            description="This is a sample entry.",
+        )
+    )
+
+    thing = Thing()
+    thing.an_entry = value
+    simple_format.save_to_hdf5(h5path, thing)
+
+    recovered_thing = Thing()
+    simple_format.load_from_hdf5(h5path, recovered_thing)
+
+    assert isinstance(recovered_thing.an_entry, str)
+    assert recovered_thing.an_entry == thing.an_entry
+
+
 @pytest.mark.parametrize(
     "value",
     [
@@ -171,6 +195,7 @@ def test_write_read_scalar_dataset(
         ["cod", "plaice"],
         [1.7, 2.3, 0.1],
         np.zeros((2, 3, 4)),
+        np.array(["cod", "plaice"]),
     ],
 )
 def test_write_read_vector(
@@ -194,7 +219,8 @@ def test_write_read_vector(
     simple_format.load_from_hdf5(h5path, recovered_thing)
 
     assert np.array_equal(recovered_thing.an_entry, thing.an_entry)
-    assert isinstance(recovered_thing.an_entry, np.ndarray)
+    if isinstance(recovered_thing.an_entry, np.ndarray) and isinstance(thing.an_entry, np.ndarray):
+        assert recovered_thing.an_entry.dtype == thing.an_entry.dtype
 
 
 @pytest.mark.parametrize(
@@ -228,6 +254,7 @@ def test_write_read_dict_raises(tmp_path: Path, simple_format: H5Format, value: 
         [1.7, 2.3, 0.1],
         np.zeros((2, 3, 4)),
         ["english", "français", "nederlandse"],
+        np.array(["cod", "plaice"]),
     ],
 )
 def test_write_read_vector_dataset(

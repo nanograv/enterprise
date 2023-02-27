@@ -326,6 +326,7 @@ class BasePulsar(object):
         if fmt is None:
             fmt = enterprise.derivative_file.derivative_format()
         # Save MJDI, MJDF to retain full accuracy without longdouble
+        # FIXME: can T2Pulsar provide this?
         if hasattr(self, "pint_toas"):
             logger.info("Creating MJDI/MJDF parameters")
             tdbs = [t.tdb for t in self.pint_toas["mjd"]]

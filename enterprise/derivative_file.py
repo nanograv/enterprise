@@ -105,7 +105,7 @@ def write_designmatrix(h5file, name, thing, attribute):
     if hasattr(thing, "designmatrix_units"):
         # T2Pulsar objects don't have this
         write_unit_list(new_dataset, name="units", thing=thing, attribute="designmatrix_units")
-    new_dataset.attrs["labels"] = thing.fitpars
+    new_dataset.attrs["labels"] = [str(f) for f in thing.fitpars]
     return new_dataset
 
 
@@ -475,46 +475,3 @@ class FilePulsar(BasePulsar):
         self._sort = sort
         self.sort_data()
         self.planets = planets
-        self._model = None
-        self._pint_toas = None
-
-    def _parse_pint(self):
-        from pint.models import get_model_and_toas
-
-        if self._model is None or self._pint_toas is None:
-            # FIXME: provide ephemeris and other arguments?
-            # I think these are preserved in the model?
-            self._model, self._pint_toas = get_model_and_toas(
-                parfile=StringIO(self.parfile),
-                timfile=StringIO(self.timfile),
-            )
-
-    @property
-    def model(self):
-        """Return the PINT timing model, parsing the stored par file if necessary."""
-        self._parse_pint()
-        return self._model
-
-    @property
-    def pint_toas(self):
-        """Return the PINT TOAs object, parsing the stored tim file if necessary."""
-        self._parse_pint()
-        return self._pint_toas
-
-    # FIXME: we can pickle these objects if we ditch the pint objects,
-    # then regenerate the pint objects if we need them (though this is
-    # expensive).
-
-    def drop_not_picklable(self):
-        """Discard objects that are not pickleable.
-
-        This is the PINT TOAs and TimingModel objects, if present.
-        These can be reconstituted from the saved par and tim files,
-        if those are present.
-        """
-        with contextlib.suppress(AttributeError):
-            del self._model
-            del self._pint_toas
-            logger.warning("pint_toas and model objects cannot be pickled and have been removed.")
-
-        return super().drop_not_picklable()

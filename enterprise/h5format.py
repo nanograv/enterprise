@@ -158,6 +158,10 @@ class H5Entry:
             if self.extra_attributes is not None:
                 new_item.attrs.update(self.extra_attributes)
         else:
+            if isinstance(value, np.ndarray) and value.dtype.kind == "U":
+                if len(value.shape) != 1:
+                    raise ValueError("Cannot store multidimentsional string arrays in HDF5 attributes: {value.shape}")
+                value = [str(v) for v in value]
             try:
                 h5file.attrs[self.name] = value
             except TypeError as e:
@@ -194,6 +198,8 @@ class H5Entry:
                     value = decode_array_dataset_if_necessary(value)
             else:
                 value = h5file.attrs[self.name]
+                if isinstance(value, np.ndarray) and value.dtype == "O" and len(value.shape) == 1:
+                    value = list(value)
         except KeyError:
             if self.required:
                 raise

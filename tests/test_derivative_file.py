@@ -1,6 +1,8 @@
+import pickle
 import tempfile
 from pathlib import Path
 
+import numpy as np
 import packaging.version
 import pytest
 from numpy.testing import assert_array_equal
@@ -80,3 +82,44 @@ def test_par_tim_files_preserved(psr_roundtrip):
     assert "PSR" in new_psr.parfile
     assert new_psr.name in new_psr.parfile
     assert "FORMAT 1" in new_psr.timfile
+
+
+# FIXME: does FilePulsar itself round-trip?
+def test_filepulsar_saves(psr_roundtrip, tmp_path):
+    h5path = tmp_path / "fp.hdf5"
+    psr, new_psr = psr_roundtrip
+    new_psr.to_hdf5(h5path)
+
+
+def test_fitpars_type(psr_roundtrip):
+    psr, new_psr = psr_roundtrip
+    if False:
+        # I think I'm okay with it coming back as an array
+        assert isinstance(new_psr.fitpars, list)
+        assert isinstance(new_psr.fitpars[0], str)
+    else:
+        assert isinstance(new_psr.fitpars, np.ndarray)
+        assert new_psr.fitpars.dtype.kind == "U"
+
+
+def test_filepulsar_roundtrip(psr_roundtrip, tmp_path, caplog):
+    h5path = tmp_path / "fp.hdf5"
+    psr, new_psr = psr_roundtrip
+    n = len(caplog.records)
+    new_psr.to_hdf5(h5path)
+    assert len(caplog.records) == n
+
+
+def test_pint_toas_not_parsed(psr_roundtrip):
+    psr, new_psr = psr_roundtrip
+    assert not hasattr(new_psr, "_model")
+    assert not hasattr(new_psr, "_pint_toas")
+
+    assert not hasattr(new_psr, "model")
+    assert not hasattr(new_psr, "pint_toas")
+
+
+def test_can_pickle_filepulsar(psr_roundtrip):
+    psr, new_psr = psr_roundtrip
+    n = pickle.loads(pickle.dumps(new_psr))
+    assert_array_equal(n._designmatrix, new_psr._designmatrix)
