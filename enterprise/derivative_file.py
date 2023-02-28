@@ -14,9 +14,7 @@ object that was used to create it.
 This file also introduces a function, derivative_format,
 that constructs an object describing the file format.
 """
-import contextlib
 import logging
-from io import StringIO
 from textwrap import dedent
 from typing import List, Optional
 

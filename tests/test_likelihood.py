@@ -382,4 +382,4 @@ class TestLikelihoodFile(TestLikelihood):
             for psr in psrs:
                 h5 = Path(d) / f"{psr.name}.hdf5"
                 derivative_file.derivative_format().save_to_hdf5(h5, psr)
-                cls.psrs.append(derivative_file.FilePulsar.from_hdf5(h5))
+                cls.psrs.append(derivative_file.FilePulsar(h5))

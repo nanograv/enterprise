@@ -328,7 +328,7 @@ class TestPulsarFile(TestPulsar):
         with tempfile.TemporaryDirectory() as d:
             h5 = Path(d) / "test.hdf5"
             derivative_file.derivative_format().save_to_hdf5(h5, psr)
-            cls.psr = derivative_file.FilePulsar.from_hdf5(h5)
+            cls.psr = derivative_file.FilePulsar(h5)
 
     def test_deflate_inflate(self):
         pass
