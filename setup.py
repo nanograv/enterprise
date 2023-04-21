@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from setuptools import setup
+from setuptools import Extension
+from Cython.Build import cythonize
 
 with open("README.md", encoding="utf-8") as readme_file:
     readme = readme_file.read()
@@ -14,6 +16,14 @@ requirements = [
     "scikit-sparse>=0.4.5",
     "pint-pulsar>=0.8.3",
     "libstempo>=2.4.4",
+    "cython>=0.29.34",
+]
+
+ext_modules=[
+    Extension('enterprise.fastshermanmorrison.cython_fastshermanmorrison',
+             ['enterprise/fastshermanmorrison/cython_fastshermanmorrison.pyx'],
+             include_dirs = [numpy.get_include(), 'fastshermanmorrison/'],
+             extra_compile_args=["-O2", "-fno-wrapv"])  # 50% more efficient!
 ]
 
 test_requirements = []
@@ -26,7 +36,7 @@ setup(
     author="Justin A. Ellis",
     author_email="justin.ellis18@gmail.com",
     url="https://github.com/nanograv/enterprise",
-    packages=["enterprise", "enterprise.signals"],
+    packages=["enterprise", "enterprise.signals", "enterprise.fastshermanmorrison"],
     package_dir={"enterprise": "enterprise"},
     include_package_data=True,
     package_data={"enterprise": ["datafiles/*", "datafiles/ephemeris/*", "datafiles/ng9/*", "datafiles/mdc_open1/*"]},
