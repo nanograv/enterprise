@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import numpy
 from setuptools import setup
 from setuptools import Extension
 from Cython.Build import cythonize
@@ -61,4 +62,5 @@ setup(
     ],
     test_suite="tests",
     tests_require=test_requirements,
+    ext_modules = cythonize(ext_modules)
 )
