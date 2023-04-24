@@ -8,6 +8,7 @@ import numpy as np
 import scipy.sparse
 
 from enterprise.signals import parameter, selections, signal_base, utils
+from enterprise.fastshermanmorrison import fastshermanmorrison
 from enterprise.signals.parameter import function
 from enterprise.signals.selections import Selection
 
@@ -114,7 +115,7 @@ def EquadNoise(*args, **kwargs):
 def EcorrKernelNoise(
     log10_ecorr=parameter.Uniform(-10, -5),
     selection=Selection(selections.no_selection),
-    method="sherman-morrison",
+    method="fast-sherman-morrison",
     name="",
 ):
     r"""Class factory for ECORR type noise.
@@ -123,7 +124,8 @@ def EcorrKernelNoise(
     :param selection:
         ``Selection`` object specifying masks for backends, time segments, etc.
     :param method: Method for computing noise covariance matrix.
-        Options include `sherman-morrison`, `sparse`, and `block`
+        Options include `fast-sherman-morrison`, `sherman-morrison`, `sparse`,
+        and `block`
 
     :return: ``EcorrKernelNoise`` class.
 
@@ -139,6 +141,12 @@ def EcorrKernelNoise(
 
     In this signal implementation we offer three methods of performing these
     matrix operations:
+
+    fast-sherman-morrison
+        Uses the `Sherman-Morrison`_ forumla to compute the matrix
+        inverse and other matrix operations. **Note:** This method can only
+        be used for covariances that make up ECorrKernelNoise, :math:`uv^T`.
+        This version is Cython optimized.
 
     sherman-morrison
         Uses the `Sherman-Morrison`_ forumla to compute the matrix
@@ -166,7 +174,7 @@ def EcorrKernelNoise(
 
     """
 
-    if method not in ["sherman-morrison", "block", "sparse"]:
+    if method not in ["fast-sherman-morrison", "sherman-morrison", "block", "sparse"]:
         msg = "EcorrKernelNoise does not support method: {}".format(method)
         raise TypeError(msg)
 
@@ -210,6 +218,8 @@ def EcorrKernelNoise(
         def get_ndiag(self, params):
             if method == "sherman-morrison":
                 return self._get_ndiag_sherman_morrison(params)
+            elif method == "fast-sherman-morrison":
+                return self._get_ndiag_sparse(params)
             elif method == "sparse":
                 return self._get_ndiag_sparse(params)
             elif method == "block":
@@ -237,6 +247,10 @@ def EcorrKernelNoise(
         def _get_ndiag_sherman_morrison(self, params):
             slices, jvec = self._get_jvecs(params)
             return signal_base.ShermanMorrison(jvec, slices)
+
+        def _get_ndiag_fast_sherman_morrison(self, params):
+            slices, jvec = self._get_jvecs(params)
+            return fastshermanmorrison.FastShermanMorrison(jvec, slices)
 
         def _get_ndiag_block(self, params):
             slices, jvec = self._get_jvecs(params)
