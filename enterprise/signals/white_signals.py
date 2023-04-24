@@ -20,6 +20,7 @@ except ImportError:
 # logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def WhiteNoise(varianceFunction, selection=Selection(selections.no_selection), name=""):
     """Class factory for generic white noise signals."""
 
@@ -185,7 +186,7 @@ def EcorrKernelNoise(
         msg = "EcorrKernelNoise does not support method: {}".format(method)
         raise TypeError(msg)
 
-    if method == 'fast-sherman-morrison' and fastshermanmorrison is None:
+    if method == "fast-sherman-morrison" and fastshermanmorrison is None:
         msg = "Package `fastshermanmorrison` not installed. Fallback to sherman-morrison"
         logger.warning(msg)
 
