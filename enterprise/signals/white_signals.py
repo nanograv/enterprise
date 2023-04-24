@@ -6,12 +6,19 @@ defined as the class of signals that only modifies the white noise matrix `N`.
 
 import numpy as np
 import scipy.sparse
+import logging
 
 from enterprise.signals import parameter, selections, signal_base, utils
-from enterprise.fastshermanmorrison import fastshermanmorrison
 from enterprise.signals.parameter import function
 from enterprise.signals.selections import Selection
 
+try:
+    import fastshermanmorrison.fastshermanmorrison as fastshermanmorrison
+except ImportError:
+    fastshermanmorrison = None
+
+# logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def WhiteNoise(varianceFunction, selection=Selection(selections.no_selection), name=""):
     """Class factory for generic white noise signals."""
@@ -178,6 +185,10 @@ def EcorrKernelNoise(
         msg = "EcorrKernelNoise does not support method: {}".format(method)
         raise TypeError(msg)
 
+    if method == 'fast-sherman-morrison' and fastshermanmorrison is None:
+        msg = "Package `fastshermanmorrison` not installed. Fallback to sherman-morrison"
+        logger.warning(msg)
+
     class EcorrKernelNoise(signal_base.Signal):
         signal_type = "white noise"
         signal_name = "ecorr_" + method
@@ -219,7 +230,10 @@ def EcorrKernelNoise(
             if method == "sherman-morrison":
                 return self._get_ndiag_sherman_morrison(params)
             elif method == "fast-sherman-morrison":
-                return self._get_ndiag_sparse(params)
+                if fastshermanmorrison:
+                    return self._get_ndiag_fast_sherman_morrison(params)
+                else:
+                    return self._get_ndiag_sherman_morrison(params)
             elif method == "sparse":
                 return self._get_ndiag_sparse(params)
             elif method == "block":

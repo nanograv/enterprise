@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import numpy
 from setuptools import setup
-from setuptools import Extension
-from Cython.Build import cythonize
 
 with open("README.md", encoding="utf-8") as readme_file:
     readme = readme_file.read()
@@ -17,14 +14,6 @@ requirements = [
     "scikit-sparse>=0.4.5",
     "pint-pulsar>=0.8.3",
     "libstempo>=2.4.4",
-    "cython>=0.29.34",
-]
-
-ext_modules=[
-    Extension('enterprise.fastshermanmorrison.cython_fastshermanmorrison',
-             ['enterprise/fastshermanmorrison/cython_fastshermanmorrison.pyx'],
-             include_dirs = [numpy.get_include(), 'fastshermanmorrison/'],
-             extra_compile_args=["-O2", "-fno-wrapv"])  # 50% more efficient!
 ]
 
 test_requirements = []
@@ -62,5 +51,4 @@ setup(
     ],
     test_suite="tests",
     tests_require=test_requirements,
-    ext_modules = cythonize(ext_modules)
 )
