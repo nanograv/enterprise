@@ -26,7 +26,7 @@ setup(
     author="Justin A. Ellis",
     author_email="justin.ellis18@gmail.com",
     url="https://github.com/nanograv/enterprise",
-    packages=["enterprise", "enterprise.signals", "enterprise.fastshermanmorrison"],
+    packages=["enterprise", "enterprise.signals"],
     package_dir={"enterprise": "enterprise"},
     include_package_data=True,
     package_data={"enterprise": ["datafiles/*", "datafiles/ephemeris/*", "datafiles/ng9/*", "datafiles/mdc_open1/*"]},
