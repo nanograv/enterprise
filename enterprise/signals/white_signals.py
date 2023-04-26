@@ -16,6 +16,7 @@ try:
     import fastshermanmorrison.fastshermanmorrison as fastshermanmorrison
 except ImportError:
     fastshermanmorrison = None
+    shown_fastshermanmorrison_warning = False
 
 # logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -120,7 +121,6 @@ def EquadNoise(*args, **kwargs):
     )
 
 
-@utils.static_vars(shown_fastshermanmorrison_warning=False)
 def EcorrKernelNoise(
     log10_ecorr=parameter.Uniform(-10, -5),
     selection=Selection(selections.no_selection),
@@ -190,11 +190,11 @@ def EcorrKernelNoise(
     if (
         method == "fast-sherman-morrison"
         and fastshermanmorrison is None
-        and not EcorrKernelNoise.shown_fastshermanmorrison_warning
+        and not shown_fastshermanmorrison_warning
     ):
         msg = "Package `fastshermanmorrison` not installed. Fallback to sherman-morrison"
         logger.warning(msg)
-        EcorrKernelNoise.shown_fastshermanmorrison_warning = True
+        shown_fastshermanmorrison_warning = True
 
     class EcorrKernelNoise(signal_base.Signal):
         signal_type = "white noise"

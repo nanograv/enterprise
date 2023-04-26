@@ -31,20 +31,6 @@ from enterprise.signals.parameter import function
 logger = logging.getLogger(__name__)
 
 
-def static_vars(**kwargs):
-    """This decorator allows a class factory to have a static variable, for
-    things such as checking whether a python package exists. If the package
-    does not exist, a warning is shown only once
-    """
-
-    def decorate(func):
-        for k in kwargs:
-            setattr(func, k, kwargs[k])
-        return func
-
-    return decorate
-
-
 class ConditionalGP:
     def __init__(self, pta, phiinv_method="cliques"):
         """This class allows the computation of conditional means and
