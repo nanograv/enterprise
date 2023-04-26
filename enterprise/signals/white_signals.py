@@ -187,11 +187,7 @@ def EcorrKernelNoise(
         msg = "EcorrKernelNoise does not support method: {}".format(method)
         raise TypeError(msg)
 
-    if (
-        method == "fast-sherman-morrison"
-        and fastshermanmorrison is None
-        and not shown_fastshermanmorrison_warning
-    ):
+    if method == "fast-sherman-morrison" and fastshermanmorrison is None and not shown_fastshermanmorrison_warning:
         msg = "Package `fastshermanmorrison` not installed. Fallback to sherman-morrison"
         logger.warning(msg)
         shown_fastshermanmorrison_warning = True
