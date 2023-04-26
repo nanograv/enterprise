@@ -119,6 +119,7 @@ def EquadNoise(*args, **kwargs):
         " or TNEquadNoise to obtain legacy enterprise definition for EQUAD only [tnequad^2]."
     )
 
+
 @utils.static_vars(shown_fastshermanmorrison_warning=False)
 def EcorrKernelNoise(
     log10_ecorr=parameter.Uniform(-10, -5),
@@ -186,8 +187,11 @@ def EcorrKernelNoise(
         msg = "EcorrKernelNoise does not support method: {}".format(method)
         raise TypeError(msg)
 
-    if method == "fast-sherman-morrison" and fastshermanmorrison is None \
-            and not EcorrKernelNoise.shown_fastshermanmorrison_warning:
+    if (
+        method == "fast-sherman-morrison"
+        and fastshermanmorrison is None
+        and not EcorrKernelNoise.shown_fastshermanmorrison_warning
+    ):
         msg = "Package `fastshermanmorrison` not installed. Fallback to sherman-morrison"
         logger.warning(msg)
         EcorrKernelNoise.shown_fastshermanmorrison_warning = True

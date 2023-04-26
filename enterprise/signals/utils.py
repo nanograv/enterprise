@@ -36,10 +36,12 @@ def static_vars(**kwargs):
     things such as checking whether a python package exists. If the package
     does not exist, a warning is shown only once
     """
+
     def decorate(func):
         for k in kwargs:
             setattr(func, k, kwargs[k])
         return func
+
     return decorate
 
 
