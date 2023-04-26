@@ -16,7 +16,7 @@ try:
     import fastshermanmorrison.fastshermanmorrison as fastshermanmorrison
 except ImportError:
     fastshermanmorrison = None
-    shown_fastshermanmorrison_warning = False
+shown_fastshermanmorrison_warning = False
 
 # logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
