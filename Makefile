@@ -31,7 +31,6 @@ init:
 	@./.enterprise/bin/python3 -m pip install -U pip setuptools wheel
 	@./.enterprise/bin/python3 -m pip install -r requirements.txt -U
 	@./.enterprise/bin/python3 -m pip install -r requirements_dev.txt -U
-	@./.enterprise/bin/python3 -m pip install -r requirements_tests.txt -U
 	@./.enterprise/bin/python3 -m pre_commit install --install-hooks --overwrite
 	@./.enterprise/bin/python3 -m pip install -e .
 	@echo "run source .enterprise/bin/activate to activate environment"
