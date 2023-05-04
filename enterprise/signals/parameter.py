@@ -127,13 +127,13 @@ def GPCoefficients(logprior, size):
     """Class factory for GP coefficients, which are usually created
     inside gp_signals.BasisGP."""
 
-    class GPCoefficients(Parameter):
+    class GPCoefficients_(Parameter):
         _size = size
         _logprior = logprior
         _sampler = None  # MV: TO DO, connect with GP object
         _typename = "GPCoefficients"
 
-    return GPCoefficients
+    return GPCoefficients_
 
 
 def UserParameter(prior=None, logprior=None, sampler=None, size=None):
@@ -151,7 +151,7 @@ def UserParameter(prior=None, logprior=None, sampler=None, size=None):
     :return:        ``UserParameter`` class
     """
 
-    class UserParameter(Parameter):
+    class UserParameter_(Parameter):
         _size = size
         if prior is not None:
             _prior = prior
@@ -160,7 +160,7 @@ def UserParameter(prior=None, logprior=None, sampler=None, size=None):
         _sampler = None if sampler is None else staticmethod(sampler)
         _typename = "UserParameter"
 
-    return UserParameter
+    return UserParameter_
 
 
 def _argrepr(typename, **kwargs):
@@ -201,13 +201,13 @@ def Uniform(pmin, pmax, size=None):
     :return:     ``Uniform`` parameter class
     """
 
-    class Uniform(Parameter):
+    class Uniform_(Parameter):
         _size = size
         _prior = Function(UniformPrior, pmin=pmin, pmax=pmax)
         _sampler = staticmethod(UniformSampler)
         _typename = _argrepr("Uniform", pmin=pmin, pmax=pmax)
 
-    return Uniform
+    return Uniform_
 
 
 def NormalPrior(value, mu, sigma):
@@ -246,13 +246,13 @@ def Normal(mu=0, sigma=1, size=None):
     :return:      ``Normal`` parameter class
     """
 
-    class Normal(Parameter):
+    class Normal_(Parameter):
         _size = size
         _prior = Function(NormalPrior, mu=mu, sigma=sigma)
         _sampler = staticmethod(NormalSampler)
         _typename = _argrepr("Normal", mu=mu, sigma=sigma)
 
-    return Normal
+    return Normal_
 
 
 def TruncNormalPrior(value, mu, sigma, pmin, pmax, norm=None):
@@ -306,7 +306,7 @@ def TruncNormal(mu=0, sigma=1, pmin=-2, pmax=2, size=None):
     :return:      `TruncNormal`` parameter class
     """
 
-    class TruncNormal(Parameter):
+    class TruncNormal_(Parameter):
         try:
             _norm = (
                 2
@@ -321,7 +321,7 @@ def TruncNormal(mu=0, sigma=1, pmin=-2, pmax=2, size=None):
         _sampler = staticmethod(TruncNormalSampler)
         _typename = _argrepr("TruncNormal", mu=mu, sigma=sigma, pmin=pmin, pmax=pmax)
 
-    return TruncNormal
+    return TruncNormal_
 
 
 def LinearExpPrior(value, pmin, pmax):
@@ -358,13 +358,13 @@ def LinearExp(pmin, pmax, size=None):
     :return:     ``LinearExp`` parameter class
     """
 
-    class LinearExp(Parameter):
+    class LinearExp_(Parameter):
         _size = size
         _prior = Function(LinearExpPrior, pmin=pmin, pmax=pmax)
         _sampler = staticmethod(LinearExpSampler)
         _typename = _argrepr("LinearExp", pmin=pmin, pmax=pmax)
 
-    return LinearExp
+    return LinearExp_
 
 
 class ConstantParameter(object):
@@ -393,11 +393,11 @@ def Constant(val=None):
     value later, for example with ``signal_base.PTA.set_default_params()``.
     """
 
-    class Constant(ConstantParameter):
+    class Constant_(ConstantParameter):
         # MV: I don't know if this does what it's supposed to...
         value = val
 
-    return Constant
+    return Constant_
 
 
 class FunctionBase(object):
@@ -407,7 +407,7 @@ class FunctionBase(object):
 def Function(func, name="", **func_kwargs):
     fname = name
 
-    class Function(FunctionBase):
+    class Function_(FunctionBase):
         def __init__(self, name, psr=None):
             self._func = selection_func(func)
             self._psr = psr
@@ -534,7 +534,7 @@ def Function(func, name="", **func_kwargs):
         def __repr__(self):
             return "{}({})".format(self.name, ", ".join([str(p) for p in self.params]))
 
-    return Function
+    return Function_
 
 
 def get_funcargs(func):

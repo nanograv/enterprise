@@ -31,7 +31,7 @@ def BasisGP(
 ):
     """Class factory for generic GPs with a basis matrix."""
 
-    class BasisGP(signal_base.Signal):
+    class BasisGP_(signal_base.Signal):
         signal_type = "basis"
         signal_name = name
         signal_id = name
@@ -39,7 +39,7 @@ def BasisGP(
         basis_combine = combine
 
         def __init__(self, psr):
-            super(BasisGP, self).__init__(psr)
+            super(BasisGP_, self).__init__(psr)
             self.name = self.psrname + "_" + self.signal_id
             self._do_selection(psr, priorFunction, basisFunction, coefficients, selection)
 
@@ -182,7 +182,7 @@ def BasisGP(
             def get_phiinv(self, params):
                 return self.get_phi(params).inv()
 
-    return BasisGP
+    return BasisGP_
 
 
 def FourierBasisGP(
@@ -203,12 +203,12 @@ def FourierBasisGP(
     basis = utils.createfourierdesignmatrix_red(nmodes=components, Tspan=Tspan, modes=modes, pshift=pshift, pseed=pseed)
     BaseClass = BasisGP(spectrum, basis, coefficients=coefficients, combine=combine, selection=selection, name=name)
 
-    class FourierBasisGP(BaseClass):
+    class FourierBasisGP_(BaseClass):
         signal_type = "basis"
         signal_name = "red noise"
         signal_id = name
 
-    return FourierBasisGP
+    return FourierBasisGP_
 
 
 def get_timing_model_basis(use_svd=False, normed=True):
@@ -233,7 +233,7 @@ def TimingModel(coefficients=False, name="linear_timing_model", use_svd=False, n
 
     BaseClass = BasisGP(prior, basis, coefficients=coefficients, name=name)
 
-    class TimingModel(BaseClass):
+    class TimingModel_(BaseClass):
         signal_type = "basis"
         signal_name = "linear timing model"
         signal_id = name + "_svd" if use_svd else name
@@ -245,7 +245,7 @@ def TimingModel(coefficients=False, name="linear_timing_model", use_svd=False, n
                 #     than to use 1e40 as in get_phi
                 return 0
 
-    return TimingModel
+    return TimingModel_
 
 
 @function
@@ -269,16 +269,16 @@ def EcorrBasisModel(
     prior = ecorr_basis_prior(log10_ecorr=log10_ecorr)
     BaseClass = BasisGP(prior, basis, coefficients=coefficients, selection=selection, name=name)
 
-    class EcorrBasisModel(BaseClass):
+    class EcorrBasisModel_(BaseClass):
         signal_type = "basis"
         signal_name = "basis ecorr"
         signal_id = name
 
-    return EcorrBasisModel
+    return EcorrBasisModel_
 
 
 def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False, combine=True, name=""):
-    class BasisCommonGP(signal_base.CommonSignal):
+    class BasisCommonGP_(signal_base.CommonSignal):
         signal_type = "common basis"
         signal_name = "common"
         signal_id = name
@@ -289,7 +289,7 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False,
         _prior = priorFunction(name)
 
         def __init__(self, psr):
-            super(BasisCommonGP, self).__init__(psr)
+            super(BasisCommonGP_, self).__init__(psr)
             self.name = self.psrname + "_" + self.signal_id
 
             pname = "_".join([psr.name, name])
@@ -391,19 +391,19 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False,
             def get_phi(self, params):
                 self._construct_basis(params)
 
-                prior = BasisCommonGP._prior(self._labels, params=params)
-                orf = BasisCommonGP._orf(self._psrpos, self._psrpos, params=params)
+                prior = BasisCommonGP_._prior(self._labels, params=params)
+                orf = BasisCommonGP_._orf(self._psrpos, self._psrpos, params=params)
 
                 return prior * orf
 
             @classmethod
             def get_phicross(cls, signal1, signal2, params):
-                prior = BasisCommonGP._prior(signal1._labels, params=params)
-                orf = BasisCommonGP._orf(signal1._psrpos, signal2._psrpos, params=params)
+                prior = BasisCommonGP_._prior(signal1._labels, params=params)
+                orf = BasisCommonGP_._orf(signal1._psrpos, signal2._psrpos, params=params)
 
                 return prior * orf
 
-    return BasisCommonGP
+    return BasisCommonGP_
 
 
 def FourierBasisCommonGP(
@@ -427,7 +427,7 @@ def FourierBasisCommonGP(
     basis = utils.createfourierdesignmatrix_red(nmodes=components, Tspan=Tspan, modes=modes, pshift=pshift, pseed=pseed)
     BaseClass = BasisCommonGP(spectrum, basis, orf, coefficients=coefficients, combine=combine, name=name)
 
-    class FourierBasisCommonGP(BaseClass):
+    class FourierBasisCommonGP_(BaseClass):
         signal_type = "common basis"
         signal_name = "common red noise"
         signal_id = name
@@ -435,21 +435,21 @@ def FourierBasisCommonGP(
         _Tmin, _Tmax = [], []
 
         def __init__(self, psr):
-            super(FourierBasisCommonGP, self).__init__(psr)
+            super(FourierBasisCommonGP_, self).__init__(psr)
 
             if Tspan is None:
-                FourierBasisCommonGP._Tmin.append(psr.toas.min())
-                FourierBasisCommonGP._Tmax.append(psr.toas.max())
+                FourierBasisCommonGP_._Tmin.append(psr.toas.min())
+                FourierBasisCommonGP_._Tmax.append(psr.toas.max())
 
         # since this function has side-effects, it can only be cached
         # with limit=1, so it will run again if called with params different
         # than the last time
         @signal_base.cache_call("basis_params", 1)
         def _construct_basis(self, params={}):
-            span = Tspan if Tspan is not None else max(FourierBasisCommonGP._Tmax) - min(FourierBasisCommonGP._Tmin)
+            span = Tspan if Tspan is not None else max(FourierBasisCommonGP_._Tmax) - min(FourierBasisCommonGP_._Tmin)
             self._basis, self._labels = self._bases(params=params, Tspan=span)
 
-    return FourierBasisCommonGP
+    return FourierBasisCommonGP_
 
 
 # for simplicity, we currently do not handle Tspan automatically
@@ -532,7 +532,7 @@ def WidebandTimingModel(
     prior = utils.tm_prior()  # standard
     BaseClass = BasisGP(prior, basis, coefficients=False, name=name)
 
-    class WidebandTimingModel(BaseClass):
+    class WidebandTimingModel_(BaseClass):
         signal_type = "basis"
         signal_name = "wideband timing model"
         signal_id = name
@@ -540,7 +540,7 @@ def WidebandTimingModel(
         basis_combine = False  # should never need to be True
 
         def __init__(self, psr):
-            super(WidebandTimingModel, self).__init__(psr)
+            super(WidebandTimingModel_, self).__init__(psr)
             self.name = self.psrname + "_" + self.signal_id
 
             # make selection for DMEFAC and DMEQUADs
@@ -775,7 +775,7 @@ def WidebandTimingModel(
 
             return chi2
 
-    return WidebandTimingModel
+    return WidebandTimingModel_
 
 
 def MarginalizingTimingModel(name="marginalizing_linear_timing_model", use_svd=False, normed=True):

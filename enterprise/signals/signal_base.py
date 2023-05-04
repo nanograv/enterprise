@@ -758,7 +758,7 @@ def SignalCollection(metasignals):  # noqa: C901
     """Class factory for ``SignalCollection`` objects."""
 
     @six.add_metaclass(MetaCollection)
-    class SignalCollection(object):
+    class SignalCollection_(object):
         _metasignals = metasignals
 
         def __init__(self, psr):
@@ -984,7 +984,7 @@ def SignalCollection(metasignals):  # noqa: C901
         def get_logsignalprior(self, params):
             return sum(signal.get_logsignalprior(params) for signal in self._signals)
 
-    return SignalCollection
+    return SignalCollection_
 
 
 def cache_call(attrs, limit=2):

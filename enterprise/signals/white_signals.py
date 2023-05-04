@@ -15,13 +15,13 @@ from enterprise.signals.selections import Selection
 def WhiteNoise(varianceFunction, selection=Selection(selections.no_selection), name=""):
     """Class factory for generic white noise signals."""
 
-    class WhiteNoise(signal_base.Signal):
+    class WhiteNoise_(signal_base.Signal):
         signal_type = "white noise"
         signal_name = name
         signal_id = name
 
         def __init__(self, psr):
-            super(WhiteNoise, self).__init__(psr)
+            super(WhiteNoise_, self).__init__(psr)
             self.name = self.psrname + "_" + self.signal_id
             self._do_selection(psr, varianceFunction, selection)
 
@@ -49,7 +49,7 @@ def WhiteNoise(varianceFunction, selection=Selection(selections.no_selection), n
                 ret += self._ndiag[key](params=params) * mask
             return signal_base.ndarray_alt(ret)
 
-    return WhiteNoise
+    return WhiteNoise_
 
 
 @function
@@ -78,11 +78,11 @@ def MeasurementNoise(
     )
     BaseClass = WhiteNoise(varianceFunction, selection=selection, name=name)
 
-    class MeasurementNoise(BaseClass):
+    class MeasurementNoise_(BaseClass):
         signal_name = "measurement_noise"
         signal_id = "measurement_noise_" + name if name else "measurement_noise"
 
-    return MeasurementNoise
+    return MeasurementNoise_
 
 
 @function
@@ -96,11 +96,11 @@ def TNEquadNoise(log10_tnequad=parameter.Uniform(-10, -5), selection=Selection(s
     varianceFunction = tnequad_ndiag(log10_tnequad=log10_tnequad)
     BaseClass = WhiteNoise(varianceFunction, selection=selection, name=name)
 
-    class TNEquadNoise(BaseClass):
+    class TNEquadNoise_(BaseClass):
         signal_name = "tnequad"
         signal_id = "tnequad_" + name if name else "tnequad"
 
-    return TNEquadNoise
+    return TNEquadNoise_
 
 
 def EquadNoise(*args, **kwargs):
@@ -170,13 +170,13 @@ def EcorrKernelNoise(
         msg = "EcorrKernelNoise does not support method: {}".format(method)
         raise TypeError(msg)
 
-    class EcorrKernelNoise(signal_base.Signal):
+    class EcorrKernelNoise_(signal_base.Signal):
         signal_type = "white noise"
         signal_name = "ecorr_" + method
         signal_id = "_".join(["ecorr", name, method]) if name else "_".join(["ecorr", method])
 
         def __init__(self, psr):
-            super(EcorrKernelNoise, self).__init__(psr)
+            super(EcorrKernelNoise_, self).__init__(psr)
             self.name = self.psrname + "_" + self.signal_id
 
             sel = selection(psr)
@@ -256,4 +256,4 @@ def EcorrKernelNoise(
             )
             return (slices, jvec)
 
-    return EcorrKernelNoise
+    return EcorrKernelNoise_
