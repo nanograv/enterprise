@@ -6,6 +6,7 @@ bumpversion>=0.5.3
 wheel>=0.29.0
 watchdog>=0.9.0
 coverage>=4.5.3
+urllib3<2
 Sphinx>=2.0.0
 cryptography>=2.0.0
 PyYAML>=4.2b1
