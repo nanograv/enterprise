@@ -3,9 +3,12 @@ max-line-length = 120
 max-complexity = 45
 ignore =
   E203
-  W503      # line break before binary operator; conflicts with black
-  E722      # bare except ok
-  E731      # lambda expressions ok
+  # line break before binary operator; conflicts with black
+  W503
+  # bare except ok      
+  E722
+  # lambda expressions ok      
+  E731      
 exclude =
     .git
     .tox
@@ -15,3 +18,4 @@ exclude =
     docs
     .enterprise
     enterprise/src
+    .venv
