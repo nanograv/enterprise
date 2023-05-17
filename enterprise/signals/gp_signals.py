@@ -848,6 +848,7 @@ class MarginalizingNmat(object):
 
     # we're ignoring logdet = True for two-dimensional cases, but OK
     def solve(self, right, left_array=None, logdet=False):
+        # compute generalized version of r+ N^-1 r
         if right.ndim == 1 and left_array is right:
             res = right
 
@@ -856,11 +857,13 @@ class MarginalizingNmat(object):
             MNr = self.MNr(res)
             ret = rNr - np.dot(MNr, self.cf(MNr))
             return (ret, logdet_N + self.cf.logdet() + self.Mprior) if logdet else ret
+        # compute generalized version of T+ N^-1 r
         elif right.ndim == 1 and left_array is not None and left_array.ndim == 2:
             res, T = right, left_array
 
             TNr = self.Nmat.solve(res, left_array=T)
             return TNr - np.tensordot(self.MNMMNF(T), self.MNr(res), (0, 0))
+        # compute generalized version of T+ N^-1 T
         elif right.ndim == 2 and left_array is right:
             T = right
 
