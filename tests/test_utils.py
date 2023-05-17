@@ -14,8 +14,8 @@ import numpy as np
 
 import enterprise.constants as const
 from enterprise.pulsar import Pulsar
+from enterprise.signals import utils, parameter, signal_base, white_signals, gp_signals
 from enterprise.signals import anis_coefficients as anis
-from enterprise.signals import utils
 from tests.enterprise_test_data import datadir
 
 
@@ -26,6 +26,7 @@ class TestUtils(unittest.TestCase):
 
         # initialize Pulsar class
         cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+        cls.psr2 = Pulsar(datadir + "/J1909-3744_NANOGrav_9yv1.gls.par", datadir + "/J1909-3744_NANOGrav_9yv1.tim")
 
         cls.F, _ = utils.createfourierdesignmatrix_red(cls.psr.toas, nmodes=30)
 
@@ -34,6 +35,28 @@ class TestUtils(unittest.TestCase):
         cls.Feph, cls.feph = utils.createfourierdesignmatrix_ephem(cls.psr.toas, cls.psr.pos, nmodes=30)
 
         cls.Mm = utils.create_stabletimingdesignmatrix(cls.psr.Mmat)
+
+    def test_simulate(self):
+        ef = white_signals.MeasurementNoise()
+
+        ec = gp_signals.EcorrBasisModel()
+
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-16, -13), gamma=parameter.Uniform(1, 7))
+        orf = utils.hd_orf()
+        crn = gp_signals.FourierBasisCommonGP(pl, orf, components=20, name="GW")
+
+        m = ef + ec + crn
+
+        pta = signal_base.PTA([m(self.psr), m(self.psr2)])
+
+        ys = utils.simulate(pta, params=parameter.sample(pta.params))
+
+        msg = "Simulated residuals shape incorrect"
+        assert ys[0].shape == self.psr.residuals.shape, msg
+        assert ys[1].shape == self.psr2.residuals.shape, msg
+
+        msg = "Simulated residuals shape not a number"
+        assert np.all(~np.isnan(np.concatenate(ys))), msg
 
     def test_createstabletimingdesignmatrix(self):
         """Timing model design matrix shape."""

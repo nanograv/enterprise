@@ -24,7 +24,6 @@ from sksparse.cholmod import cholesky, CholmodError
 from enterprise.signals.parameter import Function  # noqa: F401
 from enterprise.signals.parameter import function  # noqa: F401
 from enterprise.signals.parameter import ConstantParameter
-from enterprise.signals.utils import KernelMatrix
 
 from enterprise import __version__
 from sys import version
@@ -1210,6 +1209,89 @@ class BlockMatrix(object):
             ret = self._solve_NX(other)
 
         return (ret, self._get_logdet()) if logdet else ret
+
+
+class KernelMatrix(np.ndarray):
+    def __new__(cls, init):
+        if isinstance(init, int):
+            ret = np.zeros(init, "d").view(cls)
+        else:
+            ret = init.view(cls)
+
+        if ret.ndim == 2:
+            ret._cliques = -1 * np.ones(ret.shape[0])
+            ret._clcount = 0
+
+        return ret
+
+    # see PTA._setcliques
+    def _setcliques(self, idxs):
+        allidx = set(self._cliques[idxs])
+        maxidx = max(allidx)
+
+        if maxidx == -1:
+            self._cliques[idxs] = self._clcount
+            self._clcount = self._clcount + 1
+        else:
+            self._cliques[idxs] = maxidx
+            if len(allidx) > 1:
+                self._cliques[np.in1d(self._cliques, allidx)] = maxidx
+
+    def add(self, other, idx):
+        if other.ndim == 2 and self.ndim == 1:
+            self = KernelMatrix(np.diag(self))
+
+        if self.ndim == 1:
+            self[idx] += other
+        else:
+            if other.ndim == 1:
+                self[idx, idx] += other
+            else:
+                self._setcliques(idx)
+                idx = (idx, idx) if isinstance(idx, slice) else (idx[:, None], idx)
+                self[idx] += other
+
+        return self
+
+    def set(self, other, idx):
+        if other.ndim == 2 and self.ndim == 1:
+            self = KernelMatrix(np.diag(self))
+
+        if self.ndim == 1:
+            self[idx] = other
+        else:
+            if other.ndim == 1:
+                self[idx, idx] = other
+            else:
+                self._setcliques(idx)
+                idx = (idx, idx) if isinstance(idx, slice) else (idx[:, None], idx)
+                self[idx] = other
+
+        return self
+
+    def inv(self, logdet=False):
+        if self.ndim == 1:
+            inv = 1.0 / self
+
+            if logdet:
+                return inv, np.sum(np.log(self))
+            else:
+                return inv
+        else:
+            try:
+                cf = sl.cho_factor(self)
+                inv = sl.cho_solve(cf, np.identity(cf[0].shape[0]))
+                if logdet:
+                    ld = 2.0 * np.sum(np.log(np.diag(cf[0])))
+            except np.linalg.LinAlgError:
+                u, s, v = np.linalg.svd(self)
+                inv = np.dot(u / s, u.T)
+                if logdet:
+                    ld = np.sum(np.log(s))
+            if logdet:
+                return inv, ld
+            else:
+                return inv
 
 
 class ShermanMorrison(object):
