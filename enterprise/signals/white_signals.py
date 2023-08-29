@@ -6,7 +6,10 @@ defined as the class of signals that only modifies the white noise matrix `N`.
 
 import numpy as np
 import scipy.sparse
-
+try:
+    import fastshermanmorrison as FSM
+except ImportError:
+    print("The fastshermanmorrison package is not found. The single pulsar analyses are much faster with the fast algorithm!")
 from enterprise.signals import parameter, selections, signal_base, utils
 from enterprise.signals.parameter import function
 from enterprise.signals.selections import Selection
@@ -123,7 +126,7 @@ def EcorrKernelNoise(
     :param selection:
         ``Selection`` object specifying masks for backends, time segments, etc.
     :param method: Method for computing noise covariance matrix.
-        Options include `sherman-morrison`, `sparse`, and `block`
+        Options include `fast-sherman-morrison`, `sherman-morrison`, `sparse`, and `block`
 
     :return: ``EcorrKernelNoise`` class.
 
@@ -166,7 +169,7 @@ def EcorrKernelNoise(
 
     """
 
-    if method not in ["sherman-morrison", "block", "sparse"]:
+    if method not in ["fast-sherman-morrison", "sherman-morrison", "block", "sparse"]:
         msg = "EcorrKernelNoise does not support method: {}".format(method)
         raise TypeError(msg)
 
@@ -208,7 +211,9 @@ def EcorrKernelNoise(
 
         @signal_base.cache_call("ndiag_params")
         def get_ndiag(self, params):
-            if method == "sherman-morrison":
+            if method == "fast-sherman-morrison":
+                return self._get_ndiag_fast_sherman_morrison(params)
+            elif method == "sherman-morrison":
                 return self._get_ndiag_sherman_morrison(params)
             elif method == "sparse":
                 return self._get_ndiag_sparse(params)
@@ -237,7 +242,11 @@ def EcorrKernelNoise(
         def _get_ndiag_sherman_morrison(self, params):
             slices, jvec = self._get_jvecs(params)
             return signal_base.ShermanMorrison(jvec, slices)
-
+        
+        def _get_ndiag_fast_sherman_morrison(self, params):
+            slices, jvec = self._get_jvecs(params)
+            return FSM.fastshermanmorrison.FastShermanMorrison(jvec, slices)
+        
         def _get_ndiag_block(self, params):
             slices, jvec = self._get_jvecs(params)
             blocks = []
