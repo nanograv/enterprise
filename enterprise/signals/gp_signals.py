@@ -783,13 +783,13 @@ def MarginalizingTimingModel(name="marginalizing_linear_timing_model", use_svd=F
 
     basisFunction = get_timing_model_basis(use_svd, normed)
 
-    class TimingModel_(signal_base.Signal):
+    class MarginalizingTimingModel_(signal_base.Signal):
         signal_type = "white noise"
         signal_name = "marginalizing linear timing model"
         signal_id = name
 
         def __init__(self, psr):
-            super(TimingModel_, self).__init__(psr)
+            super(MarginalizingTimingModel_, self).__init__(psr)
             self.name = self.psrname + "_" + self.signal_id
 
             pname = "_".join([psr.name, name])
@@ -806,7 +806,7 @@ def MarginalizingTimingModel(name="marginalizing_linear_timing_model", use_svd=F
         def get_ndiag(self, params):
             return MarginalizingNmat(self.Mmat()[0])
 
-    return TimingModel_
+    return MarginalizingTimingModel_
 
 
 class MarginalizingNmat(object):
