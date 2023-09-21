@@ -213,7 +213,7 @@ def UniformSampler(pmin, pmax, size=None):
 def UniformPPF(value, pmin, pmax):
     """Percentage Point function for Uniform paramters."""
 
-    return sstats.uniform.ppf(value, loc=pmin, scale=pmax-pmin)
+    return sstats.uniform.ppf(value, loc=pmin, scale=pmax - pmin)
 
 
 def Uniform(pmin, pmax, size=None):
@@ -389,7 +389,7 @@ def LinearExpSampler(pmin, pmax, size=None):
 def LinearExpPPF(value, pmin, pmax):
     """Percentage Point function for Uniform paramters."""
 
-    ev = sstats.uniform.ppf(value, loc=10**pmin, scale=10**pmax-10**pmin)
+    ev = sstats.uniform.ppf(value, loc=10**pmin, scale=10**pmax - 10**pmin)
     return np.log10(ev)
 
 
@@ -487,7 +487,6 @@ def Function(func, name="", **func_kwargs):
 
             for kw, arg in self.func_kwargs.items():
                 if isinstance(arg, type) and issubclass(arg, (Parameter, ConstantParameter)):
-
                     # parameter name template:
                     #   pname_[signalname_][fname_]parname
                     pnames = [name, fname, kw]
@@ -630,7 +629,6 @@ def function(func):
                 and issubclass(arg, FunctionBase)
                 or isinstance(arg, FunctionBase)
             ):
-
                 return Function(func, **kwargs)
 
         # otherwise, we simply call the function

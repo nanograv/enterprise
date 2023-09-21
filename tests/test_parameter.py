@@ -77,7 +77,9 @@ class TestParameter(unittest.TestCase):
 
         msg1c = "Scalar PPF does not match"
         x = 0.5
-        assert np.allclose(LinearExpPPF(x, p_min, p_max), np.log10(10**p_min + x*(10**p_max-10**p_min))), msg1c
+        assert np.allclose(
+            LinearExpPPF(x, p_min, p_max), np.log10(10**p_min + x * (10**p_max - 10**p_min))
+        ), msg1c
 
         # vector argument
         x = np.array([0, 1.5, 2.5])
@@ -93,8 +95,7 @@ class TestParameter(unittest.TestCase):
         x = np.array([0.5, 0.75])
         msg2c = "Vector-argument PPF does not match"
         assert np.allclose(
-            LinearExpPPF(x, p_min, p_max),
-            np.log10(10**p_min + x * (10**p_max-10**p_min))
+            LinearExpPPF(x, p_min, p_max), np.log10(10**p_min + x * (10**p_max - 10**p_min))
         ), msg2c
 
         # vector bounds
@@ -111,8 +112,7 @@ class TestParameter(unittest.TestCase):
         p_min, p_max = np.array([0, 1]), np.array([2, 3])
         msg3c = "Vector-argument PPF+bounds does not match"
         assert np.allclose(
-            LinearExpPPF(x, p_min, p_max),
-            np.log10(10**p_min + x * (10**p_max-10**p_min))
+            LinearExpPPF(x, p_min, p_max), np.log10(10**p_min + x * (10**p_max - 10**p_min))
         ), msg3c
 
     def test_normal(self):
@@ -133,9 +133,7 @@ class TestParameter(unittest.TestCase):
         assert -5 < (x1 - mu) / sigma < 5, msg2
 
         msg3 = "Enterprise and scipy PPF do not match"
-        assert np.allclose(
-            NormalPPF(x, mu, sigma), scipy.stats.norm.ppf(x, loc=mu, scale=sigma)
-        ), msg3
+        assert np.allclose(NormalPPF(x, mu, sigma), scipy.stats.norm.ppf(x, loc=mu, scale=sigma)), msg3
 
         # vector argument
         x = np.array([-0.2, 0.1, 0.5])
@@ -151,9 +149,7 @@ class TestParameter(unittest.TestCase):
         assert x1.shape == x2.shape, msg2
 
         x = np.array([0.1, 0.25, 0.65])
-        assert np.allclose(
-            NormalPPF(x, mu, sigma), scipy.stats.norm.ppf(x, loc=mu, scale=sigma)
-        ), msg3
+        assert np.allclose(NormalPPF(x, mu, sigma), scipy.stats.norm.ppf(x, loc=mu, scale=sigma)), msg3
 
         # vector bounds; note the different semantics from `NormalPrior`,
         # which returns a vector consistently with `UniformPrior`
