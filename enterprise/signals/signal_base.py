@@ -1212,12 +1212,22 @@ class BlockMatrix(object):
         return (ret, self._get_logdet()) if logdet else ret
 
 
+def indices_from_slice(slc):
+    """Given a slice object, return an index arrays"""
+
+    if isinstance(slc, np.ndarray):
+        return slc
+    else:
+        return np.arange(*slc.indices(slc.stop))
+
+
 class ShermanMorrison(object):
     """Custom container class for Sherman-morrison array inversion."""
 
     def __init__(self, jvec, slices, nvec=0.0):
         self._jvec = jvec
         self._slices = slices
+        self._idxs = [indices_from_slice(slc) for slc in slices]
         self._nvec = nvec
 
     def __add__(self, other):
@@ -1235,12 +1245,12 @@ class ShermanMorrison(object):
         """Solves :math:`N^{-1}x` where :math:`x` is a vector."""
 
         Nx = x / self._nvec
-        for slc, jv in zip(self._slices, self._jvec):
-            if slc.stop - slc.start > 1:
-                rblock = x[slc]
-                niblock = 1 / self._nvec[slc]
+        for idx, jv in zip(self._idxs, self._jvec):
+            if len(idx) > 1:
+                rblock = x[idx]
+                niblock = 1 / self._nvec[idx]
                 beta = 1.0 / (np.einsum("i->", niblock) + 1.0 / jv)
-                Nx[slc] -= beta * np.dot(niblock, rblock) * niblock
+                Nx[idx] -= beta * np.dot(niblock, rblock) * niblock
         return Nx
 
     def _solve_1D1(self, x, y):
@@ -1250,11 +1260,11 @@ class ShermanMorrison(object):
 
         Nx = x / self._nvec
         yNx = np.dot(y, Nx)
-        for slc, jv in zip(self._slices, self._jvec):
-            if slc.stop - slc.start > 1:
-                xblock = x[slc]
-                yblock = y[slc]
-                niblock = 1 / self._nvec[slc]
+        for idx, jv in zip(self._idxs, self._jvec):
+            if len(idx) > 1:
+                xblock = x[idx]
+                yblock = y[idx]
+                niblock = 1 / self._nvec[idx]
                 beta = 1.0 / (np.einsum("i->", niblock) + 1.0 / jv)
                 yNx -= beta * np.dot(niblock, xblock) * np.dot(niblock, yblock)
         return yNx
@@ -1265,11 +1275,11 @@ class ShermanMorrison(object):
         """
 
         ZNX = np.dot(Z.T / self._nvec, X)
-        for slc, jv in zip(self._slices, self._jvec):
-            if slc.stop - slc.start > 1:
-                Zblock = Z[slc, :]
-                Xblock = X[slc, :]
-                niblock = 1 / self._nvec[slc]
+        for idx, jv in zip(self._idxs, self._jvec):
+            if len(idx) > 1:
+                Zblock = Z[idx, :]
+                Xblock = X[idx, :]
+                niblock = 1 / self._nvec[idx]
                 beta = 1.0 / (np.einsum("i->", niblock) + 1.0 / jv)
                 zn = np.dot(niblock, Zblock)
                 xn = np.dot(niblock, Xblock)
@@ -1281,9 +1291,9 @@ class ShermanMorrison(object):
         is a quantization matrix.
         """
         logdet = np.einsum("i->", np.log(self._nvec))
-        for slc, jv in zip(self._slices, self._jvec):
-            if slc.stop - slc.start > 1:
-                niblock = 1 / self._nvec[slc]
+        for idx, jv in zip(self._idxs, self._jvec):
+            if len(idx) > 1:
+                niblock = 1 / self._nvec[idx]
                 beta = 1.0 / (np.einsum("i->", niblock) + 1.0 / jv)
                 logdet += np.log(jv) - np.log(beta)
         return logdet
