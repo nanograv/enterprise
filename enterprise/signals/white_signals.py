@@ -10,6 +10,7 @@ import scipy.sparse
 from enterprise.signals import parameter, selections, signal_base, utils
 from enterprise.signals.parameter import function
 from enterprise.signals.selections import Selection
+from enterprise.signals.utils import indices_from_slice
 
 
 def WhiteNoise(varianceFunction, selection=Selection(selections.no_selection), name=""):
@@ -191,12 +192,17 @@ def EcorrKernelNoise(
             nepoch = sum(U.shape[1] for U in Umats)
             U = np.zeros((len(psr.toas), nepoch))
             self._slices = {}
+            self._idxs = {}
             netot = 0
             for ct, (key, mask) in enumerate(zip(keys, masks)):
                 nn = Umats[ct].shape[1]
                 U[mask, netot : nn + netot] = Umats[ct]
                 self._slices.update({key: utils.quant2ind(U[:, netot : nn + netot])})
                 netot += nn
+
+            self._idxs.update(
+                {key: [indices_from_slice(slc) for slc in slices] for (key, slices) in self._slices.items()}
+            )
 
             # initialize sparse matrix
             self._setup(psr)
@@ -221,17 +227,17 @@ def EcorrKernelNoise(
 
         def _setup_sparse(self, psr):
             Ns = scipy.sparse.csc_matrix((len(psr.toas), len(psr.toas)))
-            for key, slices in self._slices.items():
-                for slc in slices:
-                    if slc.stop - slc.start > 1:
-                        Ns[slc, slc] = 1.0
+            for key, idxs in self._idxs.items():
+                for idx in idxs:
+                    if len(idx) > 1:
+                        Ns[np.ix_(idx, idx)] = 1.0
             self._Ns = signal_base.csc_matrix_alt(Ns)
 
         def _get_ndiag_sparse(self, params):
             for p in self._params:
-                for slc in self._slices[p]:
-                    if slc.stop - slc.start > 1:
-                        self._Ns[slc, slc] = 10 ** (2 * self.get(p, params))
+                for idx in self._idxs[p]:
+                    if len(idx) > 1:
+                        self._Ns[np.ix_(idx, idx)] = 10 ** (2 * self.get(p, params))
             return self._Ns
 
         def _get_ndiag_sherman_morrison(self, params):
@@ -239,21 +245,18 @@ def EcorrKernelNoise(
             return signal_base.ShermanMorrison(jvec, slices)
 
         def _get_ndiag_block(self, params):
-            slices, jvec = self._get_jvecs(params)
+            idxs, jvec = self._get_jvecs(params)
             blocks = []
-            for jv, slc in zip(jvec, slices):
-                nb = slc.stop - slc.start
+            for jv, idx in zip(jvec, idxs):
+                nb = len(idx)
                 blocks.append(np.ones((nb, nb)) * jv)
-            return signal_base.BlockMatrix(blocks, slices)
+            return signal_base.BlockMatrix(blocks, idxs)
 
         def _get_jvecs(self, params):
-            slices = sum([self._slices[key] for key in sorted(self._slices.keys())], [])
+            idxs = sum([self._idxs[key] for key in sorted(self._idxs.keys())], [])
             jvec = np.concatenate(
-                [
-                    np.ones(len(self._slices[key])) * 10 ** (2 * self.get(key, params))
-                    for key in sorted(self._slices.keys())
-                ]
+                [np.ones(len(self._idxs[key])) * 10 ** (2 * self.get(key, params)) for key in sorted(self._idxs.keys())]
             )
-            return (slices, jvec)
+            return (idxs, jvec)
 
     return EcorrKernelNoise

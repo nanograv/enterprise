@@ -789,6 +789,15 @@ def quant2ind(U, as_slice=False):
     return inds
 
 
+def indices_from_slice(slc):
+    """Given a slice object, return an index arrays"""
+
+    if isinstance(slc, np.ndarray):
+        return slc
+    else:
+        return np.arange(*slc.indices(slc.stop))
+
+
 def linear_interp_basis(toas, dt=30 * 86400):
     """Provides a basis for linear interpolation.
 
