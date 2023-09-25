@@ -14,8 +14,11 @@ from enterprise.signals.selections import Selection
 
 try:
     import fastshermanmorrison.fastshermanmorrison as fastshermanmorrison
+
+    fsm_warning_issued = False
 except ImportError:
     fastshermanmorrison = None
+    fsm_warning_issued = False
 
 # logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -182,13 +185,16 @@ def EcorrKernelNoise(
 
     """
 
+    global fsm_warning_issued
+
     if method not in ["fast-sherman-morrison", "sherman-morrison", "block", "sparse"]:
         msg = "EcorrKernelNoise does not support method: {}".format(method)
         raise TypeError(msg)
 
-    if method == "fast-sherman-morrison" and fastshermanmorrison is None:
+    if method == "fast-sherman-morrison" and fastshermanmorrison is None and not fsm_warning_issued:
         msg = "Package `fastshermanmorrison` not installed. Fallback to sherman-morrison"
         logger.warning(msg)
+        fsm_warning_issued = True
 
     class EcorrKernelNoise(signal_base.Signal):
         signal_type = "white noise"
