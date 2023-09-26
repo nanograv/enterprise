@@ -16,7 +16,7 @@ try:
     import fastshermanmorrison.fastshermanmorrison as fastshermanmorrison
 
     fsm_warning_issued = False
-except ImportError:
+except ImportError:  #pragma: no cover
     fastshermanmorrison = None
     fsm_warning_issued = False
 
@@ -191,7 +191,7 @@ def EcorrKernelNoise(
         msg = "EcorrKernelNoise does not support method: {}".format(method)
         raise TypeError(msg)
 
-    if method == "fast-sherman-morrison" and fastshermanmorrison is None and not fsm_warning_issued:
+    if method == "fast-sherman-morrison" and fastshermanmorrison is None and not fsm_warning_issued:  # pragma: no cover
         msg = "Package `fastshermanmorrison` not installed. Fallback to sherman-morrison"
         logger.warning(msg)
         fsm_warning_issued = True
@@ -239,7 +239,7 @@ def EcorrKernelNoise(
             elif method == "fast-sherman-morrison":
                 if fastshermanmorrison:
                     return self._get_ndiag_fast_sherman_morrison(params)
-                else:
+                else:  # pragma: no cover
                     return self._get_ndiag_sherman_morrison(params)
             elif method == "sparse":
                 return self._get_ndiag_sparse(params)
