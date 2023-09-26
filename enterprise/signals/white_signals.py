@@ -16,7 +16,7 @@ try:
     import fastshermanmorrison.fastshermanmorrison as fastshermanmorrison
 
     fsm_warning_issued = False
-except ImportError:  #pragma: no cover
+except ImportError:  # pragma: no cover
     fastshermanmorrison = None
     fsm_warning_issued = False
 
