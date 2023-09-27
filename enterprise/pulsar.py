@@ -2,10 +2,12 @@
 """Class containing pulsar data from timing package [tempo2/PINT].
 """
 
+import contextlib
 import json
 import logging
 import os
 import pickle
+from io import StringIO
 
 import astropy.constants as const
 import astropy.units as u
@@ -149,9 +151,18 @@ class BasePulsar(object):
 
         self.sort_data()
 
+    def drop_not_picklable(self):
+        """Drop all attributes that cannot be pickled.
+
+        Derived classes should implement this if they have
+        any such attributes.
+        """
+        pass
+
     def to_pickle(self, outdir=None):
         """Save object to pickle file."""
 
+        self.drop_not_picklable()
         # drop t2pulsar object
         if hasattr(self, "t2pulsar"):
             del self.t2pulsar
@@ -318,7 +329,11 @@ class PintPulsar(BasePulsar):
 
         if not drop_pintpsr:
             self.model = model
+            self.parfile = model.as_parfile()
             self.pint_toas = toas
+            with StringIO() as tim:
+                toas.write_TOA_file(tim)
+                self.timfile = tim.getvalue()
 
         # these are TDB but not barycentered
         # self._toas = np.array(toas.table["tdbld"], dtype="float64") * 86400
@@ -327,20 +342,17 @@ class PintPulsar(BasePulsar):
         self._stoas = np.array(toas.get_mjds().value, dtype="float64") * 86400
         self._residuals = np.array(resids(toas, model).time_resids.to(u.s), dtype="float64")
         self._toaerrs = np.array(toas.get_errors().to(u.s), dtype="float64")
-        self._designmatrix = model.designmatrix(toas)[0]
+        self._designmatrix, self.fitpars, self.designmatrix_units = model.designmatrix(toas)
         self._ssbfreqs = np.array(model.barycentric_radio_freq(toas), dtype="float64")
         self._telescope = np.array(toas.get_obss())
-
-        # fitted parameters
-        self.fitpars = ["Offset"] + [par for par in model.params if not getattr(model, par).frozen]
 
         # gather DM/DMX information if available
         self._set_dm(model)
 
         # set parameters
-        spars = [par for par in model.params]
-        self.setpars = [sp for sp in spars if sp not in self.fitpars]
+        self.setpars = [sp for sp in model.params if sp not in self.fitpars]
 
+        # FIXME: this can be done more cleanly using PINT
         self._flags = {}
         for ii, obsflags in enumerate(toas.get_flags()):
             for jj, flag in enumerate(obsflags):
@@ -351,6 +363,7 @@ class PintPulsar(BasePulsar):
 
         # convert flags to arrays
         # TODO probably better way to do this
+        #      -- PINT always stores flags as strings
         for key, val in self._flags.items():
             if isinstance(val[0], u.quantity.Quantity):
                 self._flags[key] = np.array([v.value for v in val])
@@ -370,6 +383,21 @@ class PintPulsar(BasePulsar):
         self._pos_t = model.components[which_astrometry].ssb_to_psb_xyz_ICRS(model.get_barycentric_toas(toas)).value
 
         self.sort_data()
+
+    def drop_pintpsr(self):
+        with contextlib.suppress(NameError):
+            del self.model
+            del self.parfile
+            del self.pint_toas
+            del self.timfile
+
+    def drop_not_picklable(self):
+        with contextlib.suppress(AttributeError):
+            del self.model
+            del self.pint_toas
+            logger.warning("pint_toas and model objects cannot be pickled and have been removed.")
+
+        return super().drop_not_picklable()
 
     def _set_dm(self, model):
         pars = [par for par in model.params if not getattr(model, par).frozen]
@@ -447,7 +475,15 @@ class PintPulsar(BasePulsar):
 
 
 class Tempo2Pulsar(BasePulsar):
-    def __init__(self, t2pulsar, sort=True, drop_t2pulsar=True, planets=True):
+    def __init__(
+        self,
+        t2pulsar,
+        sort=True,
+        drop_t2pulsar=True,
+        planets=True,
+        par_name=None,
+        tim_name=None,
+    ):
 
         self._sort = sort
         self.t2pulsar = t2pulsar
@@ -496,6 +532,11 @@ class Tempo2Pulsar(BasePulsar):
 
         if drop_t2pulsar:
             del self.t2pulsar
+        else:
+            if par_name is not None and os.path.exists(par_name):
+                self.parfile = open(par_name).read()
+            if tim_name is not None and os.path.exists(tim_name):
+                self.timfile = open(tim_name).read()
 
     # gather DM/DMX information if available
     def _set_dm(self, t2pulsar):
@@ -557,7 +598,7 @@ class Tempo2Pulsar(BasePulsar):
         sunssb = None
         if self.planets:
             # for ii in range(1, 10):
-            #     tag = 'DMASSPLANET' + str(ii)
+            #     tag = 'DMASSPLANET' + str(ii)@pytest.mark.skipif(t2 is None, reason="TEMPO2/libstempo not available")
             #     self.t2pulsar[tag].val = 0.0
             self.t2pulsar.formbats()
             sunssb = np.zeros((len(self._toas), 6))
@@ -573,6 +614,12 @@ class Tempo2Pulsar(BasePulsar):
     # the Pulsar deflater will copy select numpy arrays to SharedMemory,
     # then replace them with pickleable objects that can be inflated
     # to numpy arrays with SharedMemory storage
+
+    def drop_not_picklable(self):
+        with contextlib.suppress(AttributeError):
+            del self.t2pulsar
+            logger.warning("t2pulsar object cannot be pickled and has been removed.")
+        return super().drop_not_picklable()
 
     _todeflate = ["_designmatrix", "_planetssb", "_sunssb", "_flags"]
     _deflated = "pristine"
@@ -610,7 +657,9 @@ def Pulsar(*args, **kwargs):
     sort = kwargs.get("sort", True)
     drop_t2pulsar = kwargs.get("drop_t2pulsar", True)
     drop_pintpsr = kwargs.get("drop_pintpsr", True)
-    timing_package = kwargs.get("timing_package", "tempo2")
+    timing_package = kwargs.get("timing_package", None)
+    if timing_package is not None:
+        timing_package = timing_package.lower()
 
     if pint is not None:
         toas = [x for x in args if isinstance(x, TOAs)]
@@ -638,28 +687,46 @@ def Pulsar(*args, **kwargs):
         reltimfile = timfiletup[-1]
         relparfile = os.path.relpath(parfile[0], dirname)
 
+        if timing_package is None:
+            if t2 is not None:
+                timing_package = "tempo2"
+            elif pint is not None:
+                timing_package = "pint"
+            else:
+                raise ValueError("No timing package available with which to load a pulsar")
+
         # get current directory
         cwd = os.getcwd()
-
-        # Change directory to the base directory of the tim-file to deal with
-        # INCLUDE statements in the tim-file
-        os.chdir(dirname)
-
-        if timing_package.lower() == "pint":
-            if (clk is not None) and (bipm_version is None):
-                bipm_version = clk.split("(")[1][:-1]
-            model, toas = get_model_and_toas(
-                relparfile, reltimfile, ephem=ephem, bipm_version=bipm_version, planets=planets
-            )
+        try:
+            # Change directory to the base directory of the tim-file to deal with
+            # INCLUDE statements in the tim-file
+            os.chdir(dirname)
+            if timing_package.lower == "tempo2":
+                if t2 is None:
+                    raise ValueError("tempo2 requested but tempo2 is not available")
+                # hack to set maxobs
+                maxobs = get_maxobs(reltimfile) + 100
+                t2pulsar = t2.tempopulsar(relparfile, reltimfile, maxobs=maxobs, ephem=ephem, clk=clk)
+                return Tempo2Pulsar(
+                    t2pulsar,
+                    sort=sort,
+                    drop_t2pulsar=drop_t2pulsar,
+                    planets=planets,
+                    par_name=relparfile,
+                    tim_name=reltimfile,
+                )
+            elif timing_package.lower() == "pint":
+                if pint is None:
+                    raise ValueError("PINT requested but PINT is not available")
+                if (clk is not None) and (bipm_version is None):
+                    bipm_version = clk.split("(")[1][:-1]
+                model, toas = get_model_and_toas(
+                    relparfile, reltimfile, ephem=ephem, bipm_version=bipm_version, planets=planets
+                )
+                os.chdir(cwd)
+                return PintPulsar(toas, model, sort=sort, drop_pintpsr=drop_pintpsr, planets=planets)
+            else:
+                raise ValueError(f"Unknown timing package {timing_package}")
+        finally:
             os.chdir(cwd)
-            return PintPulsar(toas, model, sort=sort, drop_pintpsr=drop_pintpsr, planets=planets)
-
-        elif timing_package.lower() == "tempo2":
-
-            # hack to set maxobs
-            maxobs = get_maxobs(reltimfile) + 100
-            t2pulsar = t2.tempopulsar(relparfile, reltimfile, maxobs=maxobs, ephem=ephem, clk=clk)
-            os.chdir(cwd)
-            return Tempo2Pulsar(t2pulsar, sort=sort, drop_t2pulsar=drop_t2pulsar, planets=planets)
-
-    raise ValueError("Unknown arguments {}".format(args))
+    raise ValueError("Pulsar (par/tim) not specified in {args} or {kwargs}")
