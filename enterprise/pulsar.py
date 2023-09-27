@@ -163,17 +163,6 @@ class BasePulsar(object):
         """Save object to pickle file."""
 
         self.drop_not_picklable()
-        # drop t2pulsar object
-        if hasattr(self, "t2pulsar"):
-            del self.t2pulsar
-            msg = "t2pulsar object cannot be pickled and has been removed."
-            logger.warning(msg)
-
-        if hasattr(self, "pint_toas"):
-            del self.pint_toas
-            del self.model
-            msg = "pint_toas and model objects cannot be pickled and have been removed."
-            logger.warning(msg)
 
         if outdir is None:
             outdir = os.getcwd()
@@ -316,7 +305,7 @@ class BasePulsar(object):
 
     @property
     def telescope(self):
-        """Return telescope vector at all timestamps"""
+        """Return telescope name at all timestamps"""
         return self._telescope[self._isort]
 
 
