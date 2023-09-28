@@ -311,7 +311,6 @@ class BasePulsar(object):
 
 class PintPulsar(BasePulsar):
     def __init__(self, toas, model, sort=True, drop_pintpsr=True, planets=True):
-
         self._sort = sort
         self.planets = planets
         self.name = model.PSR.value
@@ -473,7 +472,6 @@ class Tempo2Pulsar(BasePulsar):
         par_name=None,
         tim_name=None,
     ):
-
         self._sort = sort
         self.t2pulsar = t2pulsar
         self.planets = planets
