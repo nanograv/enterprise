@@ -58,7 +58,14 @@ class TestWhiteSignals(unittest.TestCase):
         cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
 
         # IPTA-like pulsar
-        cls.ipsr = Pulsar(datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim")
+        cls.ipsr = Pulsar(datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", sort=True)
+
+        # Same pulsar, but with TOAs shuffled
+        cls.ipsr_shuffled = Pulsar(datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", sort=True)
+        rng = np.random.default_rng(seed=123)
+        rng.shuffle(cls.ipsr_shuffled._isort)
+        for ii, p in enumerate(cls.ipsr_shuffled._isort):
+            cls.ipsr_shuffled._iisort[p] = ii
 
     def test_efac(self):
         """Test that efac signal returns correct covariance."""
@@ -384,8 +391,13 @@ class TestWhiteSignals(unittest.TestCase):
         msg = "EFAC/ECORR {} 2D2 solve incorrect.".format(method)
         assert np.allclose(N.solve(T, left_array=T), np.dot(T.T, wd.solve(T)), rtol=1e-10), msg
 
-    def _ecorr_test_ipta(self, method="sparse"):
+    def _ecorr_test_ipta(self, method="sparse", shuffled=False):
         """Test of sparse/sherman-morrison ecorr signal and solve methods."""
+        if shuffled:
+            ipsr = self.ipsr_shuffled
+        else:
+            ipsr = self.ipsr
+
         selection = Selection(selections.nanograv_backends)
 
         efac = parameter.Uniform(0.1, 5)
@@ -394,7 +406,7 @@ class TestWhiteSignals(unittest.TestCase):
         ec = white_signals.EcorrKernelNoise(log10_ecorr=ecorr, selection=selection, method=method)
         tm = gp_signals.TimingModel()
         s = ef + ec + tm
-        m = s(self.ipsr)
+        m = s(ipsr)
 
         # set parameters
         efacs = [1.3]
@@ -412,18 +424,18 @@ class TestWhiteSignals(unittest.TestCase):
         }
 
         # get EFAC Nvec
-        nvec0 = efacs[0] ** 2 * self.ipsr.toaerrs**2
+        nvec0 = efacs[0] ** 2 * ipsr.toaerrs**2
 
         # get the basis
         flags = ["ASP-L", "ASP-S", "GASP-8", "GASP-L", "GUPPI-8", "GUPPI-L", "PUPPI-L", "PUPPI-S"]
-        bflags = self.ipsr.backend_flags
+        bflags = ipsr.backend_flags
         Umats = []
         for flag in np.unique(bflags):
             if flag in flags:
                 mask = bflags == flag
-                Umats.append(utils.create_quantization_matrix(self.ipsr.toas[mask], nmin=2)[0])
+                Umats.append(utils.create_quantization_matrix(ipsr.toas[mask], nmin=2)[0])
         nepoch = sum(U.shape[1] for U in Umats)
-        U = np.zeros((len(self.ipsr.toas), nepoch))
+        U = np.zeros((len(ipsr.toas), nepoch))
         jvec = np.zeros(nepoch)
         netot, ct = 0, 0
         for flag in np.unique(bflags):
@@ -441,22 +453,22 @@ class TestWhiteSignals(unittest.TestCase):
         # test
         msg = "EFAC/ECORR {} logdet incorrect.".format(method)
         N = m.get_ndiag(params)
-        assert np.allclose(N.solve(self.ipsr.residuals, logdet=True)[1], wd.logdet(), rtol=1e-8), msg
+        assert np.allclose(N.solve(ipsr.residuals, logdet=True)[1], wd.logdet(), rtol=1e-8), msg
 
         msg = "EFAC/ECORR {} D1 solve incorrect.".format(method)
-        assert np.allclose(N.solve(self.ipsr.residuals), wd.solve(self.ipsr.residuals), rtol=1e-8), msg
+        assert np.allclose(N.solve(ipsr.residuals), wd.solve(ipsr.residuals), rtol=1e-8), msg
 
         msg = "EFAC/ECORR {} 1D1 solve incorrect.".format(method)
         assert np.allclose(
-            N.solve(self.ipsr.residuals, left_array=self.ipsr.residuals),
-            np.dot(self.ipsr.residuals, wd.solve(self.ipsr.residuals)),
+            N.solve(ipsr.residuals, left_array=ipsr.residuals),
+            np.dot(ipsr.residuals, wd.solve(ipsr.residuals)),
             rtol=1e-8,
         ), msg
 
         msg = "EFAC/ECORR {} 2D1 solve incorrect.".format(method)
         T = m.get_basis()
         assert np.allclose(
-            N.solve(self.ipsr.residuals, left_array=T), np.dot(T.T, wd.solve(self.ipsr.residuals)), rtol=1e-8
+            N.solve(ipsr.residuals, left_array=T), np.dot(T.T, wd.solve(ipsr.residuals)), rtol=1e-8
         ), msg
 
         msg = "EFAC/ECORR {} 2D2 solve incorrect.".format(method)
@@ -476,15 +488,18 @@ class TestWhiteSignals(unittest.TestCase):
 
     def test_ecorr_sparse_ipta(self):
         """Test of sparse ecorr signal and solve methods."""
-        self._ecorr_test_ipta(method="sparse")
+        self._ecorr_test_ipta(method="sparse", shuffled=False)
+        self._ecorr_test_ipta(method="sparse", shuffled=True)
 
     def test_ecorr_sherman_morrison_ipta(self):
         """Test of sherman-morrison ecorr signal and solve methods."""
-        self._ecorr_test_ipta(method="sherman-morrison")
+        self._ecorr_test_ipta(method="sherman-morrison", shuffled=False)
+        self._ecorr_test_ipta(method="sherman-morrison", shuffled=True)
 
     def test_ecorr_block_ipta(self):
         """Test of block matrix ecorr signal and solve methods."""
-        self._ecorr_test_ipta(method="block")
+        self._ecorr_test_ipta(method="block", shuffled=False)
+        self._ecorr_test_ipta(method="block", shuffled=True)
 
 
 class TestWhiteSignalsPint(TestWhiteSignals):
@@ -502,5 +517,14 @@ class TestWhiteSignalsPint(TestWhiteSignals):
 
         # IPTA-like pulsar
         cls.ipsr = Pulsar(
-            datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", ephem="DE421", timint_package="pint"
+            datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", ephem="DE421", timint_package="pint", sort=True
         )
+
+        # Same pulsar, but with TOAs shuffled
+        cls.ipsr_shuffled = Pulsar(
+            datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", ephem="DE421", timint_package="pint", sort=True
+        )
+        rng = np.random.default_rng(seed=123)
+        rng.shuffle(cls.ipsr_shuffled._isort)
+        for ii, p in enumerate(cls.ipsr_shuffled._isort):
+            cls.ipsr_shuffled._iisort[p] = ii
