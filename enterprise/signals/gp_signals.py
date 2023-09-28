@@ -851,7 +851,10 @@ class MarginalizingNmat(object):
         if right.ndim == 1 and left_array is right:
             res = right
 
-            rNr, logdet_N = self.Nmat.solve(res, left_array=res, logdet=logdet)
+            if logdet:
+                rNr, logdet_N = self.Nmat.solve(res, left_array=res, logdet=logdet)
+            else:
+                rNr = self.Nmat.solve(res, left_array=res, logdet=logdet)
 
             MNr = self.MNr(res)
             ret = rNr - np.dot(MNr, self.cf(MNr))
