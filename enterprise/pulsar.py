@@ -602,6 +602,65 @@ class Tempo2Pulsar(BasePulsar):
             psr._deflated = "destroyed"
 
 
+
+class MockPulsar(BasePulsar):
+    """Class to allow mock pulsars to be used with Enterprise"""
+    # TODO: allow units?
+    #       test utils.get_psrname_from_raj_decj
+    #            utils.get_psrname_from_pos
+    #            utils.create_spindown_timing_model
+
+    def __init__(self, obs_times_mjd, elong=None, elat=None, raj=None,
+                 decj=None, ssbfreqs=1440.0, residuals=None, toaerrs=1e-6,
+                 sort=True, telescope='GBT', spindown_order=2):
+
+        self.name = utils.get_psrname_from_pos(
+                elong=elong, elat=elat, raj=raj, decj=decj)
+
+        if elong is not None and elat is not None:
+            ec = ephem.Ecliptic(elong*np.pi/180.0, elat*np.pi/180.0)
+            eq = ephem.Equatorial(ec, epoch=ephem.J2000)
+            raj, decj = np.double(eq.ra), np.double(eq.dec)
+
+        self._raj, self._decj = raj, decj
+
+        self._sort = sort
+        self.planets = False
+
+        self._toas = np.double(obs_times_mjd) * 86400
+        self._stoas = np.double(obs_times_mjd) * 86400
+        self._residuals = residuals if residuals else np.zeros_like(obs_times_mjd)
+        self._toaerrs = np.ones_like(obs_times_mjd) * toaerrs
+
+        self._designmatrix, self.fitpars = utils.create_spindown_timing_model(
+                self._toas, order=spindown_order=2)
+        self._ssbfreqs = np.ones_like(self._toas) * ssbfreqs / 1e6
+        self._telescope = telescope
+
+        # set parameters
+        self.setpars = [fp for fp in self.fitpars]
+
+        flags = {}
+
+        # new-style storage of flags as a numpy record array (previously, psr._flags = flags)
+        self._flags = np.zeros(len(self._toas), dtype=[(key, val.dtype) for key, val in flags.items()])
+        for key, val in flags.items():
+            self._flags[key] = val
+
+        self._pdist = self._get_pdist()
+
+        self._pos = self._get_pos()
+        self._planetssb = None
+        self._sunssb = None
+
+        self._pos_t = np.tile(self._pos, (len(self._toas), 1))
+
+        self.sort_data()
+
+    def set_residuals(self, residuals):
+        self._residuals = residuals
+
+
 def Pulsar(*args, **kwargs):
     ephem = kwargs.get("ephem", None)
     clk = kwargs.get("clk", None)

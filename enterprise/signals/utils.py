@@ -14,6 +14,7 @@ from pkg_resources import Requirement, resource_filename
 from scipy.integrate import odeint
 from scipy.interpolate import interp1d
 from sksparse.cholmod import cholesky
+from ephem import Ecliptic, Equatorial
 
 import enterprise
 from enterprise import constants as const
@@ -29,6 +30,44 @@ from enterprise.signals.gp_priors import powerlaw, turnover  # noqa: F401
 from enterprise.signals.parameter import function
 
 logger = logging.getLogger(__name__)
+
+
+def get_psrname_from_raj_decj(raj, decj):
+    """Get the pulsar name from RAJ and DECJ values"""
+
+    raj_fhr = raj * 12 / np.pi
+    raj_hr = int(raj_fhr)
+    raj_min = int((raj_fhr-raj_hr)*60)
+
+    decj_fdeg = decj * 180 / np.pi
+    decj_deg = int(decj_fdeg)
+    decj_min = int(np.abs((decj_fdeg-decj_deg)*60))
+
+    sign = "+" if np.sign(decj) > 0 else "-"
+    pos_str = f"J{raj_hr:02}{raj_min:02}{sign}{int(np.abs(decj_deg)):02}{decj_min:02}"
+
+    return pos_str
+
+def get_psrname_from_pos(elong=None, elat=None, raj=None, decj=None):
+    """Get the pulsar name from position parameters"""
+
+    if elong is not None and elat is not None:
+        ec = ephem.Ecliptic(elong*np.pi/180.0, elat*np.pi/180.0)
+        eq = ephem.Equatorial(ec, epoch=ephem.J2000)
+        raj, decj = float(eq.ra), float(eq.dec)
+    elif raj is None or decj is None:
+        raise ValueError("Need to provide either raj/decj or elong/elat!")
+
+    return get_psrname_from_raj_decj(raj, decj)
+
+def create_spindown_timing_model(toas, order=2):
+    """Create a spindown-only timing model with some order (default 2 = QSD)"""
+
+    avetoas = (toas-np.mean(toas)) / np.mean(toas)
+    designmatrix = np.vstack([avetoas**ii for ii in range(1+order)]).T
+    parameter_names = ['Offset'] + ['F{ii}'.format(ii) for ii in range(order)]
+
+    return designmatrix, parameter_names
 
 
 class ConditionalGP:
