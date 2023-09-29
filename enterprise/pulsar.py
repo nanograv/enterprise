@@ -633,7 +633,7 @@ class MockPulsar(BasePulsar):
         self._toaerrs = np.ones_like(obs_times_mjd) * toaerrs
 
         self._designmatrix, self.fitpars = utils.create_spindown_timing_model(
-                self._toas, order=spindown_order=2)
+                self._toas, order=spindown_order)
         self._ssbfreqs = np.ones_like(self._toas) * ssbfreqs / 1e6
         self._telescope = telescope
 
