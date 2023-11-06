@@ -75,7 +75,7 @@ class TestVectorParameter(unittest.TestCase):
         pta = signal_base.PTA([s(self.psr)])
 
         # parameters
-        xs = np.hstack(p.sample() for p in pta.params)
+        xs = np.hstack([p.sample() for p in pta.params])
         params = {"B1855+09_red_noise_log10_rho": xs[1:], "B1855+09_efac": xs[0]}
 
         # test log likelihood
