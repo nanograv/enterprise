@@ -467,9 +467,7 @@ class TestWhiteSignals(unittest.TestCase):
 
         msg = "EFAC/ECORR {} 2D1 solve incorrect.".format(method)
         T = m.get_basis()
-        assert np.allclose(
-            N.solve(ipsr.residuals, left_array=T), np.dot(T.T, wd.solve(ipsr.residuals)), rtol=1e-8
-        ), msg
+        assert np.allclose(N.solve(ipsr.residuals, left_array=T), np.dot(T.T, wd.solve(ipsr.residuals)), rtol=1e-8), msg
 
         msg = "EFAC/ECORR {} 2D2 solve incorrect.".format(method)
         assert np.allclose(N.solve(T, left_array=T), np.dot(T.T, wd.solve(T)), rtol=1e-8), msg
