@@ -2,9 +2,9 @@ name: enterprise CI targets
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, dev ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, dev ]
   release: 
     types:
       - published
