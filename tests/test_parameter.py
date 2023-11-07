@@ -21,7 +21,6 @@ from enterprise.signals.parameter import LinearExpPrior, LinearExpSampler, Linea
 
 
 class TestParameterExceptions(unittest.TestCase):
-
     def test_missing_prior_attribute_error(self):
         class MissingPriorParameter(Parameter):
             pass  # Do not define _prior or _logprior
