@@ -29,10 +29,20 @@ class TestTimingPackageExceptions(unittest.TestCase):
     def test_unkown_timing_package(self):
         # initialize Pulsar class
         with self.assertRaises(ValueError):
-            self.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim", timing_package='foobar')
+            self.psr = Pulsar(
+                datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
+                datadir + "/B1855+09_NANOGrav_9yv1.tim",
+                timing_package="foobar",
+            )
 
     def test_clk_but_no_bipm(self):
-        self.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim", clk='TT(BIPM2020)', timing_package='pint')
+        self.psr = Pulsar(
+            datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
+            datadir + "/B1855+09_NANOGrav_9yv1.tim",
+            clk="TT(BIPM2020)",
+            timing_package="pint",
+        )
+
 
 class TestPulsar(unittest.TestCase):
     @classmethod
@@ -40,8 +50,12 @@ class TestPulsar(unittest.TestCase):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim", drop_t2pulsar=True)
-        cls.psr_nodrop = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim", drop_t2pulsar=False)
+        cls.psr = Pulsar(
+            datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim", drop_t2pulsar=True
+        )
+        cls.psr_nodrop = Pulsar(
+            datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim", drop_t2pulsar=False
+        )
 
     @classmethod
     def tearDownClass(cls):

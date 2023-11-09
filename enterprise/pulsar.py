@@ -681,9 +681,9 @@ def Pulsar(*args, **kwargs):
         if timing_package is None:
             if t2 is not None:
                 timing_package = "tempo2"
-            elif pint is not None: # pragma: no cover
+            elif pint is not None:  # pragma: no cover
                 timing_package = "pint"
-            else: # pragma: no cover
+            else:  # pragma: no cover
                 raise ValueError("No timing package available with which to load a pulsar")
 
         # get current directory
@@ -707,7 +707,7 @@ def Pulsar(*args, **kwargs):
                     tim_name=reltimfile,
                 )
             elif timing_package.lower() == "pint":
-                if pint is None: # pragma: no cover
+                if pint is None:  # pragma: no cover
                     raise ValueError("PINT requested but PINT is not available")
                 if (clk is not None) and (bipm_version is None):
                     bipm_version = clk.split("(")[1][:-1]
