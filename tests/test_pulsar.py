@@ -53,15 +53,16 @@ class TestPulsar(unittest.TestCase):
         cls.psr = Pulsar(
             datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim", drop_t2pulsar=True
         )
-        cls.psr_nodrop = Pulsar(
-            datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim", drop_t2pulsar=False
-        )
 
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree("pickle_dir", ignore_errors=True)
 
     def test_droppsr(self):
+        self.psr_nodrop = Pulsar(
+            datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim", drop_t2pulsar=False
+        )
+
         self.psr_nodrop.drop_tempopsr()
 
         with self.assertRaises(AttributeError):
@@ -232,7 +233,8 @@ class TestPulsarPint(TestPulsar):
             timing_package="pint",
         )
 
-        cls.psr_nodrop = Pulsar(
+    def test_droppsr(self):
+        self.psr_nodrop = Pulsar(
             datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
             datadir + "/B1855+09_NANOGrav_9yv1.tim",
             ephem="DE430",
@@ -240,7 +242,6 @@ class TestPulsarPint(TestPulsar):
             timing_package="pint",
         )
 
-    def test_droppsr(self):
         self.psr_nodrop.drop_pintpsr()
 
         with self.assertRaises(AttributeError):
@@ -256,6 +257,14 @@ class TestPulsarPint(TestPulsar):
             _ = self.psr_nodrop.timfile
 
     def test_drop_not_picklable(self):
+        self.psr_nodrop = Pulsar(
+            datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
+            datadir + "/B1855+09_NANOGrav_9yv1.tim",
+            ephem="DE430",
+            drop_pintpsr=False,
+            timing_package="pint",
+        )
+
         self.psr_nodrop.drop_not_picklable()
 
         with self.assertRaises(AttributeError):
