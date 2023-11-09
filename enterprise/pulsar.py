@@ -688,7 +688,7 @@ def Pulsar(*args, **kwargs):
             # Change directory to the base directory of the tim-file to deal with
             # INCLUDE statements in the tim-file
             os.chdir(dirname)
-            if timing_package.lower == "tempo2":
+            if timing_package.lower() == "tempo2":
                 if t2 is None:
                     raise ValueError("tempo2 requested but tempo2 is not available")
                 # hack to set maxobs
