@@ -518,12 +518,16 @@ class Tempo2Pulsar(BasePulsar):
         self.sort_data()
 
         if drop_t2pulsar:
-            del self.t2pulsar
+            self.drop_tempopsr()
         else:
             if par_name is not None and os.path.exists(par_name):
                 self.parfile = open(par_name).read()
             if tim_name is not None and os.path.exists(tim_name):
                 self.timfile = open(tim_name).read()
+
+    def drop_tempopsr(self):
+        with contextlib.suppress(NameError):
+            del self.t2pulsar
 
     # gather DM/DMX information if available
     def _set_dm(self, t2pulsar):
@@ -677,9 +681,9 @@ def Pulsar(*args, **kwargs):
         if timing_package is None:
             if t2 is not None:
                 timing_package = "tempo2"
-            elif pint is not None:
+            elif pint is not None: # pragma: no cover
                 timing_package = "pint"
-            else:
+            else: # pragma: no cover
                 raise ValueError("No timing package available with which to load a pulsar")
 
         # get current directory
@@ -689,7 +693,7 @@ def Pulsar(*args, **kwargs):
             # INCLUDE statements in the tim-file
             os.chdir(dirname)
             if timing_package.lower() == "tempo2":
-                if t2 is None:
+                if t2 is None:  # pragma: no cover
                     raise ValueError("tempo2 requested but tempo2 is not available")
                 # hack to set maxobs
                 maxobs = get_maxobs(reltimfile) + 100
@@ -703,7 +707,7 @@ def Pulsar(*args, **kwargs):
                     tim_name=reltimfile,
                 )
             elif timing_package.lower() == "pint":
-                if pint is None:
+                if pint is None: # pragma: no cover
                     raise ValueError("PINT requested but PINT is not available")
                 if (clk is not None) and (bipm_version is None):
                     bipm_version = clk.split("(")[1][:-1]

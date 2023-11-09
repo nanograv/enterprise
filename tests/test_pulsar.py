@@ -25,17 +25,33 @@ import pint.models.timing_model
 from pint.models import get_model_and_toas
 
 
+class TestTimingPackageExceptions(unittest.TestCase):
+    def test_unkown_timing_package(self):
+        # initialize Pulsar class
+        with self.assertRaises(ValueError):
+            self.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim", timing_package='foobar')
+
+    def test_clk_but_no_bipm(self):
+        self.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim", clk='TT(BIPM2020)', timing_package='pint')
+
 class TestPulsar(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim", drop_t2pulsar=True)
+        cls.psr_nodrop = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim", drop_t2pulsar=False)
 
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree("pickle_dir", ignore_errors=True)
+
+    def test_droppsr(self):
+        self.psr_nodrop.drop_tempopsr()
+
+        with self.assertRaises(AttributeError):
+            _ = self.psr.t2pulsar
 
     def test_residuals(self):
         """Check Residual shape."""
@@ -198,9 +214,32 @@ class TestPulsarPint(TestPulsar):
             datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
             datadir + "/B1855+09_NANOGrav_9yv1.tim",
             ephem="DE430",
+            drop_pintpsr=True,
+            timing_package="pint",
+        )
+
+        cls.psr_nodrop = Pulsar(
+            datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
+            datadir + "/B1855+09_NANOGrav_9yv1.tim",
+            ephem="DE430",
             drop_pintpsr=False,
             timing_package="pint",
         )
+
+    def test_droppsr(self):
+        self.psr_nodrop.drop_pintpsr()
+
+        with self.assertRaises(AttributeError):
+            _ = self.psr_nodrop.model
+
+        with self.assertRaises(AttributeError):
+            _ = self.psr_nodrop.parfile
+
+        with self.assertRaises(AttributeError):
+            _ = self.psr_nodrop.pint_toas
+
+        with self.assertRaises(AttributeError):
+            _ = self.psr_nodrop.timfile
 
     def test_deflate_inflate(self):
         pass
@@ -225,7 +264,7 @@ class TestPulsarPint(TestPulsar):
             model, toas = get_model_and_toas(
                 datadir + "/J0030+0451_NANOGrav_9yv1.gls.par", datadir + "/J0030+0451_NANOGrav_9yv1.tim", planets=False
             )
-            Pulsar(model, toas, planets=True)
+            Pulsar(model, toas, planets=True, drop_pintpsr=False)
             msg = "obs_earth_pos is not in toas.table.colnames. Either "
             msg += "`planet` flag is not True in `toas` or further Pint "
             msg += "development to add additional planets is needed."
