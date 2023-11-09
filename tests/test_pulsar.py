@@ -255,6 +255,15 @@ class TestPulsarPint(TestPulsar):
         with self.assertRaises(AttributeError):
             _ = self.psr_nodrop.timfile
 
+    def test_drop_not_picklable(self):
+        self.psr_nodrop.drop_not_picklable()
+
+        with self.assertRaises(AttributeError):
+            _ = self.psr_nodrop.model
+
+        with self.assertRaises(AttributeError):
+            _ = self.psr_nodrop.pint_toas
+
     def test_deflate_inflate(self):
         pass
 
