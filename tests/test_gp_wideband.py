@@ -12,8 +12,9 @@ Tests for WidebandTimingModel.
 import unittest
 
 import numpy as np
+import pytest
 
-from enterprise.pulsar import Pulsar
+from enterprise.pulsar import Pulsar, pint
 from enterprise.signals import white_signals, gp_signals, parameter, selections, signal_base
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
@@ -145,6 +146,7 @@ class TestWidebandTimingModel(unittest.TestCase):
         assert np.allclose(dl1, delays), msg
 
 
+@pytest.mark.skipif(pint is None, reason="PINT not available")
 class TestGPSignalsPint(TestWidebandTimingModel):
     @classmethod
     def setUpClass(cls):

@@ -13,10 +13,11 @@ import logging
 import unittest
 
 import numpy as np
+import pytest
 import scipy.sparse as sps
 from sksparse.cholmod import cholesky
 
-from enterprise.pulsar import Pulsar
+from enterprise.pulsar import Pulsar, pint
 from enterprise.signals import (
     deterministic_signals,
     gp_signals,
@@ -379,6 +380,7 @@ class TestGPCoefficients(unittest.TestCase):
             assert np.allclose(mn[idx[c_name]], v)
 
 
+@pytest.mark.skipif(pint is None, reason="PINT not available")
 class TestGPCoefficientsPint(TestGPCoefficients):
     @classmethod
     def setUpClass(cls):

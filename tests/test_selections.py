@@ -13,8 +13,9 @@ import operator
 import functools
 
 import numpy as np
+import pytest
 
-from enterprise.pulsar import Pulsar
+from enterprise.pulsar import Pulsar, pint
 import enterprise.signals.selections as selections
 from tests.enterprise_test_data import datadir
 
@@ -43,6 +44,7 @@ class TestSelections(unittest.TestCase):
             assert np.all(sum(mask for mask in s.masks.values()) == 1), msg
 
 
+@pytest.mark.skipif(pint is None, reason="PINT not available")
 class TestSelectionsPint(TestSelections):
     @classmethod
     def setUpClass(cls):

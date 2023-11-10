@@ -17,14 +17,33 @@ import pickle
 import pytest
 
 import numpy as np
+from packaging import version
 
-from enterprise.pulsar import Pulsar
+from enterprise.pulsar import Pulsar, t2
 from tests.enterprise_test_data import datadir
 
-import pint.models.timing_model
-from pint.models import get_model_and_toas
+try:
+    import pint.models.timing_model
+    from pint.models import get_model_and_toas
+except ImportError:
+    pint = None
 
 
+@pytest.fixture(scope="module")
+def pint_psr():
+    if pint is None:
+        pytest.skip(reason="PINT not available")
+    return Pulsar(
+        f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par",
+        f"{datadir}/B1855+09_NANOGrav_9yv1.tim",
+        ephem="DE430",
+        drop_pintpsr=False,
+        timing_package="pint",
+    )
+
+
+# FIXME: these really should all be run for all available Pulsar types
+# Not so hard with pytest's parametrized fixtures (see test_white_signals.py)
 class TestPulsar(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -134,10 +153,14 @@ class TestPulsar(unittest.TestCase):
     def test_to_pickle(self):
         """Place holder for to_pickle tests."""
         self.psr.to_pickle()
-        with open("B1855+09.pkl", "rb") as f:
-            pkl_psr = pickle.load(f)
-
-        os.remove("B1855+09.pkl")
+        try:
+            with open("B1855+09.pkl", "rb") as f:
+                pkl_psr = pickle.load(f)
+        finally:
+            try:
+                os.remove("B1855+09.pkl")
+            except FileNotFoundError:
+                pass
 
         assert np.allclose(self.psr.residuals, pkl_psr.residuals, rtol=1e-10)
 
@@ -147,10 +170,29 @@ class TestPulsar(unittest.TestCase):
 
         assert np.allclose(self.psr.residuals, pkl_psr.residuals, rtol=1e-10)
 
-    @pytest.mark.skipif(sys.version_info < (3, 8), reason="Requires Python >= 3.8")
-    def test_deflate_inflate(self):
-        psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
 
+@pytest.mark.skipif(sys.version_info < (3, 8), reason="Requires Python >= 3.8")
+@pytest.mark.parametrize(
+    "timing_package",
+    [
+        pytest.param("tempo2", marks=pytest.mark.skipif(t2 is None, reason="TEMPO2 not available")),
+        pytest.param(
+            "pint",
+            marks=[
+                pytest.mark.xfail(reason="FIXME: PintPulsar doesn't do deflate/inflate yet"),
+                pytest.mark.skipif(pint is None, reason="PINT not available"),
+            ],
+        ),
+    ],
+)
+def test_deflate_inflate(timing_package):
+    psr = Pulsar(
+        datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
+        datadir + "/B1855+09_NANOGrav_9yv1.tim",
+        timing_package=timing_package,
+    )
+
+    try:
         dm = psr._designmatrix.copy()
 
         psr.deflate()
@@ -160,7 +202,7 @@ class TestPulsar(unittest.TestCase):
             pkl_psr = pickle.load(f)
         pkl_psr.inflate()
 
-        assert np.allclose(dm, pkl_psr._designmatrix)
+        assert np.array_equal(dm, pkl_psr._designmatrix)
 
         del pkl_psr
 
@@ -169,25 +211,54 @@ class TestPulsar(unittest.TestCase):
         with open("B1855+09.pkl", "rb") as f:
             pkl_psr = pickle.load(f)
 
-        with self.assertRaises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError):
             pkl_psr.inflate()
-
-    def test_wrong_input(self):
-        """Test exception when incorrect par(tim) file given."""
-
-        with self.assertRaises(IOError) as context:
-            Pulsar("wrong.par", "wrong.tim")
-
-            msg = "Cannot find parfile wrong.par or timfile wrong.tim!"
-            self.assertTrue(msg in context.exception)
-
-    def test_value_error(self):
-        """Test exception when unknown argument is given"""
-
-        with self.assertRaises(ValueError):
-            Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.time")
+    finally:
+        try:
+            os.remove("B1855+09.pkl")
+        except FileNotFoundError:
+            pass
 
 
+@pytest.mark.parametrize(
+    "timing_package",
+    [
+        pytest.param("tempo2", marks=pytest.mark.skipif(t2 is None, reason="TEMPO2 not available")),
+        "pint",
+    ],
+)
+def test_wrong_input(timing_package):
+    """Test exception when incorrect par(tim) file given."""
+
+    with pytest.raises(IOError) as context:
+        Pulsar("wrong.par", "wrong.tim", timing_package=timing_package)
+
+    message = str(context.value)
+    assert "wrong.par" in message or "wrong.tim" in message
+    assert "cannot find" in message.lower()
+
+
+@pytest.mark.parametrize(
+    "timing_package",
+    [
+        pytest.param("tempo2", marks=pytest.mark.skipif(t2 is None, reason="TEMPO2 not available")),
+        pytest.param("pint", marks=pytest.mark.skipif(pint is None, reason="PINT not available")),
+    ],
+)
+def test_value_error(timing_package):
+    """Test exception when unknown argument is given"""
+
+    with pytest.raises(ValueError):
+        Pulsar(
+            datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
+            datadir + "/B1855+09_NANOGrav_9yv1.time",
+            timing_package=timing_package,
+        )
+
+
+@pytest.mark.skipif(pint is None, reason="PINT not available")
+# This repeats all tests specifically for PintPulsar
+# FIXME: most of these tests are duplicates if TEMPO2 is not available
 class TestPulsarPint(TestPulsar):
     @classmethod
     def setUpClass(cls):
@@ -230,3 +301,71 @@ class TestPulsarPint(TestPulsar):
             msg += "`planet` flag is not True in `toas` or further Pint "
             msg += "development to add additional planets is needed."
             self.assertTrue(msg in context.exception)
+
+
+@pytest.mark.xfail
+def test_create_pulsar_surplus_arguments_raises():
+    with pytest.raises(ValueError):
+        Pulsar(
+            f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par",
+            f"{datadir}/B1855+09_NANOGrav_9yv1.tim",
+            bogus_argument=17,
+        )
+
+
+def test_create_pulsar_bogus_timing_package_reports_bogus_value():
+    with pytest.raises(ValueError) as context:
+        Pulsar(
+            f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par",
+            f"{datadir}/B1855+09_NANOGrav_9yv1.tim",
+            timing_package="witchcraft",
+        )
+    assert "witchcraft" in str(context.value)
+
+
+def test_create_pulsar_no_args_raises():
+    # unfortunately this raises "Unkown arguments ()" rather than "no par/tim files provided" or something
+    with pytest.raises(ValueError):
+        Pulsar()
+
+
+def test_open_from_random_directory(tmp_path):
+    # FIXME: do we have a tim file with INCLUDE?
+    par = os.path.abspath(f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par")
+    tim = os.path.abspath(f"{datadir}/B1855+09_NANOGrav_9yv1.tim")
+
+    cwd = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        Pulsar(par, tim)
+    finally:
+        os.chdir(cwd)
+
+
+def test_designmatrix_order_matches_fitparams(pint_psr):
+    des, params, units = pint_psr.model.designmatrix(pint_psr.pint_toas)
+    assert params == pint_psr.fitpars
+
+
+@pytest.mark.skipif(pint is None, reason="PINT not available")
+@pytest.mark.skipif(
+    pint is not None and version.parse(pint.__version__) < version.parse("0.9"),
+    reason="Old PINT did not check BIPM versions",
+)
+def test_pulsar_clk_converts_to_bipm():
+    Pulsar(
+        f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par",
+        f"{datadir}/B1855+09_NANOGrav_9yv1.tim",
+        timing_package="pint",
+        ephem="DE430",
+        clk="TT(BIPM2020)",
+    )
+    with pytest.raises(ValueError) as e:
+        Pulsar(
+            f"{datadir}/B1855+09_NANOGrav_9yv1.gls.par",
+            f"{datadir}/B1855+09_NANOGrav_9yv1.tim",
+            timing_package="pint",
+            ephem="DE430",
+            clk="TT(BOGUS)",
+        )
+    assert "bogus" in str(e.value).lower()
