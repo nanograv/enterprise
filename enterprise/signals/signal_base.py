@@ -684,7 +684,7 @@ class PTA(object):
         transformed_priors = np.empty_like(params)  # initialise empty array
 
         for ii, p in enumerate(self.params):  # iterate through signals
-            transformed_priors[ii] = p.ppf(params[ii])
+            transformed_priors[ii] = p.ppf(params[p])
 
         return transformed_priors
 
