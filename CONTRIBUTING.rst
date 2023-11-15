@@ -69,19 +69,16 @@ Then you remove ``enterprise`` leaving everything else intact.
 This way you can use your development version of ``enterprise`` instead of the stable version.
 We will also need some additional software that is required to run the tests.
 
-Start with an empty virtual environment, in this case called ``ent_dev``::
+Start with a virtual environment with the extra dependencies required for running tests. In this case it is called ``ent_dev``::
 
-    $ conda create -n ent_dev -y -c conda-forge python=3.9
+    $ conda create -n ent_dev -y -c conda-forge python=3.9 black=22.3.0 flake8 sphinx_rtd_theme pytest-cov
     $ conda activate ent_dev
 
-Now install things by running the commands::
+Now install everything else by running the commands::
 
     $ conda install -c conda-forge enterprise-pulsar
     $ conda remove enterprise-pulsar --force
-    $ conda install -c conda-forge  black=22.3.0 flake8 sphinx_rtd_theme pytest-cov
     $ pip install coverage-conditional-plugin
-
-Without the dependencies you can still edit the source code, but you won't be able to run tests to see if your changes work!
 
 
 Get the enterprise source code and get to work!
