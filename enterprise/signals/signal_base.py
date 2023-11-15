@@ -681,12 +681,8 @@ class PTA(object):
         # transform from unit cube to prior cube for nested sampling using PPFs
         # map parameter vector if needed
         params = params if isinstance(params, dict) else self.map_params(params)
-        transformed_priors = np.empty_like(params)  # initialise empty array
 
-        for ii, p in enumerate(self.params):  # iterate through signals
-            transformed_priors[ii] = p.ppf(params=params)
-
-        return transformed_priors
+        return np.array([p.get_ppf(params=params) for p in self.params])
 
     @property
     def pulsars(self):
