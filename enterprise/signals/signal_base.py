@@ -676,6 +676,17 @@ class PTA(object):
         params = params if isinstance(params, dict) else self.map_params(params)
 
         return np.sum([p.get_logpdf(params=params) for p in self.params])
+    
+    def get_hypercube_transform(self, params):
+        # transform from unit cube to prior cube for nested sampling using PPFs
+        # map parameter vector if needed
+        params = params if isinstance(params, dict) else self.map_params(params)
+        transformed_priors = np.empty_like(params)  # initialise empty array
+
+        for ii, p in enumerate(self.params):  # iterate through signals
+            transformed_priors[ii] = p.ppf(params[ii])
+
+        return transformed_priors
 
     @property
     def pulsars(self):
