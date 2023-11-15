@@ -13,9 +13,9 @@ import scipy.sparse as sps
 from sksparse.cholmod import cholesky
 
 from enterprise.signals import parameter, selections, signal_base, utils
+from enterprise.signals.signal_base import KernelMatrix
 from enterprise.signals.parameter import function
 from enterprise.signals.selections import Selection
-from enterprise.signals.utils import KernelMatrix
 
 # logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -225,11 +225,11 @@ def get_timing_model_basis(use_svd=False, normed=True):
         return utils.unnormed_tm_basis()
 
 
-def TimingModel(coefficients=False, name="linear_timing_model", use_svd=False, normed=True):
+def TimingModel(coefficients=False, name="linear_timing_model", use_svd=False, normed=True, prior_variance=1e40):
     """Class factory for marginalized linear timing model signals."""
 
     basis = get_timing_model_basis(use_svd, normed)
-    prior = utils.tm_prior()
+    prior = utils.tm_prior(variance=prior_variance)
 
     BaseClass = BasisGP(prior, basis, coefficients=coefficients, name=name)
 
@@ -848,6 +848,7 @@ class MarginalizingNmat(object):
 
     # we're ignoring logdet = True for two-dimensional cases, but OK
     def solve(self, right, left_array=None, logdet=False):
+        # compute generalized version of r+ N^-1 r
         if right.ndim == 1 and left_array is right:
             res = right
 
@@ -856,11 +857,13 @@ class MarginalizingNmat(object):
             MNr = self.MNr(res)
             ret = rNr - np.dot(MNr, self.cf(MNr))
             return (ret, logdet_N + self.cf.logdet() + self.Mprior) if logdet else ret
+        # compute generalized version of T+ N^-1 r
         elif right.ndim == 1 and left_array is not None and left_array.ndim == 2:
             res, T = right, left_array
 
             TNr = self.Nmat.solve(res, left_array=T)
             return TNr - np.tensordot(self.MNMMNF(T), self.MNr(res), (0, 0))
+        # compute generalized version of T+ N^-1 T
         elif right.ndim == 2 and left_array is right:
             T = right
 
