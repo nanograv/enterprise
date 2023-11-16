@@ -59,7 +59,7 @@ def Selection(func):
     # if hasattr(func, 'masks'):
     #     return func
 
-    class Selection(object):
+    class Selection_(object):
         def __init__(self, psr):
             self._psr = psr
 
@@ -85,7 +85,7 @@ def Selection(func):
                 ret = params, kmasks
             return ret
 
-    return Selection
+    return Selection_
 
 
 # SELECTION FUNCTIONS

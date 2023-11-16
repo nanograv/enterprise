@@ -13,13 +13,13 @@ from enterprise.signals.selections import Selection
 def Deterministic(waveform, selection=Selection(selections.no_selection), name=""):
     """Class factory for generic deterministic signals."""
 
-    class Deterministic(signal_base.Signal):
+    class Deterministic_(signal_base.Signal):
         signal_type = "deterministic"
         signal_name = name
         signal_id = name
 
         def __init__(self, psr):
-            super(Deterministic, self).__init__(psr)
+            super(Deterministic_, self).__init__(psr)
             self.name = self.psrname + "_" + self.signal_id
             self._do_selection(psr, waveform, selection)
 
@@ -50,7 +50,7 @@ def Deterministic(waveform, selection=Selection(selections.no_selection), name="
                 delay[mask] = self._wf[key](params=params, mask=mask)
             return delay
 
-    return Deterministic
+    return Deterministic_
 
 
 def PhysicalEphemerisSignal(
@@ -163,12 +163,12 @@ def PhysicalEphemerisSignal(
 
     BaseClass = Deterministic(wf, name=name)
 
-    class PhysicalEphemerisSignal(BaseClass):
+    class PhysicalEphemerisSignal_(BaseClass):
         signal_name = "phys_ephem"
         signal_id = "phys_ephem_" + name if name else "phys_ephem"
 
         def __init__(self, psr):
-            super(PhysicalEphemerisSignal, self).__init__(psr)
+            super(PhysicalEphemerisSignal_, self).__init__(psr)
 
             if use_epoch_toas:
                 # get quantization matrix and calculate daily average TOAs
@@ -206,4 +206,4 @@ def PhysicalEphemerisSignal(
                 delay = self._wf[""](params=params)
                 return delay
 
-    return PhysicalEphemerisSignal
+    return PhysicalEphemerisSignal_
