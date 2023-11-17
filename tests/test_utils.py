@@ -142,7 +142,7 @@ class TestUtils(unittest.TestCase):
         ind_np_check = utils.indices_from_slice(ind_np)
 
         msg1 = "Numpy indices not left as-is by indices_from_slice"
-        assert np.all(ind_np == ind_np_check)
+        assert np.all(ind_np == ind_np_check), msg1
 
         slc = slice(2, 10, 2)
         ind_np_check = utils.indices_from_slice(slc)
