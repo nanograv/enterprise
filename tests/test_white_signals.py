@@ -480,6 +480,10 @@ class TestWhiteSignals(unittest.TestCase):
         """Test of sherman-morrison ecorr signal and solve methods."""
         self._ecorr_test(method="sherman-morrison")
 
+    def test_ecorr_fast_sherman_morrison(self):
+        """Test of fast-sherman-morrison ecorr signal and solve methods."""
+        self._ecorr_test(method="fast-sherman-morrison")
+
     def test_ecorr_block(self):
         """Test of block matrix ecorr signal and solve methods."""
         self._ecorr_test(method="block")
