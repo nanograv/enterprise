@@ -128,6 +128,27 @@ class TestUtils(unittest.TestCase):
         assert U.shape == (4005, 235), msg1
         assert all(np.sum(U, axis=0) > 1), msg2
 
+        inds = utils.quant2ind(U, as_slice=False)
+        slcs = utils.quant2ind(U, as_slice=True)
+        inds_check = [utils.indices_from_slice(slc) for slc in slcs]
+
+        msg3 = "Quantization Matrix slice not equal to quantization indices"
+        for ind, ind_c in zip(inds, inds_check):
+            assert np.all(ind == ind_c), msg3
+
+    def test_indices_from_slice(self):
+        """Test conversion of slices to numpy indices"""
+        ind_np = np.array([2, 4, 6, 8])
+        ind_np_check = utils.indices_from_slice(ind_np)
+
+        msg1 = "Numpy indices not left as-is by indices_from_slice"
+        assert np.all(ind_np == ind_np_check)
+
+        slc = slice(2, 10, 2)
+        ind_np_check = utils.indices_from_slice(slc)
+        msg2 = "Slice not converted properly by indices_from_slice"
+        assert np.all(ind_np == ind_np_check), msg2
+
     def test_psd(self):
         """Test PSD functions."""
         Tmax = self.psr.toas.max() - self.psr.toas.min()
