@@ -767,24 +767,35 @@ def create_quantization_matrix(toas, dt=1, nmin=2):
     return U, weights
 
 
-def quant2ind(U):
+def quant2ind(U, as_slice=False):
     """
-    Use quantization matrix to return slices of non-zero elements.
+    Use quantization matrix to return indices of non-zero elements.
 
     :param U: quantization matrix
+    :param as_slice: whether to return a slice object
 
-    :return: list of `slice`s for non-zero elements of U
+    :return: list of `slice`s or indices for non-zero elements of U
 
-    .. note:: This function assumes that the pulsar TOAs were sorted by time.
+    .. note:: For slice objects the TOAs need to be sorted by time
 
     """
     inds = []
     for cc, col in enumerate(U.T):
         epinds = np.flatnonzero(col)
-        if epinds[-1] - epinds[0] + 1 != len(epinds):
-            raise ValueError("ERROR: TOAs not sorted properly!")
-        inds.append(slice(epinds[0], epinds[-1] + 1))
+        if epinds[-1] - epinds[0] + 1 != len(epinds) or not as_slice:
+            inds.append(epinds)
+        else:
+            inds.append(slice(epinds[0], epinds[-1] + 1))
     return inds
+
+
+def indices_from_slice(slc):
+    """Given a slice object, return an index arrays"""
+
+    if isinstance(slc, np.ndarray):
+        return slc
+    else:
+        return np.arange(*slc.indices(slc.stop))
 
 
 def linear_interp_basis(toas, dt=30 * 86400):
