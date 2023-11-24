@@ -69,6 +69,149 @@ def create_spindown_timing_model(toas, order=2):
 
     return designmatrix, parameter_names
 
+def ssb_to_earth_vector(mjd_timestamps):
+    """Create the ssb_to_earth 3D vector"""
+
+    from astropy.time import Time
+    from astropy.coordinates import get_body_barycentric, solar_system_ephemeris, ICRS, GeocentricTrueEcliptic
+
+    # Set solar system ephemeris to 'builtin' for offline calculations
+    solar_system_ephemeris.set('builtin')
+
+    # Convert MJD timestamps to Astropy Time objects
+    times = Time(mjd_timestamps, format='mjd')
+
+    # Calculate Earth's position w.r.t. SSB at each timestamp
+    earth_positions_icrs = get_body_barycentric('earth', times)
+
+    # Extract x, y, and z coordinates
+    ssb_obs = np.array([earth_positions_icrs.x.value, 
+                        earth_positions_icrs.y.value, 
+                        earth_positions_icrs.z.value]).T
+
+    return ssb_obs
+
+def ssb_to_pulsar_vector(ra_radians, dec_radians, distance_parsecs):
+    """Create the ssb_to_pulsar 3D vector"""
+
+    from astropy.coordinates import SkyCoord
+    import astropy.units as u
+
+    # Create a SkyCoord object with the given RA, DEC, and distance
+    pulsar_coord = SkyCoord(ra=ra_radians*u.radian, 
+                            dec=dec_radians*u.radian, 
+                            distance=distance_parsecs*u.parsec, 
+                            frame='icrs')
+
+    # Convert to Cartesian coordinates (x, y, z)
+    pulsar_vector = pulsar_coord.cartesian.xyz.value
+
+    return pulsar_vector
+
+def d_delay_astrometry_d_PX(ssb_to_earth_vector, ssb_to_pulsar_vector):
+    """Calculate the derivative wrt PX
+
+    Roughly following Smart, 1977, chapter 9.
+
+    px_r:   Extra distance to Earth, wrt SSB, from pulsar
+    r_e:    Position of earth (vector) wrt SSB
+    u_p:    Unit vector from SSB pointing to pulsar
+    t_d:    Parallax delay
+    c:      Speed of light
+    delta:  Parallax
+
+    The parallax delay is due to a distance orthogonal to the line of sight
+    to the pulsar from the SSB:
+
+    px_r = sqrt( r_e**2 - (r_e.u_p)**2 ),
+
+    with delay
+
+    t_d = 0.5 * px_r * delta'/ c,  and delta = delta' * px_r / (1 AU)
+
+    """
+    import astropy.units as u
+    import astropy.constants as const
+    
+    ssb_obs_r = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1))
+    in_psr_obs = np.sum(ssb_to_earth_vector * ssb_to_pulsar_vector, axis=1)
+
+    px_r = np.sqrt(ssb_obs_r ** 2 - in_psr_obs ** 2)
+    dd_dpx = 0.5 * (px_r**2 / (u.AU * const.c)) * (u.mas / u.radian)
+
+    return dd_dpx.decompose(u.si.bases) / u.mas
+
+ def d_delay_astrometry_d_RAJ(ssb_to_earth_vector, ra_radians, dec_radians):
+    """Calculate the derivative wrt RAJ
+
+    For the RAJ and DEC derivatives, use the following approximate model for
+    the pulse delay. (Inner-product between two Cartesian vectors):
+
+        - de = Earth declination (wrt SSB)
+        - ae = Earth right ascension
+        - dp = pulsar declination
+        - aa = pulsar right ascension
+        - r = distance from SSB to Earh
+        - c = speed of light
+
+    delay = r*[cos(de)*cos(dp)*cos(ae-aa)+sin(de)*sin(dp)]/c
+    """
+    
+    earth_ra, earth_dec = np.arctan2(ssb_to_earth_vector[:,1], ssb_to_earth_vector[:,0]), np.arcsin(ssb_to_earth_vector[:,2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)))
+
+    geom = (
+        np.cos(earth_dec) * np.cos(dec_radians) * np.sin(ra_radians - earth_ra)
+    )
+    dd_draj = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)) * geom / (const.c * u.radian)
+
+    return dd_draj.decompose(u.si.bases)
+
+def d_delay_astrometry_d_DECJ(ssb_to_earth_vector, ra_radians, dec_radians):
+    """Calculate the derivative wrt DECJ
+
+    Definitions as in d_delay_d_RAJ
+    """
+    
+    earth_ra, earth_dec = np.arctan2(ssb_to_earth_vector[:,1], ssb_to_earth_vector[:,0]), np.arcsin(ssb_to_earth_vector[:,2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)))
+
+    geom = np.cos(earth_dec) * np.sin(dec_radians) * np.cos(ra_radians - earth_ra) - np.sin(earth_dec) * np.cos(dec_radians)
+    dd_ddecj = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)) * geom / (const.c * u.radian)
+
+    return dd_ddecj.decompose(u.si.bases)
+
+def d_delay_astrometry_d_PMRA(mjd_timestamps, ssb_to_earth_vector, ra_radians, posepoch_mjd):
+    """Calculate the derivative wrt PMRA
+
+    Definitions as in d_delay_d_RAJ. Now we have a derivative in mas/yr for
+    the pulsar RA
+    """
+    
+    earth_ra = np.arctan2(ssb_to_earth_vector[:,1], ssb_to_earth_vector[:,0])
+    
+    te = Time(mjd_timestamps, format='mjd') - Time(posepoch_mjd, format='mjd')
+    geom = np.cos(np.arcsin(ssb_to_earth_vector[:,2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)))) * np.sin(ra_radians - earth_ra)
+
+    deriv = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)) * geom * te.jd / (const.c * u.radian)
+    dd_dpmra = deriv * u.mas / u.year
+
+    return dd_dpmra.decompose(u.si.bases) / (u.mas / u.year)
+
+def d_delay_astrometry_d_PMDEC(mjd_timestamps, ssb_to_earth_vector, ra_radians, dec_radians, posepoch_mjd):
+    """Calculate the derivative wrt PMDEC
+
+    Definitions as in d_delay_d_RAJ. Now we have a derivative in mas/yr for
+    the pulsar DEC
+    """
+    
+    earth_ra, earth_dec = np.arctan2(ssb_to_earth_vector[:,1], ssb_to_earth_vector[:,0]), np.arcsin(ssb_to_earth_vector[:,2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)))
+    
+    te = Time(mjd_timestamps, format='mjd') - Time(posepoch_mjd, format='mjd')
+    geom = np.cos(earth_dec) * np.sin(dec_radians) * np.cos(ra_radians - earth_ra) - np.cos(dec_radians) * np.sin(earth_dec)
+
+    deriv = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)) * geom * te.jd / (const.c * u.radian)
+    dd_dpmdec = deriv * u.mas / u.year
+
+    return dd_dpmdec.decompose(u.si.bases) / (u.mas / u.year)
 
 class ConditionalGP:
     def __init__(self, pta, phiinv_method="cliques"):
