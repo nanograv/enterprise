@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 def get_psrname_from_raj_decj(raj, decj):
     """
     Get the pulsar name from RAJ and DECJ values
-    
+
     :param raj: Right ascension of the pulsar [rad]
     :param decj: Declination of the pulsar [rad]
 
@@ -43,21 +43,22 @@ def get_psrname_from_raj_decj(raj, decj):
     """
     raj_fhr = raj * 12 / np.pi
     raj_hr = int(raj_fhr)
-    raj_min = int((raj_fhr-raj_hr)*60)
+    raj_min = int((raj_fhr - raj_hr) * 60)
 
     decj_fdeg = decj * 180 / np.pi
     decj_deg = int(decj_fdeg)
-    decj_min = int(np.abs((decj_fdeg-decj_deg)*60))
+    decj_min = int(np.abs((decj_fdeg - decj_deg) * 60))
 
     sign = "+" if np.sign(decj) > 0 else "-"
     pos_str = f"J{raj_hr:02}{raj_min:02}{sign}{int(np.abs(decj_deg)):02}{decj_min:02}"
 
     return pos_str
 
+
 def get_psrname_from_pos(elong=None, elat=None, raj=None, decj=None):
     """
     Get the pulsar name from position parameters
-    
+
     :param elong: Ecliptic longitude of the pulsar [rad]
     :param elag: Ecliptic lattitute of the pulsar [rad]
     :param raj: Right ascension of the pulsar [rad]
@@ -67,13 +68,14 @@ def get_psrname_from_pos(elong=None, elat=None, raj=None, decj=None):
     """
 
     if elong is not None and elat is not None:
-        ec = ephem.Ecliptic(elong*np.pi/180.0, elat*np.pi/180.0)
+        ec = ephem.Ecliptic(elong * np.pi / 180.0, elat * np.pi / 180.0)
         eq = ephem.Equatorial(ec, epoch=ephem.J2000)
         raj, decj = float(eq.ra), float(eq.dec)
     elif raj is None or decj is None:
         raise ValueError("Need to provide either raj/decj or elong/elat!")
 
     return get_psrname_from_raj_decj(raj, decj)
+
 
 def ssb_to_earth_vector(mjd_timestamps):
     """
@@ -88,20 +90,19 @@ def ssb_to_earth_vector(mjd_timestamps):
     from astropy.coordinates import get_body_barycentric, solar_system_ephemeris, ICRS, GeocentricTrueEcliptic
 
     # Set solar system ephemeris to 'builtin' for offline calculations
-    solar_system_ephemeris.set('builtin')
+    solar_system_ephemeris.set("builtin")
 
     # Convert MJD timestamps to Astropy Time objects
-    times = Time(mjd_timestamps, format='mjd')
+    times = Time(mjd_timestamps, format="mjd")
 
     # Calculate Earth's position w.r.t. SSB at each timestamp
-    earth_positions_icrs = get_body_barycentric('earth', times)
+    earth_positions_icrs = get_body_barycentric("earth", times)
 
     # Extract x, y, and z coordinates
-    ssb_obs = np.array([earth_positions_icrs.x.value, 
-                        earth_positions_icrs.y.value, 
-                        earth_positions_icrs.z.value]).T
+    ssb_obs = np.array([earth_positions_icrs.x.value, earth_positions_icrs.y.value, earth_positions_icrs.z.value]).T
 
     return ssb_obs
+
 
 def ssb_to_pulsar_vector(ra_radians, dec_radians, distance_parsecs):
     """
@@ -118,15 +119,15 @@ def ssb_to_pulsar_vector(ra_radians, dec_radians, distance_parsecs):
     import astropy.units as u
 
     # Create a SkyCoord object with the given RA, DEC, and distance
-    pulsar_coord = SkyCoord(ra=ra_radians*u.radian, 
-                            dec=dec_radians*u.radian, 
-                            distance=distance_parsecs*u.parsec, 
-                            frame='icrs')
+    pulsar_coord = SkyCoord(
+        ra=ra_radians * u.radian, dec=dec_radians * u.radian, distance=distance_parsecs * u.parsec, frame="icrs"
+    )
 
     # Convert to Cartesian coordinates (x, y, z)
     pulsar_vector = pulsar_coord.cartesian.xyz.value
 
     return pulsar_vector
+
 
 def d_delay_astrometry_d_PX(ssb_to_earth_vector, ssb_to_pulsar_vector):
     """
@@ -139,14 +140,15 @@ def d_delay_astrometry_d_PX(ssb_to_earth_vector, ssb_to_pulsar_vector):
     """
     import astropy.units as u
     import astropy.constants as const
-    
+
     ssb_obs_r = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1))
     in_psr_obs = np.sum(ssb_to_earth_vector * ssb_to_pulsar_vector, axis=1)
 
-    px_r = np.sqrt(ssb_obs_r ** 2 - in_psr_obs ** 2)
+    px_r = np.sqrt(ssb_obs_r**2 - in_psr_obs**2)
     dd_dpx = 0.5 * (px_r**2 / (u.AU * const.c)) * (u.mas / u.radian)
 
     return dd_dpx.decompose(u.si.bases) / u.mas
+
 
 def d_delay_astrometry_d_RAJ(ssb_to_earth_vector, ra_radians, dec_radians):
     """
@@ -160,15 +162,16 @@ def d_delay_astrometry_d_RAJ(ssb_to_earth_vector, ra_radians, dec_radians):
     """
     import astropy.units as u
     import astropy.constants as const
-    
-    earth_ra, earth_dec = np.arctan2(ssb_to_earth_vector[:,1], ssb_to_earth_vector[:,0]), np.arcsin(ssb_to_earth_vector[:,2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)))
 
-    geom = (
-        np.cos(earth_dec) * np.cos(dec_radians) * np.sin(ra_radians - earth_ra)
+    earth_ra, earth_dec = np.arctan2(ssb_to_earth_vector[:, 1], ssb_to_earth_vector[:, 0]), np.arcsin(
+        ssb_to_earth_vector[:, 2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1))
     )
+
+    geom = np.cos(earth_dec) * np.cos(dec_radians) * np.sin(ra_radians - earth_ra)
     dd_draj = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)) * geom / (const.c * u.radian)
 
     return dd_draj.decompose(u.si.bases)
+
 
 def d_delay_astrometry_d_DECJ(ssb_to_earth_vector, ra_radians, dec_radians):
     """Calculate the derivative wrt DECJ
@@ -181,13 +184,18 @@ def d_delay_astrometry_d_DECJ(ssb_to_earth_vector, ra_radians, dec_radians):
     """
     import astropy.units as u
     import astropy.constants as const
-    
-    earth_ra, earth_dec = np.arctan2(ssb_to_earth_vector[:,1], ssb_to_earth_vector[:,0]), np.arcsin(ssb_to_earth_vector[:,2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)))
 
-    geom = np.cos(earth_dec) * np.sin(dec_radians) * np.cos(ra_radians - earth_ra) - np.sin(earth_dec) * np.cos(dec_radians)
+    earth_ra, earth_dec = np.arctan2(ssb_to_earth_vector[:, 1], ssb_to_earth_vector[:, 0]), np.arcsin(
+        ssb_to_earth_vector[:, 2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1))
+    )
+
+    geom = np.cos(earth_dec) * np.sin(dec_radians) * np.cos(ra_radians - earth_ra) - np.sin(earth_dec) * np.cos(
+        dec_radians
+    )
     dd_ddecj = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)) * geom / (const.c * u.radian)
 
     return dd_ddecj.decompose(u.si.bases)
+
 
 def d_delay_astrometry_d_PMRA(mjd_timestamps, ssb_to_earth_vector, ra_radians, posepoch_mjd):
     """Calculate the derivative wrt PMRA
@@ -201,16 +209,19 @@ def d_delay_astrometry_d_PMRA(mjd_timestamps, ssb_to_earth_vector, ra_radians, p
     """
     import astropy.units as u
     import astropy.constants as const
-    
-    earth_ra = np.arctan2(ssb_to_earth_vector[:,1], ssb_to_earth_vector[:,0])
-    
+
+    earth_ra = np.arctan2(ssb_to_earth_vector[:, 1], ssb_to_earth_vector[:, 0])
+
     te = (mjd_timestamps - posepoch_mjd) * u.day
-    geom = np.cos(np.arcsin(ssb_to_earth_vector[:,2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)))) * np.sin(ra_radians - earth_ra)
+    geom = np.cos(np.arcsin(ssb_to_earth_vector[:, 2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)))) * np.sin(
+        ra_radians - earth_ra
+    )
 
     deriv = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)) * geom * te / (const.c * u.radian)
     dd_dpmra = deriv * u.mas / u.year
 
     return dd_dpmra.decompose(u.si.bases) / (u.mas / u.year)
+
 
 def d_delay_astrometry_d_PMDEC(mjd_timestamps, ssb_to_earth_vector, ra_radians, dec_radians, posepoch_mjd):
     """Calculate the derivative wrt PMDEC
@@ -225,21 +236,26 @@ def d_delay_astrometry_d_PMDEC(mjd_timestamps, ssb_to_earth_vector, ra_radians, 
     """
     import astropy.units as u
     import astropy.constants as const
-    
-    earth_ra, earth_dec = np.arctan2(ssb_to_earth_vector[:,1], ssb_to_earth_vector[:,0]), np.arcsin(ssb_to_earth_vector[:,2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)))
-    
+
+    earth_ra, earth_dec = np.arctan2(ssb_to_earth_vector[:, 1], ssb_to_earth_vector[:, 0]), np.arcsin(
+        ssb_to_earth_vector[:, 2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1))
+    )
+
     te = (mjd_timestamps - posepoch_mjd) * u.day
-    geom = np.cos(earth_dec) * np.sin(dec_radians) * np.cos(ra_radians - earth_ra) - np.cos(dec_radians) * np.sin(earth_dec)
+    geom = np.cos(earth_dec) * np.sin(dec_radians) * np.cos(ra_radians - earth_ra) - np.cos(dec_radians) * np.sin(
+        earth_dec
+    )
 
     deriv = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)) * geom * te / (const.c * u.radian)
     dd_dpmdec = deriv * u.mas / u.year
 
     return dd_dpmdec.decompose(u.si.bases) / (u.mas / u.year)
 
+
 def create_astrometry_timing_model(toas, raj, decj, posepoch):
     """
     Create an astrometry-only timing model for pulsar (raj, decj)
-    
+
     :param toas: The TOAs of the pulsar [sec]
     :param raj: Right ascension of the pulsar [rad]
     :param decj: Declination of the pulsar [rad]
@@ -251,20 +267,21 @@ def create_astrometry_timing_model(toas, raj, decj, posepoch):
     toas_mjds = toas * 86400.0
     posepoch_mjd = posepoch * 86400.0
 
-    parameter_names = ['RAJ', 'DECJ', 'PMRA', 'PMDEC', 'PX']
+    parameter_names = ["RAJ", "DECJ", "PMRA", "PMDEC", "PX"]
     designmatrix = np.zeros((len(toas_mjds), 5))
 
     ssb_to_earth = ssb_to_earth_vector(toas_mjds)
     ssb_to_pulsar = ssb_to_pulsar_vector(raj, decj, 1.0)
     ssb_to_pulsar_norm = ssb_to_pulsar / np.linalg.norm(ssb_to_pulsar)
 
-    designmatrix[:,0] = d_delay_astrometry_d_RAJ(ssb_to_earth, raj, decj).value
-    designmatrix[:,1] = d_delay_astrometry_d_DECJ(ssb_to_earth, raj, decj).value
-    designmatrix[:,2] = d_delay_astrometry_d_PMRA(toas_mjds, ssb_to_earth, raj, posepoch_mjd).value
-    designmatrix[:,3] = d_delay_astrometry_d_PMDEC(toas_mjds, ssb_to_earth, raj, decj, posepoch_mjd).value
-    designmatrix[:,4] = d_delay_astrometry_d_PX(ssb_to_earth, ssb_to_pulsar_norm).value
+    designmatrix[:, 0] = d_delay_astrometry_d_RAJ(ssb_to_earth, raj, decj).value
+    designmatrix[:, 1] = d_delay_astrometry_d_DECJ(ssb_to_earth, raj, decj).value
+    designmatrix[:, 2] = d_delay_astrometry_d_PMRA(toas_mjds, ssb_to_earth, raj, posepoch_mjd).value
+    designmatrix[:, 3] = d_delay_astrometry_d_PMDEC(toas_mjds, ssb_to_earth, raj, decj, posepoch_mjd).value
+    designmatrix[:, 4] = d_delay_astrometry_d_PX(ssb_to_earth, ssb_to_pulsar_norm).value
 
     return designmatrix, parameter_names
+
 
 def create_spindown_timing_model(toas, order=2):
     """
@@ -276,16 +293,17 @@ def create_spindown_timing_model(toas, order=2):
     :returns: design matrix, parameter names
     """
 
-    avetoas = (toas-np.mean(toas)) / np.mean(toas)
-    designmatrix = np.vstack([avetoas**ii for ii in range(1+order)]).T
-    parameter_names = ['Offset'] + ['F{ii}'.format(ii) for ii in range(order)]
+    avetoas = (toas - np.mean(toas)) / np.mean(toas)
+    designmatrix = np.vstack([avetoas**ii for ii in range(1 + order)]).T
+    parameter_names = ["Offset"] + ["F{ii}".format(ii) for ii in range(order)]
 
     return designmatrix, parameter_names
+
 
 def create_astrometry_spin_timing_model(toas, raj, decj, posepoch, spindown_order=2):
     """
     Create a spindown + astrometry timing model
-    
+
     :param toas: The TOAs of the pulsar [sec]
     :param raj: Right ascension of the pulsar [rad]
     :param decj: Declination of the pulsar [rad]
@@ -302,6 +320,7 @@ def create_astrometry_spin_timing_model(toas, raj, decj, posepoch, spindown_orde
     designmatrix = np.hstack([designmatrix_qsd, designmatrix_astro])
 
     return designmatrix, parameter_names
+
 
 class ConditionalGP:
     def __init__(self, pta, phiinv_method="cliques"):
@@ -576,12 +595,10 @@ def create_stabletimingdesignmatrix(designmat, fastDesign=True):
     Mm = designmat.copy()
 
     if fastDesign:
-
         norm = np.sqrt(np.sum(Mm**2, axis=0))
         Mm /= norm
 
     else:
-
         u, s, v = np.linalg.svd(Mm)
         Mm = u[:, : len(s)]
 
@@ -594,7 +611,6 @@ def create_stabletimingdesignmatrix(designmat, fastDesign=True):
 
 
 def make_ecc_interpolant():
-
     """
     Make interpolation function from eccentricity file to
     determine number of harmonics to use for a given
@@ -611,7 +627,6 @@ def make_ecc_interpolant():
 
 
 def get_edot(F, mc, e):
-
     """
     Compute eccentricity derivative from Taylor et al. (2016)
 
@@ -1321,7 +1336,6 @@ def createfourierdesignmatrix_physicalephem(
         "jup_orb_elements",
         "sat_orb_elements",
     ]:
-
         ppar = locals()[parname]
         if ppar:
             if parname not in ["jup_orb_elements", "sat_orb_elements"]:
@@ -1361,7 +1375,6 @@ def physical_ephem_delay(
     sat_orbit=None,
     equatorial=True,
 ):
-
     # convert toas to MJD
     mjd = toas / 86400
 

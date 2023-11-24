@@ -311,7 +311,6 @@ class BasePulsar(object):
 
 class PintPulsar(BasePulsar):
     def __init__(self, toas, model, sort=True, drop_pintpsr=True, planets=True):
-
         self._sort = sort
         self.planets = planets
         self.name = model.PSR.value
@@ -448,7 +447,6 @@ class PintPulsar(BasePulsar):
 
 class Tempo2Pulsar(BasePulsar):
     def __init__(self, t2pulsar, sort=True, drop_t2pulsar=True, planets=True):
-
         self._sort = sort
         self.t2pulsar = t2pulsar
         self.planets = planets
@@ -602,23 +600,33 @@ class Tempo2Pulsar(BasePulsar):
             psr._deflated = "destroyed"
 
 
-
 class MockPulsar(BasePulsar):
     """Class to allow mock pulsars to be used with Enterprise"""
+
     # TODO: allow units?
     #       test utils.get_psrname_from_raj_decj
     #            utils.get_psrname_from_pos
     #            utils.create_spindown_timing_model
 
-    def __init__(self, obs_times_mjd, elong=None, elat=None, raj=None,
-                 decj=None, ssbfreqs=1440.0, residuals=None, toaerrs=1e-6,
-                 sort=True, telescope='GBT', spindown_order=2):
-
-        self.name = utils.get_psrname_from_pos(
-                elong=elong, elat=elat, raj=raj, decj=decj)
+    def __init__(
+        self,
+        obs_times_mjd,
+        elong=None,
+        elat=None,
+        raj=None,
+        decj=None,
+        ssbfreqs=1440.0,
+        residuals=None,
+        toaerrs=1e-6,
+        sort=True,
+        telescope="GBT",
+        spindown_order=2,
+        inc_astrometry=True,
+    ):
+        self.name = utils.get_psrname_from_pos(elong=elong, elat=elat, raj=raj, decj=decj)
 
         if elong is not None and elat is not None:
-            ec = ephem.Ecliptic(elong*np.pi/180.0, elat*np.pi/180.0)
+            ec = ephem.Ecliptic(elong * np.pi / 180.0, elat * np.pi / 180.0)
             eq = ephem.Equatorial(ec, epoch=ephem.J2000)
             raj, decj = np.double(eq.ra), np.double(eq.dec)
 
@@ -631,9 +639,14 @@ class MockPulsar(BasePulsar):
         self._stoas = np.double(obs_times_mjd) * 86400
         self._residuals = residuals if residuals else np.zeros_like(obs_times_mjd)
         self._toaerrs = np.ones_like(obs_times_mjd) * toaerrs
+        self._posepoch = np.mean(self._toas)
 
-        self._designmatrix, self.fitpars = utils.create_spindown_timing_model(
-                self._toas, order=spindown_order)
+        if inc_astrometry:
+            self._designmatrix, self.fitpars = utils.create_astrometry_spin_timing_model(
+                self._toas, self._raj, self._decj, self._posepoch, spindown_order=spindown_order
+            )
+        else:
+            self._designmatrix, self.fitpars = utils.create_spindown_timing_model(self._toas, order=spindown_order)
         self._ssbfreqs = np.ones_like(self._toas) * ssbfreqs / 1e6
         self._telescope = telescope
 
@@ -714,7 +727,6 @@ def Pulsar(*args, **kwargs):
             return PintPulsar(toas, model, sort=sort, drop_pintpsr=drop_pintpsr, planets=planets)
 
         elif timing_package.lower() == "tempo2":
-
             # hack to set maxobs
             maxobs = get_maxobs(reltimfile) + 100
             t2pulsar = t2.tempopulsar(relparfile, reltimfile, maxobs=maxobs, ephem=ephem, clk=clk)
