@@ -25,6 +25,7 @@ from enterprise.signals.parameter import Function  # noqa: F401
 from enterprise.signals.parameter import function  # noqa: F401
 from enterprise.signals.parameter import ConstantParameter
 from enterprise.signals.utils import KernelMatrix
+from enterprise.signals.utils import indices_from_slice
 
 from enterprise import __version__
 from sys import version
@@ -1118,6 +1119,7 @@ class BlockMatrix(object):
     def __init__(self, blocks, slices, nvec=0):
         self._blocks = blocks
         self._slices = slices
+        self._idxs = [indices_from_slice(slc) for slc in slices]
         self._nvec = nvec
 
         if np.any(nvec != 0):
@@ -1152,15 +1154,15 @@ class BlockMatrix(object):
             ZNXr = np.dot(Z[self._idx, :].T, X[self._idx, :] / self._nvec[self._idx, None])
         else:
             ZNXr = 0
-        for slc, block in zip(self._slices, self._blocks):
-            Zblock = Z[slc, :]
-            Xblock = X[slc, :]
+        for idx, block in zip(self._idxs, self._blocks):
+            Zblock = Z[idx, :]
+            Xblock = X[idx, :]
 
-            if slc.stop - slc.start > 1:
-                cf = sl.cho_factor(block + np.diag(self._nvec[slc]))
+            if len(idx) > 1:
+                cf = sl.cho_factor(block + np.diag(self._nvec[idx]))
                 bx = sl.cho_solve(cf, Xblock)
             else:
-                bx = Xblock / self._nvec[slc][:, None]
+                bx = Xblock / self._nvec[idx][:, None]
             ZNX += np.dot(Zblock.T, bx)
         ZNX += ZNXr
         return ZNX.squeeze() if len(ZNX) > 1 else float(ZNX)
@@ -1173,11 +1175,11 @@ class BlockMatrix(object):
             X = X.reshape(X.shape[0], 1)
 
         NX = X / self._nvec[:, None]
-        for slc, block in zip(self._slices, self._blocks):
-            Xblock = X[slc, :]
-            if slc.stop - slc.start > 1:
-                cf = sl.cho_factor(block + np.diag(self._nvec[slc]))
-                NX[slc] = sl.cho_solve(cf, Xblock)
+        for idx, block in zip(self._idxs, self._blocks):
+            Xblock = X[idx, :]
+            if len(idx) > 1:
+                cf = sl.cho_factor(block + np.diag(self._nvec[idx]))
+                NX[idx] = sl.cho_solve(cf, Xblock)
         return NX.squeeze()
 
     def _get_logdet(self):
@@ -1188,12 +1190,12 @@ class BlockMatrix(object):
             logdet = np.sum(np.log(self._nvec[self._idx]))
         else:
             logdet = 0
-        for slc, block in zip(self._slices, self._blocks):
-            if slc.stop - slc.start > 1:
-                cf = sl.cho_factor(block + np.diag(self._nvec[slc]))
+        for idx, block in zip(self._idxs, self._blocks):
+            if len(idx) > 1:
+                cf = sl.cho_factor(block + np.diag(self._nvec[idx]))
                 logdet += np.sum(2 * np.log(np.diag(cf[0])))
             else:
-                logdet += np.sum(np.log(self._nvec[slc]))
+                logdet += np.sum(np.log(self._nvec[idx]))
         return logdet
 
     def solve(self, other, left_array=None, logdet=False):
@@ -1218,6 +1220,7 @@ class ShermanMorrison(object):
     def __init__(self, jvec, slices, nvec=0.0):
         self._jvec = jvec
         self._slices = slices
+        self._idxs = [indices_from_slice(slc) for slc in slices]
         self._nvec = nvec
 
     def __add__(self, other):
@@ -1235,12 +1238,12 @@ class ShermanMorrison(object):
         """Solves :math:`N^{-1}x` where :math:`x` is a vector."""
 
         Nx = x / self._nvec
-        for slc, jv in zip(self._slices, self._jvec):
-            if slc.stop - slc.start > 1:
-                rblock = x[slc]
-                niblock = 1 / self._nvec[slc]
+        for idx, jv in zip(self._idxs, self._jvec):
+            if len(idx) > 1:
+                rblock = x[idx]
+                niblock = 1 / self._nvec[idx]
                 beta = 1.0 / (np.einsum("i->", niblock) + 1.0 / jv)
-                Nx[slc] -= beta * np.dot(niblock, rblock) * niblock
+                Nx[idx] -= beta * np.dot(niblock, rblock) * niblock
         return Nx
 
     def _solve_1D1(self, x, y):
@@ -1250,11 +1253,11 @@ class ShermanMorrison(object):
 
         Nx = x / self._nvec
         yNx = np.dot(y, Nx)
-        for slc, jv in zip(self._slices, self._jvec):
-            if slc.stop - slc.start > 1:
-                xblock = x[slc]
-                yblock = y[slc]
-                niblock = 1 / self._nvec[slc]
+        for idx, jv in zip(self._idxs, self._jvec):
+            if len(idx) > 1:
+                xblock = x[idx]
+                yblock = y[idx]
+                niblock = 1 / self._nvec[idx]
                 beta = 1.0 / (np.einsum("i->", niblock) + 1.0 / jv)
                 yNx -= beta * np.dot(niblock, xblock) * np.dot(niblock, yblock)
         return yNx
@@ -1265,11 +1268,11 @@ class ShermanMorrison(object):
         """
 
         ZNX = np.dot(Z.T / self._nvec, X)
-        for slc, jv in zip(self._slices, self._jvec):
-            if slc.stop - slc.start > 1:
-                Zblock = Z[slc, :]
-                Xblock = X[slc, :]
-                niblock = 1 / self._nvec[slc]
+        for idx, jv in zip(self._idxs, self._jvec):
+            if len(idx) > 1:
+                Zblock = Z[idx, :]
+                Xblock = X[idx, :]
+                niblock = 1 / self._nvec[idx]
                 beta = 1.0 / (np.einsum("i->", niblock) + 1.0 / jv)
                 zn = np.dot(niblock, Zblock)
                 xn = np.dot(niblock, Xblock)
@@ -1281,9 +1284,9 @@ class ShermanMorrison(object):
         is a quantization matrix.
         """
         logdet = np.einsum("i->", np.log(self._nvec))
-        for slc, jv in zip(self._slices, self._jvec):
-            if slc.stop - slc.start > 1:
-                niblock = 1 / self._nvec[slc]
+        for idx, jv in zip(self._idxs, self._jvec):
+            if len(idx) > 1:
+                niblock = 1 / self._nvec[idx]
                 beta = 1.0 / (np.einsum("i->", niblock) + 1.0 / jv)
                 logdet += np.log(jv) - np.log(beta)
         return logdet
