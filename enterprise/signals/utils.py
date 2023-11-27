@@ -86,8 +86,12 @@ def ssb_to_earth_vector(mjd_timestamps):
     :returns: 2D array with the position of the Earth wrt the SSB
     """
 
-    from astropy.time import Time
-    from astropy.coordinates import get_body_barycentric, solar_system_ephemeris, ICRS, GeocentricTrueEcliptic
+    try:
+        from astropy.time import Time
+        from astropy.coordinates import get_body_barycentric, solar_system_ephemeris, ICRS, GeocentricTrueEcliptic
+    except ImportError:  # pragma: no cover
+        log.error("Astropy required for native astrometry timing models")
+        raise
 
     # Set solar system ephemeris to 'builtin' for offline calculations
     solar_system_ephemeris.set("builtin")
@@ -99,9 +103,7 @@ def ssb_to_earth_vector(mjd_timestamps):
     earth_positions_icrs = get_body_barycentric("earth", times)
 
     # Extract x, y, and z coordinates
-    ssb_obs = np.array([earth_positions_icrs.x.value, earth_positions_icrs.y.value, earth_positions_icrs.z.value]).T
-
-    return ssb_obs
+    return np.array([earth_positions_icrs.x.value, earth_positions_icrs.y.value, earth_positions_icrs.z.value]).T
 
 
 def ssb_to_pulsar_vector(ra_radians, dec_radians, distance_parsecs):
@@ -115,8 +117,12 @@ def ssb_to_pulsar_vector(ra_radians, dec_radians, distance_parsecs):
     :returns: 3D vector of the pulsar position in ICRS coordinates
     """
 
-    from astropy.coordinates import SkyCoord
-    import astropy.units as u
+    try:
+        from astropy.coordinates import SkyCoord
+        import astropy.units as u
+    except ImportError:  # pragma: no cover
+        log.error("Astropy required for native astrometry timing models")
+        raise
 
     # Create a SkyCoord object with the given RA, DEC, and distance
     pulsar_coord = SkyCoord(
@@ -124,33 +130,35 @@ def ssb_to_pulsar_vector(ra_radians, dec_radians, distance_parsecs):
     )
 
     # Convert to Cartesian coordinates (x, y, z)
-    pulsar_vector = pulsar_coord.cartesian.xyz.value
-
-    return pulsar_vector
+    return pulsar_coord.cartesian.xyz.value
 
 
-def d_delay_astrometry_d_PX(ssb_to_earth_vector, ssb_to_pulsar_vector):
+def d_delay_d_PX(ssb_to_earth_vector, ssb_to_pulsar_vector):
     """
     Calculate the derivative wrt PX
 
     :param ssb_to_earth_vector: Position of Earth wrt SSB per timestamp
     :param ssb_to_pulsar_vector: Direction of Pulsar wrt SSB
 
-    :returns: d_delay / d_PX
+    :returns: d_delay / d_PX [sec / mas]
     """
-    import astropy.units as u
-    import astropy.constants as const
+    try:
+        import astropy.units as u
+        import astropy.constants as ac
+    except ImportError:  # pragma: no cover
+        log.error("Astropy required for native astrometry timing models")
+        raise
 
-    ssb_obs_r = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1))
-    in_psr_obs = np.sum(ssb_to_earth_vector * ssb_to_pulsar_vector, axis=1)
+    ssb_earh_r = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1))
+    in_prod = np.sum(ssb_to_earth_vector * ssb_to_pulsar_vector, axis=1)
 
-    px_r = np.sqrt(ssb_obs_r**2 - in_psr_obs**2)
-    dd_dpx = 0.5 * (px_r**2 / (u.AU * const.c)) * (u.mas / u.radian)
+    px_r = np.sqrt(ssb_earh_r**2 - in_prod**2)
+    dd_dpx = 0.5 * (px_r**2 / (u.AU * ac.c)) * (u.mas / u.radian)
 
     return dd_dpx.decompose(u.si.bases) / u.mas
 
 
-def d_delay_astrometry_d_RAJ(ssb_to_earth_vector, ra_radians, dec_radians):
+def d_delay_d_RAJ(ssb_to_earth_vector, ra_radians, dec_radians):
     """
     Calculate the derivative wrt RAJ
 
@@ -160,20 +168,23 @@ def d_delay_astrometry_d_RAJ(ssb_to_earth_vector, ra_radians, dec_radians):
 
     :returns: d_delay / d_RAJ
     """
-    import astropy.units as u
-    import astropy.constants as const
+    try:
+        import astropy.units as u
+        import astropy.constants as ac
+    except ImportError:  # pragma: no cover
+        log.error("Astropy required for native astrometry timing models")
+        raise
 
-    earth_ra, earth_dec = np.arctan2(ssb_to_earth_vector[:, 1], ssb_to_earth_vector[:, 0]), np.arcsin(
-        ssb_to_earth_vector[:, 2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1))
-    )
+    earth_ra = np.arctan2(ssb_to_earth_vector[:, 1], ssb_to_earth_vector[:, 0])
+    earth_dec = np.arcsin(ssb_to_earth_vector[:, 2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)))
 
-    geom = np.cos(earth_dec) * np.cos(dec_radians) * np.sin(ra_radians - earth_ra)
-    dd_draj = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)) * geom / (const.c * u.radian)
+    geometric = np.cos(earth_dec) * np.cos(dec_radians) * np.sin(ra_radians - earth_ra)
+    dd_draj = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)) * geometric / (ac.c * u.radian)
 
     return dd_draj.decompose(u.si.bases)
 
 
-def d_delay_astrometry_d_DECJ(ssb_to_earth_vector, ra_radians, dec_radians):
+def d_delay_d_DECJ(ssb_to_earth_vector, ra_radians, dec_radians):
     """Calculate the derivative wrt DECJ
 
     :param ssb_to_earth_vector: Position of Earth wrt SSB per timestamp
@@ -182,22 +193,25 @@ def d_delay_astrometry_d_DECJ(ssb_to_earth_vector, ra_radians, dec_radians):
 
     :returns: d_delay / d_DECJ
     """
-    import astropy.units as u
-    import astropy.constants as const
+    try:
+        import astropy.units as u
+        import astropy.constants as ac
+    except ImportError:  # pragma: no cover
+        log.error("Astropy required for native astrometry timing models")
+        raise
 
-    earth_ra, earth_dec = np.arctan2(ssb_to_earth_vector[:, 1], ssb_to_earth_vector[:, 0]), np.arcsin(
-        ssb_to_earth_vector[:, 2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1))
-    )
+    earth_ra = np.arctan2(ssb_to_earth_vector[:, 1], ssb_to_earth_vector[:, 0])
+    earth_dec = np.arcsin(ssb_to_earth_vector[:, 2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)))
 
-    geom = np.cos(earth_dec) * np.sin(dec_radians) * np.cos(ra_radians - earth_ra) - np.sin(earth_dec) * np.cos(
+    geometric = np.cos(earth_dec) * np.sin(dec_radians) * np.cos(ra_radians - earth_ra) - np.sin(earth_dec) * np.cos(
         dec_radians
     )
-    dd_ddecj = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)) * geom / (const.c * u.radian)
+    dd_ddecj = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)) * geometric / (ac.c * u.radian)
 
     return dd_ddecj.decompose(u.si.bases)
 
 
-def d_delay_astrometry_d_PMRA(mjd_timestamps, ssb_to_earth_vector, ra_radians, posepoch_mjd):
+def d_delay_d_PMRA(mjd_timestamps, ssb_to_earth_vector, ra_radians, posepoch_mjd):
     """Calculate the derivative wrt PMRA
 
     :param mjd_timestamps: Timestamps [MJD]
@@ -207,23 +221,27 @@ def d_delay_astrometry_d_PMRA(mjd_timestamps, ssb_to_earth_vector, ra_radians, p
 
     :returns: d_delay / d_PMRA
     """
-    import astropy.units as u
-    import astropy.constants as const
+    try:
+        import astropy.units as u
+        import astropy.constants as ac
+    except ImportError:  # pragma: no cover
+        log.error("Astropy required for native astrometry timing models")
+        raise
 
     earth_ra = np.arctan2(ssb_to_earth_vector[:, 1], ssb_to_earth_vector[:, 0])
 
-    te = (mjd_timestamps - posepoch_mjd) * u.day
-    geom = np.cos(np.arcsin(ssb_to_earth_vector[:, 2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)))) * np.sin(
-        ra_radians - earth_ra
-    )
+    time_earth = (mjd_timestamps - posepoch_mjd) * u.day
+    geometric = np.cos(
+        np.arcsin(ssb_to_earth_vector[:, 2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)))
+    ) * np.sin(ra_radians - earth_ra)
 
-    deriv = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)) * geom * te / (const.c * u.radian)
-    dd_dpmra = deriv * u.mas / u.year
+    ddelay_pmra = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)) * geometric * time_earth / (ac.c * u.radian)
+    ddelay_dpmra_u = ddelay_pmra * u.mas / u.year
 
-    return dd_dpmra.decompose(u.si.bases) / (u.mas / u.year)
+    return ddelay_dpmra_u.decompose(u.si.bases) / (u.mas / u.year)
 
 
-def d_delay_astrometry_d_PMDEC(mjd_timestamps, ssb_to_earth_vector, ra_radians, dec_radians, posepoch_mjd):
+def d_delay_d_PMDEC(mjd_timestamps, ssb_to_earth_vector, ra_radians, dec_radians, posepoch_mjd):
     """Calculate the derivative wrt PMDEC
 
     :param mjd_timestamps: Timestamps [MJD]
@@ -234,22 +252,25 @@ def d_delay_astrometry_d_PMDEC(mjd_timestamps, ssb_to_earth_vector, ra_radians, 
 
     :returns: d_delay / d_PMDEC
     """
-    import astropy.units as u
-    import astropy.constants as const
+    try:
+        import astropy.units as u
+        import astropy.constants as ac
+    except ImportError:  # pragma: no cover
+        log.error("Astropy required for native astrometry timing models")
+        raise
 
-    earth_ra, earth_dec = np.arctan2(ssb_to_earth_vector[:, 1], ssb_to_earth_vector[:, 0]), np.arcsin(
-        ssb_to_earth_vector[:, 2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1))
-    )
+    earth_ra = np.arctan2(ssb_to_earth_vector[:, 1], ssb_to_earth_vector[:, 0])
+    earth_dec = np.arcsin(ssb_to_earth_vector[:, 2] / np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)))
 
-    te = (mjd_timestamps - posepoch_mjd) * u.day
-    geom = np.cos(earth_dec) * np.sin(dec_radians) * np.cos(ra_radians - earth_ra) - np.cos(dec_radians) * np.sin(
+    time_earth = (mjd_timestamps - posepoch_mjd) * u.day
+    geometric = np.cos(earth_dec) * np.sin(dec_radians) * np.cos(ra_radians - earth_ra) - np.cos(dec_radians) * np.sin(
         earth_dec
     )
 
-    deriv = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)) * geom * te / (const.c * u.radian)
-    dd_dpmdec = deriv * u.mas / u.year
+    ddelay_dpmdec = np.sqrt(np.sum(ssb_to_earth_vector**2, axis=1)) * geometric * time_earth / (ac.c * u.radian)
+    ddelay_dpmdec_u = ddelay_dpmdec * u.mas / u.year
 
-    return dd_dpmdec.decompose(u.si.bases) / (u.mas / u.year)
+    return ddelay_dpmdec_u.decompose(u.si.bases) / (u.mas / u.year)
 
 
 def create_astrometry_timing_model(toas, raj, decj, posepoch):
@@ -264,21 +285,21 @@ def create_astrometry_timing_model(toas, raj, decj, posepoch):
     :returns: design matrix, parameter names
     """
 
-    toas_mjds = toas * 86400.0
-    posepoch_mjd = posepoch * 86400.0
+    toas_mjds = (toas * u.sec).to(u.day)
+    posepoch_mjd = (posepoch * u.sec).to(u.day)
 
     parameter_names = ["RAJ", "DECJ", "PMRA", "PMDEC", "PX"]
     designmatrix = np.zeros((len(toas_mjds), 5))
 
-    ssb_to_earth = ssb_to_earth_vector(toas_mjds)
+    ssb_to_earth = ssb_to_earth_vector(toas_mjds.value)
     ssb_to_pulsar = ssb_to_pulsar_vector(raj, decj, 1.0)
     ssb_to_pulsar_norm = ssb_to_pulsar / np.linalg.norm(ssb_to_pulsar)
 
-    designmatrix[:, 0] = d_delay_astrometry_d_RAJ(ssb_to_earth, raj, decj).value
-    designmatrix[:, 1] = d_delay_astrometry_d_DECJ(ssb_to_earth, raj, decj).value
-    designmatrix[:, 2] = d_delay_astrometry_d_PMRA(toas_mjds, ssb_to_earth, raj, posepoch_mjd).value
-    designmatrix[:, 3] = d_delay_astrometry_d_PMDEC(toas_mjds, ssb_to_earth, raj, decj, posepoch_mjd).value
-    designmatrix[:, 4] = d_delay_astrometry_d_PX(ssb_to_earth, ssb_to_pulsar_norm).value
+    designmatrix[:, 0] = d_delay_d_RAJ(ssb_to_earth, raj, decj).value
+    designmatrix[:, 1] = d_delay_d_DECJ(ssb_to_earth, raj, decj).value
+    designmatrix[:, 2] = d_delay_d_PMRA(toas_mjds, ssb_to_earth, raj, posepoch_mjd.value).value
+    designmatrix[:, 3] = d_delay_d_PMDEC(toas_mjds, ssb_to_earth, raj, decj, posepoch_mjd.value).value
+    designmatrix[:, 4] = d_delay_d_PX(ssb_to_earth, ssb_to_pulsar_norm).value
 
     return designmatrix, parameter_names
 
