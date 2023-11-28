@@ -18,7 +18,7 @@ import pytest
 
 import numpy as np
 
-from enterprise.pulsar import Pulsar
+from enterprise.pulsar import Pulsar, MockPulsar
 from tests.enterprise_test_data import datadir
 
 import pint.models.timing_model
@@ -230,3 +230,60 @@ class TestPulsarPint(TestPulsar):
             msg += "`planet` flag is not True in `toas` or further Pint "
             msg += "development to add additional planets is needed."
             self.assertTrue(msg in context.exception)
+
+
+class TestPulsarMock(TestPulsar):
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        toas = np.linspace(53000.0, 58000.0, 4005)
+        flags = {"f": np.array(["nosystem"] * 4005), "fe": np.array(["nofrontend"] * 4005)}
+        decj, raj = (0.16848694562363042, 4.9533700839400492)
+
+        cls.psr = MockPulsar(
+            obs_times_mjd=toas,
+            raj=raj,
+            decj=decj,
+            ssbfreqs=1440.0 * np.ones_like(toas),
+            residuals=np.zeros_like(toas),
+            toaerrs=1e-6 * np.ones_like(toas),
+            sort=True,
+            flags=flags,
+            telescope="GBT",
+            spindown_order=2,
+            inc_astrometry=True,
+        )
+
+    def test_deflate_inflate(self):
+        pass
+
+    def test_tearDownClass(self):
+        pass
+
+    def test_dm(self):
+        pass
+
+    def test_design_matrix(self):
+        """Check design matrix shape."""
+
+        msg = "Design matrix shape incorrect."
+        assert self.psr.Mmat.shape == (4005, 8), msg
+
+    def test_planetssb(self):
+        """Place holder for filter_data tests."""
+        assert hasattr(self.psr, "_planetssb")
+
+    def test_sunssb(self):
+        """Place holder for filter_data tests."""
+        assert hasattr(self.psr, "_sunssb")
+
+    def test_wrong_input(self):
+        pass
+
+    def test_value_error(self):
+        pass
+
+    def test_to_pickle(self):
+        """Place holder for to_pickle tests."""
+        pass

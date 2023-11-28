@@ -619,6 +619,7 @@ class MockPulsar(BasePulsar):
         residuals=None,
         toaerrs=1e-6,
         sort=True,
+        flags={},
         telescope="GBT",
         spindown_order=2,
         inc_astrometry=True,
@@ -637,7 +638,7 @@ class MockPulsar(BasePulsar):
 
         self._toas = np.double(obs_times_mjd) * 86400
         self._stoas = np.double(obs_times_mjd) * 86400
-        self._residuals = residuals if residuals else np.zeros_like(obs_times_mjd)
+        self._residuals = residuals if residuals is not None else np.zeros_like(obs_times_mjd)
         self._toaerrs = np.ones_like(obs_times_mjd) * toaerrs
         self._posepoch = np.mean(self._toas)
 
@@ -652,8 +653,6 @@ class MockPulsar(BasePulsar):
 
         # set parameters
         self.setpars = [fp for fp in self.fitpars]
-
-        flags = {}
 
         # new-style storage of flags as a numpy record array (previously, psr._flags = flags)
         self._flags = np.zeros(len(self._toas), dtype=[(key, val.dtype) for key, val in flags.items()])
