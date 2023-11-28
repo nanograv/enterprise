@@ -18,6 +18,8 @@ from enterprise.signals import anis_coefficients as anis
 from enterprise.signals import utils
 from tests.enterprise_test_data import datadir
 
+import ephem
+
 
 class TestUtils(unittest.TestCase):
     @classmethod
@@ -224,6 +226,7 @@ class TestAstrometry(unittest.TestCase):
     def setUpClass(cls):
         """Setup the Pulsar object."""
 
+        # TODO: use a different pulsar so it's faster?
         # initialize Pulsar class that uses Equatorial Coordinates
         cls.psr = Pulsar(
             datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", timing_package="tempo2", drop_t2pulsar=False
@@ -261,3 +264,23 @@ class TestAstrometry(unittest.TestCase):
 
                 msg = f"ddelay_d{pname} is not consistent with Tempo2"
                 assert np.allclose(rel_diff, 0.0, atol=0.05), msg
+
+    def test_get_psrname_from_pos(self):
+        """Test the functionality to derive pulsar names"""
+
+        # Pulsar B1855+09 (= J1857+09..)
+        decj, raj = (0.16848694562363042, 4.9533700839400492)
+        eq = ephem.Equatorial(raj, decj, epoch=ephem.J2000)
+        ec = ephem.Ecliptic(eq)
+        elong, elat = ec.lon * 180 / np.pi, ec.lat * 180 / np.pi
+
+        msg = "Name from elong/elat not consistent with real pulsar name"
+        psrname = utils.get_psrname_from_pos(elong=elong, elat=elat, raj=None, decj=None)
+        assert psrname == "J1855+0939", msg
+
+        msg = "Name from raj/decj not consistent with real pulsar name"
+        psrname = utils.get_psrname_from_pos(elong=None, elat=None, raj=raj, decj=decj)
+        assert psrname == "J1855+0939", msg
+
+        with self.assertRaises(ValueError) as context:
+            psrname = utils.get_psrname_from_pos(elong=None, elat=None, raj=None, decj=None)
