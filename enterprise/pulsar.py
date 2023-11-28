@@ -10,7 +10,7 @@ import pickle
 import astropy.constants as const
 import astropy.units as u
 import numpy as np
-from ephem import Ecliptic, Equatorial
+from ephem import Ecliptic, Equatorial, J2000
 
 import enterprise
 from enterprise.signals import utils
@@ -626,8 +626,8 @@ class MockPulsar(BasePulsar):
         self.name = utils.get_psrname_from_pos(elong=elong, elat=elat, raj=raj, decj=decj)
 
         if elong is not None and elat is not None:
-            ec = ephem.Ecliptic(elong * np.pi / 180.0, elat * np.pi / 180.0)
-            eq = ephem.Equatorial(ec, epoch=ephem.J2000)
+            ec = Ecliptic(elong * np.pi / 180.0, elat * np.pi / 180.0)
+            eq = Equatorial(ec, epoch=J2000)
             raj, decj = np.double(eq.ra), np.double(eq.dec)
 
         self._raj, self._decj = raj, decj

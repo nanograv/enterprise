@@ -126,9 +126,7 @@ def ssb_to_pulsar_vector(ra_radians, dec_radians, distance_parsecs):
         raise
 
     # Create a SkyCoord object with the given RA, DEC, and distance
-    pulsar_coord = SkyCoord(
-        ra=ra_radians, dec=dec_radians, distance=distance_parsecs, frame="icrs"
-    )
+    pulsar_coord = SkyCoord(ra=ra_radians, dec=dec_radians, distance=distance_parsecs, frame="icrs")
 
     # Convert to Cartesian coordinates (x, y, z)
     return pulsar_coord.cartesian.xyz.value
@@ -157,7 +155,7 @@ def d_delay_d_RAJ(ssb_to_earth_v, ra_radians, dec_radians):
     geometric = np.cos(earth_dec) * np.cos(dec_radians) * np.sin(ra_radians - earth_ra)
     dd_draj = np.sqrt(np.sum(ssb_to_earth_v**2, axis=1)) * geometric / (ac.c * u.radian)
 
-    return dd_draj.to(u.sec / u.rad)
+    return dd_draj.to(u.second / u.rad)
 
 
 def d_delay_d_DECJ(ssb_to_earth_v, ra_radians, dec_radians):
@@ -184,7 +182,7 @@ def d_delay_d_DECJ(ssb_to_earth_v, ra_radians, dec_radians):
     )
     dd_ddecj = np.sqrt(np.sum(ssb_to_earth_v**2, axis=1)) * geometric / (ac.c * u.radian)
 
-    return dd_ddecj.to(u.sec / u.rad)
+    return dd_ddecj.to(u.second / u.rad)
 
 
 def d_delay_d_PMRA(mjd_timestamps, ssb_to_earth_v, ra_radians, posepoch_mjd):
@@ -206,15 +204,15 @@ def d_delay_d_PMRA(mjd_timestamps, ssb_to_earth_v, ra_radians, posepoch_mjd):
 
     earth_ra = np.arctan2(ssb_to_earth_v[:, 1], ssb_to_earth_v[:, 0])
 
-    time_earth = (mjd_timestamps - posepoch_mjd)
-    geometric = np.cos(
-        np.arcsin(ssb_to_earth_v[:, 2] / np.sqrt(np.sum(ssb_to_earth_v**2, axis=1)))
-    ) * np.sin(ra_radians - earth_ra)
+    time_earth = mjd_timestamps - posepoch_mjd
+    geometric = np.cos(np.arcsin(ssb_to_earth_v[:, 2] / np.sqrt(np.sum(ssb_to_earth_v**2, axis=1)))) * np.sin(
+        ra_radians - earth_ra
+    )
 
-    ddelay_pmra = np.sqrt(np.sum(ssb_to_earth_v**2, axis=1)) * geometric * time_earth / (ac.c * u.radian)
-    #ddelay_dpmra_u = ddelay_pmra * u.mas / u.year
+    ddelay_dpmra = np.sqrt(np.sum(ssb_to_earth_v**2, axis=1)) * geometric * time_earth / (ac.c * u.radian)
 
-    return ddelay_dpmra.decompose(u.si.bases) #/ (u.mas / u.year)
+    # TODO: these units are not correct
+    return ddelay_dpmra.decompose(u.si.bases)
 
 
 def d_delay_d_PMDEC(mjd_timestamps, ssb_to_earth_v, ra_radians, dec_radians, posepoch_mjd):
@@ -238,11 +236,12 @@ def d_delay_d_PMDEC(mjd_timestamps, ssb_to_earth_v, ra_radians, dec_radians, pos
     earth_ra = np.arctan2(ssb_to_earth_v[:, 1], ssb_to_earth_v[:, 0])
     earth_dec = np.arcsin(ssb_to_earth_v[:, 2] / np.sqrt(np.sum(ssb_to_earth_v**2, axis=1)))
 
-    time_earth = (mjd_timestamps - posepoch_mjd)
+    time_earth = mjd_timestamps - posepoch_mjd
     geometric = np.cos(earth_dec) * np.sin(dec_radians) * np.cos(ra_radians - earth_ra) - np.cos(dec_radians) * np.sin(
         earth_dec
     )
 
+    # TODO: these units are not correct
     ddelay_dpmdec = np.sqrt(np.sum(ssb_to_earth_v**2, axis=1)) * geometric * time_earth / (ac.c * u.radian)
     return ddelay_dpmdec.decompose(u.si.bases)
 

@@ -217,3 +217,47 @@ class TestUtils(unittest.TestCase):
         vals = [(hd, hd_exp), (dp, dp_exp), (mp, mp_exp), (anis_orf, anis_orf_exp)]
         for key, val in zip(keys, vals):
             assert val[0] == val[1], msg.format(key)
+
+
+class TestAstrometry(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class that uses Equatorial Coordinates
+        cls.psr = Pulsar(
+            datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", timing_package="tempo2", drop_t2pulsar=False
+        )
+
+        cls.Mmat = cls.psr.t2pulsar.designmatrix(fixunits=False, fixsigns=True, incoffset=True)
+        cls.posepoch = cls.psr.t2pulsar["POSEPOCH"].val * 86400.0
+        cls.dm, cls.dmp = utils.create_astrometry_timing_model(cls.psr.toas, cls.psr._raj, cls.psr._decj, cls.posepoch)
+
+    def test_ddelay_dastrometry(self):
+        """Test the derivatives of the astrometry parameters"""
+
+        incorrect_units = ["PMRA", "PMDEC"]
+
+        for pp, pname in enumerate(self.dmp):
+            dmc_self = self.dm[:, pp]
+
+            t2dm = ("Offset",) + self.psr.t2pulsar.pars(which="fit")
+            pind = t2dm.index(pname)
+            dmc_t2 = self.Mmat[self.psr._isort, pind]
+            a = dmc_t2
+            b = dmc_self
+
+            if pname not in incorrect_units:
+                rel_diff = (np.abs(a) - np.abs(b)) / (np.abs(a) + np.abs(b))
+
+                msg = f"ddelay_d{pname} is not consistent with Tempo2"
+                assert np.allclose(rel_diff, 0.0, atol=0.05), msg
+
+            else:
+                # Proper motion doesn't have the right units
+                conv = np.mean(np.abs(a) / np.abs(b))
+
+                rel_diff = (np.abs(a) - conv * np.abs(b)) / (np.abs(a) + conv * np.abs(b))
+
+                msg = f"ddelay_d{pname} is not consistent with Tempo2"
+                assert np.allclose(rel_diff, 0.0, atol=0.05), msg
