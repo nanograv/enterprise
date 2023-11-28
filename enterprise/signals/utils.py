@@ -14,7 +14,7 @@ from pkg_resources import Requirement, resource_filename
 from scipy.integrate import odeint
 from scipy.interpolate import interp1d
 from sksparse.cholmod import cholesky
-from ephem import Ecliptic, Equatorial
+from ephem import Ecliptic, Equatorial, J2000
 
 import enterprise
 from enterprise import constants as const
@@ -68,8 +68,8 @@ def get_psrname_from_pos(elong=None, elat=None, raj=None, decj=None):
     """
 
     if elong is not None and elat is not None:
-        ec = ephem.Ecliptic(elong * np.pi / 180.0, elat * np.pi / 180.0)
-        eq = ephem.Equatorial(ec, epoch=ephem.J2000)
+        ec = Ecliptic(elong * np.pi / 180.0, elat * np.pi / 180.0)
+        eq = Equatorial(ec, epoch=J2000)
         raj, decj = float(eq.ra), float(eq.dec)
     elif raj is None or decj is None:
         raise ValueError("Need to provide either raj/decj or elong/elat!")
@@ -89,9 +89,9 @@ def ssb_to_earth_vector(mjd_timestamps):
     try:
         from astropy.time import Time
         import astropy.units as u
-        from astropy.coordinates import get_body_barycentric, solar_system_ephemeris, ICRS, GeocentricTrueEcliptic
+        from astropy.coordinates import get_body_barycentric, solar_system_ephemeris
     except ImportError:  # pragma: no cover
-        log.error("Astropy required for native astrometry timing models")
+        logger.error("Astropy required for native astrometry timing models")
         raise
 
     # Set solar system ephemeris to 'builtin' for offline calculations
@@ -120,9 +120,8 @@ def ssb_to_pulsar_vector(ra_radians, dec_radians, distance_parsecs):
 
     try:
         from astropy.coordinates import SkyCoord
-        import astropy.units as u
     except ImportError:  # pragma: no cover
-        log.error("Astropy required for native astrometry timing models")
+        logger.error("Astropy required for native astrometry timing models")
         raise
 
     # Create a SkyCoord object with the given RA, DEC, and distance
@@ -146,7 +145,7 @@ def d_delay_d_RAJ(ssb_to_earth_v, ra_radians, dec_radians):
         import astropy.units as u
         import astropy.constants as ac
     except ImportError:  # pragma: no cover
-        log.error("Astropy required for native astrometry timing models")
+        logger.error("Astropy required for native astrometry timing models")
         raise
 
     earth_ra = np.arctan2(ssb_to_earth_v[:, 1], ssb_to_earth_v[:, 0])
@@ -171,7 +170,7 @@ def d_delay_d_DECJ(ssb_to_earth_v, ra_radians, dec_radians):
         import astropy.units as u
         import astropy.constants as ac
     except ImportError:  # pragma: no cover
-        log.error("Astropy required for native astrometry timing models")
+        logger.error("Astropy required for native astrometry timing models")
         raise
 
     earth_ra = np.arctan2(ssb_to_earth_v[:, 1], ssb_to_earth_v[:, 0])
@@ -199,7 +198,7 @@ def d_delay_d_PMRA(mjd_timestamps, ssb_to_earth_v, ra_radians, posepoch_mjd):
         import astropy.units as u
         import astropy.constants as ac
     except ImportError:  # pragma: no cover
-        log.error("Astropy required for native astrometry timing models")
+        logger.error("Astropy required for native astrometry timing models")
         raise
 
     earth_ra = np.arctan2(ssb_to_earth_v[:, 1], ssb_to_earth_v[:, 0])
@@ -230,7 +229,7 @@ def d_delay_d_PMDEC(mjd_timestamps, ssb_to_earth_v, ra_radians, dec_radians, pos
         import astropy.units as u
         import astropy.constants as ac
     except ImportError:  # pragma: no cover
-        log.error("Astropy required for native astrometry timing models")
+        logger.error("Astropy required for native astrometry timing models")
         raise
 
     earth_ra = np.arctan2(ssb_to_earth_v[:, 1], ssb_to_earth_v[:, 0])
@@ -259,7 +258,7 @@ def d_delay_d_PX(ssb_to_earth_v, ssb_to_pulsar_v):
         import astropy.units as u
         import astropy.constants as ac
     except ImportError:  # pragma: no cover
-        log.error("Astropy required for native astrometry timing models")
+        logger.error("Astropy required for native astrometry timing models")
         raise
 
     ssb_earh_r = np.sqrt(np.sum(ssb_to_earth_v**2, axis=1))
@@ -285,7 +284,7 @@ def create_astrometry_timing_model(toas, raj, decj, posepoch):
     try:
         import astropy.units as u
     except ImportError:  # pragma: no cover
-        log.error("Astropy required for native astrometry timing models")
+        logger.error("Astropy required for native astrometry timing models")
         raise
 
     raj = raj * u.rad
