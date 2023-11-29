@@ -282,5 +282,5 @@ class TestAstrometry(unittest.TestCase):
         psrname = utils.get_psrname_from_pos(elong=None, elat=None, raj=raj, decj=decj)
         assert psrname == "J1855+0939", msg
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError):
             psrname = utils.get_psrname_from_pos(elong=None, elat=None, raj=None, decj=None)
