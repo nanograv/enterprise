@@ -624,9 +624,11 @@ class MockPulsar(BasePulsar):
         if inc_astrometry and not hasattr(const, "c"):  # pragma: no cover
             # We requested astromery parameters, but there's no astropy
             if not MockPulsar._noastropy_warning_issued:
-                logger.warning(
-                    "Astropy not installed but requested astrometry timing model. Switching off astrometry parameters in all instances of MockPulsar."
-                )
+                msg = "WARNING: Astropy not installed but user requested "
+                msg += "astrometry timing model in MockPulsar. "
+                msg += "Switching off astrometry in all instances of MockPulsar."
+                logger.warning(msg)
+
                 MockPulsar._noastropy_warning_issued = True
 
             inc_astrometry = False
