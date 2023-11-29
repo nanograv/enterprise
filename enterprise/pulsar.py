@@ -603,10 +603,7 @@ class Tempo2Pulsar(BasePulsar):
 class MockPulsar(BasePulsar):
     """Class to allow mock pulsars to be used with Enterprise"""
 
-    # TODO: allow units?
-    #       test utils.get_psrname_from_raj_decj
-    #            utils.get_psrname_from_pos
-    #            utils.create_spindown_timing_model
+    _noastropy_warning_issued = False  # Class variable
 
     def __init__(
         self,
@@ -624,6 +621,16 @@ class MockPulsar(BasePulsar):
         spindown_order=2,
         inc_astrometry=True,
     ):
+        if inc_astrometry and not hasattr(const, "c"):  # pragma: no cover
+            # We requested astromery parameters, but there's no astropy
+            if not MockPulsar._noastropy_warning_issued:
+                logger.warning(
+                    "Astropy not installed but requested astrometry timing model. Switching off astrometry parameters in all instances of MockPulsar."
+                )
+                MockPulsar._noastropy_warning_issued = True
+
+            inc_astrometry = False
+
         self.name = utils.get_psrname_from_pos(elong=elong, elat=elat, raj=raj, decj=decj)
 
         if elong is not None and elat is not None:
