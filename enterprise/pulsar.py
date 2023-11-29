@@ -36,7 +36,7 @@ try:
     import astropy.constants as const
     import astropy.units as u
 except ImportError:
-    const = None # pragma: no cover
+    const = None  # pragma: no cover
     u = None
 
 if pint is None and t2 is None:
