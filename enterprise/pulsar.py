@@ -405,7 +405,7 @@ class PintPulsar(BasePulsar):
         else:
             elong = model.ELONG.quantity.to(u.rad).value
             elat = model.ELAT.quantity.to(u.rad).value
-            return self._radec_from_ecliptic(elong, elat)
+            return self._get_radec_from_ecliptic(elong, elat)
 
     def _get_ssb_lsec(self, toas, obs_planet):
         """Get the planet to SSB vector in lightseconds from Pint table"""
