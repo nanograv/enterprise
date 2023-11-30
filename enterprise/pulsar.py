@@ -399,12 +399,13 @@ class PintPulsar(BasePulsar):
 
     def _get_radec(self, model):
         if hasattr(model, "RAJ") and hasattr(model, "DECJ"):
-            return (model.RAJ.value, model.DECJ.value)
+            raj = model.RAJ.quantity.to(u.rad).value
+            decj = model.DECJ.quantity.to(u.rad).value
+            return raj, decj
         else:
-            # TODO: better way of dealing with units
-            d2r = np.pi / 180
-            elong, elat = model.ELONG.value, model.ELAT.value
-            return self._get_radec_from_ecliptic(elong * d2r, elat * d2r)
+            elong = model.ELONG.quantity.to(u.rad).value
+            elat = model.ELAT.quantity.to(u.rad).value
+            return self._radec_from_ecliptic(elong, elat)
 
     def _get_ssb_lsec(self, toas, obs_planet):
         """Get the planet to SSB vector in lightseconds from Pint table"""
