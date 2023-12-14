@@ -192,6 +192,8 @@ def d_delay_d_PMRA(mjd_timestamps, ssb_to_earth_v, ra_radians, posepoch_mjd):
     :param ra_radians: Right ascension of the Pulsar [rad]
     :param posepoch_mjd: Position epoch [MJD]
 
+    TODO: this one is incorrect
+
     :returns: d_delay / d_PMRA
     """
     try:
@@ -202,15 +204,13 @@ def d_delay_d_PMRA(mjd_timestamps, ssb_to_earth_v, ra_radians, posepoch_mjd):
         raise
 
     earth_ra = np.arctan2(ssb_to_earth_v[:, 1], ssb_to_earth_v[:, 0])
+    earth_dec = np.arcsin(ssb_to_earth_v[:, 2] / np.sqrt(np.sum(ssb_to_earth_v**2, axis=1)))
 
     time_earth = mjd_timestamps - posepoch_mjd
-    geometric = np.cos(np.arcsin(ssb_to_earth_v[:, 2] / np.sqrt(np.sum(ssb_to_earth_v**2, axis=1)))) * np.sin(
-        ra_radians - earth_ra
-    )
+    geometric = np.cos(earth_dec) * np.sin(ra_radians - earth_ra)
 
     ddelay_dpmra = np.sqrt(np.sum(ssb_to_earth_v**2, axis=1)) * geometric * time_earth / (ac.c * u.radian)
 
-    # TODO: these units are not correct
     return ddelay_dpmra.decompose(u.si.bases)
 
 
@@ -222,6 +222,8 @@ def d_delay_d_PMDEC(mjd_timestamps, ssb_to_earth_v, ra_radians, dec_radians, pos
     :param ra_radians: Right ascension of the Pulsar [rad]
     :param dec_radians: Declination of the Pulsar [rad]
     :param posepoch_mjd: Position epoch [MJD]
+
+    TODO: this one is incorrect
 
     :returns: d_delay / d_PMDEC
     """
