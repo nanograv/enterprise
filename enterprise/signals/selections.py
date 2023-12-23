@@ -103,6 +103,24 @@ def by_band(flags):
     return {val: flags["B"] == val for val in flagvals}
 
 
+def by_freq_band(bands = None):
+    def backends(freqs):
+        """Selection function to split by EPTA and custom frequency band values
+        bands: dict of bands and ranges
+        default recovers EPTA freq bands
+        """
+        nonlocal bands
+        if isinstance(bands, dict):
+            pass
+        else:
+            bands = {"Band.1":[0,1000], "Band.2":[1000,2000],
+                     "Band.3":[2000,3000], "Band.4":[3000,10000]}
+        return {val: (freqs>=fl) & (freqs<fh) for val,
+                (fl, fh) in bands.items() if any((freqs>=fl) & (freqs<fh))}
+
+    return backends
+
+
 def by_frontend(flags):
     """Selection function to split by frontend under -fe flag"""
     flagvals = np.unique(flags["fe"])
@@ -129,6 +147,74 @@ def by_telescope(telescope):
     return {t: (telescope == t) for t in telescopes}
 
 
+def by_index(name, idx):
+    def indexvals(toas):
+        """Selection function to split by ToA index values"""
+        return {name: np.isin(np.arange(len(toas)), idx)}
+    return indexvals
+
+
 def no_selection(toas):
     """Default selection with no splitting."""
     return {"": np.ones_like(toas, dtype=bool)}
+
+
+def custom_backends(cb):
+    def backends(backend_flags):
+        """Selection function to split by custom backend flags only.
+        cb : list of str of the backends
+        use None to recover by_backend
+        use ["ASP", "GASP", "GUPPI", "PUPPI", "YUPPI"] to recover nanograv_backends
+        """
+        nonlocal cb
+        flagvals = np.unique(backend_flags)
+        if cb is not None:
+            cb = list(np.atleast_1d(cb))
+            flagvals = [val for val in flagvals if any([b in val for b in cb])]
+        else:
+            pass
+        return {val: backend_flags == val for val in flagvals}
+
+    return backends
+
+
+def custom_backends_dict(cb):
+    def backends(backend_flags, flags, toas):
+        """Selection function to split by custom flags dictionary only.
+        cb : str, list or dict of flags and names
+        use None to recover no_selection
+        use {"B":None} to recover by_band
+        use {"fe":None} to recover by_frontend
+        use {"backend":None} to recover by_backend
+        use {"backend":["ASP", "GASP", "GUPPI", "PUPPI", "YUPPI"]} to recover nanograv_backends
+        """
+        nonlocal cb
+        if isinstance(cb, str) or isinstance(cb, list):
+            flagvals = np.unique(backend_flags)
+            cb = list(np.atleast_1d(cb))
+            flagvals = [val for val in flagvals if any([b in val for b in cb])]
+            return {val: backend_flags == val for val in flagvals}
+        elif isinstance(cb, dict):
+            flagdict = {}
+            for flagname in cb.keys():
+                if flagname == "backend":
+                    flagvals = np.unique(backend_flags)
+                    if cb["backend"] is not None:
+                        cb_key = list(np.atleast_1d(cb["backend"]))
+                        flagvals = [val for val in flagvals if any([b in val for b in cb_key])]
+                    else:
+                        pass
+                    flagdict.update({val: backend_flags == val for val in flagvals})
+                else:
+                    flagvals = np.unique(flags[flagname])
+                    if cb[flagname] is not None:
+                        cb_key = list(np.atleast_1d(cb[flagname]))
+                        flagvals = [val for val in flagvals if any([b in val for b in cb_key])]
+                    else:
+                        pass
+                    flagdict.update({val: flags[flagname] == val for val in flagvals})
+            return flagdict
+        else:
+            return {"": np.ones_like(toas, dtype=bool)}
+
+    return backends
