@@ -145,6 +145,7 @@ def createfourierdesignmatrix_dm_tn(
     :param logf: use log frequency spacing
     :param fmin: lower sampling frequency
     :param fmax: upper sampling frequency
+    :param idx: index of the radio frequency dependence
     :param modes: option to provide explicit list or array of
                   sampling frequencies
 
@@ -157,7 +158,8 @@ def createfourierdesignmatrix_dm_tn(
         toas, nmodes=nmodes, Tspan=Tspan, logf=logf, fmin=fmin, fmax=fmax, pshift=pshift, modes=modes
     )
 
-    # compute the DM-variation vectors
+    # compute the DM-variation vectors in the temponest normalization
+    # amplitude normalization: sqrt(12)*pi, scaling to 1 MHz from 1400 MHz, DM constant: 2.41e-4 
     Dm = (fref / freqs) ** idx * np.sqrt(12) * np.pi / 1400 / 1400 / 2.41e-4
 
     return F * Dm[:, None], Ffreqs
