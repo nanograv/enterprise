@@ -223,7 +223,7 @@ class LogLikelihood(object):
                 try:
                     Sigma_sp = TNT + sps.csc_matrix(phiinv)
 
-                    if hasattr(self, 'cf_sp'):
+                    if hasattr(self, "cf_sp"):
                         # Have analytical decomposition already. Just do update
                         self.cf_sp.cholesky_inplace(Sigma_sp)
                     else:
