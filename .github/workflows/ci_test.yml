@@ -31,7 +31,6 @@ jobs:
       run: |
         brew unlink gcc && brew link gcc
         brew install automake suite-sparse
-        ls /usr/local/opt/suite-sparse/include/
         curl -sSL https://raw.githubusercontent.com/vallis/libstempo/master/install_tempo2.sh | sh
     - name: Install non-python dependencies on linux
       if: runner.os == 'Linux'
@@ -40,7 +39,8 @@ jobs:
         curl -sSL https://raw.githubusercontent.com/vallis/libstempo/master/install_tempo2.sh | sh
     - name: Install dependencies and package
       env:
-        SUITESPARSE_INCLUDE_DIR: "/usr/local/opt/suite-sparse/include/"
+        SUITESPARSE_INCLUDE_DIR: "/usr/local/opt/suite-sparse/include/suitesparse/include"
+        SUITESPARSE_LIBRARY_DIR: "/usr/local/opt/suite-sparse/lib"
       run: |
         python -m pip install --upgrade pip setuptools wheel
         python -m pip install -r requirements_dev.txt
