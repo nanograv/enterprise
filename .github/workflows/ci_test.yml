@@ -31,6 +31,7 @@ jobs:
       run: |
         brew unlink gcc && brew link gcc
         brew install automake suite-sparse
+        ls /usr/local/opt/suite-sparse/include/suitesparse/
         curl -sSL https://raw.githubusercontent.com/vallis/libstempo/master/install_tempo2.sh | sh
     - name: Install non-python dependencies on linux
       if: runner.os == 'Linux'
