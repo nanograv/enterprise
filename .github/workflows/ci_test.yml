@@ -37,6 +37,10 @@ jobs:
       run: |
         sudo apt-get install libsuitesparse-dev
         curl -sSL https://raw.githubusercontent.com/vallis/libstempo/master/install_tempo2.sh | sh
+    - name: Set path for Mac scikit-sparse installation
+      if: runner.os == 'macOS'
+      run: |
+        export SUITESPARSE_INCLUDE_DIR="/usr/include/suitesparse/include/suitesparse"
     - name: Install dependencies and package
       run: |
         python -m pip install --upgrade pip setuptools wheel
