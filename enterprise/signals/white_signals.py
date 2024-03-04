@@ -54,12 +54,18 @@ def WhiteNoise(varianceFunction, selection=Selection(selections.no_selection), n
 
 @function
 def efac_ndiag(toaerrs, efac=1.0):
-    return efac**2 * toaerrs**2
+    if efac is None:
+        return toaerrs**2
+    else:
+        return efac**2 * toaerrs**2
 
 
 @function
 def combined_ndiag(toaerrs, efac=1.0, log10_t2equad=-8):
-    return efac**2 * (toaerrs**2 + 10 ** (2 * log10_t2equad))
+    if efac is None and log10_t2equad is None:
+        return toaerrs**2
+    else:
+        return efac**2 * (toaerrs**2 + 10 ** (2 * log10_t2equad))
 
 
 def MeasurementNoise(
@@ -87,7 +93,11 @@ def MeasurementNoise(
 
 @function
 def tnequad_ndiag(toas, log10_tnequad=-8):
-    return np.ones_like(toas) * 10 ** (2 * log10_tnequad)
+    if log10_tnequad is None:
+        return np.zeros_like(toas)
+    else:
+        return np.ones_like(toas) * 10 ** (2 * log10_tnequad)
+    
 
 
 def TNEquadNoise(log10_tnequad=parameter.Uniform(-10, -5), selection=Selection(selections.no_selection), name=""):
