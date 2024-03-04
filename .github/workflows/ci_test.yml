@@ -40,7 +40,8 @@ jobs:
     - name: Set path for Mac scikit-sparse installation
       if: runner.os == 'macOS'
       run: |
-        export SUITESPARSE_INCLUDE_DIR="/usr/include/suitesparse/include/suitesparse"
+        export SUITESPARSE_INCLUDE_DIR="/usr/local/opt/suitesparse/include/suitesparse"
+        echo $SUITESPARSE_INCLUDE_DIR
     - name: Install dependencies and package
       run: |
         python -m pip install --upgrade pip setuptools wheel
