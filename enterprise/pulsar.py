@@ -8,7 +8,7 @@ import os
 import pickle
 
 import numpy as np
-from ephem import Ecliptic, Equatorial
+from ephem import Ecliptic, Equatorial, J2000
 
 import enterprise
 from enterprise.signals import utils
@@ -316,7 +316,6 @@ class BasePulsar(object):
 
 class PintPulsar(BasePulsar):
     def __init__(self, toas, model, sort=True, drop_pintpsr=True, planets=True):
-
         self._sort = sort
         self.planets = planets
         self.name = model.PSR.value
@@ -453,7 +452,6 @@ class PintPulsar(BasePulsar):
 
 class Tempo2Pulsar(BasePulsar):
     def __init__(self, t2pulsar, sort=True, drop_t2pulsar=True, planets=True):
-
         self._sort = sort
         self.t2pulsar = t2pulsar
         self.planets = planets
@@ -607,6 +605,88 @@ class Tempo2Pulsar(BasePulsar):
             psr._deflated = "destroyed"
 
 
+class MockPulsar(BasePulsar):
+    """Class to allow mock pulsars to be used with Enterprise"""
+
+    _noastropy_warning_issued = False  # Class variable
+
+    def __init__(
+        self,
+        obs_times_mjd,
+        elong=None,
+        elat=None,
+        raj=None,
+        decj=None,
+        ssbfreqs=1440.0,
+        residuals=None,
+        toaerrs=1e-6,
+        sort=True,
+        flags={},
+        telescope="GBT",
+        spindown_order=2,
+        inc_astrometry=True,
+    ):
+        if inc_astrometry and not hasattr(const, "c"):  # pragma: no cover
+            # We requested astromery parameters, but there's no astropy
+            if not MockPulsar._noastropy_warning_issued:
+                msg = "WARNING: Astropy not installed but user requested "
+                msg += "astrometry timing model in MockPulsar. "
+                msg += "Switching off astrometry in all instances of MockPulsar."
+                logger.warning(msg)
+
+                MockPulsar._noastropy_warning_issued = True
+
+            inc_astrometry = False
+
+        self.name = utils.get_psrname_from_pos(elong=elong, elat=elat, raj=raj, decj=decj)
+
+        if elong is not None and elat is not None:
+            ec = Ecliptic(elong * np.pi / 180.0, elat * np.pi / 180.0)
+            eq = Equatorial(ec, epoch=J2000)
+            raj, decj = np.double(eq.ra), np.double(eq.dec)
+
+        self._raj, self._decj = raj, decj
+
+        self._sort = sort
+        self.planets = False
+
+        self._toas = np.double(obs_times_mjd) * 86400
+        self._stoas = np.double(obs_times_mjd) * 86400
+        self._residuals = residuals if residuals is not None else np.zeros_like(obs_times_mjd)
+        self._toaerrs = np.ones_like(obs_times_mjd) * toaerrs
+        self._posepoch = np.mean(self._toas)
+
+        if inc_astrometry:
+            self._designmatrix, self.fitpars = utils.create_astrometry_spin_timing_model(
+                self._toas, self._raj, self._decj, self._posepoch, spindown_order=spindown_order
+            )
+        else:
+            self._designmatrix, self.fitpars = utils.create_spindown_timing_model(self._toas, order=spindown_order)
+        self._ssbfreqs = np.ones_like(self._toas) * ssbfreqs / 1e6
+        self._telescope = telescope
+
+        # set parameters
+        self.setpars = [fp for fp in self.fitpars]
+
+        # new-style storage of flags as a numpy record array (previously, psr._flags = flags)
+        self._flags = np.zeros(len(self._toas), dtype=[(key, val.dtype) for key, val in flags.items()])
+        for key, val in flags.items():
+            self._flags[key] = val
+
+        self._pdist = self._get_pdist()
+
+        self._pos = self._get_pos()
+        self._planetssb = None
+        self._sunssb = None
+
+        self._pos_t = np.tile(self._pos, (len(self._toas), 1))
+
+        self.sort_data()
+
+    def set_residuals(self, residuals):
+        self._residuals = residuals
+
+
 def Pulsar(*args, **kwargs):
     ephem = kwargs.get("ephem", None)
     clk = kwargs.get("clk", None)
@@ -660,7 +740,6 @@ def Pulsar(*args, **kwargs):
             return PintPulsar(toas, model, sort=sort, drop_pintpsr=drop_pintpsr, planets=planets)
 
         elif timing_package.lower() == "tempo2":
-
             # hack to set maxobs
             maxobs = get_maxobs(reltimfile) + 100
             t2pulsar = t2.tempopulsar(relparfile, reltimfile, maxobs=maxobs, ephem=ephem, clk=clk)

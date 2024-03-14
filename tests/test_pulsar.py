@@ -18,11 +18,12 @@ import pytest
 
 import numpy as np
 
-from enterprise.pulsar import Pulsar
+from enterprise.pulsar import Pulsar, MockPulsar
 from tests.enterprise_test_data import datadir
 
 import pint.models.timing_model
 from pint.models import get_model_and_toas
+import ephem
 
 
 class TestPulsar(unittest.TestCase):
@@ -230,3 +231,86 @@ class TestPulsarPint(TestPulsar):
             msg += "`planet` flag is not True in `toas` or further Pint "
             msg += "development to add additional planets is needed."
             self.assertTrue(msg in context.exception)
+
+
+class TestPulsarMock(TestPulsar):
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        toas = np.linspace(53000.0, 58000.0, 4005)
+        flags = {"f": np.array(["nosystem"] * 4005), "fe": np.array(["nofrontend"] * 4005)}
+        decj, raj = (0.16848694562363042, 4.9533700839400492)
+        eq = ephem.Equatorial(raj, decj, epoch=ephem.J2000)
+        ec = ephem.Ecliptic(eq)
+        elong, elat = ec.lon * 180 / np.pi, ec.lat * 180 / np.pi
+
+        cls.psr = MockPulsar(
+            obs_times_mjd=toas,
+            elong=elong,
+            elat=elat,
+            ssbfreqs=1440.0 * np.ones_like(toas),
+            residuals=np.zeros_like(toas),
+            toaerrs=1e-6 * np.ones_like(toas),
+            sort=True,
+            flags=flags,
+            telescope="GBT",
+            spindown_order=2,
+            inc_astrometry=True,
+        )
+
+        cls.psr_spin = MockPulsar(
+            obs_times_mjd=toas,
+            elong=elong,
+            elat=elat,
+            ssbfreqs=1440.0 * np.ones_like(toas),
+            residuals=np.zeros_like(toas),
+            toaerrs=1e-6 * np.ones_like(toas),
+            sort=True,
+            flags=flags,
+            telescope="GBT",
+            spindown_order=2,
+            inc_astrometry=False,
+        )
+        cls.psr_spin.set_residuals(np.ones_like(toas))
+
+    def test_deflate_inflate(self):
+        pass
+
+    def test_tearDownClass(self):
+        pass
+
+    def test_dm(self):
+        pass
+
+    def test_design_matrix(self):
+        """Check design matrix shape."""
+
+        msg = "Design matrix shape incorrect."
+        assert self.psr.Mmat.shape == (4005, 8), msg
+
+        assert self.psr_spin.Mmat.shape == (4005, 3), msg
+
+    def test_planetssb(self):
+        """Place holder for filter_data tests."""
+        assert hasattr(self.psr, "_planetssb")
+
+    def test_sunssb(self):
+        """Place holder for filter_data tests."""
+        assert hasattr(self.psr, "_sunssb")
+
+    def test_wrong_input(self):
+        pass
+
+    def test_value_error(self):
+        pass
+
+    def test_to_pickle(self):
+        """Place holder for to_pickle tests."""
+        pass
+
+    def test_set_residuals(self):
+        """Check Residual shape."""
+
+        msg = "Residuals from set_residuals incorrect"
+        assert np.all(self.psr_spin.residuals == np.ones(4005)), msg
