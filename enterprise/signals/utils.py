@@ -325,7 +325,6 @@ def create_stabletimingdesignmatrix(designmat, fastDesign=True):
 
 
 def make_ecc_interpolant():
-
     """
     Make interpolation function from eccentricity file to
     determine number of harmonics to use for a given
@@ -342,7 +341,6 @@ def make_ecc_interpolant():
 
 
 def get_edot(F, mc, e):
-
     """
     Compute eccentricity derivative from Taylor et al. (2016)
 
@@ -879,16 +877,16 @@ def anis_orf(pos1, pos2, params, **kwargs):
 @function
 def unnormed_tm_basis(Mmat, idx_exclude=None):
     if idx_exclude:
-        idxs  = np.array([i for i in range(Mmat.shape[1]) if i not in idx_exclude])
-        Mmat = Mmat[:,idxs]
+        idxs = np.array([i for i in range(Mmat.shape[1]) if i not in idx_exclude])
+        Mmat = Mmat[:, idxs]
     return Mmat, np.ones_like(Mmat.shape[1])
 
 
 @function
 def normed_tm_basis(Mmat, norm=None, idx_exclude=None):
     if idx_exclude:
-        idxs  = np.array([i for i in range(Mmat.shape[1]) if i not in idx_exclude])
-        Mmat = Mmat[:,idxs]
+        idxs = np.array([i for i in range(Mmat.shape[1]) if i not in idx_exclude])
+        Mmat = Mmat[:, idxs]
 
     if norm is None:
         norm = np.sqrt(np.sum(Mmat**2, axis=0))
@@ -902,8 +900,8 @@ def normed_tm_basis(Mmat, norm=None, idx_exclude=None):
 @function
 def svd_tm_basis(Mmat, idx_exclude=None):
     if idx_exclude:
-        idxs  = np.array([i for i in range(Mmat.shape[1]) if i not in idx_exclude])
-        Mmat = Mmat[:,idxs]
+        idxs = np.array([i for i in range(Mmat.shape[1]) if i not in idx_exclude])
+        Mmat = Mmat[:, idxs]
 
     u, s, v = np.linalg.svd(Mmat, full_matrices=False)
     return u, np.ones_like(s)

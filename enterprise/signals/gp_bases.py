@@ -159,7 +159,7 @@ def createfourierdesignmatrix_dm_tn(
     )
 
     # compute the DM-variation vectors in the temponest normalization
-    # amplitude normalization: sqrt(12)*pi, scaling to 1 MHz from 1400 MHz, DM constant: 2.41e-4 
+    # amplitude normalization: sqrt(12)*pi, scaling to 1 MHz from 1400 MHz, DM constant: 2.41e-4
     Dm = (fref / freqs) ** idx * np.sqrt(12) * np.pi / 1400 / 1400 / 2.41e-4
 
     return F * Dm[:, None], Ffreqs
@@ -262,7 +262,6 @@ def createfourierdesignmatrix_eph(
 def createfourierdesignmatrix_chromatic(
     toas, freqs, nmodes=30, Tspan=None, logf=False, fmin=None, fmax=None, idx=4, modes=None
 ):
-
     """
     Construct Scattering-variation fourier design matrix.
 
@@ -310,7 +309,7 @@ def createfourierdesignmatrix_general(
     fmax=None,
     modes=None,
     pshift=None,
-    pseed=None
+    pseed=None,
 ):
     """
     Construct fourier design matrix with possibility of adding selection and/or chromatic index envelope.
@@ -333,7 +332,7 @@ def createfourierdesignmatrix_general(
     :return: f: Sampling frequencies
     """
     if flagval and not psrTspan:
-        sel_toas = toas[np.where(flags[flagname]==flagval)]
+        sel_toas = toas[np.where(flags[flagname] == flagval)]
         Tspan = sel_toas.max() - sel_toas.min()
 
     # get base fourier design matrix and frequencies
@@ -351,6 +350,6 @@ def createfourierdesignmatrix_general(
 
     # compute the mask for the selection
     if flagval:
-        F *= np.array([flags[flagname]==flagval]*F.shape[1]).T
-    
+        F *= np.array([flags[flagname] == flagval] * F.shape[1]).T
+
     return F, Ffreqs
