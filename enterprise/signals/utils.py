@@ -322,7 +322,6 @@ def create_stabletimingdesignmatrix(designmat, fastDesign=True):
 
 
 def make_ecc_interpolant():
-
     """
     Make interpolation function from eccentricity file to
     determine number of harmonics to use for a given
@@ -339,7 +338,6 @@ def make_ecc_interpolant():
 
 
 def get_edot(F, mc, e):
-
     """
     Compute eccentricity derivative from Taylor et al. (2016)
 
