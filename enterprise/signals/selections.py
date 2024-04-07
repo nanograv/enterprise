@@ -103,7 +103,7 @@ def by_band(flags):
     return {val: flags["B"] == val for val in flagvals}
 
 
-def by_freq_band(bands = None):
+def by_freq_band(bands=None):
     def backends(freqs):
         """Selection function to split by EPTA and custom frequency band values
         bands: dict of bands and ranges
@@ -113,10 +113,10 @@ def by_freq_band(bands = None):
         if isinstance(bands, dict):
             pass
         else:
-            bands = {"Band.1":[0,1000], "Band.2":[1000,2000],
-                     "Band.3":[2000,3000], "Band.4":[3000,10000]}
-        return {val: (freqs>=fl) & (freqs<fh) for val,
-                (fl, fh) in bands.items() if any((freqs>=fl) & (freqs<fh))}
+            bands = {"Band.1": [0, 1000], "Band.2": [1000, 2000], "Band.3": [2000, 3000], "Band.4": [3000, 10000]}
+        return {
+            val: (freqs >= fl) & (freqs < fh) for val, (fl, fh) in bands.items() if any((freqs >= fl) & (freqs < fh))
+        }
 
     return backends
 
@@ -151,6 +151,7 @@ def by_index(name, idx):
     def indexvals(toas):
         """Selection function to split by ToA index values"""
         return {name: np.isin(np.arange(len(toas)), idx)}
+
     return indexvals
 
 
