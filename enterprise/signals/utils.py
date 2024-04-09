@@ -19,11 +19,14 @@ import enterprise
 from enterprise import constants as const
 from enterprise import signals as sigs  # noqa: F401
 from enterprise.signals.gp_bases import (  # noqa: F401
-    createfourierdesignmatrix_dm,
-    createfourierdesignmatrix_env,
-    createfourierdesignmatrix_eph,
-    createfourierdesignmatrix_ephem,
     createfourierdesignmatrix_red,
+    createfourierdesignmatrix_dm,
+    createfourierdesignmatrix_dm_tn,
+    createfourierdesignmatrix_env,
+    createfourierdesignmatrix_ephem,
+    createfourierdesignmatrix_eph,
+    createfourierdesignmatrix_chromatic,
+    createfourierdesignmatrix_general,
 )
 from enterprise.signals.gp_priors import powerlaw, turnover  # noqa: F401
 from enterprise.signals.parameter import function
@@ -872,12 +875,19 @@ def anis_orf(pos1, pos2, params, **kwargs):
 
 
 @function
-def unnormed_tm_basis(Mmat):
+def unnormed_tm_basis(Mmat, idx_exclude=None):
+    if idx_exclude:
+        idxs = np.array([i for i in range(Mmat.shape[1]) if i not in idx_exclude])
+        Mmat = Mmat[:, idxs]
     return Mmat, np.ones_like(Mmat.shape[1])
 
 
 @function
-def normed_tm_basis(Mmat, norm=None):
+def normed_tm_basis(Mmat, norm=None, idx_exclude=None):
+    if idx_exclude:
+        idxs = np.array([i for i in range(Mmat.shape[1]) if i not in idx_exclude])
+        Mmat = Mmat[:, idxs]
+
     if norm is None:
         norm = np.sqrt(np.sum(Mmat**2, axis=0))
 
@@ -888,7 +898,11 @@ def normed_tm_basis(Mmat, norm=None):
 
 
 @function
-def svd_tm_basis(Mmat):
+def svd_tm_basis(Mmat, idx_exclude=None):
+    if idx_exclude:
+        idxs = np.array([i for i in range(Mmat.shape[1]) if i not in idx_exclude])
+        Mmat = Mmat[:, idxs]
+
     u, s, v = np.linalg.svd(Mmat, full_matrices=False)
     return u, np.ones_like(s)
 

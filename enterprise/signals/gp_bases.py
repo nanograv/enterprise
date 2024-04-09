@@ -13,9 +13,12 @@ from enterprise.signals.parameter import function
 __all__ = [
     "createfourierdesignmatrix_red",
     "createfourierdesignmatrix_dm",
+    "createfourierdesignmatrix_dm_tn",
     "createfourierdesignmatrix_env",
     "createfourierdesignmatrix_ephem",
     "createfourierdesignmatrix_eph",
+    "createfourierdesignmatrix_chromatic",
+    "createfourierdesignmatrix_general",
 ]
 
 
@@ -125,6 +128,44 @@ def createfourierdesignmatrix_dm(
 
 
 @function
+def createfourierdesignmatrix_dm_tn(
+    toas, freqs, nmodes=30, Tspan=None, pshift=False, fref=1400, logf=False, fmin=None, fmax=None, idx=2, modes=None
+):
+    """
+    Construct DM-variation fourier design matrix. Current
+    normalization expresses DM signal as a deviation [seconds]
+    at fref [MHz]
+
+    :param toas: vector of time series in seconds
+    :param freqs: radio frequencies of observations [MHz]
+    :param nmodes: number of fourier coefficients to use
+    :param Tspan: option to some other Tspan
+    :param pshift: option to add random phase shift
+    :param fref: reference frequency [MHz]
+    :param logf: use log frequency spacing
+    :param fmin: lower sampling frequency
+    :param fmax: upper sampling frequency
+    :param idx: index of the radio frequency dependence
+    :param modes: option to provide explicit list or array of
+                  sampling frequencies
+
+    :return: F: DM-variation fourier design matrix
+    :return: f: Sampling frequencies
+    """
+
+    # get base fourier design matrix and frequencies
+    F, Ffreqs = createfourierdesignmatrix_red(
+        toas, nmodes=nmodes, Tspan=Tspan, logf=logf, fmin=fmin, fmax=fmax, pshift=pshift, modes=modes
+    )
+
+    # compute the DM-variation vectors in the temponest normalization
+    # amplitude normalization: sqrt(12)*pi, scaling to 1 MHz from 1400 MHz, DM constant: 2.41e-4
+    Dm = (fref / freqs) ** idx * np.sqrt(12) * np.pi / 1400 / 1400 / 2.41e-4
+
+    return F * Dm[:, None], Ffreqs
+
+
+@function
 def createfourierdesignmatrix_env(
     toas,
     log10_Amp=-7,
@@ -218,7 +259,9 @@ def createfourierdesignmatrix_eph(
 
 
 @function
-def createfourierdesignmatrix_chromatic(toas, freqs, nmodes=30, Tspan=None, logf=False, fmin=None, fmax=None, idx=4):
+def createfourierdesignmatrix_chromatic(
+    toas, freqs, nmodes=30, Tspan=None, logf=False, fmin=None, fmax=None, idx=4, modes=None
+):
     """
     Construct Scattering-variation fourier design matrix.
 
@@ -231,15 +274,82 @@ def createfourierdesignmatrix_chromatic(toas, freqs, nmodes=30, Tspan=None, logf
     :param fmin: lower sampling frequency
     :param fmax: upper sampling frequency
     :param idx: Index of chromatic effects
+    :param modes: option to provide explicit list or array of
+                  sampling frequencies
 
     :return: F: Chromatic-variation fourier design matrix
     :return: f: Sampling frequencies
     """
 
     # get base fourier design matrix and frequencies
-    F, Ffreqs = createfourierdesignmatrix_red(toas, nmodes=nmodes, Tspan=Tspan, logf=logf, fmin=fmin, fmax=fmax)
+    F, Ffreqs = createfourierdesignmatrix_red(
+        toas, nmodes=nmodes, Tspan=Tspan, logf=logf, fmin=fmin, fmax=fmax, modes=modes
+    )
 
     # compute the DM-variation vectors
     Dm = (1400 / freqs) ** idx
 
     return F * Dm[:, None], Ffreqs
+
+
+@function
+def createfourierdesignmatrix_general(
+    toas,
+    freqs,
+    flags,
+    flagname="group",
+    flagval=None,
+    idx=None,
+    tndm=False,
+    nmodes=30,
+    Tspan=None,
+    psrTspan=True,
+    logf=False,
+    fmin=None,
+    fmax=None,
+    modes=None,
+    pshift=None,
+    pseed=None,
+):
+    """
+    Construct fourier design matrix with possibility of adding selection and/or chromatic index envelope.
+
+    :param toas: vector of time series in seconds
+    :param freqs: radio frequencies of observations [MHz]
+    :param flags: Flags from timfiles
+    :param nmodes: number of fourier coefficients to use
+    :param Tspan: option to some other Tspan
+    :param psrTspan: option to use pulsar time span. Used only if sub-group of ToAs is chosen
+    :param logf: use log frequency spacing
+    :param fmin: lower sampling frequency
+    :param fmax: upper sampling frequency
+    :param log10_Amp: log10 of the Amplitude [s]
+    :param idx: Index of chromatic effects
+    :param modes: option to provide explicit list or array of
+                  sampling frequencies
+
+    :return: F: fourier design matrix
+    :return: f: Sampling frequencies
+    """
+    if flagval and not psrTspan:
+        sel_toas = toas[np.where(flags[flagname] == flagval)]
+        Tspan = sel_toas.max() - sel_toas.min()
+
+    # get base fourier design matrix and frequencies
+    F, Ffreqs = createfourierdesignmatrix_red(
+        toas, nmodes=nmodes, Tspan=Tspan, logf=logf, fmin=fmin, fmax=fmax, modes=modes, pshift=pshift, pseed=pseed
+    )
+
+    # compute the chromatic-variation vectors
+    if idx:
+        if tndm:
+            chrom_fac = (1400 / freqs) ** idx * np.sqrt(12) * np.pi / 1400 / 1400 / 2.41e-4
+        else:
+            chrom_fac = (1400 / freqs) ** idx
+        F *= chrom_fac[:, None]
+
+    # compute the mask for the selection
+    if flagval:
+        F *= np.array([flags[flagname] == flagval] * F.shape[1]).T
+
+    return F, Ffreqs
