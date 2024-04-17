@@ -367,7 +367,7 @@ class PintPulsar(BasePulsar):
             "AstrometryEquatorial" if "AstrometryEquatorial" in model.components else "AstrometryEcliptic"
         )
 
-        self._pos_t = model.components[which_astrometry].ssb_to_psb_xyz_ICRS(model.get_barycentric_toas(toas)).value
+        self._pos_t = model.components[which_astrometry].ssb_to_psb_xyz_ICRS(model.get_barycentric_toas(toas).value)
 
         self.sort_data()
 
