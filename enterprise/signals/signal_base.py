@@ -743,6 +743,9 @@ class PTA(object):
                         cpcount += 1
                 row = [sig.name, sig.__class__.__name__, len(sig.param_names)]
                 summary += "{: <40} {: <30} {: <20}\n".format(*row)
+                if "BasisGP" in sig.__class__.__name__:
+                    summary += "\nBasis shape (Ntoas x N basis functions): {}".format(str(sig.get_basis().shape))
+                    summary += "\nN selected toas: {}\n".format(str(len([i for i in sig._masks[0] if i])))
                 if include_params:
                     summary += "\n"
                     summary += "params:\n"

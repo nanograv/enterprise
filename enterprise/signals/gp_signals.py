@@ -192,6 +192,9 @@ def FourierBasisGP(
     components=20,
     selection=Selection(selections.no_selection),
     Tspan=None,
+    logf=False,
+    fmin=None,
+    fmax=None,
     modes=None,
     name="red_noise",
     pshift=False,
@@ -200,7 +203,9 @@ def FourierBasisGP(
     """Convenience function to return a BasisGP class with a
     fourier basis."""
 
-    basis = utils.createfourierdesignmatrix_red(nmodes=components, Tspan=Tspan, modes=modes, pshift=pshift, pseed=pseed)
+    basis = utils.createfourierdesignmatrix_red(
+        nmodes=components, Tspan=Tspan, logf=logf, fmin=fmin, fmax=fmax, modes=modes, pshift=pshift, pseed=pseed
+    )
     BaseClass = BasisGP(spectrum, basis, coefficients=coefficients, combine=combine, selection=selection, name=name)
 
     class FourierBasisGP(BaseClass):
@@ -211,24 +216,24 @@ def FourierBasisGP(
     return FourierBasisGP
 
 
-def get_timing_model_basis(use_svd=False, normed=True):
+def get_timing_model_basis(use_svd=False, normed=True, idx_exclude=None):
     if use_svd:
         if normed is not True:
             raise ValueError("use_svd == True requires normed == True")
 
-        return utils.svd_tm_basis()
+        return utils.svd_tm_basis(idx_exclude=idx_exclude)
     elif normed is True:
-        return utils.normed_tm_basis()
+        return utils.normed_tm_basis(idx_exclude=idx_exclude)
     elif normed is not False:
-        return utils.normed_tm_basis(norm=normed)
+        return utils.normed_tm_basis(norm=normed, idx_exclude=idx_exclude)
     else:
-        return utils.unnormed_tm_basis()
+        return utils.unnormed_tm_basis(idx_exclude=idx_exclude)
 
 
-def TimingModel(coefficients=False, name="linear_timing_model", use_svd=False, normed=True):
+def TimingModel(coefficients=False, name="linear_timing_model", use_svd=False, normed=True, idx_exclude=None):
     """Class factory for marginalized linear timing model signals."""
 
-    basis = get_timing_model_basis(use_svd, normed)
+    basis = get_timing_model_basis(use_svd, normed, idx_exclude)
     prior = utils.tm_prior()
 
     BaseClass = BasisGP(prior, basis, coefficients=coefficients, name=name)
@@ -413,6 +418,9 @@ def FourierBasisCommonGP(
     combine=True,
     components=20,
     Tspan=None,
+    logf=False,
+    fmin=None,
+    fmax=None,
     modes=None,
     name="common_fourier",
     pshift=False,
@@ -424,7 +432,9 @@ def FourierBasisCommonGP(
             "With coefficients=True, FourierBasisCommonGP " + "requires that you specify Tspan explicitly."
         )
 
-    basis = utils.createfourierdesignmatrix_red(nmodes=components, Tspan=Tspan, modes=modes, pshift=pshift, pseed=pseed)
+    basis = utils.createfourierdesignmatrix_red(
+        nmodes=components, Tspan=Tspan, logf=logf, fmin=fmin, fmax=fmax, modes=modes, pshift=pshift, pseed=pseed
+    )
     BaseClass = BasisCommonGP(spectrum, basis, orf, coefficients=coefficients, combine=combine, name=name)
 
     class FourierBasisCommonGP(BaseClass):
