@@ -346,7 +346,7 @@ class TestLikelihood(unittest.TestCase):
         crn = gp_signals.FourierBasisCommonGP(pl, orf, components=20, name="GW", Tspan=Tspan)
 
         tm = gp_signals.TimingModel()
-        m = ef + crn
+        m = tm + ef + crn
 
         # Two identical arrays that we'll compare with two sets of parameters
         pta1 = signal_base.PTA([m(p) for p in self.psrs])
