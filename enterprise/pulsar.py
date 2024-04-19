@@ -11,6 +11,7 @@ import astropy.constants as const
 import astropy.units as u
 import numpy as np
 from ephem import Ecliptic, Equatorial
+from astropy.time import Time
 
 import enterprise
 from enterprise.signals import utils
@@ -367,7 +368,7 @@ class PintPulsar(BasePulsar):
             "AstrometryEquatorial" if "AstrometryEquatorial" in model.components else "AstrometryEcliptic"
         )
 
-        self._pos_t = model.components[which_astrometry].ssb_to_psb_xyz_ICRS(model.get_barycentric_toas(toas).value)
+        self._pos_t = model.components[which_astrometry].ssb_to_psb_xyz_ICRS(Time(model.get_barycentric_toas(toas),format='mjd')).value
 
         self.sort_data()
 
