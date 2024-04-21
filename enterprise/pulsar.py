@@ -9,10 +9,9 @@ import os
 import pickle
 from io import StringIO
 
-import astropy.constants as const
-import astropy.units as u
 import numpy as np
 from ephem import Ecliptic, Equatorial
+from astropy.time import Time
 
 import enterprise
 from enterprise.signals import utils
@@ -35,6 +34,13 @@ try:
 except ImportError:
     logger.warning("PINT not installed. Will use libstempo instead.")  # pragma: no cover
     pint = None
+
+try:
+    import astropy.constants as const
+    import astropy.units as u
+except ImportError:  # pragma: no cover
+    const = None
+    u = None
 
 if pint is None and t2 is None:
     err_msg = "Must have either PINT or libstempo timing package installed"
@@ -110,7 +116,11 @@ class BasePulsar(object):
 
     def _get_pos(self):
         return np.array(
-            [np.cos(self._raj) * np.cos(self._decj), np.sin(self._raj) * np.cos(self._decj), np.sin(self._decj)]
+            [
+                np.cos(self._raj) * np.cos(self._decj),
+                np.sin(self._raj) * np.cos(self._decj),
+                np.sin(self._decj),
+            ]
         )
 
     def sort_data(self):
@@ -368,7 +378,11 @@ class PintPulsar(BasePulsar):
             "AstrometryEquatorial" if "AstrometryEquatorial" in model.components else "AstrometryEcliptic"
         )
 
-        self._pos_t = model.components[which_astrometry].ssb_to_psb_xyz_ICRS(model.get_barycentric_toas(toas)).value
+        self._pos_t = (
+            model.components[which_astrometry]
+            .ssb_to_psb_xyz_ICRS(Time(model.get_barycentric_toas(toas), format="mjd"))
+            .value
+        )
 
         self.sort_data()
 
