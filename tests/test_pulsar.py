@@ -222,7 +222,7 @@ class TestPulsarPint(TestPulsar):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class with RAJ DECJ so _get_radec can be covered
-        Pulsar(
+        psr = Pulsar(
             datadir + "/mdc1/J0030+0451.par",
             datadir + "/mdc1/J0030+0451.tim",
             ephem="DE430",
@@ -230,7 +230,8 @@ class TestPulsarPint(TestPulsar):
             timing_package="pint",
         )
 
-        assert self.psr.Mmat.shape == (130, 8), msg
+        msg = f"Pulsar not loaded properly {self.psr.Mmat.shape}"
+        assert psr.Mmat.shape == (130, 8), msg
 
     def test_no_planet(self):
         """Test exception when incorrect par(tim) file given."""
