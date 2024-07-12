@@ -266,7 +266,7 @@ def NormalPPF(value, mu, sigma):
     Handles scalar mu and sigma, compatible vector value/mu/sigma,
     vector value/mu and compatible covariance matrix sigma."""
 
-    if np.ndim(sigma) == 2:
+    if np.ndim(sigma) >= 2:
         raise NotImplementedError("PPF not implemented when sigma is 2D")
 
     return sstats.norm.ppf(value, loc=mu, scale=sigma)

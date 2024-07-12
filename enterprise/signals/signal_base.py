@@ -221,9 +221,17 @@ class LogLikelihood(object):
 
             if self.cholesky_sparse:
                 try:
-                    cf = cholesky(TNT + sps.csc_matrix(phiinv))  # cf(Sigma)
-                    expval = cf(TNr)
-                    logdet_sigma = cf.logdet()
+                    Sigma_sp = TNT + sps.csc_matrix(phiinv)
+
+                    if hasattr(self, "cf_sp"):
+                        # Have analytical decomposition already. Just do update
+                        self.cf_sp.cholesky_inplace(Sigma_sp)
+                    else:
+                        # Do analytical and numerical Sparse Cholesky
+                        self.cf_sp = cholesky(Sigma_sp)
+
+                    expval = self.cf_sp(TNr)
+                    logdet_sigma = self.cf_sp.logdet()
                 except CholmodError:  # pragma: no cover
                     return -np.inf
             else:
@@ -742,6 +750,9 @@ class PTA(object):
                         cpcount += 1
                 row = [sig.name, sig.__class__.__name__, len(sig.param_names)]
                 summary += "{: <40} {: <30} {: <20}\n".format(*row)
+                if "BasisGP" in sig.__class__.__name__:
+                    summary += "\nBasis shape (Ntoas x N basis functions): {}".format(str(sig.get_basis().shape))
+                    summary += "\nN selected toas: {}\n".format(str(len([i for i in sig._masks[0] if i])))
                 if include_params:
                     summary += "\n"
                     summary += "params:\n"
