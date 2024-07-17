@@ -110,7 +110,7 @@ class ConditionalGP:
                             else:
                                 for tm_par in self.tm_params:
                                     
-                                    tm_idx = self.psr.fitpars.index(tm_par)
+                                    tm_idx = list(self.psr.fitpars).index(tm_par)
                                     save_name = sig.name.split('_')[0]+'_'+tm_par
                                     
                                     if gp:
