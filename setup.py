@@ -12,8 +12,6 @@ requirements = [
     "ephem>=3.7.6.0",
     "healpy>=1.14.0",
     "scikit-sparse>=0.4.5",
-    "pint-pulsar>=0.8.3",
-    "libstempo>=2.4.4",
 ]
 
 test_requirements = []

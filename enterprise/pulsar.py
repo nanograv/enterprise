@@ -5,7 +5,8 @@
 import json
 import logging
 import os
-import pickle
+from pyarrow import feather
+from pyarrow import Table
 
 import astropy.constants as const
 import astropy.units as u
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 try:
     import libstempo as t2
 except ImportError:
-    logger.warning("libstempo not installed. Will use PINT instead.")  # pragma: no cover
+    logger.warning("libstempo not installed. PINT or libstempo are required to use par and tim files.")  # pragma: no cover
     t2 = None
 
 try:
@@ -32,12 +33,8 @@ try:
     from pint.residuals import Residuals as resids
     from pint.toa import TOAs
 except ImportError:
-    logger.warning("PINT not installed. Will use libstempo instead.")  # pragma: no cover
+    logger.warning("PINT not installed. PINT or libstempo are required to use par and tim files.")  # pragma: no cover
     pint = None
-
-if pint is None and t2 is None:
-    err_msg = "Must have either PINT or libstempo timing package installed"
-    raise ImportError(err_msg)
 
 
 def get_maxobs(timfile):
@@ -154,29 +151,8 @@ class BasePulsar(object):
 
         self.sort_data()
 
-    def to_pickle(self, outdir=None):
-        """Save object to pickle file."""
-
-        # drop t2pulsar object
-        if hasattr(self, "t2pulsar"):
-            del self.t2pulsar
-            msg = "t2pulsar object cannot be pickled and has been removed."
-            logger.warning(msg)
-
-        if hasattr(self, "pint_toas"):
-            del self.pint_toas
-            del self.model
-            msg = "pint_toas and model objects cannot be pickled and have been removed."
-            logger.warning(msg)
-
-        if outdir is None:
-            outdir = os.getcwd()
-
-        if not os.path.exists(outdir):
-            os.makedirs(outdir)
-
-        with open(outdir + "/{0}.pkl".format(self.name), "wb") as f:
-            pickle.dump(self, f)
+    def to_feather(self, filename, noisedict=None):
+        FeatherPulsar.save_feather(self, filename, noisedict=noisedict)
 
     @property
     def isort(self):
@@ -399,6 +375,8 @@ class PintPulsar(BasePulsar):
 
         if dmx:
             self._dmx = dmx
+        else:
+            self._dmx = None
 
     def _get_radec(self, model):
         if hasattr(model, "RAJ") and hasattr(model, "DECJ"):
@@ -525,6 +503,8 @@ class Tempo2Pulsar(BasePulsar):
 
         if dmx:
             self._dmx = dmx
+        else:
+            self._dmx = None
 
     def _get_radec(self, t2pulsar):
         if "RAJ" in np.concatenate((t2pulsar.pars(which="fit"), t2pulsar.pars(which="set"))):
@@ -609,7 +589,90 @@ class Tempo2Pulsar(BasePulsar):
             psr._deflated = "destroyed"
 
 
+class FeatherPulsar:
+    columns = ['toas', 'stoas', 'toaerrs', 'residuals', 'freqs', 'backend_flags']
+    vector_columns = ['Mmat', 'sunssb', 'pos_t']
+    tensor_columns = ['planetssb']
+    # flags are done separately
+    metadata = ['name', 'dm', 'dmx', 'pdist', 'pos', 'phi', 'theta']
+    # notes: currently ignores _isort/__isort and gets sorted versions
+
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return f'<Pulsar {self.name}: {len(self.residuals)} res, {self.Mmat.shape[1]} pars>'
+
+    def __repr__(self):
+        return str(self)
+
+    @classmethod
+    def read_feather(cls, filename):
+        f = feather.read_table(filename)
+        self = FeatherPulsar()
+
+        for array in FeatherPulsar.columns:
+            if array in f.column_names:
+                setattr(self, array, f[array].to_numpy())
+
+        for array in FeatherPulsar.vector_columns:
+            cols = [c for c in f.column_names if c.startswith(array)]
+            setattr(self, array, np.array([f[col].to_numpy() for col in cols]).swapaxes(0,1).copy())
+
+        for array in FeatherPulsar.tensor_columns:
+            rows = sorted(set(['_'.join(c.split('_')[:-1]) for c in f.column_names if c.startswith(array)]))
+            cols = [[c for c in f.column_names if c.startswith(row)] for row in rows]
+            setattr(self, array,
+                    np.array([[f[col].to_numpy() for col in row] for row in cols]).swapaxes(0,2).swapaxes(1,2).copy())
+
+        self.flags = {}
+        for array in [c for c in f.column_names if c.startswith('flags_')]:
+            self.flags['_'.join(array.split('_')[1:])] = f[array].to_numpy()
+
+        meta = json.loads(f.schema.metadata[b'json'])
+        for attr in FeatherPulsar.metadata:
+            setattr(self, attr, meta[attr])
+        if 'noisedict' in meta:
+            setattr(self, 'noisedict', meta['noisedict'])
+
+        return self
+
+    def to_list(a):
+        return a.tolist() if isinstance(a, np.ndarray) else a
+
+    def save_feather(self, filename, noisedict=None):
+        self._toas = self._toas.astype(float)
+        pydict = {array: getattr(self, array) for array in FeatherPulsar.columns}
+
+        pydict.update({f'{array}_{i}': getattr(self, array)[:,i] for array in FeatherPulsar.vector_columns
+                                                                 for i in range(getattr(self, array).shape[1])})
+
+        pydict.update({f'{array}_{i}_{j}': getattr(self, array)[:,i,j] for array in FeatherPulsar.tensor_columns
+                                                                 for i in range(getattr(self, array).shape[1])
+                                                                 for j in range(getattr(self, array).shape[2])})
+
+        pydict.update({f'flags_{flag}': self.flags[flag] for flag in self.flags})
+
+        meta = {attr: FeatherPulsar.to_list(getattr(self, attr)) for attr in FeatherPulsar.metadata}
+
+        # use attribute if present
+        noisedict = getattr(self, 'noisedict', None) if noisedict is None else noisedict
+        if noisedict:
+            # only keep noisedict entries that are for this pulsar (requires pulsar name to be first part of the key!)
+            meta['noisedict'] = {par: val for par, val in noisedict.items() if par.startswith(self.name)}
+
+        feather.write_feather(Table.from_pydict(pydict, metadata={'json': json.dumps(meta)}),
+                                      filename)
+
+
 def Pulsar(*args, **kwargs):
+    featherfile = [x for x in args if isinstance(x, str) and x.endswith(".feather")]
+    if featherfile:
+        return FeatherPulsar.read_feather(featherfile[0])
+    featherfile = kwargs.get('filepath', None)
+    if featherfile:
+        return FeatherPulsar.read_feather(featherfile)
+
     ephem = kwargs.get("ephem", None)
     clk = kwargs.get("clk", None)
     bipm_version = kwargs.get("bipm_version", None)
