@@ -131,22 +131,6 @@ class TestPulsar(unittest.TestCase):
         """Place holder for filter_data tests."""
         assert hasattr(self.psr, "sunssb")
 
-    def test_to_pickle(self):
-        """Place holder for to_pickle tests."""
-        self.psr.to_pickle()
-        with open("B1855+09.pkl", "rb") as f:
-            pkl_psr = pickle.load(f)
-
-        os.remove("B1855+09.pkl")
-
-        assert np.allclose(self.psr.residuals, pkl_psr.residuals, rtol=1e-10)
-
-        self.psr.to_pickle("pickle_dir")
-        with open("pickle_dir/B1855+09.pkl", "rb") as f:
-            pkl_psr = pickle.load(f)
-
-        assert np.allclose(self.psr.residuals, pkl_psr.residuals, rtol=1e-10)
-
     @pytest.mark.skipif(sys.version_info < (3, 8), reason="Requires Python >= 3.8")
     def test_deflate_inflate(self):
         psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
@@ -186,7 +170,17 @@ class TestPulsar(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.time")
+    
+    def test_to_feather(self):
+        """Test creating feather file from Pulsar method"""
 
+        self.psr.to_feather("test.feather")
+        assert os.path.exists("test.feather")
+
+        loaded_psr = Pulsar("test.feather")
+        assert np.allclose(self.psr.residuals, loaded_psr.residuals, rtol=1e-10)
+
+        os.remove("test.feather")
 
 class TestPulsarPint(TestPulsar):
     @classmethod
