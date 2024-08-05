@@ -201,7 +201,7 @@ class TestPulsar(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.time")
-    
+
     def test_to_feather(self):
         """Test creating feather file from Pulsar method"""
 
@@ -212,6 +212,7 @@ class TestPulsar(unittest.TestCase):
         assert np.allclose(self.psr.residuals, loaded_psr.residuals, rtol=1e-10)
 
         os.remove("test.feather")
+
 
 class TestPulsarPint(TestPulsar):
     @classmethod
