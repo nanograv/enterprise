@@ -402,7 +402,9 @@ class TestGPSignals(unittest.TestCase):
                 F = F1 if nf1 > nf2 else F2
                 phi[: 2 * nf1] = p1
                 phi[: 2 * nf2] += p2
-                F[:,]  # noqa: E231
+                F[
+                    :,
+                ]  # noqa: E231
             else:
                 phi = np.concatenate((p1, p2))
                 F = np.hstack((F1, F2))

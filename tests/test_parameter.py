@@ -154,7 +154,9 @@ class TestParameter(unittest.TestCase):
 
         msg1c = "Scalar PPF does not match"
         x = 0.5
-        assert np.allclose(LinearExpPPF(x, p_min, p_max), np.log10(10**p_min + x * (10**p_max - 10**p_min))), msg1c
+        assert np.allclose(
+            LinearExpPPF(x, p_min, p_max), np.log10(10**p_min + x * (10**p_max - 10**p_min))
+        ), msg1c
 
         # As parameter dictionary or value for Uniform instantiated object
         lepar = LinearExp(pmin=p_min, pmax=p_max)("testpar")
@@ -176,7 +178,9 @@ class TestParameter(unittest.TestCase):
 
         x = np.array([0.5, 0.75])
         msg2c = "Vector-argument PPF does not match"
-        assert np.allclose(LinearExpPPF(x, p_min, p_max), np.log10(10**p_min + x * (10**p_max - 10**p_min))), msg2c
+        assert np.allclose(
+            LinearExpPPF(x, p_min, p_max), np.log10(10**p_min + x * (10**p_max - 10**p_min))
+        ), msg2c
 
         # vector bounds
         p_min, p_max = np.array([0, 1]), np.array([2, 3])
@@ -191,7 +195,9 @@ class TestParameter(unittest.TestCase):
         x = np.array([0.5, 0.75])
         p_min, p_max = np.array([0, 1]), np.array([2, 3])
         msg3c = "Vector-argument PPF+bounds does not match"
-        assert np.allclose(LinearExpPPF(x, p_min, p_max), np.log10(10**p_min + x * (10**p_max - 10**p_min))), msg3c
+        assert np.allclose(
+            LinearExpPPF(x, p_min, p_max), np.log10(10**p_min + x * (10**p_max - 10**p_min))
+        ), msg3c
 
     def test_normal(self):
         """Test Normal parameter prior and sampler for various combinations of scalar and vector arguments."""
