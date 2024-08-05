@@ -382,7 +382,7 @@ class TestGPSignals(unittest.TestCase):
             (30, 30, 1.123 * Tmax, Tmax),
         ]
 
-        for (nf1, nf2, T1, T2) in tpars:
+        for nf1, nf2, T1, T2 in tpars:
 
             rn = gp_signals.FourierBasisGP(spectrum=pl, components=nf1, Tspan=T1)
             crn = gp_signals.FourierBasisGP(spectrum=cpl, components=nf2, Tspan=T2)
@@ -402,9 +402,7 @@ class TestGPSignals(unittest.TestCase):
                 F = F1 if nf1 > nf2 else F2
                 phi[: 2 * nf1] = p1
                 phi[: 2 * nf2] += p2
-                F[
-                    :,
-                ]  # noqa: E231
+                F[:,]  # noqa: E231
             else:
                 phi = np.concatenate((p1, p2))
                 F = np.hstack((F1, F2))
@@ -459,7 +457,7 @@ class TestGPSignals(unittest.TestCase):
             (30, 20, None, Tmax),
         ]
 
-        for (nf1, nf2, T1, T2) in tpars:
+        for nf1, nf2, T1, T2 in tpars:
 
             rn = gp_signals.FourierBasisGP(spectrum=pl, components=nf1, Tspan=T1, selection=selection)
             crn = gp_signals.FourierBasisGP(spectrum=cpl, components=nf2, Tspan=T2)
