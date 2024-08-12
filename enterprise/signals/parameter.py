@@ -29,6 +29,7 @@ def _sample(parlist, parvalues):
 
     for par in parlist:
         if par not in parvalues:
+            # RvH: Hyper pars seem to be broken
             # sample hyperpars for this par, skip parameter itself
             parvalues.update(sample(par.params[1:]))
 
