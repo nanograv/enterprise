@@ -1,7 +1,7 @@
 numpy>=1.16.3
 scipy>=1.2.0
 ephem>=3.7.6.0
-healpy>=1.14.0, <1.17.0
+healpy>=1.14.0,<1.17.0
 scikit-sparse>=0.4.5
 pint-pulsar>=0.8.3
 libstempo>=2.4.4
