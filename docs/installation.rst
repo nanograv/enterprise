@@ -23,6 +23,17 @@ Installation
 .. .. _Python installation guide: http://docs.python-guide.org/en/latest/starting/installation/
 
 
+Using conda
+-----------
+
+``enterprise`` is available via conda-forge as `enterprise-pulsar <https://anaconda.org/conda-forge/enterprise-pulsar>`_.
+If you use the Anaconda distribution of Python, we strongly recommend installing via the ``conda`` command:
+
+.. code-block:: console
+
+    $ conda install -c conda-forge enterprise-pulsar
+
+
 From sources
 ------------
 
@@ -57,3 +68,11 @@ If you want to run tests or do any other development then also run:
 
 .. _Github repo: https://github.com/nanograv/enterprise
 .. _tarball: https://github.com/nanograv/enterprise/tarball/master
+
+
+Tips
+----
+
+If you have a computer with an Apple Silicon chip, see `these instructions`_ on how to install Apple Intel packages using Rosetta.
+
+.. _these instructions: https://conda-forge.org/docs/user/tipsandtricks.html#installing-apple-intel-packages-on-apple-silicon
