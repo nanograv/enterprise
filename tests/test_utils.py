@@ -8,7 +8,9 @@ test_utils
 Tests for `utils` module.
 """
 
+import os
 import unittest
+import pytest
 
 import numpy as np
 
@@ -17,6 +19,8 @@ from enterprise.pulsar import Pulsar
 from enterprise.signals import anis_coefficients as anis
 from enterprise.signals import utils
 from tests.enterprise_test_data import datadir
+
+IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
 
 class TestUtils(unittest.TestCase):
@@ -166,6 +170,7 @@ class TestUtils(unittest.TestCase):
         assert np.allclose(utils.powerlaw(f, log10_A, gamma), pl), msg
         assert np.allclose(utils.turnover(f, log10_A, gamma, lf0, kappa, beta), pt), msg
 
+    @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Test doesn't work in Github Actions due to limited memory.")
     def test_orf(self):
         """Test ORF functions."""
         p1 = np.array([0.3, 0.648, 0.7])
