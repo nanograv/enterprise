@@ -5,7 +5,7 @@
 [![Build Status](https://github.com/nanograv/enterprise/workflows/CI-Tests/badge.svg)](https://github.com/nanograv/enterprise/actions)
 [![Documentation Status](https://readthedocs.org/projects/enterprise/badge/?version=latest)](https://enterprise.readthedocs.io/en/latest/?badge=latest)
 [![Test Coverage](https://codecov.io/gh/nanograv/enterprise/branch/master/graph/badge.svg?token=YXSX3293VF)](https://codecov.io/gh/nanograv/enterprise)
-![Python Versions](https://img.shields.io/badge/python-3.7%2C%203.8%2C%203.9%2C%203.10-blue.svg)
+![Python Versions](https://img.shields.io/badge/python-3.8%2C%203.9%2C%203.10%2C%203.11%2C%203.12-blue.svg)
 
 [![Zenodo DOI 4059815](https://zenodo.org/badge/DOI/10.5281/zenodo.4059815.svg)](https://doi.org/10.5281/zenodo.4059815)
 
@@ -14,7 +14,7 @@ Inference SuitE) is a pulsar timing analysis code, aimed at noise
 analysis, gravitational-wave searches, and timing model analysis.
 
 -   Note: `enterprise>=3.0` does not support Python2.7. You must use
-    Python \>= 3.7.
+    Python \>= 3.8.
 -   Free software: MIT license
 -   Documentation: <https://enterprise.readthedocs.io>.
 
