@@ -12,6 +12,7 @@ requirements = [
     "ephem>=3.7.6.0",
     "healpy>=1.14.0",
     "scikit-sparse>=0.4.5",
+    "pyarrow>=17.0.0"
 ]
 
 test_requirements = []
