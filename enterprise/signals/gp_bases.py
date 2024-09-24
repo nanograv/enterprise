@@ -334,7 +334,7 @@ def construct_chromatic_cached_parts(
 
 @function
 def createfourierdesignmatrix_chromatic_with_additional_caching(fmat_red=None, Ffreqs=None,
-                                                                fref_over_radio_freqs=None, alpha=4.0):
+                                                                fref_over_radio_freqs=None, idx=4.0):
     """
     Construct Scattering-variation fourier design matrix with a cached achromatic component of the
     Fourier design matrix (fmat_red). (Note this is independent of the actual achroamtic basis.)
@@ -345,12 +345,12 @@ def createfourierdesignmatrix_chromatic_with_additional_caching(fmat_red=None, F
     :param fmat_red: (constant) achromatic Fourier design matrix
     :param Ffreqs: Fourier frequencies
     :param fref_over_radio_freqs: Reference radio frequency (in MHz) over toa radio frequencies (in MHz)
-    :param alpha: Index of chromatic effects. Pass either a float, Constant, or Parameter
+    :param idx: Index of chromatic effects (alpha). Pass either a float, Constant, or Parameter
     :return: Fmat_chromatic: Chromatic-variation Fourier design matrix
     :return: Ffreqs: Fourier modes of the chromatic basis
     """
     # give radio frequencies over reference frequency -alpha chromatic index
-    CM = fref_over_radio_freqs**alpha
+    CM = fref_over_radio_freqs**idx
     return fmat_red * CM[:, None], Ffreqs
 
 
