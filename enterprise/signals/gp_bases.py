@@ -291,7 +291,7 @@ def createfourierdesignmatrix_chromatic(
 
     return F * Dm[:, None], Ffreqs
 
-
+@function
 def construct_chromatic_cached_parts(
     toas, freqs, nmodes=30, Tspan=None, logf=False, fmin=None, fmax=None, modes=None, fref=1400,
 ):
