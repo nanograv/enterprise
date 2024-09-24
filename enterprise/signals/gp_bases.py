@@ -292,6 +292,66 @@ def createfourierdesignmatrix_chromatic(
     return F * Dm[:, None], Ffreqs
 
 
+def construct_chromatic_cached_parts(
+    toas, freqs, nmodes=30, Tspan=None, logf=False, fmin=None, fmax=None, modes=None, fref=1400,
+):
+    """
+    Using this function alongside `createfourierdesignmatrix_chromatic_with_additional_caching()`
+    enables caching of the achromatic portion of the chromatic Fourier designmatrix as well as caching
+    the division of the reference radio frequency (fref) and observational radio frequency vector (freqs).
+    The actual caching occurs via the @function decorator on the 
+    `createfourierdesignmatrix_chromatic_with_additional_caching()`, where the decorator is defined in
+    `enterprise.signals.parameter.function`.
+    Note that the "achromatic portion of the chromatic Fourier designmatrix" is not related to 
+    the red noise and curn Fourier design matrices.
+
+    :param toas: vector of time series in seconds
+    :param freqs: radio frequencies of observations [MHz], vector N_toa in length.
+    :param nmodes: number of fourier coefficients to use
+    :param Tspan: option to some other Tspan
+    :param logf: use log frequency spacing
+    :param fmin: lower sampling frequency
+    :param fmax: upper sampling frequency
+    :param modes: option to provide explicit list or array of
+                  sampling frequencies
+    :param idx: Index of chromatic effects
+    :param fref: reference radio frequency (default 1400 MHz)
+    :return fmat_red: the achromatic Fmat to build the chromatic Fourier designmatrix from
+    :return: F: Chromatic-variation fourier design matrix
+    :return: f: Sampling frequencies
+    """
+
+    # get base achromatic Fourier design matrix and Fourier frequencies
+    fmat_red, Ffreqs = createfourierdesignmatrix_red(
+        toas, nmodes=nmodes, Tspan=Tspan, logf=logf, fmin=fmin, fmax=fmax, modes=modes
+    )
+    # compute the reference frequency/toa observational frequency vector
+    fref_over_radio_freqs = (fref / freqs)
+
+    return fmat_red, Ffreqs, fref_over_radio_freqs
+
+
+@function
+def createfourierdesignmatrix_chromatic_with_additional_caching(fmat_red=None, Ffreqs=None, fref_over_radio_freqs=None, alpha=4.0):
+    """
+    Construct Scattering-variation fourier design matrix with a cached achromatic component of the
+    Fourier design matrix (fmat_red). (Note this is independent of the actual achroamtic basis.)
+    As a quirk of the @function decorator (which provides the caching) you must pass arguments explicitly
+    e.g. fmat_red=fmatred, Ffreqs=Ffreqs... etc.
+    In this construction, the `fmat_red` and `Ffreqs`, and `fref_over_radio_freqs` are not recomputed at every call,
+    allowing for faster sampling in the chromatic index, alpha.
+    :param fmat_red: (constant) achromatic Fourier design matrix
+    :param Ffreqs: Fourier frequencies
+    :param fref_over_radio_freqs: Reference radio frequency (in MHz) over toa radio frequencies (in MHz)
+    :param alpha: Index of chromatic effects. Pass either a float, Constant, or Parameter
+    :return: Fmat_chromatic: Chromatic-variation Fourier design matrix
+    :return: Ffreqs: Fourier modes of the chromatic basis
+    """
+    # give radio frequencies over reference frequency -alpha chromatic index
+    CM = fref_over_radio_freqs**alpha
+    return fmat_red * CM[:, None], Ffreqs
+
+
 @function
 def createfourierdesignmatrix_general(
     toas,
