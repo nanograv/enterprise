@@ -294,7 +294,15 @@ def createfourierdesignmatrix_chromatic(
 
 @function
 def construct_chromatic_cached_parts(
-    toas, freqs, nmodes=30, Tspan=None, logf=False, fmin=None, fmax=None, modes=None, fref=1400,
+    toas,
+    freqs,
+    nmodes=30,
+    Tspan=None,
+    logf=False,
+    fmin=None,
+    fmax=None,
+    modes=None,
+    fref=1400,
 ):
     """
     Using this function alongside `createfourierdesignmatrix_chromatic_with_additional_caching()`
@@ -327,14 +335,15 @@ def construct_chromatic_cached_parts(
         toas, nmodes=nmodes, Tspan=Tspan, logf=logf, fmin=fmin, fmax=fmax, modes=modes
     )
     # compute the reference frequency/toa observational frequency vector
-    fref_over_radio_freqs = (fref / freqs)
+    fref_over_radio_freqs = fref / freqs
 
     return fmat_red, Ffreqs, fref_over_radio_freqs
 
 
 @function
-def createfourierdesignmatrix_chromatic_with_additional_caching(fmat_red=None, Ffreqs=None,
-                                                                fref_over_radio_freqs=None, idx=4.0):
+def createfourierdesignmatrix_chromatic_with_additional_caching(
+    fmat_red=None, Ffreqs=None, fref_over_radio_freqs=None, idx=4.0
+):
     """
     Construct Scattering-variation fourier design matrix with a cached achromatic component of the
     Fourier design matrix (fmat_red). (Note this is independent of the actual achroamtic basis.)
