@@ -291,6 +291,7 @@ def createfourierdesignmatrix_chromatic(
 
     return F * Dm[:, None], Ffreqs
 
+
 @function
 def construct_chromatic_cached_parts(
     toas, freqs, nmodes=30, Tspan=None, logf=False, fmin=None, fmax=None, modes=None, fref=1400,
@@ -299,10 +300,10 @@ def construct_chromatic_cached_parts(
     Using this function alongside `createfourierdesignmatrix_chromatic_with_additional_caching()`
     enables caching of the achromatic portion of the chromatic Fourier designmatrix as well as caching
     the division of the reference radio frequency (fref) and observational radio frequency vector (freqs).
-    The actual caching occurs via the @function decorator on the 
+    The actual caching occurs via the @function decorator on the
     `createfourierdesignmatrix_chromatic_with_additional_caching()`, where the decorator is defined in
     `enterprise.signals.parameter.function`.
-    Note that the "achromatic portion of the chromatic Fourier designmatrix" is not related to 
+    Note that the "achromatic portion of the chromatic Fourier designmatrix" is not related to
     the red noise and curn Fourier design matrices.
 
     :param toas: vector of time series in seconds
@@ -332,7 +333,8 @@ def construct_chromatic_cached_parts(
 
 
 @function
-def createfourierdesignmatrix_chromatic_with_additional_caching(fmat_red=None, Ffreqs=None, fref_over_radio_freqs=None, alpha=4.0):
+def createfourierdesignmatrix_chromatic_with_additional_caching(fmat_red=None, Ffreqs=None,
+                                                                fref_over_radio_freqs=None, alpha=4.0):
     """
     Construct Scattering-variation fourier design matrix with a cached achromatic component of the
     Fourier design matrix (fmat_red). (Note this is independent of the actual achroamtic basis.)
