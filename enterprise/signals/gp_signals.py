@@ -876,7 +876,7 @@ class MarginalizingNmat(object):
 
             TNT = self.Nmat.solve(T, left_array=T)
             return TNT - np.tensordot(self.MNF(T), self.MNMMNF(T), (0, 0))
-        elif left_array is not None and right.ndim == left_array.ndim and right.ndim<=2:
+        elif left_array is not None and right.ndim == left_array.ndim and right.ndim <= 2:
             # needed for Fe calculation and OS statistics
             T = right
             L = left_array
