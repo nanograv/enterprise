@@ -382,7 +382,7 @@ class TestGPSignals(unittest.TestCase):
             (30, 30, 1.123 * Tmax, Tmax),
         ]
 
-        for (nf1, nf2, T1, T2) in tpars:
+        for nf1, nf2, T1, T2 in tpars:
 
             rn = gp_signals.FourierBasisGP(spectrum=pl, components=nf1, Tspan=T1)
             crn = gp_signals.FourierBasisGP(spectrum=cpl, components=nf2, Tspan=T2)
@@ -459,7 +459,7 @@ class TestGPSignals(unittest.TestCase):
             (30, 20, None, Tmax),
         ]
 
-        for (nf1, nf2, T1, T2) in tpars:
+        for nf1, nf2, T1, T2 in tpars:
 
             rn = gp_signals.FourierBasisGP(spectrum=pl, components=nf1, Tspan=T1, selection=selection)
             crn = gp_signals.FourierBasisGP(spectrum=cpl, components=nf2, Tspan=T2)
