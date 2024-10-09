@@ -55,7 +55,6 @@ class TestGPCoefficients(unittest.TestCase):
 
         # initialize Pulsar class
         cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
-
         cls.psr2 = Pulsar(datadir + "/B1937+21_NANOGrav_9yv1.gls.par", datadir + "/B1937+21_NANOGrav_9yv1.tim")
 
     def test_ephemeris(self):
@@ -388,6 +387,13 @@ class TestGPCoefficientsPint(TestGPCoefficients):
         cls.psr = Pulsar(
             datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
             datadir + "/B1855+09_NANOGrav_9yv1.tim",
+            ephem="DE430",
+            timing_package="pint",
+        )
+
+        cls.psr2 = Pulsar(
+            datadir + "/B1937+21_NANOGrav_9yv1.gls.par",
+            datadir + "/B1937+21_NANOGrav_9yv1.tim",
             ephem="DE430",
             timing_package="pint",
         )
