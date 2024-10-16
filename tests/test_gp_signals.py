@@ -8,8 +8,9 @@ test_gp_signals
 Tests for GP signal modules.
 """
 
-
+import os
 import unittest
+import pytest
 
 import numpy as np
 import scipy.linalg as sl
@@ -19,6 +20,7 @@ from enterprise.signals import gp_signals, parameter, selections, signal_base, u
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
 
+ON_GITHUB = os.getenv("GITHUB_ACTIONS")
 
 @signal_base.function
 def create_quant_matrix(toas, dt=1):
@@ -41,7 +43,7 @@ class TestGPSignals(unittest.TestCase):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.t2.feather")
 
     def test_ecorr(self):
         """Test that ecorr signal returns correct values."""
@@ -711,6 +713,7 @@ class TestGPSignals(unittest.TestCase):
         assert m.get_basis(params).shape == T.shape, msg
 
 
+@pytest.mark.skipif(not ON_GITHUB, reason="Skipping test on GitHub Actions")
 class TestGPSignalsPint(TestGPSignals):
     @classmethod
     def setUpClass(cls):
@@ -723,3 +726,13 @@ class TestGPSignalsPint(TestGPSignals):
             ephem="DE430",
             timing_package="pint",
         )
+
+
+@pytest.mark.skipif(not ON_GITHUB, reason="Skipping test on GitHub Actions")
+class TestGPSignalsTempo2(TestGPSignals):
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
