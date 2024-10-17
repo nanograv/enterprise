@@ -506,50 +506,50 @@ class TestWhiteSignals(unittest.TestCase):
         self._ecorr_test_ipta(method="block", shuffled=True)
 
 
-# @pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
-# class TestWhiteSignalsPint(TestWhiteSignals):
-#     @classmethod
-#     def setUpClass(cls):
-#         """Setup the Pulsar object."""
+@pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
+class TestWhiteSignalsPint(TestWhiteSignals):
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
 
-#         # initialize Pulsar class
-#         cls.psr = Pulsar(
-#             datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
-#             datadir + "/B1855+09_NANOGrav_9yv1.tim",
-#             ephem="DE430",
-#             timing_package="pint",
-#         )
+        # initialize Pulsar class
+        cls.psr = Pulsar(
+            datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
+            datadir + "/B1855+09_NANOGrav_9yv1.tim",
+            ephem="DE430",
+            timing_package="pint",
+        )
 
-#         # IPTA-like pulsar
-#         cls.ipsr = Pulsar(
-#             datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", ephem="DE421", timint_package="pint", sort=True
-#         )
+        # IPTA-like pulsar
+        cls.ipsr = Pulsar(
+            datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", ephem="DE421", timint_package="pint", sort=True
+        )
 
-#         # Same pulsar, but with TOAs shuffled
-#         cls.ipsr_shuffled = Pulsar(
-#             datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", ephem="DE421", timint_package="pint", sort=True
-#         )
-#         rng = np.random.default_rng(seed=123)
-#         rng.shuffle(cls.ipsr_shuffled._isort)
-#         for ii, p in enumerate(cls.ipsr_shuffled._isort):
-#             cls.ipsr_shuffled._iisort[p] = ii
+        # Same pulsar, but with TOAs shuffled
+        cls.ipsr_shuffled = Pulsar(
+            datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", ephem="DE421", timint_package="pint", sort=True
+        )
+        rng = np.random.default_rng(seed=123)
+        rng.shuffle(cls.ipsr_shuffled._isort)
+        for ii, p in enumerate(cls.ipsr_shuffled._isort):
+            cls.ipsr_shuffled._iisort[p] = ii
 
 
-# @pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
-# class TestWhiteSignalsTempo2(TestWhiteSignals):
-#     @classmethod
-#     def setUpClass(cls):
-#         """Setup the Pulsar object."""
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
+class TestWhiteSignalsTempo2(TestWhiteSignals):
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
 
-#         # initialize Pulsar class
-#         cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+        # initialize Pulsar class
+        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
 
-#         # IPTA-like pulsar
-#         cls.ipsr = Pulsar(datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", sort=True)
+        # IPTA-like pulsar
+        cls.ipsr = Pulsar(datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", sort=True)
 
-#         # Same pulsar, but with TOAs shuffled
-#         cls.ipsr_shuffled = Pulsar(datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", sort=True)
-#         rng = np.random.default_rng(seed=123)
-#         rng.shuffle(cls.ipsr_shuffled._isort)
-#         for ii, p in enumerate(cls.ipsr_shuffled._isort):
-#             cls.ipsr_shuffled._iisort[p] = ii
+        # Same pulsar, but with TOAs shuffled
+        cls.ipsr_shuffled = Pulsar(datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", sort=True)
+        rng = np.random.default_rng(seed=123)
+        rng.shuffle(cls.ipsr_shuffled._isort)
+        for ii, p in enumerate(cls.ipsr_shuffled._isort):
+            cls.ipsr_shuffled._iisort[p] = ii

@@ -14,7 +14,7 @@ ON_GITHUB = os.getenv("GITHUB_ACTIONS")
 
 # Is libstempo installed?
 try:
-    import libstempo
+    import libstempo  # noqa
 
     LIBSTEMPO_INSTALLED = True
 except ImportError:
@@ -22,7 +22,7 @@ except ImportError:
 
 # Is PINT installed?
 try:
-    import pint
+    import pint # noqa
 
     PINT_INSTALLED = True
 except ImportError:
