@@ -22,6 +22,7 @@ from tests.enterprise_test_data import datadir
 
 ON_GITHUB = os.getenv("GITHUB_ACTIONS")
 
+
 @signal_base.function
 def create_quant_matrix(toas, dt=1):
     U, _ = utils.create_quantization_matrix(toas, dt=dt, nmin=1)
@@ -78,7 +79,7 @@ class TestLikelihood(unittest.TestCase):
         # initialize Pulsar class
         cls.psrs = [
             Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.t2.feather"),
-            Pulsar(datadir + "/J1909-3744_NANOGrav_9yv1.t2.feather")
+            Pulsar(datadir + "/J1909-3744_NANOGrav_9yv1.t2.feather"),
         ]
 
     def compute_like(self, npsrs=1, inc_corr=False, inc_kernel=False, cholesky_sparse=True, marginalizing_tm=False):
@@ -365,6 +366,7 @@ class TestLikelihood(unittest.TestCase):
         msg = "Likelihood mismatch between sparse Cholesky full & inplace"
         assert np.allclose(l1, l2), msg
 
+
 @pytest.mark.skipif(not ON_GITHUB, reason="Skipping test on GitHub Actions")
 class TestLikelihoodPint(TestLikelihood):
     @classmethod
@@ -386,6 +388,7 @@ class TestLikelihoodPint(TestLikelihood):
                 timing_package="pint",
             ),
         ]
+
 
 @pytest.mark.skipif(not ON_GITHUB, reason="Skipping test on GitHub Actions")
 class TestLikelihoodTempo2(TestLikelihood):

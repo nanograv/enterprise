@@ -22,6 +22,7 @@ from tests.enterprise_test_data import datadir
 
 ON_GITHUB = os.getenv("GITHUB_ACTIONS")
 
+
 @signal_base.function
 def create_quant_matrix(toas, dt=1):
     U, _ = utils.create_quantization_matrix(toas, dt=dt, nmin=1)
