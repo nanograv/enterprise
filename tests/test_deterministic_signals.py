@@ -22,6 +22,7 @@ from tests.enterprise_test_data import datadir
 
 ON_GITHUB = os.getenv("GITHUB_ACTIONS")
 
+
 @function
 def sine_wave(toas, log10_A=-7, log10_f=-8, phase=0.0):
     """A simple sine wave Enterprise function object. When instantiated,
