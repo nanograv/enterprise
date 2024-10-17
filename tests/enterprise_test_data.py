@@ -22,7 +22,7 @@ except ImportError:
 
 # Is PINT installed?
 try:
-    import pint # noqa
+    import pint  # noqa
 
     PINT_INSTALLED = True
 except ImportError:
