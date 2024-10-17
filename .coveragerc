@@ -6,6 +6,10 @@ omit =
 plugins =
     coverage_conditional_plugin
 
+[report]
+exclude_also = 
+    no cover: start(?s:.)*?no cover: stop
+
 [coverage_conditional_plugin]
 rules =
     "sys_version_info >= (3, 8)": py-gte-38
