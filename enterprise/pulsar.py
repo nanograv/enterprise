@@ -656,7 +656,6 @@ class Tempo2Pulsar(BasePulsar):
             psr._deflated = "destroyed"
 
 
-# no cover: start
 class FeatherPulsar:
     columns = ["toas", "stoas", "toaerrs", "residuals", "freqs", "backend_flags", "telescope"]
     vector_columns = ["Mmat", "sunssb", "pos_t"]
@@ -752,9 +751,6 @@ class FeatherPulsar:
             meta["noisedict"] = {par: val for par, val in noisedict.items() if par.startswith(self.name)}
 
         feather.write_feather(Table.from_pydict(pydict, metadata={"json": json.dumps(meta)}), filename)
-
-
-# no cover: end
 
 
 def Pulsar(*args, **kwargs):
