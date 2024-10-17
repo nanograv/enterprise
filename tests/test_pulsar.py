@@ -22,8 +22,9 @@ from enterprise.pulsar import Pulsar
 from tests.enterprise_test_data import datadir
 from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
-import pint.models.timing_model
-from pint.models import get_model_and_toas
+if PINT_INSTALLED:
+    import pint.models.timing_model
+    from pint.models import get_model_and_toas
 
 
 @pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
