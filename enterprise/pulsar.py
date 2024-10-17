@@ -48,7 +48,6 @@ except ImportError:  # pragma: no cover
     u = None
 
 
-# pragma: no cover
 def get_maxobs(timfile):
     """Utility function to return number of lines in tim file.
     :param timfile:
@@ -69,7 +68,6 @@ def get_maxobs(timfile):
     return maxobs
 
 
-# pragma: no cover
 class BasePulsar(object):
     """Abstract Base Class for Pulsar objects."""
 
@@ -325,7 +323,6 @@ class BasePulsar(object):
         return self._telescope[self._isort]
 
 
-# pragma: no cover
 class PintPulsar(BasePulsar):
     def __init__(self, toas, model, sort=True, drop_pintpsr=True, planets=True):
         self._sort = sort
@@ -486,7 +483,6 @@ class PintPulsar(BasePulsar):
         return sunssb
 
 
-# pragma: no cover
 class Tempo2Pulsar(BasePulsar):
     def __init__(
         self,
@@ -667,6 +663,7 @@ class Tempo2Pulsar(BasePulsar):
             psr._deflated = "destroyed"
 
 
+# no cover: start
 class FeatherPulsar:
     columns = ["toas", "stoas", "toaerrs", "residuals", "freqs", "backend_flags", "telescope"]
     vector_columns = ["Mmat", "sunssb", "pos_t"]
@@ -762,7 +759,7 @@ class FeatherPulsar:
             meta["noisedict"] = {par: val for par, val in noisedict.items() if par.startswith(self.name)}
 
         feather.write_feather(Table.from_pydict(pydict, metadata={"json": json.dumps(meta)}), filename)
-
+# no cover: end
 
 def Pulsar(*args, **kwargs):
     featherfile = [x for x in args if isinstance(x, str) and x.endswith(".feather")]
