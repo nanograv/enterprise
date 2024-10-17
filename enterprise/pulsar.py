@@ -752,7 +752,10 @@ class FeatherPulsar:
             meta["noisedict"] = {par: val for par, val in noisedict.items() if par.startswith(self.name)}
 
         feather.write_feather(Table.from_pydict(pydict, metadata={"json": json.dumps(meta)}), filename)
+
+
 # no cover: end
+
 
 def Pulsar(*args, **kwargs):
     featherfile = [x for x in args if isinstance(x, str) and x.endswith(".feather")]
