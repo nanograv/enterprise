@@ -711,7 +711,7 @@ class FeatherPulsar:
             setattr(self, attr, meta[attr])
         if "noisedict" in meta:
             setattr(self, "noisedict", meta["noisedict"])
-        
+
         self.sort_data()
 
         return self
