@@ -8,7 +8,6 @@ test_gp_coefficients
 Tests for GP signals used with deterministic coefficients.
 """
 
-import os
 import logging
 import unittest
 import pytest
@@ -29,8 +28,7 @@ from enterprise.signals import (
 )
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
-
-ON_GITHUB = os.getenv("GITHUB_ACTIONS")
+from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
 logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -381,7 +379,7 @@ class TestGPCoefficients(unittest.TestCase):
             assert np.allclose(mn[idx[c_name]], v)
 
 
-@pytest.mark.skipif(not ON_GITHUB, reason="Skipping test on GitHub Actions")
+@pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
 class TestGPCoefficientsPint(TestGPCoefficients):
     @classmethod
     def setUpClass(cls):
@@ -400,7 +398,7 @@ class TestGPCoefficientsPint(TestGPCoefficients):
         pass
 
 
-@pytest.mark.skipif(not ON_GITHUB, reason="Skipping test on GitHub Actions")
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
 class TestGPCoefficientsTempo2(TestGPCoefficients):
     @classmethod
     def setUpClass(cls):

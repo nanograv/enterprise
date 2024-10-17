@@ -6,6 +6,7 @@ import contextlib
 import json
 import logging
 import os
+import pickle
 
 from pyarrow import feather
 from pyarrow import Table
@@ -171,6 +172,20 @@ class BasePulsar(object):
         any such attributes.
         """
         pass
+
+    def to_pickle(self, outdir=None):
+        """Save object to pickle file."""
+
+        self.drop_not_picklable()
+
+        if outdir is None:
+            outdir = os.getcwd()
+
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
+
+        with open(outdir + "/{0}.pkl".format(self.name), "wb") as f:
+            pickle.dump(self, f)
 
     @property
     def isort(self):
@@ -649,7 +664,7 @@ class Tempo2Pulsar(BasePulsar):
 
 
 class FeatherPulsar:
-    columns = ["toas", "stoas", "toaerrs", "residuals", "freqs", "backend_flags"]
+    columns = ["toas", "stoas", "toaerrs", "residuals", "freqs", "backend_flags", "telescope"]
     vector_columns = ["Mmat", "sunssb", "pos_t"]
     tensor_columns = ["planetssb"]
     # flags are done separately
@@ -664,6 +679,13 @@ class FeatherPulsar:
 
     def __repr__(self):
         return str(self)
+
+    def sort_data(self):
+        """Sort data by time. This function is defined so that tests will pass."""
+        self._isort = np.argsort(self.toas, kind="mergesort")
+        self._iisort = np.zeros(len(self._isort), dtype=int)
+        for ii, p in enumerate(self._isort):
+            self._iisort[p] = ii
 
     @classmethod
     def read_feather(cls, filename):
@@ -696,6 +718,8 @@ class FeatherPulsar:
             setattr(self, attr, meta[attr])
         if "noisedict" in meta:
             setattr(self, "noisedict", meta["noisedict"])
+        
+        self.sort_data()
 
         return self
 
