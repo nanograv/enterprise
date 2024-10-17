@@ -8,7 +8,6 @@ test_gp_wideband
 Tests for WidebandTimingModel.
 """
 
-import os
 import unittest
 import pytest
 
@@ -18,11 +17,10 @@ from enterprise.pulsar import Pulsar
 from enterprise.signals import white_signals, gp_signals, parameter, selections, signal_base
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
+from tests.enterprise_test_data import ON_GITHUB
 
-ON_GITHUB = os.getenv("GITHUB_ACTIONS")
 
-
-@pytest.mark.skipif(not ON_GITHUB, reason="Skipping test on GitHub Actions")
+@pytest.mark.skipif(ON_GITHUB, reason="Skipping tests that require dependencies not available on GitHub Actions.")
 class TestWidebandTimingModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

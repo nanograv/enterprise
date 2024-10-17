@@ -7,7 +7,6 @@ and are created by the class factories in :mod:`enterprise.signals.deterministic
 All tests in this module are run on `B1855+09_NANOGrav_9yv1`.
 """
 
-import os
 import unittest
 import pytest
 
@@ -19,8 +18,7 @@ from enterprise.signals import deterministic_signals, parameter, selections, uti
 from enterprise.signals.parameter import function
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
-
-ON_GITHUB = os.getenv("GITHUB_ACTIONS")
+from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
 
 @function
@@ -262,7 +260,7 @@ class TestDeterministicSignals(unittest.TestCase):
         assert np.allclose(d1, d2, rtol=1e-10), msg2
 
 
-@pytest.mark.skipif(not ON_GITHUB, reason="Skipping test on GitHub Actions")
+@pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
 class TestDeterministicSignalsPint(TestDeterministicSignals):
     """Tests deterministic signals with a PINT Pulsar object."""
 
@@ -279,7 +277,7 @@ class TestDeterministicSignalsPint(TestDeterministicSignals):
         )
 
 
-@pytest.mark.skipif(not ON_GITHUB, reason="Skipping test on GitHub Actions")
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
 class TestDeterministicSignalsTempo2(TestDeterministicSignals):
     """Tests deterministic signals with a TEMPO2 Pulsar object."""
 

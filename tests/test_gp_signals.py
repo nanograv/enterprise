@@ -8,7 +8,6 @@ test_gp_signals
 Tests for GP signal modules.
 """
 
-import os
 import unittest
 import pytest
 
@@ -19,8 +18,7 @@ from enterprise.pulsar import Pulsar
 from enterprise.signals import gp_signals, parameter, selections, signal_base, utils
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
-
-ON_GITHUB = os.getenv("GITHUB_ACTIONS")
+from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
 
 @signal_base.function
@@ -714,7 +712,7 @@ class TestGPSignals(unittest.TestCase):
         assert m.get_basis(params).shape == T.shape, msg
 
 
-@pytest.mark.skipif(not ON_GITHUB, reason="Skipping test on GitHub Actions")
+@pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
 class TestGPSignalsPint(TestGPSignals):
     @classmethod
     def setUpClass(cls):
@@ -729,7 +727,7 @@ class TestGPSignalsPint(TestGPSignals):
         )
 
 
-@pytest.mark.skipif(not ON_GITHUB, reason="Skipping test on GitHub Actions")
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
 class TestGPSignalsTempo2(TestGPSignals):
     @classmethod
     def setUpClass(cls):

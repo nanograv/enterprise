@@ -20,11 +20,13 @@ import numpy as np
 
 from enterprise.pulsar import Pulsar
 from tests.enterprise_test_data import datadir
+from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
 import pint.models.timing_model
 from pint.models import get_model_and_toas
 
 
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
 class TestTimingPackageExceptions(unittest.TestCase):
     def test_unkown_timing_package(self):
         # initialize Pulsar class
@@ -44,6 +46,7 @@ class TestTimingPackageExceptions(unittest.TestCase):
         )
 
 
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
 class TestPulsar(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -187,6 +190,8 @@ class TestPulsar(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             pkl_psr.inflate()
 
+        os.remove("B1855+09.pkl")
+
     def test_wrong_input(self):
         """Test exception when incorrect par(tim) file given."""
 
@@ -214,6 +219,7 @@ class TestPulsar(unittest.TestCase):
         os.remove("test.feather")
 
 
+@pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
 class TestPulsarPint(TestPulsar):
     @classmethod
     def setUpClass(cls):

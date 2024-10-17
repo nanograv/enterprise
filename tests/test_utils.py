@@ -29,7 +29,7 @@ class TestUtils(unittest.TestCase):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.t2.feather")
 
         cls.F, _ = utils.createfourierdesignmatrix_red(cls.psr.toas, nmodes=30)
 
