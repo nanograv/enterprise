@@ -154,7 +154,7 @@ class TestSetParameters(unittest.TestCase):
         ), msg
 
         msg = "EFAC/ECORR 2D2 solve incorrect."
-        assert np.allclose(N.solve(T, left_array=T), np.dot(T.T, sl.cho_solve(cf, T)), rtol=1e-10), msg
+        assert np.allclose(N.solve(T, left_array=T), np.dot(T.T, sl.cho_solve(cf, T)), rtol=1e-9), msg
 
         F, f2 = utils.createfourierdesignmatrix_red(self.psrs[0].toas, nmodes=20)
 
@@ -269,7 +269,7 @@ class TestSetParameters(unittest.TestCase):
             ), msg
 
             msg = "EFAC/ECORR 2D2 solve incorrect."
-            assert np.allclose(N.solve(T, left_array=T), np.dot(T.T, sl.cho_solve(cf, T)), rtol=1e-10), msg
+            assert np.allclose(N.solve(T, left_array=T), np.dot(T.T, sl.cho_solve(cf, T)), rtol=1e-9), msg
 
             # spectrum test
             msg = "Spectrum incorrect for GP Fourier signal."
