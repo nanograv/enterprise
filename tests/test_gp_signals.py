@@ -727,11 +727,52 @@ class TestGPSignalsPint(TestGPSignals):
         )
 
 
-@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
-class TestGPSignalsTempo2(TestGPSignals):
-    @classmethod
-    def setUpClass(cls):
-        """Setup the Pulsar object."""
+class TestGPSignalsMarginalizingNmat:
+    def test_solve_with_left_array(self):
+        # diagonal noise matrix (n x n) representing white noise
+        Nmat = signal_base.ndarray_alt(np.array([0.2, 0.1, 0.3]))
+        # dense timing model matrix (n x m)
+        Mmat = np.array([[0.3, 0.2], [-0.1, 0.3], [0.1, 0.5]])
 
-        # initialize Pulsar class
-        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+        # initialize the MarginalizingNmat model
+        model = gp_signals.MarginalizingNmat(Mmat, Nmat)
+
+        # input matrices for testing
+        # 2D array
+        right = np.array([[1, 2], [3, 4], [2, 2]])
+        # 2D array with the same shape as `right`
+        left_array = np.array([[5, 6], [7, 8], [1, 1]])
+
+        # function to manually calculate the expected result of MarginalizingNmat
+        def manual_calc(Nmat, Mmat, L, R):
+            MNR = Mmat.T @ Nmat.solve(R)
+            MNL = Mmat.T @ Nmat.solve(L)
+            MNM = Mmat.T @ Nmat.solve(Mmat)
+            LNR = L.T @ Nmat.solve(R)
+            cf = sl.cho_factor(MNM)
+
+            return LNR - MNL.T @ sl.cho_solve(cf, MNR)
+
+        # test case 1: 1D inputs where `right` and `left_array` are identical (same object in memory)
+        result1 = model.solve(right[:, 0], right[:, 0])
+        result2 = manual_calc(Nmat, Mmat, right[:, :1], right[:, :1])
+        msg = f"Failed for 1D identical inputs. Expected: {result2}, Got: {result1}"
+        assert np.allclose(result1, result2, atol=1e-8), msg
+
+        # test case 2: 2D `right` and 1D `left_array`
+        result1 = model.solve(right[:, 0], left_array)
+        result2 = manual_calc(Nmat, Mmat, left_array, right[:, :1]).flatten()
+        msg = f"Failed for 2D right and 1D left_array. Expected: {result2}, Got: {result1}"
+        assert np.allclose(result1, result2, atol=1e-8), msg
+
+        # test case 3: 2D inputs where `right` and `left_array` are identical (same object in memory)
+        result1 = model.solve(right, right)
+        result2 = manual_calc(Nmat, Mmat, right, right)
+        msg = f"Failed for 2D identical inputs. Expected: {result2}, Got: {result1}"
+        assert np.allclose(result1, result2, atol=1e-8), msg
+
+        # test case 4: 2D `right` and 2D `left_array`
+        result1 = model.solve(right, left_array)
+        result2 = manual_calc(Nmat, Mmat, left_array, right)
+        msg = f"Failed for 2D right and 2D left_array. Expected: {result2}, Got: {result1}"
+        assert np.allclose(result1, result2, atol=1e-8), msg
