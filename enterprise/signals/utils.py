@@ -116,7 +116,7 @@ class ConditionalGP:
                                     if gp:
                                         pardict[save_name] = np.dot(sb[:, tm_idx], b[ntot+tm_idx])
                                     else:
-                                        pardict[save_name + "_coefficients"] = b[ntot : nb + ntot]
+                                        pardict[save_name + "_coefficients"] = b[ntot+tm_idx]
 
                         if gp:
                             pardict[sig.name] = np.dot(sb, b[ntot : nb + ntot])
