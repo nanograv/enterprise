@@ -170,7 +170,6 @@ class TestUtils(unittest.TestCase):
         assert np.allclose(utils.powerlaw(f, log10_A, gamma), pl), msg
         assert np.allclose(utils.turnover(f, log10_A, gamma, lf0, kappa, beta), pt), msg
 
-    @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Test doesn't work in Github Actions due to limited memory.")
     def test_orf(self):
         """Test ORF functions."""
         p1 = np.array([0.3, 0.648, 0.7])
@@ -188,7 +187,7 @@ class TestUtils(unittest.TestCase):
         mp_exp = 1.0 + 1e-5
         #
         psr_positions = np.array([[1.318116071652818, 2.2142974355881808], [1.1372584174390601, 0.79539883018414359]])
-        anis_basis = anis.anis_basis(psr_positions, lmax=1)
+        anis_basis = anis.anis_basis(psr_positions, lmax=1, nside=16)
         anis_orf = round(utils.anis_orf(p1, p1, [0.0, 1.0, 0.0], anis_basis=anis_basis, psrs_pos=[p1, p2], lmax=1), 3)
         anis_orf_exp = 1.147
         #
@@ -212,7 +211,7 @@ class TestUtils(unittest.TestCase):
         mp_exp = 1.0
         #
         psr_positions = np.array([[1.318116071652818, 2.2142974355881808], [1.1372584174390601, 0.79539883018414359]])
-        anis_basis = anis.anis_basis(psr_positions, lmax=1)
+        anis_basis = anis.anis_basis(psr_positions, lmax=1, nside=16)
         anis_orf = round(utils.anis_orf(p1, p2, [0.0, 1.0, 0.0], anis_basis=anis_basis, psrs_pos=[p1, p2], lmax=1), 3)
         anis_orf_exp = -0.150
         #
