@@ -19,7 +19,30 @@ from enterprise.signals import anis_coefficients as anis
 from enterprise.signals import utils
 from tests.enterprise_test_data import datadir
 
+from functools import wraps
+
 IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
+
+
+def set_env_variable(key, value):
+    """A decorator to temporarily set an environment variable for a test."""
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            original_value = os.environ.get(key)
+            try:
+                os.environ[key] = value
+                return func(*args, **kwargs)
+            finally:
+                if original_value is not None:
+                    os.environ[key] = original_value
+                else:
+                    del os.environ[key]
+
+        return wrapper
+
+    return decorator
 
 
 class TestUtils(unittest.TestCase):
@@ -169,6 +192,7 @@ class TestUtils(unittest.TestCase):
         assert np.allclose(utils.powerlaw(f, log10_A, gamma), pl), msg
         assert np.allclose(utils.turnover(f, log10_A, gamma, lf0, kappa, beta), pt), msg
 
+    @set_env_variable("OMP_NUM_THREADS", "1")
     def test_orf(self):
         """Test ORF functions."""
         p1 = np.array([0.3, 0.648, 0.7])
