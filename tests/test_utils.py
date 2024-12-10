@@ -214,7 +214,7 @@ class TestUtils(unittest.TestCase):
         anis_basis = anis.anis_basis(psr_positions, lmax=1, nside=8)
         anis_orf = round(utils.anis_orf(p1, p2, [0.0, 1.0, 0.0], anis_basis=anis_basis, psrs_pos=[p1, p2], lmax=1), 3)
         #anis_orf_exp = -0.150   <-- for nside=16, for nside=8 -0.152
-        anis_orf_exp = -0.150
+        anis_orf_exp = -0.152
         #
 
         msg = "ORF cross term incorrect for {}"
