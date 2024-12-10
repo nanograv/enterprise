@@ -188,7 +188,8 @@ class TestUtils(unittest.TestCase):
         psr_positions = np.array([[1.318116071652818, 2.2142974355881808], [1.1372584174390601, 0.79539883018414359]])
         anis_basis = anis.anis_basis(psr_positions, lmax=1, nside=8)
         anis_orf = round(utils.anis_orf(p1, p1, [0.0, 1.0, 0.0], anis_basis=anis_basis, psrs_pos=[p1, p2], lmax=1), 3)
-        anis_orf_exp = 1.147
+        # anis_orf_exp = 1.147   <-- for nside=16, for nside=8 1.46
+        anis_orf_exp = 1.146
         #
 
         msg = "ORF auto term incorrect for {}"
