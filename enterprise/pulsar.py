@@ -704,7 +704,7 @@ class FeatherPulsar:
 
         self.flags = {}
         for array in [c for c in f.column_names if c.startswith("flags_")]:
-            self.flags["_".join(array.split("_")[1:])] = f[array].to_numpy()
+            self.flags["_".join(array.split("_")[1:])] = f[array].to_numpy().astype('U')
 
         meta = json.loads(f.schema.metadata[b"json"])
         for attr in FeatherPulsar.metadata:
