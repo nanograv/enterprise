@@ -711,14 +711,14 @@ class FeatherPulsar:
 
         self.flags = {}
         for array in [c for c in f.column_names if c.startswith("flags_")]:
-            self.flags["_".join(array.split("_")[1:])] = f[array].to_numpy().astype('U')
+            self.flags["_".join(array.split("_")[1:])] = f[array].to_numpy().astype("U")
 
         meta = json.loads(f.schema.metadata[b"json"])
         for attr in FeatherPulsar.metadata:
             if attr in meta:
                 setattr(self, attr, meta[attr])
             else:
-                print(f'Pulsar.read_feather: cannot find {attr} in feather file {filename}.')
+                print(f"Pulsar.read_feather: cannot find {attr} in feather file {filename}.")
 
         if "noisedict" in meta:
             setattr(self, "noisedict", meta["noisedict"])
@@ -758,7 +758,7 @@ class FeatherPulsar:
             if hasattr(self, attr):
                 meta[attr] = Pulsar.to_list(getattr(self, attr))
             else:
-                print(f'Pulsar.save_feather: cannot find {attr} in Pulsar {self.name}.')
+                print(f"Pulsar.save_feather: cannot find {attr} in Pulsar {self.name}.")
 
         # use attribute if present
         noisedict = getattr(self, "noisedict", None) if noisedict is None else noisedict
