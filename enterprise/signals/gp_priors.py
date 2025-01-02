@@ -15,15 +15,15 @@ import enterprise.constants as const
 def powerlaw(f, log10_A=-16, gamma=5, components=2):
     df = np.diff(np.concatenate((np.array([0]), f[::components])))
     return (
-        (10 ** log10_A) ** 2 / 12.0 / np.pi ** 2 * const.fyr ** (gamma - 3) * f ** (-gamma) * np.repeat(df, components)
+        (10**log10_A) ** 2 / 12.0 / np.pi**2 * const.fyr ** (gamma - 3) * f ** (-gamma) * np.repeat(df, components)
     )
 
 
 @function
 def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10 / 3, beta=0.5):
     df = np.diff(np.concatenate((np.array([0]), f[::2])))
-    hcf = 10 ** log10_A * (f / const.fyr) ** ((3 - gamma) / 2) / (1 + (10 ** lf0 / f) ** kappa) ** beta
-    return hcf ** 2 / 12 / np.pi ** 2 / f ** 3 * np.repeat(df, 2)
+    hcf = 10**log10_A * (f / const.fyr) ** ((3 - gamma) / 2) / (1 + (10**lf0 / f) ** kappa) ** beta
+    return hcf**2 / 12 / np.pi**2 / f**3 * np.repeat(df, 2)
 
 
 @function
@@ -109,12 +109,12 @@ def turnover_knee(f, log10_A, gamma, lfb, lfk, kappa, delta):
     """
     df = np.diff(np.concatenate((np.array([0]), f[::2])))
     hcf = (
-        10 ** log10_A
+        10**log10_A
         * (f / const.fyr) ** ((3 - gamma) / 2)
-        * (1.0 + (f / 10 ** lfk)) ** delta
-        / np.sqrt(1 + (10 ** lfb / f) ** kappa)
+        * (1.0 + (f / 10**lfk)) ** delta
+        / np.sqrt(1 + (10**lfb / f) ** kappa)
     )
-    return hcf ** 2 / 12 / np.pi ** 2 / f ** 3 * np.repeat(df, 2)
+    return hcf**2 / 12 / np.pi**2 / f**3 * np.repeat(df, 2)
 
 
 @function
@@ -132,21 +132,21 @@ def broken_powerlaw(f, log10_A, gamma, delta, log10_fb, kappa=0.1):
     """
     df = np.diff(np.concatenate((np.array([0]), f[::2])))
     hcf = (
-        10 ** log10_A
+        10**log10_A
         * (f / const.fyr) ** ((3 - gamma) / 2)
-        * (1 + (f / 10 ** log10_fb) ** (1 / kappa)) ** (kappa * (gamma - delta) / 2)
+        * (1 + (f / 10**log10_fb) ** (1 / kappa)) ** (kappa * (gamma - delta) / 2)
     )
-    return hcf ** 2 / 12 / np.pi ** 2 / f ** 3 * np.repeat(df, 2)
+    return hcf**2 / 12 / np.pi**2 / f**3 * np.repeat(df, 2)
 
 
 @function
 def powerlaw_genmodes(f, log10_A=-16, gamma=5, components=2, wgts=None):
     if wgts is not None:
-        df = wgts ** 2
+        df = wgts**2
     else:
         df = np.diff(np.concatenate((np.array([0]), f[::components])))
     return (
-        (10 ** log10_A) ** 2 / 12.0 / np.pi ** 2 * const.fyr ** (gamma - 3) * f ** (-gamma) * np.repeat(df, components)
+        (10**log10_A) ** 2 / 12.0 / np.pi**2 * const.fyr ** (gamma - 3) * f ** (-gamma) * np.repeat(df, components)
     )
 
 
