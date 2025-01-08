@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-13]
+        os: [ubuntu-latest, macos-latest]
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
 
     steps:
@@ -31,12 +31,10 @@ jobs:
       run: |
         brew unlink gcc && brew link gcc
         brew install automake suite-sparse
-        curl -sSL https://raw.githubusercontent.com/vallis/libstempo/master/install_tempo2.sh | sh
     - name: Install non-python dependencies on linux
       if: runner.os == 'Linux'
       run: |
         sudo apt-get install libsuitesparse-dev
-        curl -sSL https://raw.githubusercontent.com/vallis/libstempo/master/install_tempo2.sh | sh
     - name: Install dependencies and package
       env:
         SUITESPARSE_INCLUDE_DIR: "/usr/local/opt/suite-sparse/include/suitesparse/"
@@ -76,7 +74,6 @@ jobs:
     - name: Install non-python dependencies on linux
       run: |
         sudo apt-get install libsuitesparse-dev
-        curl -sSL https://raw.githubusercontent.com/vallis/libstempo/master/install_tempo2.sh | sh
     - name: Build
       run: |
         python -m pip install --upgrade pip setuptools wheel

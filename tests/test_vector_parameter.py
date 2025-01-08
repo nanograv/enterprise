@@ -10,6 +10,7 @@ Tests for vector parameter functionality
 
 
 import unittest
+import pytest
 
 import numpy as np
 
@@ -17,6 +18,7 @@ from enterprise.pulsar import Pulsar
 from enterprise.signals import gp_signals, parameter, signal_base, white_signals
 from enterprise.signals.parameter import function
 from tests.enterprise_test_data import datadir
+from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
 
 @function
@@ -30,7 +32,7 @@ class TestVectorParameter(unittest.TestCase):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.t2.feather")
 
     def test_phi(self):
         """Test vector parameter on signal level."""
@@ -102,6 +104,7 @@ class TestVectorParameter(unittest.TestCase):
         assert pta.param_names == pnames
 
 
+@pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
 class TestVectorParameterPint(TestVectorParameter):
     @classmethod
     def setUpClass(cls):
@@ -114,3 +117,13 @@ class TestVectorParameterPint(TestVectorParameter):
             ephem="DE430",
             timing_package="pint",
         )
+
+
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
+class TestVectorParameterTempo2(TestVectorParameter):
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")

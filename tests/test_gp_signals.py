@@ -8,8 +8,8 @@ test_gp_signals
 Tests for GP signal modules.
 """
 
-
 import unittest
+import pytest
 
 import numpy as np
 import scipy.linalg as sl
@@ -18,6 +18,7 @@ from enterprise.pulsar import Pulsar
 from enterprise.signals import gp_signals, parameter, selections, signal_base, utils
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
+from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
 
 @signal_base.function
@@ -41,7 +42,7 @@ class TestGPSignals(unittest.TestCase):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.t2.feather")
 
     def test_ecorr(self):
         """Test that ecorr signal returns correct values."""
@@ -382,7 +383,7 @@ class TestGPSignals(unittest.TestCase):
             (30, 30, 1.123 * Tmax, Tmax),
         ]
 
-        for (nf1, nf2, T1, T2) in tpars:
+        for nf1, nf2, T1, T2 in tpars:
 
             rn = gp_signals.FourierBasisGP(spectrum=pl, components=nf1, Tspan=T1)
             crn = gp_signals.FourierBasisGP(spectrum=cpl, components=nf2, Tspan=T2)
@@ -459,7 +460,7 @@ class TestGPSignals(unittest.TestCase):
             (30, 20, None, Tmax),
         ]
 
-        for (nf1, nf2, T1, T2) in tpars:
+        for nf1, nf2, T1, T2 in tpars:
 
             rn = gp_signals.FourierBasisGP(spectrum=pl, components=nf1, Tspan=T1, selection=selection)
             crn = gp_signals.FourierBasisGP(spectrum=cpl, components=nf2, Tspan=T2)
@@ -711,6 +712,7 @@ class TestGPSignals(unittest.TestCase):
         assert m.get_basis(params).shape == T.shape, msg
 
 
+@pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
 class TestGPSignalsPint(TestGPSignals):
     @classmethod
     def setUpClass(cls):
@@ -723,6 +725,16 @@ class TestGPSignalsPint(TestGPSignals):
             ephem="DE430",
             timing_package="pint",
         )
+
+
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
+class TestGPSignalsTempo2(TestGPSignals):
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
 
 
 class TestGPSignalsMarginalizingNmat:

@@ -76,7 +76,7 @@ class TestParameter(unittest.TestCase):
         msg2 = "Enterprise samples have wrong value, type, or size"
         x1 = UniformSampler(p_min, p_max)
         assert p_min < x1 < p_max, msg2
-        assert type(x1) == float, msg2
+        assert type(x1) is float, msg2
 
         msg3 = "Enterprise and scipy PPF do not match"
         assert np.allclose(UniformPPF(x, p_min, p_max), scipy.stats.uniform.ppf(x, p_min, p_max - p_min)), msg3

@@ -81,7 +81,6 @@ def MeasurementNoise(
     selection=Selection(selections.no_selection),
     name="",
 ):
-
     """Class factory for EFAC+EQUAD measurement noise
     (with tempo/tempo2/pint parameter convention, variance = efac^2 (toaerr^2 + t2equad^2)).
     Leave out log10_t2equad to use EFAC noise only."""
