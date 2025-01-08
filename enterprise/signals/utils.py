@@ -34,9 +34,6 @@ from enterprise.signals.parameter import function
 logger = logging.getLogger(__name__)
 
 
-import scipy.linalg as sl
-
-
 class ConditionalGP:
     def __init__(self, pta, phiinv_method="cliques", tm_params=[], psr=None):
         """This class allows the computation of conditional means and
