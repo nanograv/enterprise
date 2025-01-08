@@ -8,8 +8,8 @@ test_gp_wideband
 Tests for WidebandTimingModel.
 """
 
-
 import unittest
+import pytest
 
 import numpy as np
 
@@ -17,8 +17,10 @@ from enterprise.pulsar import Pulsar
 from enterprise.signals import white_signals, gp_signals, parameter, selections, signal_base
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
+from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
 
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
 class TestWidebandTimingModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -145,6 +147,7 @@ class TestWidebandTimingModel(unittest.TestCase):
         assert np.allclose(dl1, delays), msg
 
 
+@pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
 class TestGPSignalsPint(TestWidebandTimingModel):
     @classmethod
     def setUpClass(cls):

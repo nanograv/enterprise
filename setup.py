@@ -12,8 +12,7 @@ requirements = [
     "ephem>=3.7.6.0",
     "healpy>=1.14.0",
     "scikit-sparse>=0.4.5",
-    "pint-pulsar>=0.8.3",
-    "libstempo>=2.4.4",
+    "pyarrow>=17.0.0",
 ]
 
 test_requirements = []
@@ -30,7 +29,7 @@ setup(
     package_dir={"enterprise": "enterprise"},
     include_package_data=True,
     package_data={"enterprise": ["datafiles/*", "datafiles/ephemeris/*", "datafiles/ng9/*", "datafiles/mdc_open1/*"]},
-    python_requires=">=3.8, <3.12",
+    python_requires=">=3.8, <3.13",
     install_requires=requirements,
     license="MIT license",
     zip_safe=False,
@@ -46,6 +45,7 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering :: Astronomy",
         "Topic :: Scientific/Engineering :: Physics",
     ],
