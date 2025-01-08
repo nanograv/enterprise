@@ -10,6 +10,7 @@ import pickle
 
 from pyarrow import feather
 from pyarrow import Table
+from io import StringIO
 
 import numpy as np
 from ephem import Ecliptic, Equatorial
@@ -39,6 +40,12 @@ except ImportError:
     logger.warning("PINT not installed. PINT or libstempo are required to use par and tim files.")  # pragma: no cover
     pint = None
 
+try:
+    import astropy.constants as const
+    import astropy.units as u
+except ImportError:  # pragma: no cover
+    const = None
+    u = None
 
 
 def get_maxobs(timfile):

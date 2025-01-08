@@ -727,6 +727,16 @@ class TestGPSignalsPint(TestGPSignals):
         )
 
 
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
+class TestGPSignalsTempo2(TestGPSignals):
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+
+
 class TestGPSignalsMarginalizingNmat:
     def test_solve_with_left_array(self):
         # diagonal noise matrix (n x n) representing white noise
