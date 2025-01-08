@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 class ConditionalGP:
-    def __init__(self, pta, phiinv_method="cliques"):
+    def __init__(self, pta, phiinv_method="cliques", tm_params=[], psr=None):
         """This class allows the computation of conditional means and
         random draws for all GP coefficients/realizations in a model,
         given a vector of hyperparameters. It currently requires combine=False
@@ -44,6 +44,8 @@ class ConditionalGP:
 
         self.pta = pta
         self.phiinv_method = phiinv_method
+        self.psr = psr
+        self.tm_params = tm_params
 
     def _make_conditional(self, params):
         TNrs = self.pta.get_TNr(params)
@@ -93,11 +95,26 @@ class ConditionalGP:
             for i, model in enumerate(self.pta.pulsarmodels):
                 for sig in model._signals:
                     if sig.signal_type in ["basis", "common basis"]:
+
                         sb = sig.get_basis(params=params)
                         nb = sb.shape[1]
 
                         if nb + ntot > len(b):
                             raise IndexError("Missing parameters! You need to set combine=False in your GPs.")
+
+                        if "timing_model" in sig.name and len(self.tm_params) > 0:
+                            if self.psr is None:
+                                raise ValueError("Need to input psr to get timing model param names")
+                            else:
+                                for tm_par in self.tm_params:
+
+                                    tm_idx = list(self.psr.fitpars).index(tm_par)
+                                    save_name = sig.name.split("_")[0] + "_" + tm_par
+
+                                    if gp:
+                                        pardict[save_name] = np.dot(sb[:, tm_idx], b[ntot + tm_idx])
+                                    else:
+                                        pardict[save_name + "_coefficients"] = b[ntot + tm_idx]
 
                         if gp:
                             pardict[sig.name] = np.dot(sb, b[ntot : nb + ntot])
