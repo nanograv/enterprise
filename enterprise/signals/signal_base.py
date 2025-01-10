@@ -690,7 +690,7 @@ class PTA(object):
     @property
     def pulsars(self):
         return [p.psrname for p in self._signalcollections]
-    
+
     def get_hypercube_transform(self, params):
         # transform from unit cube to prior cube for nested sampling using PPFs
         # map parameter vector if needed
