@@ -140,7 +140,7 @@ class BasePulsar(object):
         Filters the dataset to create a time-slice based on a custom mask or time range.
 
         Parameters:
-            mask (array-like, optional): Boolean array specifying which data to keep. 
+            mask (array-like, optional): Boolean array specifying which data to keep.
                                          If None, `start_time` and `end_time` are used. Default is None.
             start_time (float, optional): Start time (MJD) for filtering. Ignored if `mask` is provided. Default is None.
             end_time (float, optional): End time (MJD) for filtering. Ignored if `mask` is provided. Default is None.
