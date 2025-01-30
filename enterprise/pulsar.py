@@ -137,11 +137,13 @@ class BasePulsar(object):
 
     def filter_data(self, mask=None, start_time=None, end_time=None):
         """
-        Filter data to create a time-slice of overall dataset.
-        params:
-            mask : input custom filter (array of bools). None to use start_time and end_time. default None.
-            start_time : MJD of first TOA to include in timeslice. default None. ignored if mask is not None
-            end_time : MJD of last TOA to include in timeslice. default None. ignored if mask is not None
+        Filters the dataset to create a time-slice based on a custom mask or time range.
+
+        Parameters:
+            mask (array-like, optional): Boolean array specifying which data to keep. 
+                                         If None, `start_time` and `end_time` are used. Default is None.
+            start_time (float, optional): Start time (MJD) for filtering. Ignored if `mask` is provided. Default is None.
+            end_time (float, optional): End time (MJD) for filtering. Ignored if `mask` is provided. Default is None.
         """
         if mask is None:
             if start_time is None and end_time is None:
