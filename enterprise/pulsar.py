@@ -142,8 +142,8 @@ class BasePulsar(object):
         Parameters:
             mask (array-like, optional): Boolean array specifying which data to keep.
                                          If None, `start_time` and `end_time` are used. Default is None.
-            start_time (float, optional): Start time (MJD) for filtering. Ignored if `mask` is provided. Default is None.
-            end_time (float, optional): End time (MJD) for filtering. Ignored if `mask` is provided. Default is None.
+            start_time (float, optional): Start time (MJD) for filtering. Ignored if `mask` is provided. Default None.
+            end_time (float, optional): End time (MJD) for filtering. Ignored if `mask` is provided. Default None.
         """
         if mask is None:
             if start_time is None and end_time is None:
