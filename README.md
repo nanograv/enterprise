@@ -36,6 +36,14 @@ To install via `conda`, simply do
 conda install -c conda-forge enterprise-pulsar
 ```
 
+### Apple Silicon (arm64 architecture)
+`Libstempo` is only available for osx-64 architectures, which is not compatible with arm64 architectures. To install `enterprise` on arm64 via `conda`, your new conda environment must be configured correctly. Follow the following commands:
+```bash
+CONDA_SUBDIR=osx-64 conda create -n pta_software python=3.12
+conda activate pta_software
+conda config --env --set subdir osx-64
+```
+
 ## Attribution
 
 If you make use of this software, please cite it:
