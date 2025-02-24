@@ -216,6 +216,55 @@ def FourierBasisGP(
     return FourierBasisGP
 
 
+def FFTBasisGP(
+    spectrum,
+    coefficients=False,
+    combine=True,
+    components=20,
+    selection=Selection(selections.no_selection),
+    oversample=3,
+    cutoff=1,
+    Tspan=None,
+    name="red_noise",
+):
+    """Convenience function to return a BasisGP class with a
+    coarse time basis basis."""
+
+    basis = utils.create_fft_time_basis(
+        nmodes=components,
+        Tspan=Tspan
+    )
+    BaseClass = BasisGP(spectrum, basis, coefficients=coefficients, combine=combine, selection=selection, name=name)
+
+    class FFTBasisGP(BaseClass):
+        signal_type = "basis"
+        signal_name = "red noise"
+        signal_id = name
+
+        if coefficients:
+            pass
+
+        else:
+            def get_phi(self, params):
+                """Over-load constructing Phi to deal with the FFT"""
+
+                self._construct_basis(params)
+
+                for key, slc in self._slices.items():
+                    t_knots = self._labels[key]
+                    freqs, zeros = utils.knots_to_freqs(t_knots, oversample=oversample, cutoff=cutoff)
+                    psd = np.concatenate([
+                        self._prior[key](freqs, params=params, components=1),
+                        zeros
+                    ])
+
+                    phislc = utils.psd2cov(t_knots, freqs, psd)
+                    self._phi = self._phi.set(phislc, slc)
+                return self._phi
+
+    return FFTBasisGP
+
+
 def get_timing_model_basis(use_svd=False, normed=True, idx_exclude=None):
     if use_svd:
         if normed is not True:
