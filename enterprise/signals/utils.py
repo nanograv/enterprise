@@ -20,6 +20,7 @@ from enterprise import constants as const
 from enterprise import signals as sigs  # noqa: F401
 from enterprise.signals.gp_bases import (  # noqa: F401
     createfourierdesignmatrix_red,
+    create_fft_time_basis,
     createfourierdesignmatrix_dm,
     createfourierdesignmatrix_dm_tn,
     createfourierdesignmatrix_env,
@@ -841,65 +842,21 @@ def linear_interp_basis(toas, dt=30 * 86400):
     return M[:, idx], x[idx]
 
 
-@function
-def create_fft_time_basis(
-    toas, 
-    nmodes=30,
-    Tspan=None,
-    start_time=None
-):
-    """
-    Construct coarse time-domain design matrix from eq 11 of Chrisostomi et al., 2025
-    :param toas: vector of time series in seconds
-    :param nmodes: number of fourier coefficients to use
-    :param Tspan: option to some other Tspan
-    :param start_time: option to set some other start epoch of basis
-
-    :return B: coarse time-domain design matrix
-    :return t_coarse: timestamps of coarse time grid
-    """
-    if start_time is None:
-        start_time = np.min(toas)
-    else:
-        if start_time > np.min(toas):
-            raise ValueError('Coarse time basis start must be earlier than earliest TOA.')
-
-    if Tspan is None:
-        Tspan = np.max(toas) - np.min(toas)
-
-    t_fine = toas
-    t_coarse = np.linspace(start_time, start_time + Tspan, nmodes)
-    dt_coarse = t_coarse[1] - t_coarse[0]
-
-    idx = np.arange(len(t_fine))
-    idy = np.searchsorted(t_coarse, t_fine)
-    idy[idy == 0] = 1
-
-    Bmat = np.zeros((len(t_fine), len(t_coarse)), 'd')
-
-    Bmat[idx, idy] = (t_fine - t_coarse[idy - 1]) / dt_coarse
-    Bmat[idx, idy - 1] = (t_coarse[idy] - t_fine) / dt_coarse
-
-    return Bmat, t_coarse
-
-
 def psd2cov(
-        t_knots,
-        freqs,
-        psd,
-    ):
+    t_knots,
+    freqs,
+    psd,
+):
     """
     Convert a power spectral density function, defined by (freqs, psd), to a covariance matrix
 
     :param t_knots: Timestamps of the coarse time grid
     :param freqs: frequencies of the PSD
-    :param psd: values of the PSD at frequencies freqs
+    :param psd: values of the PSD at frequencies freqs (assumes *delta_f in psd)
 
     :return covmat: Covariance matrix at coarse time grid
     """
-    df = freqs[1] - freqs[0]
 
-    # Toeplitz helper (symmetric matrix defined by its first column)
     def toeplitz(c):
         c = np.asarray(c)
         n = len(c)
@@ -908,16 +865,12 @@ def psd2cov(
         return c[np.abs(i - j)]
 
     def covmat(*args):
-        # Build the full symmetric PSD by mirroring (skip the first and last duplicate).
         fullpsd = np.concatenate([psd, psd[-2:0:-1]])
 
-        # Compute the inverse FFT. The 'norm' parameter 'backward' corresponds to NumPy's default.
-        Cfreq = np.fft.ifft(fullpsd, norm='backward')
-        # Scale to get the covariance at lag τ.
-        Ctau = Cfreq.real * len(fullpsd) * df / 2
+        Cfreq = np.fft.ifft(fullpsd, norm="backward")
+        Ctau = Cfreq.real * len(fullpsd) / 2
 
-        # Construct and return the Toeplitz covariance matrix.
-        return toeplitz(Ctau[:len(t_knots)])
+        return toeplitz(Ctau[: len(t_knots)])
 
     return covmat()
 
@@ -937,12 +890,11 @@ def knots_to_freqs(t_knots, oversample=3, cutoff=1):
     Tspan = np.max(t_knots) - np.min(t_knots)
 
     if nmodes % 2 == 0:
-        raise ValueError('psd2cov number of nmodes must be odd.')
+        raise ValueError("psd2cov number of nmodes must be odd.")
 
     n_freqs = int((nmodes - 1) / 2 * oversample + 1)
     fmax = (nmodes - 1) / Tspan / 2
     freqs = np.linspace(0, fmax, n_freqs)
-    df = 1 / Tspan / oversample
 
     if cutoff is not None:
         i_cutoff = int(np.ceil(oversample / cutoff))

@@ -12,6 +12,7 @@ from enterprise.signals.parameter import function
 
 __all__ = [
     "createfourierdesignmatrix_red",
+    "create_fft_time_basis",
     "createfourierdesignmatrix_dm",
     "createfourierdesignmatrix_dm_tn",
     "createfourierdesignmatrix_env",
@@ -89,6 +90,43 @@ def createfourierdesignmatrix_red(
     F[:, 1::2] = np.cos(2 * np.pi * toas[:, None] * f[None, :] + ranphase[None, :])
 
     return F, Ffreqs
+
+
+@function
+def create_fft_time_basis(toas, nmodes=30, Tspan=None, start_time=None):
+    """
+    Construct coarse time-domain design matrix from eq 11 of Chrisostomi et al., 2025
+    :param toas: vector of time series in seconds
+    :param nmodes: number of fourier coefficients to use
+    :param Tspan: option to some other Tspan
+    :param start_time: option to set some other start epoch of basis
+
+    :return B: coarse time-domain design matrix
+    :return t_coarse: timestamps of coarse time grid
+    """
+    if start_time is None:
+        start_time = np.min(toas)
+    else:
+        if start_time > np.min(toas):
+            raise ValueError("Coarse time basis start must be earlier than earliest TOA.")
+
+    if Tspan is None:
+        Tspan = np.max(toas) - np.min(toas)
+
+    t_fine = toas
+    t_coarse = np.linspace(start_time, start_time + Tspan, nmodes)
+    dt_coarse = t_coarse[1] - t_coarse[0]
+
+    idx = np.arange(len(t_fine))
+    idy = np.searchsorted(t_coarse, t_fine)
+    idy = np.clip(idy, 1, nmodes - 1)
+
+    Bmat = np.zeros((len(t_fine), len(t_coarse)), "d")
+
+    Bmat[idx, idy] = (t_fine - t_coarse[idy - 1]) / dt_coarse
+    Bmat[idx, idy - 1] = (t_coarse[idy] - t_fine) / dt_coarse
+
+    return Bmat, t_coarse
 
 
 @function

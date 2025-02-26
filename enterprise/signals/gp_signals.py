@@ -225,15 +225,13 @@ def FFTBasisGP(
     oversample=3,
     cutoff=1,
     Tspan=None,
+    start_time=None,
     name="red_noise",
 ):
     """Convenience function to return a BasisGP class with a
     coarse time basis basis."""
 
-    basis = utils.create_fft_time_basis(
-        nmodes=components,
-        Tspan=Tspan
-    )
+    basis = utils.create_fft_time_basis(nmodes=components, Tspan=Tspan, start_time=start_time)
     BaseClass = BasisGP(spectrum, basis, coefficients=coefficients, combine=combine, selection=selection, name=name)
 
     class FFTBasisGP(BaseClass):
@@ -242,9 +240,10 @@ def FFTBasisGP(
         signal_id = name
 
         if coefficients:
-            pass
+            raise NotImplementedError("Coefficients not supported for FFTBasisGP")
 
         else:
+
             def get_phi(self, params):
                 """Over-load constructing Phi to deal with the FFT"""
 
@@ -253,10 +252,7 @@ def FFTBasisGP(
                 for key, slc in self._slices.items():
                     t_knots = self._labels[key]
                     freqs, zeros = utils.knots_to_freqs(t_knots, oversample=oversample, cutoff=cutoff)
-                    psd = np.concatenate([
-                        self._prior[key](freqs, params=params, components=1),
-                        zeros
-                    ])
+                    psd = np.concatenate([self._prior[key](freqs, params=params, components=1), zeros])
 
                     phislc = utils.psd2cov(t_knots, freqs, psd)
                     self._phi = self._phi.set(phislc, slc)
@@ -475,7 +471,6 @@ def FourierBasisCommonGP(
     pshift=False,
     pseed=None,
 ):
-
     if coefficients and Tspan is None:
         raise ValueError(
             "With coefficients=True, FourierBasisCommonGP " + "requires that you specify Tspan explicitly."
@@ -503,12 +498,96 @@ def FourierBasisCommonGP(
         # since this function has side-effects, it can only be cached
         # with limit=1, so it will run again if called with params different
         # than the last time
-        @signal_base.cache_call("basis_params", 1)
+        @signal_base.cache_call("basis_params", limit=1)
         def _construct_basis(self, params={}):
             span = Tspan if Tspan is not None else max(FourierBasisCommonGP._Tmax) - min(FourierBasisCommonGP._Tmin)
             self._basis, self._labels = self._bases(params=params, Tspan=span)
 
     return FourierBasisCommonGP
+
+
+def FFTBasisCommonGP(
+    spectrum,
+    orf,
+    coefficients=False,
+    combine=True,
+    components=20,
+    Tspan=None,
+    start_time=None,
+    cutoff=1,
+    oversample=3,
+    name="common_fft",
+):
+    if coefficients and Tspan is None:
+        raise ValueError(
+            "With coefficients=True, FourierBasisCommonGP " + "requires that you specify Tspan explicitly."
+        )
+
+    basis = utils.create_fft_time_basis(nmodes=components, Tspan=Tspan, start_time=start_time)
+    BaseClass = BasisCommonGP(spectrum, basis, orf, coefficients=coefficients, combine=combine, name=name)
+
+    class FFTBasisCommonGP(BaseClass):
+        signal_type = "common basis"
+        signal_name = "common red noise"
+        signal_id = name
+
+        _Tmin, _Tmax = [], []
+
+        def __init__(self, psr):
+            super(FFTBasisCommonGP, self).__init__(psr)
+
+            if Tspan is None:
+                FFTBasisCommonGP._Tmin.append(psr.toas.min())
+                FFTBasisCommonGP._Tmax.append(psr.toas.max())
+
+        # since this function has side-effects, it can only be cached
+        # with limit=1, so it will run again if called with params different
+        # than the last time
+        @signal_base.cache_call("basis_params", limit=1)
+        def _construct_basis(self, params={}):
+            span = Tspan if Tspan is not None else max(FFTBasisCommonGP._Tmax) - min(FFTBasisCommonGP._Tmin)
+            start = start_time if start_time is not None else min(FFTBasisCommonGP._Tmin)
+            self._basis, self._labels = self._bases(params=params, Tspan=span, start_time=start)
+
+            self._t_knots = self._labels
+            freqs, zeros = utils.knots_to_freqs(self._t_knots, oversample=oversample, cutoff=cutoff)
+            self._freqs = freqs
+            self._zeros = zeros
+
+        if coefficients:
+            raise NotImplementedError("Coefficients not supported for FFTBasisCommonGP")
+
+        else:
+
+            @signal_base.cache_call("basis_params", limit=1)
+            def get_phi_matrix(self, params):
+                """
+                Compute and cache the time-domain covariance ('phi') for *this* signal's basis.
+                """
+                psd = np.concatenate([FFTBasisCommonGP._prior(self._freqs, params=params, components=1), self._zeros])
+                return utils.psd2cov(self._t_knots, self._freqs, psd)
+
+            def get_phi(self, params):
+                """Over-load constructing Phi to deal with the FFT"""
+                self._construct_basis(params)
+                phi = self.get_phi_matrix(params)
+
+                orf = FFTBasisCommonGP._orf(self._psrpos, self._psrpos, params=params)
+
+                return orf * phi
+
+            @classmethod
+            def get_phicross(cls, signal1, signal2, params):
+                """Use Phi from signal1, ORF from signal1 vs signal2"""
+
+                phi1 = signal1.get_phi_matrix(params)
+                # phi2 = signal2.get_phi_matrix(params)
+
+                orf = FFTBasisCommonGP._orf(signal1._psrpos, signal2._psrpos, params=params)
+
+                return phi1 * orf
+
+    return FFTBasisCommonGP
 
 
 # for simplicity, we currently do not handle Tspan automatically
