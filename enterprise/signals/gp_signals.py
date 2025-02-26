@@ -543,8 +543,8 @@ def FFTBasisCommonGP(
         # than the last time
         @signal_base.cache_call("basis_params", limit=1)
         def _construct_basis(self, params={}):
-            span = Tspan if Tspan is not None else max(FFTBasisCommonGP._Tmax) - min(FFTBasisCommonGP._Tmin)
             start = start_time if start_time is not None else min(FFTBasisCommonGP._Tmin)
+            span = Tspan if Tspan is not None else max(FFTBasisCommonGP._Tmax) - start
             self._basis, self._labels = self._bases(params=params, Tspan=span, start_time=start)
 
             self._t_knots = self._labels

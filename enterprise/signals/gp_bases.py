@@ -111,7 +111,10 @@ def create_fft_time_basis(toas, nmodes=30, Tspan=None, start_time=None):
             raise ValueError("Coarse time basis start must be earlier than earliest TOA.")
 
     if Tspan is None:
-        Tspan = np.max(toas) - np.min(toas)
+        Tspan = np.max(toas) - start_time
+    else:
+        if start_time + Tspan < np.max(toas):
+            raise ValueError("Coarse time basis end must be later than latest TOA.")
 
     t_fine = toas
     t_coarse = np.linspace(start_time, start_time + Tspan, nmodes)
