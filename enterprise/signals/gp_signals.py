@@ -556,8 +556,7 @@ def FFTBasisCommonGP(
             raise NotImplementedError("Coefficients not supported for FFTBasisCommonGP")
 
         else:
-
-            @signal_base.cache_call("basis_params", limit=1)
+            # @signal_base.cache_call("basis_params", limit=1)
             def get_phi_matrix(self, params):
                 """
                 Compute and cache the time-domain covariance ('phi') for *this* signal's basis.
