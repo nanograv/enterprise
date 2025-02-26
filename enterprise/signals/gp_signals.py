@@ -229,7 +229,7 @@ def FFTBasisGP(
     name="red_noise",
 ):
     """Convenience function to return a BasisGP class with a
-    coarse time basis basis."""
+    coarse time basis."""
 
     basis = utils.create_fft_time_basis(nmodes=components, Tspan=Tspan, start_time=start_time)
     BaseClass = BasisGP(spectrum, basis, coefficients=coefficients, combine=combine, selection=selection, name=name)
@@ -245,8 +245,6 @@ def FFTBasisGP(
         else:
 
             def get_phi(self, params):
-                """Over-load constructing Phi to deal with the FFT"""
-
                 self._construct_basis(params)
 
                 for key, slc in self._slices.items():
