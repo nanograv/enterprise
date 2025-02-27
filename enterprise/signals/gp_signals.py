@@ -221,7 +221,7 @@ def FFTBasisGP(
     coefficients=False,
     combine=True,
     components=20,
-    knots=None,
+    nknots=None,
     selection=Selection(selections.no_selection),
     oversample=3,
     cutoff=None,
@@ -233,10 +233,10 @@ def FFTBasisGP(
     """Convenience function to return a BasisGP class with a
     coarse time basis."""
 
-    if knots is None:
-        knots = 2 * components + 1
+    if nknots is None:
+        nknots = 2 * components + 1
 
-    elif knots is not None and knots % 2 == 0:
+    elif nknots is not None and nknots % 2 == 0:
         raise ValueError("Knots needs to be an odd number")
 
     if cutoff is not None:
@@ -244,7 +244,7 @@ def FFTBasisGP(
         #                low-frequency cut-off of the PSD
         cutbins = int(np.ceil(oversample / cutoff))
 
-    basis = utils.create_fft_time_basis(nmodes=knots, Tspan=Tspan, start_time=start_time)
+    basis = utils.create_fft_time_basis(nknots=nknots, Tspan=Tspan, start_time=start_time)
     BaseClass = BasisGP(spectrum, basis, coefficients=coefficients, combine=combine, selection=selection, name=name)
 
     class FFTBasisGP(BaseClass):
@@ -278,7 +278,7 @@ def FFTBasisGP(
                         psd_prior = self._prior[key](freqs[1:], params=params, components=1)
                         psd = np.concatenate([np.zeros(cutbins), psd_prior[cutbins - 1 :]])
 
-                    phislc = utils.psd2cov(t_knots, freqs, psd)
+                    phislc = utils.psd2cov(t_knots, psd)
                     self._phi = self._phi.set(phislc, slc)
 
                 return self._phi
@@ -537,7 +537,7 @@ def FFTBasisCommonGP(
     coefficients=False,
     combine=True,
     components=20,
-    knots=None,
+    nknots=None,
     Tspan=None,
     start_time=None,
     cutoff=None,
@@ -550,10 +550,10 @@ def FFTBasisCommonGP(
             "With coefficients=True, FFTBasisCommonGP " + "requires that you specify Tspan/start_time explicitly."
         )
 
-    if knots is None:
-        knots = 2 * components + 1
+    if nknots is None:
+        nknots = 2 * components + 1
 
-    elif knots is not None and knots % 2 == 0:
+    elif nknots is not None and nknots % 2 == 0:
         raise ValueError("Knots needs to be an odd number")
 
     if cutoff is not None:
@@ -561,7 +561,7 @@ def FFTBasisCommonGP(
         #                low-frequency cut-off of the PSD
         cutbins = int(np.ceil(oversample / cutoff))
 
-    basis = utils.create_fft_time_basis(nmodes=knots, Tspan=Tspan, start_time=start_time)
+    basis = utils.create_fft_time_basis(nknots=nknots, Tspan=Tspan, start_time=start_time)
     BaseClass = BasisCommonGP(spectrum, basis, orf, coefficients=coefficients, combine=combine, name=name)
 
     class FFTBasisCommonGP(BaseClass):

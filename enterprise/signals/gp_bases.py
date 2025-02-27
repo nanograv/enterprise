@@ -93,11 +93,11 @@ def createfourierdesignmatrix_red(
 
 
 @function
-def create_fft_time_basis(toas, nmodes=30, Tspan=None, start_time=None):
+def create_fft_time_basis(toas, nknots=30, Tspan=None, start_time=None):
     """
     Construct coarse time-domain design matrix from eq 11 of Chrisostomi et al., 2025
     :param toas: vector of time series in seconds
-    :param nmodes: number of fourier coefficients to use
+    :param nknots: number of coarse time samples to use (knots)
     :param Tspan: option to some other Tspan
     :param start_time: option to set some other start epoch of basis
 
@@ -117,12 +117,12 @@ def create_fft_time_basis(toas, nmodes=30, Tspan=None, start_time=None):
             raise ValueError("Coarse time basis end must be later than latest TOA.")
 
     t_fine = toas
-    t_coarse = np.linspace(start_time, start_time + Tspan, nmodes)
+    t_coarse = np.linspace(start_time, start_time + Tspan, nknots)
     dt_coarse = t_coarse[1] - t_coarse[0]
 
     idx = np.arange(len(t_fine))
     idy = np.searchsorted(t_coarse, t_fine)
-    idy = np.clip(idy, 1, nmodes - 1)
+    idy = np.clip(idy, 1, nknots - 1)
 
     Bmat = np.zeros((len(t_fine), len(t_coarse)), "d")
 

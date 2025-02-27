@@ -15,7 +15,7 @@ import numpy as np
 import scipy.linalg as sl
 
 from enterprise.pulsar import Pulsar
-from enterprise.signals import gp_signals, parameter, selections, signal_base, utils
+from enterprise.signals import gp_signals, parameter, selections, signal_base, utils, white_signals
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
 from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
@@ -28,12 +28,23 @@ def create_quant_matrix(toas, dt=1):
     # return value slightly different than 1 to get around ECORR columns
     return U * 1.0000001, avetoas
 
-
 @signal_base.function
 def se_kernel(etoas, log10_sigma=-7, log10_lam=np.log10(30 * 86400)):
     tm = np.abs(etoas[None, :] - etoas[:, None])
     d = np.eye(tm.shape[0]) * 10 ** (2 * (log10_sigma - 1.5))
     return 10 ** (2 * log10_sigma) * np.exp(-(tm**2) / 2 / 10 ** (2 * log10_lam)) + d
+
+
+@signal_base.function
+def psd_matern32(f, l=365 * 86400.0, log10_sigma_sqr=-14, components=2):
+    df = np.diff(np.concatenate((np.array([0]), f[::components])))
+    return (
+        (10**log10_sigma_sqr) * 24 * np.sqrt(3) * l / (3 + (2 * np.pi * f * l) ** 2) ** 2 * np.repeat(df, components)
+    )
+
+
+def matern32_kernel(tau, l=365 * 86400.0, log10_sigma_sqr=-14):
+    return (10**log10_sigma_sqr) * (1 + np.sqrt(3) * tau / l) * np.exp(-np.sqrt(3) * tau / l)
 
 
 class TestGPSignals(unittest.TestCase):
@@ -354,6 +365,78 @@ class TestGPSignals(unittest.TestCase):
         # test shape
         msg = "F matrix shape incorrect"
         assert rnm.get_basis(params).shape == F.shape, msg
+
+    def test_fft_red_noise(self):
+        """Test the FFT implementation of red noise signals"""
+        # set up signal parameter
+        mpsd = psd_matern32(
+            l=parameter.Uniform(365 * 86400.0, 3650 * 86400.0), log10_sigma_sqr=parameter.Uniform(-17, -9)
+        )
+        rn_cb0 = gp_signals.FFTBasisGP(spectrum=mpsd, components=15, oversample=3, cutbins=0)
+        rn_cb1 = gp_signals.FFTBasisGP(spectrum=mpsd, nknots=31, oversample=3, cutoff=3)
+        rnm0 = rn_cb0(self.psr)
+        rnm1 = rn_cb1(self.psr)
+
+        # parameter values
+        l, log10_sigma_sqr = 1.5 * 365 * 86400.0, -14.0
+        params = {"B1855+09_red_noise_l": l, "B1855+09_red_noise_log10_sigma_sqr": log10_sigma_sqr}
+
+        # basis matrix test
+        start_time = np.min(self.psr.toas)
+        Tspan = np.max(self.psr.toas) - start_time
+        B, tc = utils.create_fft_time_basis(self.psr.toas, nknots=31)
+        B1, _ = utils.create_fft_time_basis(self.psr.toas, nknots=31, Tspan=Tspan, start_time=start_time)
+
+        msg = "B matrix incorrect for GP FFT signal."
+        assert np.allclose(B, rnm0.get_basis(params)), msg
+        assert np.allclose(B1, rnm1.get_basis(params)), msg
+        assert np.allclose(np.sum(B, axis=1), np.ones(B.shape[0])), msg
+
+        # spectrum test
+        tau = np.abs(tc[:, None] - tc[None, :])
+        phi_K = matern32_kernel(tau, l, log10_sigma_sqr)
+        phi_E = rnm0.get_phi(params)
+
+        msg = "Prior incorrect for GP FFT signal."
+        assert np.allclose(phi_K, phi_E), msg
+
+        # spectrum test with low-frequency cut-off
+        freqs = utils.knots_to_freqs(tc, oversample=3)
+        psd = psd_matern32(freqs[1:], l=l, log10_sigma_sqr=log10_sigma_sqr, components=1)
+        psd = np.concatenate([[0.0], psd])
+        phi_K = utils.psd2cov(tc, psd)
+        phi_E = rnm1.get_phi(params)
+
+        msg = f"Prior incorrect for GP FFT signal: {phi_K[:3,:3], phi_E[:3,:3]}"
+        assert np.allclose(phi_K, phi_E), msg
+
+    def test_fft_common(self):
+        """Test the FFT implementation of common red noise signals"""
+        # set up signal parameters
+        log10_A, gamma = -14.5, 4.33
+        params = {"B1855+09_red_noise_log10_A": log10_A, "B1855+09_red_noise_gamma": gamma}
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18, -12), gamma=parameter.Uniform(1, 7))
+        orf = utils.hd_orf()
+
+        # set up the basis and the model
+        start_time = np.min(self.psr.toas)
+        Tspan = np.max(self.psr.toas) - start_time
+        mn = white_signals.MeasurementNoise(efac=parameter.Constant(1.0), selection=Selection(selections.no_selection))
+        crn = gp_signals.FFTBasisCommonGP(
+            pl, orf, nknots=31, name="gw", oversample=3, cutoff=3, Tspan=Tspan, start_time=start_time
+        )
+        model = mn + crn
+        pta = signal_base.PTA([model(psr) for psr in [self.psr, self.psr]])
+
+        # test the prior matrices, including ORF
+        phi_full = pta.get_phi(params)
+        phi_1 = phi_full[:31, :31]
+        phi_12 = phi_full[31:, :31]
+        phi_2 = phi_full[31:, 31:]
+
+        msg = f"Common mode not equal {phi_full.shape}"
+        assert np.allclose(phi_1, phi_2), msg
+        assert np.allclose(0.5 * phi_1, phi_12), msg
 
     def test_red_noise_add(self):
         """Test that red noise addition only returns independent columns."""
