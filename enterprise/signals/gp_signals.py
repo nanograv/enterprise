@@ -240,8 +240,8 @@ def FFTBasisGP(
         raise ValueError("Knots needs to be an odd number")
 
     if cutoff is not None:
-        #:param cutoff: frequency 1 / (cutoff * T) at which to do
-        #            low-frequency cut-off of the PSD
+        # :param cutoff: frequency 1 / (cutoff * T) at which to do
+        #                low-frequency cut-off of the PSD
         cutbins = int(np.ceil(oversample / cutoff))
 
     basis = utils.create_fft_time_basis(nmodes=knots, Tspan=Tspan, start_time=start_time)
@@ -557,8 +557,8 @@ def FFTBasisCommonGP(
         raise ValueError("Knots needs to be an odd number")
 
     if cutoff is not None:
-        #:param cutoff: frequency 1 / (cutoff * T) at which to do
-        #            low-frequency cut-off of the PSD
+        # :param cutoff: frequency 1 / (cutoff * T) at which to do
+        #                low-frequency cut-off of the PSD
         cutbins = int(np.ceil(oversample / cutoff))
 
     basis = utils.create_fft_time_basis(nmodes=knots, Tspan=Tspan, start_time=start_time)
