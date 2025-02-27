@@ -221,9 +221,11 @@ def FFTBasisGP(
     coefficients=False,
     combine=True,
     components=20,
+    knots=None,
     selection=Selection(selections.no_selection),
     oversample=3,
-    cutoff=1,
+    cutoff=None,
+    cutbins=1,
     Tspan=None,
     start_time=None,
     name="red_noise",
@@ -231,7 +233,18 @@ def FFTBasisGP(
     """Convenience function to return a BasisGP class with a
     coarse time basis."""
 
-    basis = utils.create_fft_time_basis(nmodes=components, Tspan=Tspan, start_time=start_time)
+    if knots is None:
+        knots = 2 * components + 1
+
+    elif knots is not None and knots % 2 == 0:
+        raise ValueError("Knots needs to be an odd number")
+
+    if cutoff is not None:
+        #:param cutoff: frequency 1 / (cutoff * T) at which to do
+        #            low-frequency cut-off of the PSD
+        cutbins = int(np.ceil(oversample / cutoff))
+
+    basis = utils.create_fft_time_basis(nmodes=knots, Tspan=Tspan, start_time=start_time)
     BaseClass = BasisGP(spectrum, basis, coefficients=coefficients, combine=combine, selection=selection, name=name)
 
     class FFTBasisGP(BaseClass):
@@ -249,11 +262,25 @@ def FFTBasisGP(
 
                 for key, slc in self._slices.items():
                     t_knots = self._labels[key]
-                    freqs, zeros = utils.knots_to_freqs(t_knots, oversample=oversample, cutoff=cutoff)
-                    psd = np.concatenate([self._prior[key](freqs, params=params, components=1), zeros])
+
+                    freqs = utils.knots_to_freqs(t_knots, oversample=oversample)
+
+                    # Hack, because Enterprise adds in f=0 and then calculates df,
+                    # meaning we cannot simply start freqs from 0. Thus, we use
+                    # a modified frequency spacing, such that:
+                    # [0, f1, 0, f1, f2, f3] => [df, -df, df, df, df]
+                    if cutbins == 0:
+                        freqs_prior = np.concatenate([[freqs[1]], freqs])
+                        psd_prior = self._prior[key](freqs_prior, params=params, components=1)
+                        psd = np.concatenate([[-psd_prior[1]], psd_prior[2:]])
+
+                    else:
+                        psd_prior = self._prior[key](freqs[1:], params=params, components=1)
+                        psd = np.concatenate([np.zeros(cutbins), psd_prior[cutbins - 1 :]])
 
                     phislc = utils.psd2cov(t_knots, freqs, psd)
                     self._phi = self._phi.set(phislc, slc)
+
                 return self._phi
 
     return FFTBasisGP
@@ -510,18 +537,31 @@ def FFTBasisCommonGP(
     coefficients=False,
     combine=True,
     components=20,
+    knots=None,
     Tspan=None,
     start_time=None,
-    cutoff=1,
+    cutoff=None,
+    cutbins=1,
     oversample=3,
     name="common_fft",
 ):
-    if coefficients and Tspan is None:
+    if coefficients and (Tspan is None or start_time is None):
         raise ValueError(
-            "With coefficients=True, FourierBasisCommonGP " + "requires that you specify Tspan explicitly."
+            "With coefficients=True, FFTBasisCommonGP " + "requires that you specify Tspan/start_time explicitly."
         )
 
-    basis = utils.create_fft_time_basis(nmodes=components, Tspan=Tspan, start_time=start_time)
+    if knots is None:
+        knots = 2 * components + 1
+
+    elif knots is not None and knots % 2 == 0:
+        raise ValueError("Knots needs to be an odd number")
+
+    if cutoff is not None:
+        #:param cutoff: frequency 1 / (cutoff * T) at which to do
+        #            low-frequency cut-off of the PSD
+        cutbins = int(np.ceil(oversample / cutoff))
+
+    basis = utils.create_fft_time_basis(nmodes=knots, Tspan=Tspan, start_time=start_time)
     BaseClass = BasisCommonGP(spectrum, basis, orf, coefficients=coefficients, combine=combine, name=name)
 
     class FFTBasisCommonGP(BaseClass):
@@ -534,8 +574,10 @@ def FFTBasisCommonGP(
         def __init__(self, psr):
             super(FFTBasisCommonGP, self).__init__(psr)
 
-            if Tspan is None:
+            if start_time is None:
                 FFTBasisCommonGP._Tmin.append(psr.toas.min())
+
+            if Tspan is None:
                 FFTBasisCommonGP._Tmax.append(psr.toas.max())
 
         # since this function has side-effects, it can only be cached
@@ -548,9 +590,8 @@ def FFTBasisCommonGP(
             self._basis, self._labels = self._bases(params=params, Tspan=span, start_time=start)
 
             self._t_knots = self._labels
-            freqs, zeros = utils.knots_to_freqs(self._t_knots, oversample=oversample, cutoff=cutoff)
+            freqs = utils.knots_to_freqs(self._t_knots, oversample=oversample)
             self._freqs = freqs
-            self._zeros = zeros
 
         if coefficients:
             raise NotImplementedError("Coefficients not supported for FFTBasisCommonGP")
@@ -561,8 +602,21 @@ def FFTBasisCommonGP(
                 """
                 Compute and cache the time-domain covariance ('phi') for *this* signal's basis.
                 """
-                psd = np.concatenate([FFTBasisCommonGP._prior(self._freqs, params=params, components=1), self._zeros])
-                return utils.psd2cov(self._t_knots, self._freqs, psd)
+
+                # Hack, because Enterprise adds in f=0 and then calculates df,
+                # meaning we cannot simply start freqs from 0. Thus, we use
+                # a modified frequency spacing, such that:
+                # [0, f1, 0, f1, f2, f3] => [df, -df, df, df, df]
+                if cutbins == 0:
+                    freqs_prior = np.concatenate([[self._freqs[1]], self._freqs])
+                    psd_prior = FFTBasisCommonGP._prior(freqs_prior, params=params, components=1)
+                    psd = np.concatenate([[-psd_prior[1]], psd_prior[2:]])
+
+                else:
+                    psd_prior = FFTBasisCommonGP._prior(self._freqs[1:], params=params, components=1)
+                    psd = np.concatenate([np.zeros(cutbins), psd_prior[cutbins - 1 :]])
+
+                return utils.psd2cov(self._t_knots, psd)
 
             def get_phi(self, params):
                 """Over-load constructing Phi to deal with the FFT"""

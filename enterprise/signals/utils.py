@@ -844,14 +844,12 @@ def linear_interp_basis(toas, dt=30 * 86400):
 
 def psd2cov(
     t_knots,
-    freqs,
     psd,
 ):
     """
     Convert a power spectral density function, defined by (freqs, psd), to a covariance matrix
 
     :param t_knots: Timestamps of the coarse time grid
-    :param freqs: frequencies of the PSD
     :param psd: values of the PSD at frequencies freqs (assumes *delta_f in psd)
 
     :return covmat: Covariance matrix at coarse time grid
@@ -875,14 +873,12 @@ def psd2cov(
     return covmat()
 
 
-def knots_to_freqs(t_knots, oversample=3, cutoff=1):
+def knots_to_freqs(t_knots, oversample=3):
     """
     Convert knots of coarse time grid to frequencies
 
     :param t_knots: Timestamps of the coarse time grid
     :param oversample: amount by which to over-sample the frequency grid
-    :param cutoff: frequency 1 / (cutoff * T) at which to do
-                   low-frequency cut-off of the PSD
 
     :return covmat: Covariance matrix at coarse time grid
     """
@@ -894,16 +890,7 @@ def knots_to_freqs(t_knots, oversample=3, cutoff=1):
 
     n_freqs = int((nmodes - 1) / 2 * oversample + 1)
     fmax = (nmodes - 1) / Tspan / 2
-    freqs = np.linspace(0, fmax, n_freqs)
-
-    if cutoff is not None:
-        i_cutoff = int(np.ceil(oversample / cutoff))
-        fs, zs = np.array(freqs[i_cutoff:]), np.zeros(i_cutoff)
-    else:
-        fs = np.array(freqs)
-        zs = np.array([], dtype=fs.dtype)
-
-    return fs, zs
+    return np.linspace(0, fmax, n_freqs)
 
 
 # overlap reduction functions
