@@ -35,6 +35,12 @@ class TestUtils(unittest.TestCase):
 
         cls.Fdm, _ = utils.createfourierdesignmatrix_dm(cls.psr.toas, freqs=cls.psr.freqs, nmodes=30)
 
+        cls.B, _ = utils.create_fft_time_basis(cls.psr.toas, nknots=30)
+
+        cls.Bdm, _ = utils.create_fft_time_basis_dm(cls.psr.toas, freqs=cls.psr.freqs, nknots=30)
+
+        cls.Bchr, _ = utils.create_fft_time_basis_chromatic(cls.psr.toas, freqs=cls.psr.freqs, nknots=30)
+
         cls.Feph, cls.feph = utils.createfourierdesignmatrix_ephem(cls.psr.toas, cls.psr.pos, nmodes=30)
 
         cls.Mm = utils.create_stabletimingdesignmatrix(cls.psr.Mmat)
@@ -51,11 +57,29 @@ class TestUtils(unittest.TestCase):
         msg = "Fourier design matrix shape incorrect"
         assert self.F.shape == (4005, 2 * nf), msg
 
+    def test_create_fft_time_basis(self, nk=30):
+        """Check FFT interpolation design matrix shape."""
+
+        msg = "FFT interpolation design matrix shape incorrect"
+        assert self.B.shape == (4005, nk), msg
+
     def test_createfourierdesignmatrix_dm(self, nf=30):
         """Check DM-variation Fourier design matrix shape."""
 
         msg = "DM-variation Fourier design matrix shape incorrect"
         assert self.Fdm.shape == (4005, 2 * nf), msg
+
+    def test_create_fft_time_basis_dm(self, nk=30):
+        """Check FFT interpolation design matrix shape."""
+
+        msg = "DM-variation FFT interpolation design matrix shape incorrect"
+        assert self.Bdm.shape == (4005, nk), msg
+
+    def test_create_fft_time_basis_chromatic(self, nk=30):
+        """Check FFT interpolation design matrix shape."""
+
+        msg = "DM-variation FFT interpolation design matrix shape incorrect"
+        assert self.Bchr.shape == (4005, nk), msg
 
     def test_createfourierdesignmatrix_ephem(self, nf=30):
         """Check x-axis ephemeris Fourier design matrix shape."""

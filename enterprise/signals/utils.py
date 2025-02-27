@@ -22,11 +22,13 @@ from enterprise.signals.gp_bases import (  # noqa: F401
     createfourierdesignmatrix_red,
     create_fft_time_basis,
     createfourierdesignmatrix_dm,
+    create_fft_time_basis_dm,
     createfourierdesignmatrix_dm_tn,
     createfourierdesignmatrix_env,
     createfourierdesignmatrix_ephem,
     createfourierdesignmatrix_eph,
     createfourierdesignmatrix_chromatic,
+    create_fft_time_basis_chromatic,
     createfourierdesignmatrix_general,
 )
 from enterprise.signals.gp_priors import powerlaw, turnover  # noqa: F401
