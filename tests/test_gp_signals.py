@@ -141,7 +141,6 @@ class TestGPSignals(unittest.TestCase):
         assert ecm.get_basis(params).shape == U.shape, msg
 
     def test_kernel(self):
-
         log10_sigma = parameter.Uniform(-10, -5)
         log10_lam = parameter.Uniform(np.log10(86400), np.log10(1500 * 86400))
         basis = create_quant_matrix(dt=7 * 86400)
@@ -385,7 +384,10 @@ class TestGPSignals(unittest.TestCase):
 
         # parameter values
         length_scale, log10_sigma_sqr = 1.5 * 365 * 86400.0, -14.0
-        params = {"B1855+09_red_noise_length_scale": length_scale, "B1855+09_red_noise_log10_sigma_sqr": log10_sigma_sqr}
+        params = {
+            "B1855+09_red_noise_length_scale": length_scale,
+            "B1855+09_red_noise_log10_sigma_sqr": log10_sigma_sqr,
+        }
 
         # basis matrix test
         start_time = np.min(self.psr.toas)
@@ -473,7 +475,6 @@ class TestGPSignals(unittest.TestCase):
         ]
 
         for nf1, nf2, T1, T2 in tpars:
-
             rn = gp_signals.FourierBasisGP(spectrum=pl, components=nf1, Tspan=T1)
             crn = gp_signals.FourierBasisGP(spectrum=cpl, components=nf2, Tspan=T2)
             s = rn + crn
@@ -492,9 +493,7 @@ class TestGPSignals(unittest.TestCase):
                 F = F1 if nf1 > nf2 else F2
                 phi[: 2 * nf1] = p1
                 phi[: 2 * nf2] += p2
-                F[
-                    :,
-                ]  # noqa: E231
+                F[:,]  # noqa: E231
             else:
                 phi = np.concatenate((p1, p2))
                 F = np.hstack((F1, F2))
@@ -550,7 +549,6 @@ class TestGPSignals(unittest.TestCase):
         ]
 
         for nf1, nf2, T1, T2 in tpars:
-
             rn = gp_signals.FourierBasisGP(spectrum=pl, components=nf1, Tspan=T1, selection=selection)
             crn = gp_signals.FourierBasisGP(spectrum=cpl, components=nf2, Tspan=T2)
             s = rn + crn
