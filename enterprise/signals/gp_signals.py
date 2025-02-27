@@ -218,6 +218,7 @@ def FourierBasisGP(
 
 def FFTBasisGP(
     spectrum,
+    basis=None,
     coefficients=False,
     combine=True,
     components=20,
@@ -244,7 +245,9 @@ def FFTBasisGP(
         #                low-frequency cut-off of the PSD
         cutbins = int(np.ceil(oversample / cutoff))
 
-    basis = utils.create_fft_time_basis(nknots=nknots, Tspan=Tspan, start_time=start_time)
+    if basis is None:
+        basis = utils.create_fft_time_basis(nknots=nknots, Tspan=Tspan, start_time=start_time)
+
     BaseClass = BasisGP(spectrum, basis, coefficients=coefficients, combine=combine, selection=selection, name=name)
 
     class FFTBasisGP(BaseClass):
