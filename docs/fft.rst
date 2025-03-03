@@ -101,3 +101,20 @@ DM-variations and Chromatic noise can be similarly set up:
     chrom_basis = utils.create_fft_time_basis_chromatic(nknots=nknots, idx=chrom_idx)
     chrom_pl = powerlaw(log10_A=chrom_log10_A, gamma=chrom_gamma)
     chrom_fft = gp_signals.FFTBasisGP(chrom_pl, basis=chrom_basis, nknots=nknots, name='chromgp')
+
+Subtleties
+----------
+
+Enterprise allows one to combine basis functions when they are the same. This
+is especially useful when analyzing common signals which have the same basis as
+a single-pulsar signal, such as one would have with red noise and a correlated
+GWB. This can be done with the `combine=True` option in `FFTBasisGP` and
+`FFTBasisCommonGP`. Default is `combine=True`. The subtlety is that modern PTA
+datasets typically have large gaps, which causes some of the time-domain basis
+functions to basically be all zeros. Therefore, some basis functions that you
+would not expect to be identical will be combined.
+
+The above is not a bug. Combining such bases and the corresponding Phi matrix
+does not matter, because the basis is zero, and that part of the signal has no
+bearing on the data or the model. However, when doing signal reconstruction,
+such as with `la_forge`, make sure to set `combine=False`.
