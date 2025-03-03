@@ -39,7 +39,7 @@ For the FFT time-domain model, one would do:
 .. code:: python
 
     rn_pl = powerlaw(log10_A=rn_log10_A, gamma=rn_gamma)
-    rn_fft = gp_signals.FFTBasisGP(spectrum=rn_pl, components=n_components, oversample=3, cutoff=3)
+    rn_fft = gp_signals.FFTBasisGP(spectrum=rn_pl, components=n_components, oversample=3, cutoff=3, Tspan=Tspan, start_time=start_time)
 
 The same spectral function can be used. Free spectrum is NOT supported yet.
 Instead of `components`, we can also pass `knots=`, where it is understood that
