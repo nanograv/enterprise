@@ -100,7 +100,7 @@ jobs:
         venv-wheel/bin/python -m pip install --upgrade pip setuptools
         venv-wheel/bin/python -m pip install ../dist/enterprise*.whl
         venv-wheel/bin/python -c "import enterprise;print(enterprise.__version__)"
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: dist
         path: dist/*
@@ -109,6 +109,10 @@ jobs:
   deploy:
     needs: [tests, build]
     runs-on: ubuntu-latest
+    environment: deploy
+    permissions:
+      # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write
     if: github.event_name == 'release'
     steps:
     - uses: actions/checkout@v3
@@ -121,13 +125,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install setuptools wheel twine
     - name: Download wheel/dist from build
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         name: dist
         path: dist
     - name: Build and publish
-      env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-      run: |
-        twine upload dist/*
+      uses: pypa/gh-action-pypi-publish@release/v1
