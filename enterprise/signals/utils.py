@@ -853,6 +853,7 @@ def psd2cov(
 
     :param t_knots: Timestamps of the coarse time grid
     :param psd: values of the PSD at frequencies freqs (assumes *delta_f in psd)
+                so psd is assumed to be in units of [s^2]
 
     :return covmat: Covariance matrix at coarse time grid
     """
@@ -882,13 +883,14 @@ def knots_to_freqs(t_knots, oversample=3):
     :param t_knots: Timestamps of the coarse time grid
     :param oversample: amount by which to over-sample the frequency grid
 
-    :return covmat: Covariance matrix at coarse time grid
+    :return freqs: Frequencies, regularly sampled with
+                   delta-f = 1/(oversample*T), fmax=1/(2*delta_t_knots)
     """
     nmodes = len(t_knots)
     Tspan = np.max(t_knots) - np.min(t_knots)
 
     if nmodes % 2 == 0:
-        raise ValueError("psd2cov number of nmodes must be odd.")
+        raise ValueError("len(t_knots) must be odd.")
 
     n_freqs = int((nmodes - 1) / 2 * oversample + 1)
     fmax = (nmodes - 1) / Tspan / 2
