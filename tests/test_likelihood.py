@@ -8,8 +8,8 @@ test_likelihood
 Tests of likelihood module
 """
 
-
 import unittest
+import pytest
 
 import numpy as np
 import scipy.linalg as sl
@@ -18,6 +18,7 @@ from enterprise.pulsar import Pulsar
 from enterprise.signals import gp_signals, parameter, selections, signal_base, utils, white_signals
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
+from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
 
 @signal_base.function
@@ -75,8 +76,8 @@ class TestLikelihood(unittest.TestCase):
 
         # initialize Pulsar class
         cls.psrs = [
-            Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim"),
-            Pulsar(datadir + "/J1909-3744_NANOGrav_9yv1.gls.par", datadir + "/J1909-3744_NANOGrav_9yv1.tim"),
+            Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.t2.feather"),
+            Pulsar(datadir + "/J1909-3744_NANOGrav_9yv1.t2.feather"),
         ]
 
     def compute_like(self, npsrs=1, inc_corr=False, inc_kernel=False, cholesky_sparse=True, marginalizing_tm=False):
@@ -364,6 +365,7 @@ class TestLikelihood(unittest.TestCase):
         assert np.allclose(l1, l2), msg
 
 
+@pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
 class TestLikelihoodPint(TestLikelihood):
     @classmethod
     def setUpClass(cls):
@@ -383,4 +385,17 @@ class TestLikelihoodPint(TestLikelihood):
                 ephem="DE430",
                 timing_package="pint",
             ),
+        ]
+
+
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
+class TestLikelihoodTempo2(TestLikelihood):
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psrs = [
+            Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim"),
+            Pulsar(datadir + "/J1909-3744_NANOGrav_9yv1.gls.par", datadir + "/J1909-3744_NANOGrav_9yv1.tim"),
         ]

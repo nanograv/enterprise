@@ -7,8 +7,8 @@ and are created by the class factories in :mod:`enterprise.signals.deterministic
 All tests in this module are run on `B1855+09_NANOGrav_9yv1`.
 """
 
-
 import unittest
+import pytest
 
 import numpy as np
 
@@ -18,6 +18,7 @@ from enterprise.signals import deterministic_signals, parameter, selections, uti
 from enterprise.signals.parameter import function
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
+from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
 
 @function
@@ -30,14 +31,14 @@ def sine_wave(toas, log10_A=-7, log10_f=-8, phase=0.0):
 
 
 class TestDeterministicSignals(unittest.TestCase):
-    """Tests deterministic signals with a tempo2 Pulsar object."""
+    """Tests deterministic signals with a feather Pulsar object."""
 
     @classmethod
     def setUpClass(cls):
-        """Set up the :func:`enterprise.Pulsar` object used in tests (tempo2 version)."""
+        """Set up the :func:`enterprise.Pulsar` object used in tests (Feather version)."""
 
         # initialize Pulsar class
-        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.t2.feather")
 
     def test_bwm(self):
         """Tests :meth:`enterprise.signals.deterministic_signals.Deterministic`
@@ -259,6 +260,7 @@ class TestDeterministicSignals(unittest.TestCase):
         assert np.allclose(d1, d2, rtol=1e-10), msg2
 
 
+@pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
 class TestDeterministicSignalsPint(TestDeterministicSignals):
     """Tests deterministic signals with a PINT Pulsar object."""
 
@@ -273,3 +275,15 @@ class TestDeterministicSignalsPint(TestDeterministicSignals):
             ephem="DE430",
             timing_package="pint",
         )
+
+
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
+class TestDeterministicSignalsTempo2(TestDeterministicSignals):
+    """Tests deterministic signals with a TEMPO2 Pulsar object."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up the :func:`enterprise.Pulsar` object used in tests (tempo2 version)."""
+
+        # initialize Pulsar class
+        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")

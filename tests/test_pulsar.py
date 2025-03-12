@@ -20,11 +20,14 @@ import numpy as np
 
 from enterprise.pulsar import Pulsar
 from tests.enterprise_test_data import datadir
+from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
-import pint.models.timing_model
-from pint.models import get_model_and_toas
+if PINT_INSTALLED:
+    import pint.models.timing_model
+    from pint.models import get_model_and_toas
 
 
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
 class TestTimingPackageExceptions(unittest.TestCase):
     def test_unkown_timing_package(self):
         # initialize Pulsar class
@@ -44,6 +47,7 @@ class TestTimingPackageExceptions(unittest.TestCase):
         )
 
 
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
 class TestPulsar(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -162,22 +166,6 @@ class TestPulsar(unittest.TestCase):
         """Place holder for filter_data tests."""
         assert hasattr(self.psr, "sunssb")
 
-    def test_to_pickle(self):
-        """Place holder for to_pickle tests."""
-        self.psr.to_pickle()
-        with open("B1855+09.pkl", "rb") as f:
-            pkl_psr = pickle.load(f)
-
-        os.remove("B1855+09.pkl")
-
-        assert np.allclose(self.psr.residuals, pkl_psr.residuals, rtol=1e-10)
-
-        self.psr.to_pickle("pickle_dir")
-        with open("pickle_dir/B1855+09.pkl", "rb") as f:
-            pkl_psr = pickle.load(f)
-
-        assert np.allclose(self.psr.residuals, pkl_psr.residuals, rtol=1e-10)
-
     @pytest.mark.skipif(sys.version_info < (3, 8), reason="Requires Python >= 3.8")
     def test_deflate_inflate(self):
         psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
@@ -203,6 +191,8 @@ class TestPulsar(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             pkl_psr.inflate()
 
+        os.remove("B1855+09.pkl")
+
     def test_wrong_input(self):
         """Test exception when incorrect par(tim) file given."""
 
@@ -218,7 +208,19 @@ class TestPulsar(unittest.TestCase):
         with self.assertRaises(ValueError):
             Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.time")
 
+    def test_to_feather(self):
+        """Test creating feather file from Pulsar method"""
 
+        self.psr.to_feather("test.feather")
+        assert os.path.exists("test.feather")
+
+        loaded_psr = Pulsar("test.feather")
+        assert np.allclose(self.psr.residuals, loaded_psr.residuals, rtol=1e-10)
+
+        os.remove("test.feather")
+
+
+@pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
 class TestPulsarPint(TestPulsar):
     @classmethod
     def setUpClass(cls):

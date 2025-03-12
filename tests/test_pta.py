@@ -13,6 +13,7 @@ Tests for common signal and PTA class modules.
 # import pickle
 import itertools
 import unittest
+import pytest
 
 import numpy as np
 
@@ -20,6 +21,7 @@ from enterprise.pulsar import Pulsar
 from enterprise.signals import gp_signals, parameter, signal_base, utils, white_signals
 
 from .enterprise_test_data import datadir
+from .enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
 # note function is now defined in enterprise.signals.parameter
 
@@ -45,8 +47,8 @@ class TestPTASignals(unittest.TestCase):
         """Setup the Pulsar object."""
 
         cls.psrs = [
-            Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim"),
-            Pulsar(datadir + "/J1909-3744_NANOGrav_9yv1.gls.par", datadir + "/J1909-3744_NANOGrav_9yv1.tim"),
+            Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.t2.feather"),
+            Pulsar(datadir + "/J1909-3744_NANOGrav_9yv1.t2.feather"),
         ]
 
     def test_parameterized_orf(self):
@@ -329,6 +331,7 @@ class TestPTASignals(unittest.TestCase):
         assert pta["B1855+09"]["red_noise"] == pta.pulsarmodels[0].signals[0], msg
 
 
+@pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
 class TestPTASignalsPint(TestPTASignals):
     @classmethod
     def setUpClass(cls):
@@ -348,4 +351,16 @@ class TestPTASignalsPint(TestPTASignals):
                 ephem="DE430",
                 timing_package="pint",
             ),
+        ]
+
+
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
+class TestPTASignalsTempo2(TestPTASignals):
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        cls.psrs = [
+            Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim"),
+            Pulsar(datadir + "/J1909-3744_NANOGrav_9yv1.gls.par", datadir + "/J1909-3744_NANOGrav_9yv1.tim"),
         ]
