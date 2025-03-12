@@ -231,8 +231,7 @@ def FFTBasisGP(
     start_time=None,
     name="red_noise",
 ):
-    """Convenience function to return a BasisGP class with a
-    coarse time basis."""
+    """Function to return a BasisGP class with a coarse time basis."""
 
     if nknots is None:
         nknots = 2 * components + 1
