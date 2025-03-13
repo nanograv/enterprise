@@ -93,6 +93,18 @@ class TestVectorParameter(unittest.TestCase):
         msg = "Prior value incorrect."
         assert np.allclose(pta.get_lnprior(xs), np.log(prior)), msg
 
+        # test hypercube transform
+        msg = "PPFs do not match"
+        x0 = np.random.uniform(size=4)
+        params = {"B1855+09_red_noise_log10_rho": x0[1:], "B1855+09_efac": x0[0]}
+        assert np.allclose(pta.get_hypercube_transform(x0), pta.get_hypercube_transform(params)), msg
+
+        # test ppf value
+        msg = "PPF value incorrect"
+        x0 = np.array([0.5, 0.25, 0.5, 0.75])
+        params = {"B1855+09_red_noise_log10_rho": x0[1:], "B1855+09_efac": x0[0]}
+        assert np.allclose(pta.get_hypercube_transform(x0), np.array([1.25, -17.5, -15.0, -12.5])), msg
+
         # test PTA level parameter names
         pnames = [
             "B1855+09_efac",
