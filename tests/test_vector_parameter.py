@@ -10,6 +10,7 @@ Tests for vector parameter functionality
 
 
 import unittest
+import pytest
 
 import numpy as np
 
@@ -17,6 +18,7 @@ from enterprise.pulsar import Pulsar
 from enterprise.signals import gp_signals, parameter, signal_base, white_signals
 from enterprise.signals.parameter import function
 from tests.enterprise_test_data import datadir
+from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
 
 @function
@@ -30,7 +32,7 @@ class TestVectorParameter(unittest.TestCase):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.t2.feather")
 
     def test_phi(self):
         """Test vector parameter on signal level."""
@@ -91,6 +93,18 @@ class TestVectorParameter(unittest.TestCase):
         msg = "Prior value incorrect."
         assert np.allclose(pta.get_lnprior(xs), np.log(prior)), msg
 
+        # test hypercube transform
+        msg = "PPFs do not match"
+        x0 = np.random.uniform(size=4)
+        params = {"B1855+09_red_noise_log10_rho": x0[1:], "B1855+09_efac": x0[0]}
+        assert np.allclose(pta.get_hypercube_transform(x0), pta.get_hypercube_transform(params)), msg
+
+        # test ppf value
+        msg = "PPF value incorrect"
+        x0 = np.array([0.5, 0.25, 0.5, 0.75])
+        params = {"B1855+09_red_noise_log10_rho": x0[1:], "B1855+09_efac": x0[0]}
+        assert np.allclose(pta.get_hypercube_transform(x0), np.array([1.25, -17.5, -15.0, -12.5])), msg
+
         # test PTA level parameter names
         pnames = [
             "B1855+09_efac",
@@ -102,6 +116,7 @@ class TestVectorParameter(unittest.TestCase):
         assert pta.param_names == pnames
 
 
+@pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
 class TestVectorParameterPint(TestVectorParameter):
     @classmethod
     def setUpClass(cls):
@@ -114,3 +129,13 @@ class TestVectorParameterPint(TestVectorParameter):
             ephem="DE430",
             timing_package="pint",
         )
+
+
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
+class TestVectorParameterTempo2(TestVectorParameter):
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")

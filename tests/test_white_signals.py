@@ -10,6 +10,7 @@ Tests for white signal modules.
 
 
 import unittest
+import pytest
 
 import numpy as np
 import scipy.linalg as sl
@@ -18,6 +19,7 @@ from enterprise.pulsar import Pulsar
 from enterprise.signals import gp_signals, parameter, selections, utils, white_signals
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
+from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
 
 class Woodbury(object):
@@ -55,13 +57,13 @@ class TestWhiteSignals(unittest.TestCase):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.t2.feather")
 
         # IPTA-like pulsar
-        cls.ipsr = Pulsar(datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", sort=True)
+        cls.ipsr = Pulsar(datadir + "/1713.Sep.t2.feather", sort=True)
 
         # Same pulsar, but with TOAs shuffled
-        cls.ipsr_shuffled = Pulsar(datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", sort=True)
+        cls.ipsr_shuffled = Pulsar(datadir + "/1713.Sep.t2.feather", sort=True)
         rng = np.random.default_rng(seed=123)
         rng.shuffle(cls.ipsr_shuffled._isort)
         for ii, p in enumerate(cls.ipsr_shuffled._isort):
@@ -504,6 +506,7 @@ class TestWhiteSignals(unittest.TestCase):
         self._ecorr_test_ipta(method="block", shuffled=True)
 
 
+@pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
 class TestWhiteSignalsPint(TestWhiteSignals):
     @classmethod
     def setUpClass(cls):
@@ -526,6 +529,26 @@ class TestWhiteSignalsPint(TestWhiteSignals):
         cls.ipsr_shuffled = Pulsar(
             datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", ephem="DE421", timint_package="pint", sort=True
         )
+        rng = np.random.default_rng(seed=123)
+        rng.shuffle(cls.ipsr_shuffled._isort)
+        for ii, p in enumerate(cls.ipsr_shuffled._isort):
+            cls.ipsr_shuffled._iisort[p] = ii
+
+
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
+class TestWhiteSignalsTempo2(TestWhiteSignals):
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+
+        # IPTA-like pulsar
+        cls.ipsr = Pulsar(datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", sort=True)
+
+        # Same pulsar, but with TOAs shuffled
+        cls.ipsr_shuffled = Pulsar(datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", sort=True)
         rng = np.random.default_rng(seed=123)
         rng.shuffle(cls.ipsr_shuffled._isort)
         for ii, p in enumerate(cls.ipsr_shuffled._isort):

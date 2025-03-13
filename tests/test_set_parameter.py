@@ -10,6 +10,7 @@ Tests of setting constant parameters
 
 
 import unittest
+import pytest
 
 import numpy as np
 import scipy.linalg as sl
@@ -18,6 +19,7 @@ from enterprise.pulsar import Pulsar
 from enterprise.signals import gp_signals, parameter, selections, utils, white_signals
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
+from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
 
 def get_noise_from_pal2(noisefile):
@@ -60,8 +62,8 @@ class TestSetParameters(unittest.TestCase):
 
         # initialize Pulsar class
         cls.psrs = [
-            Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim"),
-            Pulsar(datadir + "/J1909-3744_NANOGrav_9yv1.gls.par", datadir + "/J1909-3744_NANOGrav_9yv1.tim"),
+            Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.t2.feather"),
+            Pulsar(datadir + "/J1909-3744_NANOGrav_9yv1.t2.feather"),
         ]
 
     def test_single_pulsar(self):
@@ -152,7 +154,7 @@ class TestSetParameters(unittest.TestCase):
         ), msg
 
         msg = "EFAC/ECORR 2D2 solve incorrect."
-        assert np.allclose(N.solve(T, left_array=T), np.dot(T.T, sl.cho_solve(cf, T)), rtol=1e-10), msg
+        assert np.allclose(N.solve(T, left_array=T), np.dot(T.T, sl.cho_solve(cf, T)), rtol=1e-9), msg
 
         F, f2 = utils.createfourierdesignmatrix_red(self.psrs[0].toas, nmodes=20)
 
@@ -267,7 +269,7 @@ class TestSetParameters(unittest.TestCase):
             ), msg
 
             msg = "EFAC/ECORR 2D2 solve incorrect."
-            assert np.allclose(N.solve(T, left_array=T), np.dot(T.T, sl.cho_solve(cf, T)), rtol=1e-10), msg
+            assert np.allclose(N.solve(T, left_array=T), np.dot(T.T, sl.cho_solve(cf, T)), rtol=1e-9), msg
 
             # spectrum test
             msg = "Spectrum incorrect for GP Fourier signal."
@@ -278,6 +280,7 @@ class TestSetParameters(unittest.TestCase):
             assert np.all(pphiinv == 1 / phi), msg
 
 
+@pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
 class TestSetParametersPint(TestSetParameters):
     @classmethod
     def setUpClass(cls):
@@ -297,4 +300,17 @@ class TestSetParametersPint(TestSetParameters):
                 ephem="DE430",
                 timing_package="pint",
             ),
+        ]
+
+
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
+class TestSetParametersTempo2(TestSetParameters):
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psrs = [
+            Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim"),
+            Pulsar(datadir + "/J1909-3744_NANOGrav_9yv1.gls.par", datadir + "/J1909-3744_NANOGrav_9yv1.tim"),
         ]

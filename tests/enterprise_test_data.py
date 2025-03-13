@@ -9,6 +9,25 @@ Currently they are in `tests/data`, and they are based on the 9-yr data release.
 
 import os
 
+# Are we on GitHub Actions?
+ON_GITHUB = os.getenv("GITHUB_ACTIONS")
+
+# Is libstempo installed?
+try:
+    import libstempo  # noqa
+
+    LIBSTEMPO_INSTALLED = True
+except ImportError:
+    LIBSTEMPO_INSTALLED = False
+
+# Is PINT installed?
+try:
+    import pint  # noqa
+
+    PINT_INSTALLED = True
+except ImportError:
+    PINT_INSTALLED = False
+
 # Location of this file and the test data scripts
 testdir = os.path.dirname(os.path.abspath(__file__))
 datadir = os.path.join(testdir, "data")
