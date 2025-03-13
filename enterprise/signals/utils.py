@@ -125,6 +125,22 @@ class ConditionalGP:
 
         return ret
 
+    def get_process_from_gp_coeffs(self, coeffs, params, n=1):
+        """
+        get timeseries from gp coefficients
+        """
+        ret = []
+        for j in range(len(coeffs)):
+            pardict = {}
+            for model in self.pta.pulsarmodels:
+                for sig in model._signals:
+                    if sig.signal_type in ["basis", "common basis"]:
+                        sb = sig.get_basis(params=params)
+                        pardict[sig.name] = np.dot(sb, coeffs[j][sig.name + "_coefficients"])
+
+            ret.append(pardict)
+        return ret
+
     def get_mean_coefficients(self, params):
         return self._sample_conditional(params, n=1, gp=False, variance=False)[0]
 
