@@ -135,12 +135,20 @@ class BasePulsar(object):
             self._isort = slice(None, None, None)
             self._iisort = slice(None, None, None)
 
-    def filter_data(self, start_time=None, end_time=None):
-        """Filter data to create a time-slice of overall dataset."""
-        if start_time is None and end_time is None:
-            mask = np.ones(self._toas.shape, dtype=bool)
-        else:
-            mask = np.logical_and(self._toas >= start_time * 86400, self._toas <= end_time * 86400)
+    def filter_data(self, mask=None, start_time=None, end_time=None):
+        """
+        Filters the dataset to create a time-slice based on a custom mask or time range.
+
+        Parameters:
+            mask (array-like, optional): Boolean array specifying which data to keep.
+                                         If None, `start_time` and `end_time` are used. Default is None.
+            start_time (float, optional): Start time (MJD) for filtering. Ignored if `mask` is provided. Default None.
+            end_time (float, optional): End time (MJD) for filtering. Ignored if `mask` is provided. Default None.
+        """
+
+        start_time = start_time * 86400 if start_time is not None else np.min(self._toas)
+        end_time = end_time * 86400 if end_time is not None else np.max(self._toas)
+        mask = mask if mask is not None else np.logical_and(self._toas >= start_time, self._toas <= end_time)
 
         self._toas = self._toas[mask]
         self._toaerrs = self._toaerrs[mask]
@@ -158,7 +166,7 @@ class BasePulsar(object):
                 self._flags[key] = self._flags[key][mask]
 
         if self._planetssb is not None:
-            self._planetssb = self.planetssb[mask, :, :]
+            self._planetssb = self._planetssb[mask, :, :]
 
         self.sort_data()
 
