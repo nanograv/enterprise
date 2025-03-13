@@ -12,12 +12,15 @@ from enterprise.signals.parameter import function
 
 __all__ = [
     "createfourierdesignmatrix_red",
+    "create_fft_time_basis",
     "createfourierdesignmatrix_dm",
+    "create_fft_time_basis_dm",
     "createfourierdesignmatrix_dm_tn",
     "createfourierdesignmatrix_env",
     "createfourierdesignmatrix_ephem",
     "createfourierdesignmatrix_eph",
     "createfourierdesignmatrix_chromatic",
+    "create_fft_time_basis_chromatic",
     "createfourierdesignmatrix_general",
 ]
 
@@ -92,6 +95,46 @@ def createfourierdesignmatrix_red(
 
 
 @function
+def create_fft_time_basis(toas, nknots=30, Tspan=None, start_time=None):
+    """
+    Construct coarse time-domain design matrix from eq 11 of Chrisostomi et al., 2025
+    :param toas: vector of time series in seconds
+    :param nknots: number of coarse time samples to use (knots)
+    :param Tspan: option to some other Tspan
+    :param start_time: option to set some other start epoch of basis
+
+    :return B: coarse time-domain design matrix
+    :return t_coarse: timestamps of coarse time grid
+    """
+    if start_time is None:
+        start_time = np.min(toas)
+    else:
+        if start_time > np.min(toas):
+            raise ValueError("Coarse time basis start must be earlier than earliest TOA.")
+
+    if Tspan is None:
+        Tspan = np.max(toas) - start_time
+    else:
+        if start_time + Tspan < np.max(toas):
+            raise ValueError("Coarse time basis end must be later than latest TOA.")
+
+    t_fine = toas
+    t_coarse = np.linspace(start_time, start_time + Tspan, nknots)
+    dt_coarse = t_coarse[1] - t_coarse[0]
+
+    idx = np.arange(len(t_fine))
+    idy = np.searchsorted(t_coarse, t_fine)
+    idy = np.clip(idy, 1, nknots - 1)
+
+    Bmat = np.zeros((len(t_fine), len(t_coarse)), "d")
+
+    Bmat[idx, idy] = (t_fine - t_coarse[idy - 1]) / dt_coarse
+    Bmat[idx, idy - 1] = (t_coarse[idy] - t_fine) / dt_coarse
+
+    return Bmat, t_coarse
+
+
+@function
 def createfourierdesignmatrix_dm(
     toas, freqs, nmodes=30, Tspan=None, pshift=False, fref=1400, logf=False, fmin=None, fmax=None, modes=None
 ):
@@ -125,6 +168,33 @@ def createfourierdesignmatrix_dm(
     Dm = (fref / freqs) ** 2
 
     return F * Dm[:, None], Ffreqs
+
+
+@function
+def create_fft_time_basis_dm(toas, freqs, nknots=30, Tspan=None, start_time=None, fref=1400):
+    """
+    Construct DM-variation linear interpolation design matrix. Current
+    normalization expresses DM signal as a deviation [seconds]
+    at fref [MHz]
+
+    :param toas: vector of time series in seconds
+    :param freqs: radio frequencies of observations [MHz]
+    :param nknots: number of coarse time samples to use (knots)
+    :param Tspan: option to some other Tspan
+    :param start_time: option to set some other start epoch of basis
+    :param fref: reference frequency [MHz]
+
+    :return B: coarse time-domain design matrix
+    :return t_coarse: timestamps of coarse time grid
+    """
+
+    # get base course time-domain matrix and times
+    Bmat, t_coarse = create_fft_time_basis(toas, nknots=nknots, Tspan=Tspan, start_time=start_time)
+
+    # compute the DM-variation vectors
+    Dm = (fref / freqs) ** 2
+
+    return Bmat * Dm[:, None], t_coarse
 
 
 @function
@@ -290,6 +360,34 @@ def createfourierdesignmatrix_chromatic(
     Dm = (1400 / freqs) ** idx
 
     return F * Dm[:, None], Ffreqs
+
+
+@function
+def create_fft_time_basis_chromatic(toas, freqs, nknots=30, Tspan=None, start_time=None, fref=1400, idx=4):
+    """
+    Construct scattering linear interpolation design matrix. Current
+    normalization expresses DM signal as a deviation [seconds]
+    at fref [MHz]
+
+    :param toas: vector of time series in seconds
+    :param freqs: radio frequencies of observations [MHz]
+    :param nknots: number of coarse time samples to use (knots)
+    :param Tspan: option to some other Tspan
+    :param start_time: option to set some other start epoch of basis
+    :param fref: reference frequency [MHz]
+    :param idx: Index of chromatic effects
+
+    :return B: coarse time-domain design matrix
+    :return t_coarse: timestamps of coarse time grid
+    """
+
+    # get base course time-domain matrix and times
+    Bmat, t_coarse = create_fft_time_basis(toas, nknots=nknots, Tspan=Tspan, start_time=start_time)
+
+    # compute the DM-variation vectors
+    Dm = (fref / freqs) ** idx
+
+    return Bmat * Dm[:, None], t_coarse
 
 
 @function

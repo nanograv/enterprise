@@ -20,12 +20,15 @@ from enterprise import constants as const
 from enterprise import signals as sigs  # noqa: F401
 from enterprise.signals.gp_bases import (  # noqa: F401
     createfourierdesignmatrix_red,
+    create_fft_time_basis,
     createfourierdesignmatrix_dm,
+    create_fft_time_basis_dm,
     createfourierdesignmatrix_dm_tn,
     createfourierdesignmatrix_env,
     createfourierdesignmatrix_ephem,
     createfourierdesignmatrix_eph,
     createfourierdesignmatrix_chromatic,
+    create_fft_time_basis_chromatic,
     createfourierdesignmatrix_general,
 )
 from enterprise.signals.gp_priors import powerlaw, turnover  # noqa: F401
@@ -837,6 +840,59 @@ def linear_interp_basis(toas, dt=30 * 86400):
     idx = M.sum(axis=0) != 0
 
     return M[:, idx], x[idx]
+
+
+def psd2cov(
+    t_knots,
+    psd,
+):
+    """
+    Convert a power spectral density function, defined by (freqs, psd), to a covariance matrix
+
+    :param t_knots: Timestamps of the coarse time grid
+    :param psd: values of the PSD at frequencies freqs (assumes *delta_f in psd)
+                so psd is assumed to be in units of [s^2]
+
+    :return covmat: Covariance matrix at coarse time grid
+    """
+
+    def toeplitz(c):
+        c = np.asarray(c)
+        n = len(c)
+        i = np.arange(n).reshape(-1, 1)
+        j = np.arange(n).reshape(1, -1)
+        return c[np.abs(i - j)]
+
+    def covmat(*args):
+        fullpsd = np.concatenate([psd, psd[-2:0:-1]])
+
+        Cfreq = np.fft.ifft(fullpsd, norm="backward")
+        Ctau = Cfreq.real * len(fullpsd) / 2
+
+        return toeplitz(Ctau[: len(t_knots)])
+
+    return covmat()
+
+
+def knots_to_freqs(t_knots, oversample=3):
+    """
+    Convert knots of coarse time grid to frequencies
+
+    :param t_knots: Timestamps of the coarse time grid
+    :param oversample: amount by which to over-sample the frequency grid
+
+    :return freqs: Frequencies, regularly sampled with
+                   delta-f = 1/(oversample*T), fmax=1/(2*delta_t_knots)
+    """
+    nmodes = len(t_knots)
+    Tspan = np.max(t_knots) - np.min(t_knots)
+
+    if nmodes % 2 == 0:
+        raise ValueError("len(t_knots) must be odd.")
+
+    n_freqs = int((nmodes - 1) / 2 * oversample + 1)
+    fmax = (nmodes - 1) / Tspan / 2
+    return np.linspace(0, fmax, n_freqs)
 
 
 # overlap reduction functions
