@@ -97,34 +97,32 @@ class ConditionalGP:
             pardict, ntot = {}, 0
             for i, model in enumerate(self.pta.pulsarmodels):
                 for sig in model._signals:
-                    if sig.signal_type in ["basis", "common basis"]:
+                    if sig.signal_type not in ["basis", "common basis"]:
+                        continue
 
-                        sb = sig.get_basis(params=params)
-                        nb = sb.shape[1]
+                    sb = sig.get_basis(params=params)
+                    nb = sb.shape[1]
 
-                        if nb + ntot > len(b):
-                            raise IndexError("Missing parameters! You need to set combine=False in your GPs.")
+                    if nb + ntot > len(b):
+                        raise IndexError("Missing parameters! You need to set combine=False in your GPs.")
 
-                        if "timing_model" in sig.name and len(self.tm_params) > 0:
-                            if self.psr is None:
-                                raise ValueError("Need to input psr to get timing model param names")
-                            else:
-                                for tm_par in self.tm_params:
+                    if "timing_model" in sig.name and len(self.tm_params) > 0:
+                        if self.psr is None:
+                            raise ValueError("Need to input psr to get timing model param names")
 
-                                    tm_idx = list(self.psr.fitpars).index(tm_par)
-                                    save_name = sig.name.split("_")[0] + "_" + tm_par
+                        for tm_par in self.tm_params:
 
-                                    if gp:
-                                        pardict[save_name] = np.dot(sb[:, tm_idx], b[ntot + tm_idx])
-                                    else:
-                                        pardict[save_name + "_coefficients"] = b[ntot + tm_idx]
+                            tm_idx = list(self.psr.fitpars).index(tm_par)
+                            save_name = sig.name.split("_")[0] + "_" + tm_par
+                            key = save_name if gp else f"{save_name}_coefficients"
+                            pardict[key] = np.dot(sb[:, tm_idx], b[ntot + tm_idx]) if gp else b[ntot + tm_idx]
 
-                        if gp:
-                            pardict[sig.name] = np.dot(sb, b[ntot : nb + ntot])
-                        else:
-                            pardict[sig.name + "_coefficients"] = b[ntot : nb + ntot]
+                    if gp:
+                        pardict[sig.name] = np.dot(sb, b[ntot : nb + ntot])
+                    else:
+                        pardict[sig.name + "_coefficients"] = b[ntot : nb + ntot]
 
-                        ntot += nb
+                    ntot += nb
 
             ret.append(pardict)
 
