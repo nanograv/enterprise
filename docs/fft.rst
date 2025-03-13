@@ -117,4 +117,5 @@ would not expect to be identical will be combined.
 The above is not a bug. Combining such bases and the corresponding Phi matrix
 does not matter, because the basis is zero, and that part of the signal has no
 bearing on the data or the model. However, when doing signal reconstruction,
-such as with `la_forge`, make sure to set `combine=False`.
+such as with `la_forge` or `utils.ConditionalGP`, make sure to set
+`combine=False`.
