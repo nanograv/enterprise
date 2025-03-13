@@ -145,9 +145,9 @@ class BasePulsar(object):
             start_time (float, optional): Start time (MJD) for filtering. Ignored if `mask` is provided. Default None.
             end_time (float, optional): End time (MJD) for filtering. Ignored if `mask` is provided. Default None.
         """
-        
-        start_time = start_time*86400 if start_time is not None else np.min(self._toas)
-        end_time = end_time*86400 if end_time is not None else np.max(self._toas)
+
+        start_time = start_time * 86400 if start_time is not None else np.min(self._toas)
+        end_time = end_time * 86400 if end_time is not None else np.max(self._toas)
         mask = mask if mask is not None else np.logical_and(self._toas >= start_time, self._toas <= end_time)
 
         self._toas = self._toas[mask]
