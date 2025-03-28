@@ -2,15 +2,20 @@
 """Class containing pulsar data from timing package [tempo2/PINT].
 """
 
+import contextlib
 import json
 import logging
 import os
 import pickle
 
-import astropy.constants as const
-import astropy.units as u
+from pyarrow import feather
+from pyarrow import Table
+from io import StringIO
+
 import numpy as np
 from ephem import Ecliptic, Equatorial, J2000
+from ephem import Ecliptic, Equatorial
+from astropy.time import Time
 
 import enterprise
 from enterprise.signals import utils
@@ -22,7 +27,9 @@ logger = logging.getLogger(__name__)
 try:
     import libstempo as t2
 except ImportError:
-    logger.warning("libstempo not installed. Will use PINT instead.")  # pragma: no cover
+    logger.warning(
+        "libstempo not installed. PINT or libstempo are required to use par and tim files."
+    )  # pragma: no cover
     t2 = None
 
 try:
@@ -31,12 +38,15 @@ try:
     from pint.residuals import Residuals as resids
     from pint.toa import TOAs
 except ImportError:
-    logger.warning("PINT not installed. Will use libstempo instead.")  # pragma: no cover
+    logger.warning("PINT not installed. PINT or libstempo are required to use par and tim files.")  # pragma: no cover
     pint = None
 
-if pint is None and t2 is None:
-    err_msg = "Must have either PINT or libstempo timing package installed"
-    raise ImportError(err_msg)
+try:
+    import astropy.constants as const
+    import astropy.units as u
+except ImportError:  # pragma: no cover
+    const = None
+    u = None
 
 
 def get_maxobs(timfile):
@@ -108,7 +118,11 @@ class BasePulsar(object):
 
     def _get_pos(self):
         return np.array(
-            [np.cos(self._raj) * np.cos(self._decj), np.sin(self._raj) * np.cos(self._decj), np.sin(self._decj)]
+            [
+                np.cos(self._raj) * np.cos(self._decj),
+                np.sin(self._raj) * np.cos(self._decj),
+                np.sin(self._decj),
+            ]
         )
 
     def sort_data(self):
@@ -149,20 +163,21 @@ class BasePulsar(object):
 
         self.sort_data()
 
+    def to_feather(self, filename, noisedict=None):
+        FeatherPulsar.save_feather(self, filename, noisedict=noisedict)
+
+    def drop_not_picklable(self):
+        """Drop all attributes that cannot be pickled.
+
+        Derived classes should implement this if they have
+        any such attributes.
+        """
+        pass
+
     def to_pickle(self, outdir=None):
         """Save object to pickle file."""
 
-        # drop t2pulsar object
-        if hasattr(self, "t2pulsar"):
-            del self.t2pulsar
-            msg = "t2pulsar object cannot be pickled and has been removed."
-            logger.warning(msg)
-
-        if hasattr(self, "pint_toas"):
-            del self.pint_toas
-            del self.model
-            msg = "pint_toas and model objects cannot be pickled and have been removed."
-            logger.warning(msg)
+        self.drop_not_picklable()
 
         if outdir is None:
             outdir = os.getcwd()
@@ -305,7 +320,7 @@ class BasePulsar(object):
 
     @property
     def telescope(self):
-        """Return telescope vector at all timestamps"""
+        """Return telescope name at all timestamps"""
         return self._telescope[self._isort]
 
 
@@ -317,7 +332,11 @@ class PintPulsar(BasePulsar):
 
         if not drop_pintpsr:
             self.model = model
+            self.parfile = model.as_parfile()
             self.pint_toas = toas
+            with StringIO() as tim:
+                toas.write_TOA_file(tim)
+                self.timfile = tim.getvalue()
 
         # these are TDB but not barycentered
         # self._toas = np.array(toas.table["tdbld"], dtype="float64") * 86400
@@ -326,20 +345,17 @@ class PintPulsar(BasePulsar):
         self._stoas = np.array(toas.get_mjds().value, dtype="float64") * 86400
         self._residuals = np.array(resids(toas, model).time_resids.to(u.s), dtype="float64")
         self._toaerrs = np.array(toas.get_errors().to(u.s), dtype="float64")
-        self._designmatrix = model.designmatrix(toas)[0]
+        self._designmatrix, self.fitpars, self.designmatrix_units = model.designmatrix(toas)
         self._ssbfreqs = np.array(model.barycentric_radio_freq(toas), dtype="float64")
         self._telescope = np.array(toas.get_obss())
-
-        # fitted parameters
-        self.fitpars = ["Offset"] + [par for par in model.params if not getattr(model, par).frozen]
 
         # gather DM/DMX information if available
         self._set_dm(model)
 
         # set parameters
-        spars = [par for par in model.params]
-        self.setpars = [sp for sp in spars if sp not in self.fitpars]
+        self.setpars = [sp for sp in model.params if sp not in self.fitpars]
 
+        # FIXME: this can be done more cleanly using PINT
         self._flags = {}
         for ii, obsflags in enumerate(toas.get_flags()):
             for jj, flag in enumerate(obsflags):
@@ -350,6 +366,7 @@ class PintPulsar(BasePulsar):
 
         # convert flags to arrays
         # TODO probably better way to do this
+        #      -- PINT always stores flags as strings
         for key, val in self._flags.items():
             if isinstance(val[0], u.quantity.Quantity):
                 self._flags[key] = np.array([v.value for v in val])
@@ -366,9 +383,28 @@ class PintPulsar(BasePulsar):
             "AstrometryEquatorial" if "AstrometryEquatorial" in model.components else "AstrometryEcliptic"
         )
 
-        self._pos_t = model.components[which_astrometry].ssb_to_psb_xyz_ICRS(model.get_barycentric_toas(toas)).value
+        self._pos_t = (
+            model.components[which_astrometry]
+            .ssb_to_psb_xyz_ICRS(Time(model.get_barycentric_toas(toas), format="mjd"))
+            .value
+        )
 
         self.sort_data()
+
+    def drop_pintpsr(self):
+        with contextlib.suppress(NameError):
+            del self.model
+            del self.parfile
+            del self.pint_toas
+            del self.timfile
+
+    def drop_not_picklable(self):
+        with contextlib.suppress(AttributeError):
+            del self.model
+            del self.pint_toas
+            logger.warning("pint_toas and model objects cannot be pickled and have been removed.")
+
+        return super().drop_not_picklable()
 
     def _set_dm(self, model):
         pars = [par for par in model.params if not getattr(model, par).frozen]
@@ -390,15 +426,18 @@ class PintPulsar(BasePulsar):
 
         if dmx:
             self._dmx = dmx
+        else:
+            self._dmx = None
 
     def _get_radec(self, model):
         if hasattr(model, "RAJ") and hasattr(model, "DECJ"):
-            return (model.RAJ.value, model.DECJ.value)
+            raj = model.RAJ.quantity.to(u.rad).value
+            decj = model.DECJ.quantity.to(u.rad).value
+            return raj, decj
         else:
-            # TODO: better way of dealing with units
-            d2r = np.pi / 180
-            elong, elat = model.ELONG.value, model.ELAT.value
-            return self._get_radec_from_ecliptic(elong * d2r, elat * d2r)
+            elong = model.ELONG.quantity.to(u.rad).value
+            elat = model.ELAT.quantity.to(u.rad).value
+            return self._get_radec_from_ecliptic(elong, elat)
 
     def _get_ssb_lsec(self, toas, obs_planet):
         """Get the planet to SSB vector in lightseconds from Pint table"""
@@ -446,7 +485,15 @@ class PintPulsar(BasePulsar):
 
 
 class Tempo2Pulsar(BasePulsar):
-    def __init__(self, t2pulsar, sort=True, drop_t2pulsar=True, planets=True):
+    def __init__(
+        self,
+        t2pulsar,
+        sort=True,
+        drop_t2pulsar=True,
+        planets=True,
+        par_name=None,
+        tim_name=None,
+    ):
         self._sort = sort
         self.t2pulsar = t2pulsar
         self.planets = planets
@@ -493,6 +540,15 @@ class Tempo2Pulsar(BasePulsar):
         self.sort_data()
 
         if drop_t2pulsar:
+            self.drop_tempopsr()
+        else:
+            if par_name is not None and os.path.exists(par_name):
+                self.parfile = open(par_name).read()
+            if tim_name is not None and os.path.exists(tim_name):
+                self.timfile = open(tim_name).read()
+
+    def drop_tempopsr(self):
+        with contextlib.suppress(NameError):
             del self.t2pulsar
 
     # gather DM/DMX information if available
@@ -516,6 +572,8 @@ class Tempo2Pulsar(BasePulsar):
 
         if dmx:
             self._dmx = dmx
+        else:
+            self._dmx = None
 
     def _get_radec(self, t2pulsar):
         if "RAJ" in np.concatenate((t2pulsar.pars(which="fit"), t2pulsar.pars(which="set"))):
@@ -555,7 +613,7 @@ class Tempo2Pulsar(BasePulsar):
         sunssb = None
         if self.planets:
             # for ii in range(1, 10):
-            #     tag = 'DMASSPLANET' + str(ii)
+            #     tag = 'DMASSPLANET' + str(ii)@pytest.mark.skipif(t2 is None, reason="TEMPO2/libstempo not available")
             #     self.t2pulsar[tag].val = 0.0
             self.t2pulsar.formbats()
             sunssb = np.zeros((len(self._toas), 6))
@@ -571,6 +629,12 @@ class Tempo2Pulsar(BasePulsar):
     # the Pulsar deflater will copy select numpy arrays to SharedMemory,
     # then replace them with pickleable objects that can be inflated
     # to numpy arrays with SharedMemory storage
+
+    def drop_not_picklable(self):
+        with contextlib.suppress(AttributeError):
+            del self.t2pulsar
+            logger.warning("t2pulsar object cannot be pickled and has been removed.")
+        return super().drop_not_picklable()
 
     _todeflate = ["_designmatrix", "_planetssb", "_sunssb", "_flags"]
     _deflated = "pristine"
@@ -682,7 +746,120 @@ class MockPulsar(BasePulsar):
         self._residuals = residuals
 
 
+class FeatherPulsar:
+    columns = ["toas", "stoas", "toaerrs", "residuals", "freqs", "backend_flags", "telescope"]
+    vector_columns = ["Mmat", "sunssb", "pos_t"]
+    tensor_columns = ["planetssb"]
+    # flags are done separately
+    metadata = ["name", "dm", "dmx", "pdist", "pos", "phi", "theta", "fitpars", "setpars", "_pdist"]
+    # notes: currently ignores _isort/__isort and gets sorted versions
+
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return f"<Pulsar {self.name}: {len(self.residuals)} res, {self.Mmat.shape[1]} pars>"
+
+    def __repr__(self):
+        return str(self)
+
+    def sort_data(self):
+        """Sort data by time. This function is defined so that tests will pass."""
+        self._isort = np.argsort(self.toas, kind="mergesort")
+        self._iisort = np.zeros(len(self._isort), dtype=int)
+        for ii, p in enumerate(self._isort):
+            self._iisort[p] = ii
+
+    @classmethod
+    def read_feather(cls, filename):
+        f = feather.read_table(filename)
+        self = FeatherPulsar()
+
+        for array in FeatherPulsar.columns:
+            if array in f.column_names:
+                setattr(self, array, f[array].to_numpy())
+
+        for array in FeatherPulsar.vector_columns:
+            cols = [c for c in f.column_names if c.startswith(array)]
+            setattr(self, array, np.array([f[col].to_numpy() for col in cols]).swapaxes(0, 1).copy())
+
+        for array in FeatherPulsar.tensor_columns:
+            rows = sorted(set(["_".join(c.split("_")[:-1]) for c in f.column_names if c.startswith(array)]))
+            cols = [[c for c in f.column_names if c.startswith(row)] for row in rows]
+            setattr(
+                self,
+                array,
+                np.array([[f[col].to_numpy() for col in row] for row in cols]).swapaxes(0, 2).swapaxes(1, 2).copy(),
+            )
+
+        self.flags = {}
+        for array in [c for c in f.column_names if c.startswith("flags_")]:
+            self.flags["_".join(array.split("_")[1:])] = f[array].to_numpy().astype("U")
+
+        meta = json.loads(f.schema.metadata[b"json"])
+        for attr in FeatherPulsar.metadata:
+            if attr in meta:
+                setattr(self, attr, meta[attr])
+            else:
+                print(f"FeatherPulsar.read_feather: cannot find {attr} in feather file {filename}.")
+
+        if "noisedict" in meta:
+            setattr(self, "noisedict", meta["noisedict"])
+
+        self.sort_data()
+
+        return self
+
+    def to_list(a):
+        return a.tolist() if isinstance(a, np.ndarray) else a
+
+    def save_feather(self, filename, noisedict=None):
+        self._toas = self._toas.astype(float)
+        pydict = {array: getattr(self, array) for array in FeatherPulsar.columns}
+
+        pydict.update(
+            {
+                f"{array}_{i}": getattr(self, array)[:, i]
+                for array in FeatherPulsar.vector_columns
+                for i in range(getattr(self, array).shape[1])
+            }
+        )
+
+        pydict.update(
+            {
+                f"{array}_{i}_{j}": getattr(self, array)[:, i, j]
+                for array in FeatherPulsar.tensor_columns
+                for i in range(getattr(self, array).shape[1])
+                for j in range(getattr(self, array).shape[2])
+            }
+        )
+
+        pydict.update({f"flags_{flag}": self.flags[flag] for flag in self.flags})
+
+        meta = {}
+        for attr in FeatherPulsar.metadata:
+            if hasattr(self, attr):
+                meta[attr] = FeatherPulsar.to_list(getattr(self, attr))
+            else:
+                print(f"FeatherPulsar.save_feather: cannot find {attr} in Pulsar {self.name}.")
+
+        # use attribute if present
+        noisedict = getattr(self, "noisedict", None) if noisedict is None else noisedict
+        if noisedict:
+            # only keep noisedict entries that are for this pulsar (requires pulsar name to be first part of the key!)
+            meta["noisedict"] = {par: val for par, val in noisedict.items() if par.startswith(self.name)}
+
+        feather.write_feather(Table.from_pydict(pydict, metadata={"json": json.dumps(meta)}), filename)
+
+
 def Pulsar(*args, **kwargs):
+    featherfile = [x for x in args if isinstance(x, str) and x.endswith(".feather")]
+    if featherfile:
+        return FeatherPulsar.read_feather(featherfile[0])
+    featherfile = kwargs.get("filepath", None)
+    if featherfile:
+        return FeatherPulsar.read_feather(featherfile)
+
     ephem = kwargs.get("ephem", None)
     clk = kwargs.get("clk", None)
     bipm_version = kwargs.get("bipm_version", None)
@@ -690,7 +867,9 @@ def Pulsar(*args, **kwargs):
     sort = kwargs.get("sort", True)
     drop_t2pulsar = kwargs.get("drop_t2pulsar", True)
     drop_pintpsr = kwargs.get("drop_pintpsr", True)
-    timing_package = kwargs.get("timing_package", "tempo2")
+    timing_package = kwargs.get("timing_package", None)
+    if timing_package is not None:
+        timing_package = timing_package.lower()
 
     if pint is not None:
         toas = [x for x in args if isinstance(x, TOAs)]
@@ -718,19 +897,47 @@ def Pulsar(*args, **kwargs):
         reltimfile = timfiletup[-1]
         relparfile = os.path.relpath(parfile[0], dirname)
 
+        if timing_package is None:
+            if t2 is not None:
+                timing_package = "tempo2"
+            elif pint is not None:  # pragma: no cover
+                timing_package = "pint"
+            else:  # pragma: no cover
+                raise ValueError("No timing package available with which to load a pulsar")
+
         # get current directory
         cwd = os.getcwd()
-
-        # Change directory to the base directory of the tim-file to deal with
-        # INCLUDE statements in the tim-file
-        os.chdir(dirname)
-
-        if timing_package.lower() == "pint":
-            if (clk is not None) and (bipm_version is None):
-                bipm_version = clk.split("(")[1][:-1]
-            model, toas = get_model_and_toas(
-                relparfile, reltimfile, ephem=ephem, bipm_version=bipm_version, planets=planets
-            )
+        try:
+            # Change directory to the base directory of the tim-file to deal with
+            # INCLUDE statements in the tim-file
+            os.chdir(dirname)
+            if timing_package.lower() == "tempo2":
+                if t2 is None:  # pragma: no cover
+                    raise ValueError("tempo2 requested but tempo2 is not available")
+                # hack to set maxobs
+                maxobs = get_maxobs(reltimfile) + 100
+                t2pulsar = t2.tempopulsar(relparfile, reltimfile, maxobs=maxobs, ephem=ephem, clk=clk)
+                return Tempo2Pulsar(
+                    t2pulsar,
+                    sort=sort,
+                    drop_t2pulsar=drop_t2pulsar,
+                    planets=planets,
+                    par_name=relparfile,
+                    tim_name=reltimfile,
+                )
+            elif timing_package.lower() == "pint":
+                if pint is None:  # pragma: no cover
+                    raise ValueError("PINT requested but PINT is not available")
+                if (clk is not None) and (bipm_version is None):
+                    bipm_version = clk.split("(")[1][:-1]
+                model, toas = get_model_and_toas(
+                    relparfile, reltimfile, ephem=ephem, bipm_version=bipm_version, planets=planets
+                )
+                os.chdir(cwd)
+                return PintPulsar(toas, model, sort=sort, drop_pintpsr=drop_pintpsr, planets=planets)
+            else:
+                raise ValueError(f"Unknown timing package {timing_package}")
+        finally:
             os.chdir(cwd)
             return PintPulsar(toas, model, sort=sort, drop_pintpsr=drop_pintpsr, planets=planets)
 

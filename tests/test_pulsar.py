@@ -20,23 +20,58 @@ import numpy as np
 
 from enterprise.pulsar import Pulsar, MockPulsar
 from tests.enterprise_test_data import datadir
+from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
-import pint.models.timing_model
-from pint.models import get_model_and_toas
 import ephem
+if PINT_INSTALLED:
+    import pint.models.timing_model
+    from pint.models import get_model_and_toas
 
 
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
+class TestTimingPackageExceptions(unittest.TestCase):
+    def test_unkown_timing_package(self):
+        # initialize Pulsar class
+        with self.assertRaises(ValueError):
+            self.psr = Pulsar(
+                datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
+                datadir + "/B1855+09_NANOGrav_9yv1.tim",
+                timing_package="foobar",
+            )
+
+    def test_clk_but_no_bipm(self):
+        self.psr = Pulsar(
+            datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
+            datadir + "/B1855+09_NANOGrav_9yv1.tim",
+            clk="TT(BIPM2020)",
+            timing_package="pint",
+        )
+
+
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
 class TestPulsar(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+        cls.psr = Pulsar(
+            datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim", drop_t2pulsar=True
+        )
 
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree("pickle_dir", ignore_errors=True)
+
+    def test_droppsr(self):
+        self.psr_nodrop = Pulsar(
+            datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim", drop_t2pulsar=False
+        )
+
+        self.psr_nodrop.drop_tempopsr()
+
+        with self.assertRaises(AttributeError):
+            _ = self.psr.t2pulsar
 
     def test_residuals(self):
         """Check Residual shape."""
@@ -132,22 +167,6 @@ class TestPulsar(unittest.TestCase):
         """Place holder for filter_data tests."""
         assert hasattr(self.psr, "sunssb")
 
-    def test_to_pickle(self):
-        """Place holder for to_pickle tests."""
-        self.psr.to_pickle()
-        with open("B1855+09.pkl", "rb") as f:
-            pkl_psr = pickle.load(f)
-
-        os.remove("B1855+09.pkl")
-
-        assert np.allclose(self.psr.residuals, pkl_psr.residuals, rtol=1e-10)
-
-        self.psr.to_pickle("pickle_dir")
-        with open("pickle_dir/B1855+09.pkl", "rb") as f:
-            pkl_psr = pickle.load(f)
-
-        assert np.allclose(self.psr.residuals, pkl_psr.residuals, rtol=1e-10)
-
     @pytest.mark.skipif(sys.version_info < (3, 8), reason="Requires Python >= 3.8")
     def test_deflate_inflate(self):
         psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
@@ -173,6 +192,8 @@ class TestPulsar(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             pkl_psr.inflate()
 
+        os.remove("B1855+09.pkl")
+
     def test_wrong_input(self):
         """Test exception when incorrect par(tim) file given."""
 
@@ -188,7 +209,19 @@ class TestPulsar(unittest.TestCase):
         with self.assertRaises(ValueError):
             Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.time")
 
+    def test_to_feather(self):
+        """Test creating feather file from Pulsar method"""
 
+        self.psr.to_feather("test.feather")
+        assert os.path.exists("test.feather")
+
+        loaded_psr = Pulsar("test.feather")
+        assert np.allclose(self.psr.residuals, loaded_psr.residuals, rtol=1e-10)
+
+        os.remove("test.feather")
+
+
+@pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
 class TestPulsarPint(TestPulsar):
     @classmethod
     def setUpClass(cls):
@@ -199,9 +232,49 @@ class TestPulsarPint(TestPulsar):
             datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
             datadir + "/B1855+09_NANOGrav_9yv1.tim",
             ephem="DE430",
+            drop_pintpsr=True,
+            timing_package="pint",
+        )
+
+    def test_droppsr(self):
+        self.psr_nodrop = Pulsar(
+            datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
+            datadir + "/B1855+09_NANOGrav_9yv1.tim",
+            ephem="DE430",
             drop_pintpsr=False,
             timing_package="pint",
         )
+
+        self.psr_nodrop.drop_pintpsr()
+
+        with self.assertRaises(AttributeError):
+            _ = self.psr_nodrop.model
+
+        with self.assertRaises(AttributeError):
+            _ = self.psr_nodrop.parfile
+
+        with self.assertRaises(AttributeError):
+            _ = self.psr_nodrop.pint_toas
+
+        with self.assertRaises(AttributeError):
+            _ = self.psr_nodrop.timfile
+
+    def test_drop_not_picklable(self):
+        self.psr_nodrop = Pulsar(
+            datadir + "/B1855+09_NANOGrav_9yv1.gls.par",
+            datadir + "/B1855+09_NANOGrav_9yv1.tim",
+            ephem="DE430",
+            drop_pintpsr=False,
+            timing_package="pint",
+        )
+
+        self.psr_nodrop.drop_not_picklable()
+
+        with self.assertRaises(AttributeError):
+            _ = self.psr_nodrop.model
+
+        with self.assertRaises(AttributeError):
+            _ = self.psr_nodrop.pint_toas
 
     def test_deflate_inflate(self):
         pass
@@ -219,6 +292,21 @@ class TestPulsarPint(TestPulsar):
                 timing_package="pint",
             )
 
+    def test_load_radec_psr_mdc(self):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class with RAJ DECJ so _get_radec can be covered
+        psr = Pulsar(
+            datadir + "/mdc1/J0030+0451.par",
+            datadir + "/mdc1/J0030+0451.tim",
+            ephem="DE430",
+            drop_pintpsr=False,
+            timing_package="pint",
+        )
+
+        msg = f"Pulsar not loaded properly {self.psr.Mmat.shape}"
+        assert psr.Mmat.shape == (130, 8), msg
+
     def test_no_planet(self):
         """Test exception when incorrect par(tim) file given."""
 
@@ -226,7 +314,7 @@ class TestPulsarPint(TestPulsar):
             model, toas = get_model_and_toas(
                 datadir + "/J0030+0451_NANOGrav_9yv1.gls.par", datadir + "/J0030+0451_NANOGrav_9yv1.tim", planets=False
             )
-            Pulsar(model, toas, planets=True)
+            Pulsar(model, toas, planets=True, drop_pintpsr=False)
             msg = "obs_earth_pos is not in toas.table.colnames. Either "
             msg += "`planet` flag is not True in `toas` or further Pint "
             msg += "development to add additional planets is needed."

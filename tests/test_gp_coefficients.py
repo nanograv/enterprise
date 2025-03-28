@@ -8,9 +8,9 @@ test_gp_coefficients
 Tests for GP signals used with deterministic coefficients.
 """
 
-
 import logging
 import unittest
+import pytest
 
 import numpy as np
 import scipy.sparse as sps
@@ -28,6 +28,7 @@ from enterprise.signals import (
 )
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
+from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
 logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -54,9 +55,8 @@ class TestGPCoefficients(unittest.TestCase):
         """Setup the Pulsar object."""
 
         # initialize Pulsar class
-        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
-
-        cls.psr2 = Pulsar(datadir + "/B1937+21_NANOGrav_9yv1.gls.par", datadir + "/B1937+21_NANOGrav_9yv1.tim")
+        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.t2.feather")
+        cls.psr2 = Pulsar(datadir + "/B1937+21_NANOGrav_9yv1.t2.feather")
 
     def test_ephemeris(self):
         """Test physical-ephemeris delay, made three ways: from
@@ -379,6 +379,7 @@ class TestGPCoefficients(unittest.TestCase):
             assert np.allclose(mn[idx[c_name]], v)
 
 
+@pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
 class TestGPCoefficientsPint(TestGPCoefficients):
     @classmethod
     def setUpClass(cls):
@@ -395,3 +396,15 @@ class TestGPCoefficientsPint(TestGPCoefficients):
     def test_ephemeris(self):
         # skipping ephemeris with PINT
         pass
+
+
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
+class TestGPCoefficientsTempo2(TestGPCoefficients):
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psr = Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim")
+
+        cls.psr2 = Pulsar(datadir + "/B1937+21_NANOGrav_9yv1.gls.par", datadir + "/B1937+21_NANOGrav_9yv1.tim")

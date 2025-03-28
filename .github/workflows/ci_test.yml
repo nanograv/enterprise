@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python-version: ['3.8', '3.9', '3.10', '3.11']
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
 
     steps:
     - name: Checkout repository
@@ -31,13 +31,14 @@ jobs:
       run: |
         brew unlink gcc && brew link gcc
         brew install automake suite-sparse
-        curl -sSL https://raw.githubusercontent.com/vallis/libstempo/master/install_tempo2.sh | sh
     - name: Install non-python dependencies on linux
       if: runner.os == 'Linux'
       run: |
         sudo apt-get install libsuitesparse-dev
-        curl -sSL https://raw.githubusercontent.com/vallis/libstempo/master/install_tempo2.sh | sh
     - name: Install dependencies and package
+      env:
+        SUITESPARSE_INCLUDE_DIR: "/usr/local/opt/suite-sparse/include/suitesparse/"
+        SUITESPARSE_LIBRARY_DIR: "/usr/local/opt/suite-sparse/lib"
       run: |
         python -m pip install --upgrade pip setuptools wheel
         python -m pip install -r requirements_dev.txt
@@ -53,7 +54,7 @@ jobs:
     - name: Test with pytest
       run: make test
     - name: Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       #with:
       #  fail_ci_if_error: true
 
@@ -73,7 +74,6 @@ jobs:
     - name: Install non-python dependencies on linux
       run: |
         sudo apt-get install libsuitesparse-dev
-        curl -sSL https://raw.githubusercontent.com/vallis/libstempo/master/install_tempo2.sh | sh
     - name: Build
       run: |
         python -m pip install --upgrade pip setuptools wheel
@@ -100,7 +100,7 @@ jobs:
         venv-wheel/bin/python -m pip install --upgrade pip setuptools
         venv-wheel/bin/python -m pip install ../dist/enterprise*.whl
         venv-wheel/bin/python -c "import enterprise;print(enterprise.__version__)"
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: dist
         path: dist/*
@@ -109,6 +109,10 @@ jobs:
   deploy:
     needs: [tests, build]
     runs-on: ubuntu-latest
+    environment: deploy
+    permissions:
+      # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write
     if: github.event_name == 'release'
     steps:
     - uses: actions/checkout@v3
@@ -121,13 +125,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install setuptools wheel twine
     - name: Download wheel/dist from build
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         name: dist
         path: dist
     - name: Build and publish
-      env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-      run: |
-        twine upload dist/*
+      uses: pypa/gh-action-pypi-publish@release/v1

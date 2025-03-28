@@ -6,6 +6,7 @@ import inspect
 
 import numpy as np
 from scipy.special import erf as _erf
+import scipy.stats as sstats
 
 from enterprise.signals.selections import selection_func
 
@@ -28,6 +29,7 @@ def _sample(parlist, parvalues):
 
     for par in parlist:
         if par not in parvalues:
+            # RvH: Hyper pars seem to be broken
             # sample hyperpars for this par, skip parameter itself
             parvalues.update(sample(par.params[1:]))
 
@@ -49,9 +51,15 @@ class Parameter(object):
             msg = "Parameter classes need to define _prior, or _logprior."
             raise AttributeError(msg)
 
+        if hasattr(self, "_ppf"):
+            self.ppf = self._ppf(name)
+        else:
+            self.ppf = None
+
         self.type = self.__class__.__name__.lower()
 
     def get_logpdf(self, value=None, **kwargs):
+        # RvH: This exception cannot be triggered
         if not isinstance(self, Parameter):
             raise TypeError("You can only call get_logpdf() on an " "instantiated (named) Parameter.")
 
@@ -66,6 +74,7 @@ class Parameter(object):
         return logpdf if self._size is None else np.sum(logpdf)
 
     def get_pdf(self, value=None, **kwargs):
+        # RvH: This exception cannot be triggered
         if not isinstance(self, Parameter):
             raise TypeError("You can only call get_pdf() on an " "instantiated (named) Parameter.")
 
@@ -87,12 +96,22 @@ class Parameter(object):
             raise AttributeError("No sampler was provided for this Parameter.")
         else:
             if self.name in kwargs:
+                # RvH: This exception cannot be triggered
                 raise ValueError("You shouldn't give me my value when you're sampling me.!")
 
             if hasattr(self, "prior"):
                 return self.prior(func=self._sampler, size=self._size, **kwargs)
             else:
                 return self.logprior(func=self._sampler, size=self._size, **kwargs)
+
+    def get_ppf(self, value=None, **kwargs):
+        if self.ppf is None:
+            raise NotImplementedError("No ppf was implemented for this Parameter.")
+
+        if value is None and "params" in kwargs:
+            value = kwargs["params"][self.name]
+
+        return self.ppf(value, **kwargs)
 
     @property
     def size(self):
@@ -136,7 +155,7 @@ def GPCoefficients(logprior, size):
     return GPCoefficients
 
 
-def UserParameter(prior=None, logprior=None, sampler=None, size=None):
+def UserParameter(prior=None, logprior=None, sampler=None, ppf=None, size=None):
     """Class factory for UserParameter, implementing Enterprise parameters
     with arbitrary priors. The prior is specified by way of an Enterprise
     ``Function`` of the form ``prior(value, [par1, par2])``. Optionally,
@@ -147,6 +166,7 @@ def UserParameter(prior=None, logprior=None, sampler=None, size=None):
     :param prior:   parameter prior pdf, given as Enterprise ``Function``
     :param sampler: function returning a randomly sampled parameter according
                     to prior
+    :param ppf:     percentage point function (inverse cdf), for this parameter
     :param size:    length for vector parameter
     :return:        ``UserParameter`` class
     """
@@ -157,6 +177,8 @@ def UserParameter(prior=None, logprior=None, sampler=None, size=None):
             _prior = prior
         if logprior is not None:
             _logprior = logprior
+        if ppf is not None:
+            _ppf = ppf
         _sampler = None if sampler is None else staticmethod(sampler)
         _typename = "UserParameter"
 
@@ -189,6 +211,12 @@ def UniformSampler(pmin, pmax, size=None):
     return np.random.uniform(pmin, pmax, size=size)
 
 
+def UniformPPF(value, pmin, pmax):
+    """Percentage Point function for Uniform paramters."""
+
+    return sstats.uniform.ppf(value, loc=pmin, scale=pmax - pmin)
+
+
 def Uniform(pmin, pmax, size=None):
     """Class factory for Uniform parameters (with pdf(x) ~ 1/[pmax - pmin]
     inside [pmin,pmax], 0 outside. Handles vectors correctly,
@@ -204,6 +232,7 @@ def Uniform(pmin, pmax, size=None):
     class Uniform(Parameter):
         _size = size
         _prior = Function(UniformPrior, pmin=pmin, pmax=pmax)
+        _ppf = Function(UniformPPF, pmin=pmin, pmax=pmax)
         _sampler = staticmethod(UniformSampler)
         _typename = _argrepr("Uniform", pmin=pmin, pmax=pmax)
 
@@ -233,6 +262,17 @@ def NormalSampler(mu, sigma, size=None):
         return np.random.normal(mu, sigma, size=size)
 
 
+def NormalPPF(value, mu, sigma):
+    """Prior function for Normal parameters.
+    Handles scalar mu and sigma, compatible vector value/mu/sigma,
+    vector value/mu and compatible covariance matrix sigma."""
+
+    if np.ndim(sigma) >= 2:
+        raise NotImplementedError("PPF not implemented when sigma is 2D")
+
+    return sstats.norm.ppf(value, loc=mu, scale=sigma)
+
+
 def Normal(mu=0, sigma=1, size=None):
     """Class factory for Normal parameters (with pdf(x) ~ N(``mu``,``sigma``)).
     Handles vectors correctly if ``size == len(mu) == len(sigma)``,
@@ -249,6 +289,7 @@ def Normal(mu=0, sigma=1, size=None):
     class Normal(Parameter):
         _size = size
         _prior = Function(NormalPrior, mu=mu, sigma=sigma)
+        _ppf = Function(NormalPPF, mu=mu, sigma=sigma)
         _sampler = staticmethod(NormalSampler)
         _typename = _argrepr("Normal", mu=mu, sigma=sigma)
 
@@ -346,6 +387,13 @@ def LinearExpSampler(pmin, pmax, size=None):
     return np.log10(np.random.uniform(10**pmin, 10**pmax, size))
 
 
+def LinearExpPPF(value, pmin, pmax):
+    """Percentage Point function for Uniform paramters."""
+
+    ev = sstats.uniform.ppf(value, loc=10**pmin, scale=10**pmax - 10**pmin)
+    return np.log10(ev)
+
+
 def LinearExp(pmin, pmax, size=None):
     """Class factory for LinearExp parameters (with pdf(x) ~ 10^x,
     and 0 outside [``pmin``,``max``]). Handles vectors correctly
@@ -361,6 +409,7 @@ def LinearExp(pmin, pmax, size=None):
     class LinearExp(Parameter):
         _size = size
         _prior = Function(LinearExpPrior, pmin=pmin, pmax=pmax)
+        _ppf = Function(LinearExpPPF, pmin=pmin, pmax=pmax)
         _sampler = staticmethod(LinearExpSampler)
         _typename = _argrepr("LinearExp", pmin=pmin, pmax=pmax)
 
@@ -439,7 +488,6 @@ def Function(func, name="", **func_kwargs):
 
             for kw, arg in self.func_kwargs.items():
                 if isinstance(arg, type) and issubclass(arg, (Parameter, ConstantParameter)):
-
                     # parameter name template:
                     #   pname_[signalname_][fname_]parname
                     pnames = [name, fname, kw]
@@ -582,7 +630,6 @@ def function(func):
                 and issubclass(arg, FunctionBase)
                 or isinstance(arg, FunctionBase)
             ):
-
                 return Function(func, **kwargs)
 
         # otherwise, we simply call the function

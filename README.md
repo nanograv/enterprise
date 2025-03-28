@@ -5,7 +5,7 @@
 [![Build Status](https://github.com/nanograv/enterprise/workflows/CI-Tests/badge.svg)](https://github.com/nanograv/enterprise/actions)
 [![Documentation Status](https://readthedocs.org/projects/enterprise/badge/?version=latest)](https://enterprise.readthedocs.io/en/latest/?badge=latest)
 [![Test Coverage](https://codecov.io/gh/nanograv/enterprise/branch/master/graph/badge.svg?token=YXSX3293VF)](https://codecov.io/gh/nanograv/enterprise)
-![Python Versions](https://img.shields.io/badge/python-3.8%2C%203.9%2C%203.10%2C%203.11-blue.svg)
+![Python Versions](https://img.shields.io/badge/python-3.8%2C%203.9%2C%203.10%2C%203.11%2C%203.12-blue.svg)
 
 [![Zenodo DOI 4059815](https://zenodo.org/badge/DOI/10.5281/zenodo.4059815.svg)](https://doi.org/10.5281/zenodo.4059815)
 
@@ -34,6 +34,14 @@ To install via `conda`, simply do
 
 ```bash
 conda install -c conda-forge enterprise-pulsar
+```
+
+### Installing `libstempo` on Apple Silicon (`arm64` architecture)
+*`libstempo` is no longer a requirement to install `enterprise`.* However, if installing `libstempo` is desired, it is only available on `osx-64` architectures which is not compatible with `arm64` architectures. To install `libstempo` and `enterprise` on arm64 via `conda`, your new conda environment must be configured correctly. Follow the following commands:
+```bash
+CONDA_SUBDIR=osx-64 conda create -c conda-forge -n pta_software python=3.12
+conda activate pta_software
+conda config --env --set subdir osx-64
 ```
 
 ## Attribution

@@ -8,8 +8,8 @@ test_likelihood
 Tests of likelihood module
 """
 
-
 import unittest
+import pytest
 
 import numpy as np
 import scipy.linalg as sl
@@ -18,6 +18,7 @@ from enterprise.pulsar import Pulsar
 from enterprise.signals import gp_signals, parameter, selections, signal_base, utils, white_signals
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
+from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
 
 @signal_base.function
@@ -75,8 +76,8 @@ class TestLikelihood(unittest.TestCase):
 
         # initialize Pulsar class
         cls.psrs = [
-            Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim"),
-            Pulsar(datadir + "/J1909-3744_NANOGrav_9yv1.gls.par", datadir + "/J1909-3744_NANOGrav_9yv1.tim"),
+            Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.t2.feather"),
+            Pulsar(datadir + "/J1909-3744_NANOGrav_9yv1.t2.feather"),
         ]
 
     def compute_like(self, npsrs=1, inc_corr=False, inc_kernel=False, cholesky_sparse=True, marginalizing_tm=False):
@@ -326,7 +327,45 @@ class TestLikelihood(unittest.TestCase):
         msg = "Likelihood mismatch between ECORR methods"
         assert np.allclose(l1, l2), msg
 
+    def test_like_sparse_cache(self):
+        """Test likelihood with sparse Cholesky caching"""
 
+        # find the maximum time span to set GW frequency sampling
+        tmin = [p.toas.min() for p in self.psrs]
+        tmax = [p.toas.max() for p in self.psrs]
+        Tspan = np.max(tmax) - np.min(tmin)
+
+        # setup basic model
+        efac = parameter.Constant(1.0)
+        log10_A = parameter.Constant(-15.0)
+        gamma = parameter.Constant(4.33)
+
+        ef = white_signals.MeasurementNoise(efac)
+        pl = utils.powerlaw(log10_A=log10_A, gamma=gamma)
+
+        orf = utils.hd_orf()
+        crn = gp_signals.FourierBasisCommonGP(pl, orf, components=20, name="GW", Tspan=Tspan)
+
+        tm = gp_signals.TimingModel()
+        m = tm + ef + crn
+
+        # Two identical arrays that we'll compare with two sets of parameters
+        pta1 = signal_base.PTA([m(p) for p in self.psrs])
+        pta2 = signal_base.PTA([m(p) for p in self.psrs])
+
+        params_init = parameter.sample(pta1.params)
+        params_check = parameter.sample(pta1.params)
+
+        # First call for pta1 only initializes the sparse decomposition. Second one uses it
+        _ = pta1.get_lnlikelihood(params_init)
+        l1 = pta1.get_lnlikelihood(params_check)
+        l2 = pta2.get_lnlikelihood(params_check)
+
+        msg = "Likelihood mismatch between sparse Cholesky full & inplace"
+        assert np.allclose(l1, l2), msg
+
+
+@pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
 class TestLikelihoodPint(TestLikelihood):
     @classmethod
     def setUpClass(cls):
@@ -346,4 +385,17 @@ class TestLikelihoodPint(TestLikelihood):
                 ephem="DE430",
                 timing_package="pint",
             ),
+        ]
+
+
+@pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
+class TestLikelihoodTempo2(TestLikelihood):
+    @classmethod
+    def setUpClass(cls):
+        """Setup the Pulsar object."""
+
+        # initialize Pulsar class
+        cls.psrs = [
+            Pulsar(datadir + "/B1855+09_NANOGrav_9yv1.gls.par", datadir + "/B1855+09_NANOGrav_9yv1.tim"),
+            Pulsar(datadir + "/J1909-3744_NANOGrav_9yv1.gls.par", datadir + "/J1909-3744_NANOGrav_9yv1.tim"),
         ]
