@@ -241,7 +241,9 @@ class TestAstrometry(unittest.TestCase):
         cls.posepoch = cls.psr.t2pulsar["POSEPOCH"].val * 86400.0
         cls.dm, cls.dmp = utils.create_astrometry_timing_model(cls.psr.toas, cls.psr._raj, cls.psr._decj, cls.posepoch)
 
-    @pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed")
+    @pytest.mark.skipif(
+        not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed"
+    )
     def test_ddelay_dastrometry(self):
         """Test the derivatives of the astrometry parameters"""
 
