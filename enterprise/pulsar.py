@@ -14,7 +14,6 @@ from io import StringIO
 
 import numpy as np
 from ephem import Ecliptic, Equatorial, J2000
-from ephem import Ecliptic, Equatorial
 from astropy.time import Time
 
 import enterprise
