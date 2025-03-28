@@ -18,7 +18,7 @@ import enterprise.constants as const
 from enterprise.pulsar import Pulsar
 from enterprise.signals import anis_coefficients as anis
 from enterprise.signals import utils
-from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
+from tests.enterprise_test_data import LIBSTEMPO_INSTALLED
 from tests.enterprise_test_data import datadir
 
 import ephem
