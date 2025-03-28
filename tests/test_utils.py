@@ -21,6 +21,7 @@ from enterprise.signals import utils
 from tests.enterprise_test_data import datadir
 
 import ephem
+
 IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
 

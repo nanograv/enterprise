@@ -951,11 +951,4 @@ def Pulsar(*args, **kwargs):
             os.chdir(cwd)
             return PintPulsar(toas, model, sort=sort, drop_pintpsr=drop_pintpsr, planets=planets)
 
-        elif timing_package.lower() == "tempo2":
-            # hack to set maxobs
-            maxobs = get_maxobs(reltimfile) + 100
-            t2pulsar = t2.tempopulsar(relparfile, reltimfile, maxobs=maxobs, ephem=ephem, clk=clk)
-            os.chdir(cwd)
-            return Tempo2Pulsar(t2pulsar, sort=sort, drop_t2pulsar=drop_t2pulsar, planets=planets)
-
     raise ValueError("Unknown arguments {}".format(args))

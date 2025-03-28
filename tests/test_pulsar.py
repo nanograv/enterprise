@@ -23,6 +23,7 @@ from tests.enterprise_test_data import datadir
 from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
 import ephem
+
 if PINT_INSTALLED:
     import pint.models.timing_model
     from pint.models import get_model_and_toas
