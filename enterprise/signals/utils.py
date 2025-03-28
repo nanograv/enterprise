@@ -53,7 +53,9 @@ def get_psrname_from_raj_decj(raj, decj):
     decj_min = int(np.abs((decj_fdeg - decj_deg) * 60))
 
     sign = "+" if np.sign(decj) > 0 else "-"
-    pos_str = f"J{raj_hr: 02}{raj_min: 02}{sign}{int(np.abs(decj_deg)): 02}{decj_min: 02}"
+    # fmt: off
+    pos_str = f"J{raj_hr:02}{raj_min:02}{sign}{int(np.abs(decj_deg)):02}{decj_min:02}"
+    # fmt: on
 
     return pos_str
 
