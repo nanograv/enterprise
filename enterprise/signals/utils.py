@@ -327,7 +327,7 @@ def create_spindown_timing_model(toas, order=2):
     """
 
     avetoas = (toas - np.mean(toas)) / np.mean(toas)
-    designmatrix = np.vstack([avetoas**ii for ii in range(1 + order)]).T
+    designmatrix = avetoas[:,None]**np.arange(order+1)[None,:]
     parameter_names = ["Offset"] + ["F{ii}".format(ii=ii) for ii in range(order)]
 
     return designmatrix, parameter_names
