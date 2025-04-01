@@ -322,7 +322,7 @@ class TestPulsarPint(TestPulsar):
             self.assertTrue(msg in context.exception)
 
 
-class TestPulsarMock(TestPulsar):
+class TestPulsarMock(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Setup the Pulsar object."""
