@@ -1136,6 +1136,16 @@ class ndarray_alt(np.ndarray):
         ret = (mult, float(np.sum(np.log(self)))) if logdet else mult
         return ret
 
+    def sqrtsolve(self, other, left_array=None):
+        if other.ndim == 1:
+            mult = np.array(other / np.sqrt(self))
+        elif other.ndim == 2:
+            mult = np.array(other / np.sqrt(self[:, None]))
+        if left_array is not None:
+            mult = np.dot(left_array.T, mult)
+
+        return ret
+
 
 class BlockMatrix(object):
     def __init__(self, blocks, slices, nvec=0):
@@ -1284,6 +1294,19 @@ class ShermanMorrison(object):
                 yNx -= beta * np.dot(niblock, xblock) * np.dot(niblock, yblock)
         return yNx
 
+    def _sqrtsolve_D2(self, x):
+        """Solves :math:`N^{-1/2}x` where :math:`x` is a 2-d array."""
+
+        Nx = np.zeros_like(x)
+        for idx, jv in zip(self._idxs, self._jvec):
+            Xblock = x[idx,:]
+            Nblock = np.diag(self._nvec[idx])
+            Nblock += jv * np.ones_like(Nblock)
+            Lblock = sl.cholesky(Nblock, lower=True)
+            Nx[idx,:] = sl.solve_triangular(Lblock, Xblock, trans=0, lower=True)
+
+        return Nx
+
     def _solve_2D2(self, X, Z):
         """Solves :math:`Z^T N^{-1}X`, where :math:`X`
         and :math:`Z` are 2-d arrays.
@@ -1336,3 +1359,27 @@ class ShermanMorrison(object):
             raise TypeError
 
         return (ret, self._get_logdet()) if logdet else ret
+
+    def sqrtsolve(self, other, left_array=None):
+        if other.ndim == 1:
+            shape = other.shape
+            ret = self._sqrtsolve_D2(other.reshape(-1, 1)).reshape(*shape)
+
+            if left_array is not None and left_array.ndim == 1:
+                ret = np.sum(left_array * ret)
+            elif left_array is not None:
+                raise NotImplementedError("ShermanMorrison does not implement _sqrtsolve_1D2")
+
+        elif other.ndim == 2:
+            if left_array is None:
+                ret = self._sqrtsolve_D2(other)
+            elif left_array is not None and left_array.ndim == 2:
+                raise NotImplementedError("ShermanMorrison does not implement _sqrtsolve_2D2")
+            elif left_array is not None and left_array.ndim == 1:
+                raise NotImplementedError("ShermanMorrison does not implement _sqrtsolve_1D2")
+            else:
+                raise TypeError
+        else:
+            raise TypeError
+
+        return ret
