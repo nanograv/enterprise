@@ -891,8 +891,9 @@ class MarginalizingNmat(object):
             raise NotImplementedError("MarginalizingNmat does not implement _sqrtsolve_xD1")
         elif other.ndim == 2:
             if left_array is None:
-                raise NotImplementedError("MarginalizingNmat does not implement _sqrtsolve_D2.\n"
-                                          "Perhaps use 'TimingModel'?")
+                raise NotImplementedError(
+                    "MarginalizingNmat does not implement _sqrtsolve_D2.\n" "Perhaps use 'TimingModel'?"
+                )
             elif left_array is not None and left_array.ndim == 2:
                 raise NotImplementedError("MarginalizingNmat does not implement _sqrtsolve_2D2")
             elif left_array is not None and left_array.ndim == 1:

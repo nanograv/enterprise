@@ -1297,13 +1297,13 @@ class ShermanMorrison(object):
     def _sqrtsolve_D2(self, x):
         """Solves :math:`N^{-1/2}x` where :math:`x` is a 2-d array."""
 
-        Lix = x / np.sqrt(self._nvec[:,None])
+        Lix = x / np.sqrt(self._nvec[:, None])
         for idx, jv in zip(self._idxs, self._jvec):
-            Xblock = x[idx,:]
+            Xblock = x[idx, :]
             Nblock = np.diag(self._nvec[idx])
             Nblock += jv * np.ones_like(Nblock)
             Lblock = sl.cholesky(Nblock, lower=True)
-            Lix[idx,:] = sl.solve_triangular(Lblock, Xblock, trans=0, lower=True)
+            Lix[idx, :] = sl.solve_triangular(Lblock, Xblock, trans=0, lower=True)
 
         return Lix
 
