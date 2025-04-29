@@ -1080,6 +1080,10 @@ class csc_matrix_alt(sps.csc_matrix):
     ``solve`` methods.
     """
 
+    def __init__(self, arg1, shape=None, dtype=None, copy=False):
+        super(csc_matrix_alt, self).__init__(arg1, shape=shape, dtype=dtype, copy=copy)
+        self._has_sqrtsolve = False
+
     def _add_diag(self, other):
         other_diag = sps.dia_matrix((other, np.array([0])), shape=(other.shape[0], other.shape[0]))
         return self._binopt(other_diag, "_plus_")
@@ -1106,6 +1110,10 @@ class csc_matrix_alt(sps.csc_matrix):
         ret = (mult, cf.logdet()) if logdet else mult
         return ret
 
+    def sqrtsolve(self, other, left_array=None):
+
+        raise NotImplementedError("csc_matrix_alt does not implement sqrtsolve")
+
 
 class ndarray_alt(np.ndarray):
     """Sub-class of ``np.ndarray`` with custom ``solve`` method."""
@@ -1115,6 +1123,7 @@ class ndarray_alt(np.ndarray):
             raise NotImplementedError("ndarray_alt does not support non-diagonal arrays")
 
         obj = np.asarray(inputarr).view(cls)
+        obj._has_sqrtsolve = True
 
         return obj
 
@@ -1153,6 +1162,7 @@ class BlockMatrix(object):
         self._slices = slices
         self._idxs = [indices_from_slice(slc) for slc in slices]
         self._nvec = nvec
+        self._has_sqrtsolve = False
 
         if np.any(nvec != 0):
             s1 = set(np.arange(len(nvec)))
@@ -1245,6 +1255,10 @@ class BlockMatrix(object):
 
         return (ret, self._get_logdet()) if logdet else ret
 
+    def sqrtsolve(self, other, left_array=None):
+
+        raise NotImplementedError("BlockMatrix does not implement sqrtsolve")
+
 
 class ShermanMorrison(object):
     """Custom container class for Sherman-morrison array inversion."""
@@ -1254,6 +1268,7 @@ class ShermanMorrison(object):
         self._slices = slices
         self._idxs = [indices_from_slice(slc) for slc in slices]
         self._nvec = nvec
+        self._has_sqrtsolve = True
 
     def __add__(self, other):
         nvec = self._nvec + other
@@ -1368,7 +1383,7 @@ class ShermanMorrison(object):
             if left_array is not None and left_array.ndim == 1:
                 ret = np.sum(left_array * ret)
             elif left_array is not None:
-                raise NotImplementedError("ShermanMorrison does not implement _sqrtsolve_1D2")
+                raise NotImplementedError("ShermanMorrison does not implement _sqrtsolve_2D1")
 
         elif other.ndim == 2:
             if left_array is None:

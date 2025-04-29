@@ -823,6 +823,7 @@ class MarginalizingNmat(object):
     def __init__(self, Mmat, Nmat=0):
         self.Mmat, self.Nmat = Mmat, Nmat
         self.Mprior = Mmat.shape[1] * np.log(1e40)
+        self._has_sqrtsolve = False
 
     def __add__(self, other):
         if isinstance(other, MarginalizingNmat):
