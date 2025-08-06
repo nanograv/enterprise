@@ -14,9 +14,7 @@ import enterprise.constants as const
 @function
 def powerlaw(f, log10_A=-16, gamma=5, components=2):
     df = np.diff(np.concatenate((np.array([0]), f[::components])))
-    return (
-        (10**log10_A) ** 2 / 12.0 / np.pi**2 * const.fyr ** (gamma - 3) * f ** (-gamma) * np.repeat(df, components)
-    )
+    return (10**log10_A) ** 2 / 12.0 / np.pi**2 * const.fyr ** (gamma - 3) * f ** (-gamma) * np.repeat(df, components)
 
 
 @function
@@ -145,9 +143,7 @@ def powerlaw_genmodes(f, log10_A=-16, gamma=5, components=2, wgts=None):
         df = wgts**2
     else:
         df = np.diff(np.concatenate((np.array([0]), f[::components])))
-    return (
-        (10**log10_A) ** 2 / 12.0 / np.pi**2 * const.fyr ** (gamma - 3) * f ** (-gamma) * np.repeat(df, components)
-    )
+    return (10**log10_A) ** 2 / 12.0 / np.pi**2 * const.fyr ** (gamma - 3) * f ** (-gamma) * np.repeat(df, components)
 
 
 @function
@@ -159,5 +155,5 @@ def infinitepower(f):
 def flat_powerlaw(f, log10_A=-16, gamma=5, log10_B=-10, components=2):
     df = np.diff(np.concatenate((np.array([0]), f[::components])))
     return np.repeat(df, components) * (
-        (10 ** log10_A) ** 2 / 12.0 / np.pi ** 2 * const.fyr ** (gamma - 3) * f ** (-gamma) + 10 ** log10_B
+        (10**log10_A) ** 2 / 12.0 / np.pi**2 * const.fyr ** (gamma - 3) * f ** (-gamma) + 10**log10_B
     )
