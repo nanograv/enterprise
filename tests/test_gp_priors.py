@@ -294,3 +294,39 @@ class TestGPSignals(unittest.TestCase):
         # test shape
         msg = "F matrix shape incorrect"
         assert rnm.get_basis(params).shape == F.shape, msg
+
+    def test_flat_powerlaw_prior(self):
+        """Test that red noise signal returns correct values."""
+        # set up signal parameter
+        pr = gp_priors.flat_powerlaw(
+            log10_A=parameter.Uniform(-18, -12), gamma=parameter.Uniform(1, 7), log10_B=parameter.Uniform(-10, -4)
+        )
+        basis = gp_bases.createfourierdesignmatrix_chromatic(nmodes=30)
+        rn = gp_signals.BasisGP(priorFunction=pr, basisFunction=basis, name="red_noise")
+        rnm = rn(self.psr)
+
+        # parameters
+        log10_A, gamma, log10_B = -14.5, 4.33, -9
+        params = {
+            "B1855+09_red_noise_log10_A": log10_A,
+            "B1855+09_red_noise_gamma": gamma,
+            "B1855+09_red_noise_log10_B": log10_B,
+        }
+
+        # basis matrix test
+        F, f2 = gp_bases.createfourierdesignmatrix_chromatic(self.psr.toas, self.psr.freqs, nmodes=30)
+        msg = "F matrix incorrect for flat power law."
+        assert np.allclose(F, rnm.get_basis(params)), msg
+
+        # spectrum test
+        phi = gp_priors.flat_powerlaw(f2, log10_A=log10_A, gamma=gamma, log10_B=log10_B)
+        msg = "Spectrum incorrect for flat power law."
+        assert np.all(rnm.get_phi(params) == phi), msg
+
+        # inverse spectrum test
+        msg = "Spectrum inverse incorrect for flat power law."
+        assert np.all(rnm.get_phiinv(params) == 1 / phi), msg
+
+        # test shape
+        msg = "F matrix shape incorrect"
+        assert rnm.get_basis(params).shape == F.shape, msg
