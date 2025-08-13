@@ -20,10 +20,10 @@ def powerlaw(f, log10_A=-16, gamma=5, components=2):
 
 
 @function
-def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10 / 3, beta=0.5):
-    df = np.diff(np.concatenate((np.array([0]), f[::2])))
+def turnover(f, log10_A=-15, gamma=4.33, lf0=-8.5, kappa=10 / 3, beta=0.5, components=2):
+    df = np.diff(np.concatenate((np.array([0]), f[::components])))
     hcf = 10**log10_A * (f / const.fyr) ** ((3 - gamma) / 2) / (1 + (10**lf0 / f) ** kappa) ** beta
-    return hcf**2 / 12 / np.pi**2 / f**3 * np.repeat(df, 2)
+    return hcf**2 / 12 / np.pi**2 / f**3 * np.repeat(df, components)
 
 
 @function
@@ -39,17 +39,17 @@ def free_spectrum(f, log10_rho=None):
 
 
 @function
-def t_process(f, log10_A=-15, gamma=4.33, alphas=None):
+def t_process(f, log10_A=-15, gamma=4.33, alphas=None, components=2):
     """
     t-process model. PSD  amplitude at each frequency
     is a fuzzy power-law.
     """
-    alphas = np.ones_like(f) if alphas is None else np.repeat(alphas, 2)
-    return powerlaw(f, log10_A=log10_A, gamma=gamma) * alphas
+    alphas = np.ones_like(f) if alphas is None else np.repeat(alphas, components)
+    return powerlaw(f, log10_A=log10_A, gamma=gamma, components=components) * alphas
 
 
 @function
-def t_process_adapt(f, log10_A=-15, gamma=4.33, alphas_adapt=None, nfreq=None):
+def t_process_adapt(f, log10_A=-15, gamma=4.33, alphas_adapt=None, nfreq=None, components=2):
     """
     t-process model. PSD  amplitude at each frequency
     is a fuzzy power-law.
@@ -58,13 +58,13 @@ def t_process_adapt(f, log10_A=-15, gamma=4.33, alphas_adapt=None, nfreq=None):
         alpha_model = np.ones_like(f)
     else:
         if nfreq is None:
-            alpha_model = np.repeat(alphas_adapt, 2)
+            alpha_model = np.repeat(alphas_adapt, components)
         else:
             alpha_model = np.ones_like(f)
             alpha_model[2 * int(np.rint(nfreq))] = alphas_adapt
             alpha_model[2 * int(np.rint(nfreq)) + 1] = alphas_adapt
 
-    return powerlaw(f, log10_A=log10_A, gamma=gamma) * alpha_model
+    return powerlaw(f, log10_A=log10_A, gamma=gamma, components=components) * alpha_model
 
 
 def InvGammaPrior(value, alpha=1, gamma=1):
@@ -96,7 +96,7 @@ def InvGamma(alpha=1, gamma=1, size=None):
 
 
 @function
-def turnover_knee(f, log10_A, gamma, lfb, lfk, kappa, delta):
+def turnover_knee(f, log10_A, gamma, lfb, lfk, kappa, delta, components=2):
     """
     Generic turnover spectrum with a high-frequency knee.
     :param f: sampling frequencies of GWB
@@ -107,18 +107,18 @@ def turnover_knee(f, log10_A, gamma, lfb, lfk, kappa, delta):
     :param kappa: smoothness of turnover (10/3 for 3-body stellar scattering)
     :param delta: slope at higher frequencies
     """
-    df = np.diff(np.concatenate((np.array([0]), f[::2])))
+    df = np.diff(np.concatenate((np.array([0]), f[::components])))
     hcf = (
         10**log10_A
         * (f / const.fyr) ** ((3 - gamma) / 2)
         * (1.0 + (f / 10**lfk)) ** delta
         / np.sqrt(1 + (10**lfb / f) ** kappa)
     )
-    return hcf**2 / 12 / np.pi**2 / f**3 * np.repeat(df, 2)
+    return hcf**2 / 12 / np.pi**2 / f**3 * np.repeat(df, components)
 
 
 @function
-def broken_powerlaw(f, log10_A, gamma, delta, log10_fb, kappa=0.1):
+def broken_powerlaw(f, log10_A, gamma, delta, log10_fb, kappa=0.1, components=2):
     """
     Generic broken powerlaw spectrum.
     :param f: sampling frequencies
@@ -130,13 +130,13 @@ def broken_powerlaw(f, log10_A, gamma, delta, log10_fb, kappa=0.1):
         gamma to delta
     :param kappa: smoothness of transition (Default = 0.1)
     """
-    df = np.diff(np.concatenate((np.array([0]), f[::2])))
+    df = np.diff(np.concatenate((np.array([0]), f[::components])))
     hcf = (
         10**log10_A
         * (f / const.fyr) ** ((3 - gamma) / 2)
         * (1 + (f / 10**log10_fb) ** (1 / kappa)) ** (kappa * (gamma - delta) / 2)
     )
-    return hcf**2 / 12 / np.pi**2 / f**3 * np.repeat(df, 2)
+    return hcf**2 / 12 / np.pi**2 / f**3 * np.repeat(df, components)
 
 
 @function
