@@ -234,7 +234,7 @@ def FFTBasisGP(
     coefficients=False,
     combine=True,
     components=20,
-    nknots=None,
+    nnodes=None,
     selection=Selection(selections.no_selection),
     oversample=3,
     fmax_factor=1,
@@ -247,10 +247,10 @@ def FFTBasisGP(
 ):
     """Function to return a BasisGP class with a coarse time basis."""
 
-    if nknots is None:
-        nknots = 2 * components + 1
+    if nnodes is None:
+        nnodes = 2 * components + 1
 
-    elif nknots is not None and nknots % 2 == 0:
+    elif nnodes is not None and nnodes % 2 == 0:
         raise ValueError("Knots needs to be an odd number")
 
     if cutoff is not None:
@@ -262,7 +262,7 @@ def FFTBasisGP(
 
     if basis is None:
         basis = utils.create_fft_time_basis(
-            nknots=nknots, Tspan=Tspan, start_time=start_time, order=interpolation_order
+            nnodes=nnodes, Tspan=Tspan, start_time=start_time, order=interpolation_order
         )
 
     BaseClass = BasisGP(spectrum, basis, coefficients=coefficients, combine=combine, selection=selection, name=name)
@@ -275,9 +275,9 @@ def FFTBasisGP(
         @signal_base.cache_call("prior_params")
         def _construct_prior(self, params):
             for key, slc in self._slices.items():
-                t_knots = self._labels[key]
+                t_nodes = self._labels[key]
 
-                freqs = utils.knots_to_freqs(t_knots, oversample=oversample, fmax_factor=fmax_factor)
+                freqs = utils.nodes_to_freqs(t_nodes, oversample=oversample, fmax_factor=fmax_factor)
 
                 # Hack, because Enterprise adds in f=0 and then calculates df,
                 # meaning we cannot simply start freqs from 0. Thus, we use
@@ -292,7 +292,7 @@ def FFTBasisGP(
                     psd_prior = self._prior[key](freqs[1:], params=params, components=1)
                     psd = np.concatenate([np.zeros(cutbins), psd_prior[cutbins - 1 :]])
 
-                phislc = utils.psd2cov(t_knots, psd, fmax_factor=fmax_factor)
+                phislc = utils.psd2cov(t_nodes, psd, fmax_factor=fmax_factor)
                 self._phi = self._phi.set(phislc, slc)
 
         if coefficients:
@@ -568,7 +568,7 @@ def FFTBasisCommonGP(
     coefficients=False,
     combine=True,
     components=20,
-    nknots=None,
+    nnodes=None,
     Tspan=None,
     start_time=None,
     cutoff=None,
@@ -583,10 +583,10 @@ def FFTBasisCommonGP(
             "With coefficients=True, FFTBasisCommonGP " + "requires that you specify Tspan/start_time explicitly."
         )
 
-    if nknots is None:
-        nknots = 2 * components + 1
+    if nnodes is None:
+        nnodes = 2 * components + 1
 
-    elif nknots is not None and nknots % 2 == 0:
+    elif nnodes is not None and nnodes % 2 == 0:
         raise ValueError("Knots needs to be an odd number")
 
     if cutoff is not None:
@@ -596,7 +596,7 @@ def FFTBasisCommonGP(
 
     fmax_factor = int(fmax_factor) if fmax_factor >= 1 else 1
 
-    basis = utils.create_fft_time_basis(nknots=nknots, Tspan=Tspan, start_time=start_time, order=interpolation_order)
+    basis = utils.create_fft_time_basis(nnodes=nnodes, Tspan=Tspan, start_time=start_time, order=interpolation_order)
     BaseClass = BasisCommonGP(spectrum, basis, orf, coefficients=coefficients, combine=combine, name=name)
 
     class FFTBasisCommonGP(BaseClass):
@@ -624,8 +624,8 @@ def FFTBasisCommonGP(
             span = Tspan if Tspan is not None else max(FFTBasisCommonGP._Tmax) - start
             self._basis, self._labels = self._bases(params=params, Tspan=span, start_time=start)
 
-            self._t_knots = self._labels
-            freqs = utils.knots_to_freqs(self._t_knots, oversample=oversample, fmax_factor=fmax_factor)
+            self._t_nodes = self._labels
+            freqs = utils.nodes_to_freqs(self._t_nodes, oversample=oversample, fmax_factor=fmax_factor)
             self._freqs = freqs
 
         @signal_base.cache_call("prior_params")
@@ -647,7 +647,7 @@ def FFTBasisCommonGP(
                 psd_prior = FFTBasisCommonGP._prior(self._freqs[1:], params=params, components=1)
                 psd = np.concatenate([np.zeros(cutbins), psd_prior[cutbins - 1 :]])
 
-            return utils.psd2cov(self._t_knots, psd)
+            return utils.psd2cov(self._t_nodes, psd)
 
         if coefficients:
             raise NotImplementedError("Coefficients not supported for FFTBasisCommonGP")

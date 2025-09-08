@@ -379,7 +379,7 @@ class TestGPSignals(unittest.TestCase):
             length_scale=parameter.Uniform(365 * 86400.0, 3650 * 86400.0), log10_sigma_sqr=parameter.Uniform(-17, -9)
         )
         rn_cb0 = gp_signals.FFTBasisGP(spectrum=mpsd, components=15, oversample=3, cutbins=0)
-        rn_cb1 = gp_signals.FFTBasisGP(spectrum=mpsd, nknots=31, oversample=3, cutoff=3)
+        rn_cb1 = gp_signals.FFTBasisGP(spectrum=mpsd, nnodes=31, oversample=3, cutoff=3)
         rnm0 = rn_cb0(self.psr)
         rnm1 = rn_cb1(self.psr)
 
@@ -393,8 +393,8 @@ class TestGPSignals(unittest.TestCase):
         # basis matrix test
         start_time = np.min(self.psr.toas)
         Tspan = np.max(self.psr.toas) - start_time
-        B, tc = utils.create_fft_time_basis(self.psr.toas, nknots=31)
-        B1, _ = utils.create_fft_time_basis(self.psr.toas, nknots=31, Tspan=Tspan, start_time=start_time)
+        B, tc = utils.create_fft_time_basis(self.psr.toas, nnodes=31)
+        B1, _ = utils.create_fft_time_basis(self.psr.toas, nnodes=31, Tspan=Tspan, start_time=start_time)
 
         msg = "B matrix incorrect for GP FFT signal."
         assert np.allclose(B, rnm0.get_basis(params)), msg
@@ -410,7 +410,7 @@ class TestGPSignals(unittest.TestCase):
         assert np.allclose(phi_K, phi_E), msg
 
         # spectrum test with low-frequency cut-off
-        freqs = utils.knots_to_freqs(tc, oversample=3)
+        freqs = utils.nodes_to_freqs(tc, oversample=3)
         psd = psd_matern32(freqs[1:], length_scale=length_scale, log10_sigma_sqr=log10_sigma_sqr, components=1)
         psd = np.concatenate([[0.0], psd])
         phi_K = utils.psd2cov(tc, psd)
@@ -432,7 +432,7 @@ class TestGPSignals(unittest.TestCase):
         Tspan = np.max(self.psr.toas) - start_time
         mn = white_signals.MeasurementNoise(efac=parameter.Constant(1.0), selection=Selection(selections.no_selection))
         crn = gp_signals.FFTBasisCommonGP(
-            pl, orf, nknots=31, name="gw", oversample=3, cutoff=3, Tspan=Tspan, start_time=start_time
+            pl, orf, nnodes=31, name="gw", oversample=3, cutoff=3, Tspan=Tspan, start_time=start_time
         )
         model = mn + crn
         pta = signal_base.PTA([model(psr) for psr in [self.psr, self.psr]])

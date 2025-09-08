@@ -35,11 +35,11 @@ class TestUtils(unittest.TestCase):
 
         cls.Fdm, _ = utils.createfourierdesignmatrix_dm(cls.psr.toas, freqs=cls.psr.freqs, nmodes=30)
 
-        cls.B, _ = utils.create_fft_time_basis(cls.psr.toas, nknots=30)
+        cls.B, _ = utils.create_fft_time_basis(cls.psr.toas, nnodes=30)
 
-        cls.Bdm, _ = utils.create_fft_time_basis_dm(cls.psr.toas, freqs=cls.psr.freqs, nknots=30)
+        cls.Bdm, _ = utils.create_fft_time_basis_dm(cls.psr.toas, freqs=cls.psr.freqs, nnodes=30)
 
-        cls.Bchr, _ = utils.create_fft_time_basis_chromatic(cls.psr.toas, freqs=cls.psr.freqs, nknots=30)
+        cls.Bchr, _ = utils.create_fft_time_basis_chromatic(cls.psr.toas, freqs=cls.psr.freqs, nnodes=30)
 
         cls.Feph, cls.feph = utils.createfourierdesignmatrix_ephem(cls.psr.toas, cls.psr.pos, nmodes=30)
 

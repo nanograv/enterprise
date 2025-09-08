@@ -842,12 +842,12 @@ def linear_interp_basis(toas, dt=30 * 86400):
     return M[:, idx], x[idx]
 
 
-def psd2cov(t_knots, psd, fmax_factor=1):
+def psd2cov(t_nodes, psd, fmax_factor=1):
     """
     Convert a power spectral density function, defined by (freqs, psd), to a covariance matrix.
 
-    :param t_knots: Timestamps of the coarse time grid.
-    :param psd: PSD values evaluated at frequencies from knots_to_freqs
+    :param t_nodes: Timestamps of the coarse time grid.
+    :param psd: PSD values evaluated at frequencies from nodes_to_freqs
                 (assumes *delta_f in psd, so units of [s^2]).
     :param fmax_factor: Integer factor to scale up fmax.
 
@@ -870,25 +870,25 @@ def psd2cov(t_knots, psd, fmax_factor=1):
 
     # With fmax_factor > 1, the IFFT time grid is finer by that factor.
     # Slice out every fmax_factor-th sample to match the coarse grid.
-    return toeplitz(Ctau[::fmax_factor][: len(t_knots)])
+    return toeplitz(Ctau[::fmax_factor][: len(t_nodes)])
 
 
-def knots_to_freqs(t_knots, oversample=3, fmax_factor=1):
+def nodes_to_freqs(t_nodes, oversample=3, fmax_factor=1):
     """
-    Convert knots of coarse time grid to frequencies
+    Convert nodes of coarse time grid to frequencies
 
-    :param t_knots: Timestamps of the coarse time grid
+    :param t_nodes: Timestamps of the coarse time grid
     :param oversample: amount by which to over-sample the frequency grid
     :param fmax_factor: Integer factor to scale the maximum frequency.
 
     :return freqs: Frequencies, regularly sampled with
-                   delta-f = 1/(oversample*T), fmax=1/(2*delta_t_knots)
+                   delta-f = 1/(oversample*T), fmax=1/(2*delta_t_nodes)
     """
-    nmodes = len(t_knots)
-    Tspan = np.max(t_knots) - np.min(t_knots)
+    nmodes = len(t_nodes)
+    Tspan = np.max(t_nodes) - np.min(t_nodes)
 
     if nmodes % 2 == 0:
-        raise ValueError("len(t_knots) must be odd.")
+        raise ValueError("len(t_nodes) must be odd.")
 
     n_freqs = int((nmodes - 1) / 2 * oversample * fmax_factor + 1)
     fmax = (nmodes - 1) / (2 * Tspan)

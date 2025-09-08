@@ -42,9 +42,9 @@ For the FFT time-domain model, one would do:
     rn_fft = gp_signals.FFTBasisGP(spectrum=rn_pl, components=n_components, oversample=3, cutoff=3, Tspan=Tspan, start_time=start_time)
 
 The same spectral function can be used. Free spectrum is NOT supported yet.
-Instead of `components`, we can also pass `knots=`, where it is understood that
-`knots=2*n_components+1`. This is because `components` actually means
-frequencies.  In the time-domain, the number of `knots` is the number of
+Instead of `components`, we can also pass `nodes=`, where it is understood that
+`nodes=2*n_components+1`. This is because `components` actually means
+frequencies.  In the time-domain, the number of `nodes` is the number of
 `modes+1`, because we cannot just omit the DC term.
 
 The `oversample` parameter determines how densely the PSD is sampled in
@@ -93,14 +93,14 @@ DM-variations and Chromatic noise can be similarly set up:
 
 .. code:: python
 
-    nknots = 81
-    dm_basis = utils.create_fft_time_basis_dm(nknots=nknots)
+    nnodes = 81
+    dm_basis = utils.create_fft_time_basis_dm(nnodes=nnodes)
     dm_pl = powerlaw(log10_A=dm_log10_A, gamma=dm_gamma)
-    dm_fft = gp_signals.FFTBasisGP(dm_pl, basis=dm_basis, nknots=nknots, name='dmgp')
+    dm_fft = gp_signals.FFTBasisGP(dm_pl, basis=dm_basis, nnodes=nnodes, name='dmgp')
 
-    chrom_basis = utils.create_fft_time_basis_chromatic(nknots=nknots, idx=chrom_idx)
+    chrom_basis = utils.create_fft_time_basis_chromatic(nnodes=nnodes, idx=chrom_idx)
     chrom_pl = powerlaw(log10_A=chrom_log10_A, gamma=chrom_gamma)
-    chrom_fft = gp_signals.FFTBasisGP(chrom_pl, basis=chrom_basis, nknots=nknots, name='chromgp')
+    chrom_fft = gp_signals.FFTBasisGP(chrom_pl, basis=chrom_basis, nnodes=nnodes, name='chromgp')
 
 Subtleties
 ----------

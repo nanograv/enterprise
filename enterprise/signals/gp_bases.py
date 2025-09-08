@@ -96,11 +96,11 @@ def createfourierdesignmatrix_red(
 
 
 @function
-def create_fft_time_basis(toas, nknots=30, Tspan=None, start_time=None, order=1):
+def create_fft_time_basis(toas, nnodes=30, Tspan=None, start_time=None, order=1):
     """
     Construct coarse time-domain design matrix from eq 11 of Chrisostomi et al., 2025
     :param toas: vector of time series in seconds
-    :param nknots: number of coarse time samples to use (knots)
+    :param nnodes: number of coarse time samples to use (nodes)
     :param Tspan: option to some other Tspan
     :param start_time: option to set some other start epoch of basis
     :param order: order of the interpolation (1 = linear)
@@ -121,8 +121,8 @@ def create_fft_time_basis(toas, nknots=30, Tspan=None, start_time=None, order=1)
             raise ValueError("Coarse time basis end must be later than latest TOA.")
 
     t_fine = toas
-    t_coarse = np.linspace(start_time, start_time + Tspan, nknots)
-    Bmat = sint.interp1d(t_coarse, np.identity(nknots), kind=order)(t_fine).T
+    t_coarse = np.linspace(start_time, start_time + Tspan, nnodes)
+    Bmat = sint.interp1d(t_coarse, np.identity(nnodes), kind=order)(t_fine).T
 
     return Bmat, t_coarse
 
@@ -164,7 +164,7 @@ def createfourierdesignmatrix_dm(
 
 
 @function
-def create_fft_time_basis_dm(toas, freqs, nknots=30, Tspan=None, start_time=None, fref=1400, order=1):
+def create_fft_time_basis_dm(toas, freqs, nnodes=30, Tspan=None, start_time=None, fref=1400, order=1):
     """
     Construct DM-variation linear interpolation design matrix. Current
     normalization expresses DM signal as a deviation [seconds]
@@ -172,7 +172,7 @@ def create_fft_time_basis_dm(toas, freqs, nknots=30, Tspan=None, start_time=None
 
     :param toas: vector of time series in seconds
     :param freqs: radio frequencies of observations [MHz]
-    :param nknots: number of coarse time samples to use (knots)
+    :param nnodes: number of coarse time samples to use (nodes)
     :param Tspan: option to some other Tspan
     :param start_time: option to set some other start epoch of basis
     :param fref: reference frequency [MHz]
@@ -183,7 +183,7 @@ def create_fft_time_basis_dm(toas, freqs, nknots=30, Tspan=None, start_time=None
     """
 
     # get base course time-domain matrix and times
-    Bmat, t_coarse = create_fft_time_basis(toas, nknots=nknots, Tspan=Tspan, start_time=start_time, order=order)
+    Bmat, t_coarse = create_fft_time_basis(toas, nnodes=nnodes, Tspan=Tspan, start_time=start_time, order=order)
 
     # compute the DM-variation vectors
     Dm = (fref / freqs) ** 2
@@ -357,7 +357,7 @@ def createfourierdesignmatrix_chromatic(
 
 
 @function
-def create_fft_time_basis_chromatic(toas, freqs, nknots=30, Tspan=None, start_time=None, fref=1400, idx=4, order=1):
+def create_fft_time_basis_chromatic(toas, freqs, nnodes=30, Tspan=None, start_time=None, fref=1400, idx=4, order=1):
     """
     Construct scattering linear interpolation design matrix. Current
     normalization expresses DM signal as a deviation [seconds]
@@ -365,7 +365,7 @@ def create_fft_time_basis_chromatic(toas, freqs, nknots=30, Tspan=None, start_ti
 
     :param toas: vector of time series in seconds
     :param freqs: radio frequencies of observations [MHz]
-    :param nknots: number of coarse time samples to use (knots)
+    :param nnodes: number of coarse time samples to use (nodes)
     :param Tspan: option to some other Tspan
     :param start_time: option to set some other start epoch of basis
     :param fref: reference frequency [MHz]
@@ -377,7 +377,7 @@ def create_fft_time_basis_chromatic(toas, freqs, nknots=30, Tspan=None, start_ti
     """
 
     # get base course time-domain matrix and times
-    Bmat, t_coarse = create_fft_time_basis(toas, nknots=nknots, Tspan=Tspan, start_time=start_time, order=order)
+    Bmat, t_coarse = create_fft_time_basis(toas, nnodes=nnodes, Tspan=Tspan, start_time=start_time, order=order)
 
     # compute the DM-variation vectors
     Dm = (fref / freqs) ** idx
