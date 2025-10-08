@@ -803,6 +803,7 @@ def SignalCollection(metasignals):  # noqa: C901
             self.white_params = []
             self.basis_params = []
             self.delay_params = []
+            self.prior_params = []
             for signal in self._signals:
                 if signal.signal_type == "white noise":
                     self.white_params.extend(signal.ndiag_params)
@@ -811,6 +812,7 @@ def SignalCollection(metasignals):  # noqa: C901
                     # for common GPs, which do not have coefficients yet
                     self.delay_params.extend(getattr(signal, "delay_params", []))
                     self.basis_params.extend(signal.basis_params)
+                    self.prior_params.extend(getattr(signal, "prior_params", []))
                 elif signal.signal_type in ["deterministic"]:
                     self.delay_params.extend(signal.delay_params)
                 else:
