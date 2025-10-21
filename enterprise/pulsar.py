@@ -68,6 +68,44 @@ def get_maxobs(timfile):
     return maxobs
 
 
+def _has_pint_toas_interface(obj):
+    """Check if object has PINT TOAs interface"""
+    return (
+        hasattr(obj, "get_mjds")
+        and hasattr(obj, "get_errors")
+        and hasattr(obj, "get_flags")
+        and hasattr(obj, "get_obss")
+        and hasattr(obj, "ntoas")
+    )
+
+
+def _has_pint_model_interface(obj):
+    """Check if object has PINT TimingModel interface"""
+    return (
+        hasattr(obj, "PSR")
+        and hasattr(obj, "get_barycentric_toas")
+        and hasattr(obj, "designmatrix")
+        and hasattr(obj, "barycentric_radio_freq")
+        and hasattr(obj, "params")
+    )
+
+
+def _has_tempo2_interface(obj):
+    """Check if object has Tempo2/libstempo interface"""
+    return (
+        hasattr(obj, "toas")
+        and hasattr(obj, "stoas")
+        and hasattr(obj, "residuals")
+        and hasattr(obj, "toaerrs")
+        and hasattr(obj, "designmatrix")
+        and hasattr(obj, "ssbfreqs")
+        and hasattr(obj, "telescope")
+        and hasattr(obj, "flags")
+        and hasattr(obj, "pars")
+        and hasattr(obj, "name")
+    )
+
+
 class BasePulsar(object):
     """Abstract Base Class for Pulsar objects."""
 
@@ -799,11 +837,11 @@ def Pulsar(*args, **kwargs):
         timing_package = timing_package.lower()
 
     if pint is not None:
-        toas = [x for x in args if isinstance(x, TOAs)]
-        model = [x for x in args if isinstance(x, TimingModel)]
+        toas = [x for x in args if _has_pint_toas_interface(x)]
+        model = [x for x in args if _has_pint_model_interface(x)]
 
     if t2 is not None:
-        t2pulsar = [x for x in args if isinstance(x, t2.tempopulsar)]
+        t2pulsar = [x for x in args if _has_tempo2_interface(x)]
 
     parfile = [x for x in args if isinstance(x, str) and x.split(".")[-1] == "par"]
     timfile = [x for x in args if isinstance(x, str) and x.split(".")[-1] in ["tim", "toa"]]
