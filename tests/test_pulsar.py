@@ -318,3 +318,118 @@ class TestPulsarPint(TestPulsar):
             msg += "`planet` flag is not True in `toas` or further Pint "
             msg += "development to add additional planets is needed."
             self.assertTrue(msg in context.exception)
+
+
+class TestDuckTyping(unittest.TestCase):
+    """Test the duck-typing interface detection functions."""
+
+    def test_duck_typing_functions(self):
+        """Test the duck-typing interface detection functions."""
+        from enterprise.pulsar import _has_pint_toas_interface, _has_pint_model_interface, _has_tempo2_interface
+
+        # Test with objects that have none of the required attributes
+        class EmptyObj:
+            pass
+
+        empty = EmptyObj()
+        assert not _has_pint_toas_interface(empty)
+        assert not _has_pint_model_interface(empty)
+        assert not _has_tempo2_interface(empty)
+
+        # Test with objects that have some but not all required attributes
+        class PartialPintToas:
+            def get_mjds(self):
+                pass
+
+            def get_errors(self):
+                pass
+
+            # Missing get_flags, get_obss, ntoas
+
+        partial_toas = PartialPintToas()
+        assert not _has_pint_toas_interface(partial_toas)
+
+        # Test with objects that have all required attributes
+        class MockPintToas:
+            def get_mjds(self):
+                pass
+
+            def get_errors(self):
+                pass
+
+            def get_flags(self):
+                pass
+
+            def get_obss(self):
+                pass
+
+            @property
+            def ntoas(self):
+                return 1
+
+        mock_toas = MockPintToas()
+        assert _has_pint_toas_interface(mock_toas)
+
+        class MockPintModel:
+            @property
+            def PSR(self):
+                return "test"
+
+            def get_barycentric_toas(self):
+                pass
+
+            def designmatrix(self):
+                pass
+
+            def barycentric_radio_freq(self):
+                pass
+
+            @property
+            def params(self):
+                return {}
+
+        mock_model = MockPintModel()
+        assert _has_pint_model_interface(mock_model)
+
+        class MockTempo2:
+            @property
+            def toas(self):
+                return [1, 2, 3]
+
+            @property
+            def stoas(self):
+                return [1, 2, 3]
+
+            @property
+            def residuals(self):
+                return [1, 2, 3]
+
+            @property
+            def toaerrs(self):
+                return [1, 2, 3]
+
+            def designmatrix(self):
+                pass
+
+            @property
+            def ssbfreqs(self):
+                return [1, 2, 3]
+
+            @property
+            def telescope(self):
+                return ["GBT"]
+
+            @property
+            def flags(self):
+                return {}
+
+            @property
+            def pars(self):
+                return {}
+
+            @property
+            def name(self):
+                return "test"
+
+        mock_tempo2 = MockTempo2()
+        assert _has_tempo2_interface(mock_tempo2)
