@@ -33,9 +33,8 @@ except ImportError:
 
 try:
     import pint
-    from pint.models import TimingModel, get_model_and_toas
+    from pint.models import get_model_and_toas
     from pint.residuals import Residuals as resids
-    from pint.toa import TOAs
 except ImportError:
     logger.warning("PINT not installed. PINT or libstempo are required to use par and tim files.")  # pragma: no cover
     pint = None
