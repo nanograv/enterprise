@@ -1038,6 +1038,7 @@ class MarginalizingNmat(object):
     def __init__(self, Mmat, Nmat=0):
         self.Mmat, self.Nmat = Mmat, Nmat
         self.Mprior = Mmat.shape[1] * np.log(1e40)
+        self._has_sqrtsolve = False
 
     def __add__(self, other):
         if isinstance(other, MarginalizingNmat):
@@ -1100,3 +1101,20 @@ class MarginalizingNmat(object):
             return LNT - np.tensordot(self.MNF(L), self.MNMMNF(T), (0, 0))
         else:
             raise ValueError("Incorrect arguments given to MarginalizingNmat.solve.")
+
+    def sqrtsolve(self, other, left_array=None):
+        if other.ndim == 1:
+            raise NotImplementedError("MarginalizingNmat does not implement _sqrtsolve_xD1")
+        elif other.ndim == 2:
+            if left_array is None:
+                raise NotImplementedError(
+                    "MarginalizingNmat does not implement _sqrtsolve_D2.\n" "Perhaps use 'TimingModel'?"
+                )
+            elif left_array is not None and left_array.ndim == 2:
+                raise NotImplementedError("MarginalizingNmat does not implement _sqrtsolve_2D2")
+            elif left_array is not None and left_array.ndim == 1:
+                raise NotImplementedError("MarginalizingNmat does not implement _sqrtsolve_1D2")
+            else:
+                raise TypeError
+        else:
+            raise TypeError
