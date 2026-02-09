@@ -10,7 +10,7 @@ import numpy as np
 import scipy.linalg as sl
 import scipy.sparse as sps
 import scipy.special as ss
-from pkg_resources import Requirement, resource_filename
+from importlib import resources
 from scipy.integrate import odeint
 from scipy.interpolate import interp1d
 from sksparse.cholmod import cholesky
@@ -348,11 +348,11 @@ def make_ecc_interpolant():
     :returns: interpolant
     """
 
-    pth = resource_filename(Requirement.parse("libstempo"), "libstempo/ecc_vs_nharm.txt")
+    traversable = resources.files("libstempo")
+    with resources.as_file(traversable):
+        data = np.loadtxt(str(fil) + '/ecc_vs_nharm.txt')
 
-    fil = np.loadtxt(pth)
-
-    return interp1d(fil[:, 0], fil[:, 1])
+    return interp1d(data[:, 0], data[:, 1])
 
 
 def get_edot(F, mc, e):
