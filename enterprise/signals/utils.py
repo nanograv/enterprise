@@ -348,9 +348,8 @@ def make_ecc_interpolant():
     :returns: interpolant
     """
 
-    traversable = resources.files("libstempo")
-    with resources.as_file(traversable):
-        data = np.loadtxt(str(fil) + '/ecc_vs_nharm.txt')
+    path = resources.files("libstempo") / 'ecc_vs_nharm.txt'
+    data = np.loadtxt(str(fil) + '/ecc_vs_nharm.txt')
 
     return interp1d(data[:, 0], data[:, 1])
 
