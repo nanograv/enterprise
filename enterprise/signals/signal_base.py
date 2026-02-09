@@ -3,6 +3,7 @@
 Defines the signal base classes and metaclasses. All signals will then be
 derived from these base classes.
 """
+
 import collections
 
 try:

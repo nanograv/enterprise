@@ -348,7 +348,7 @@ def make_ecc_interpolant():
     :returns: interpolant
     """
 
-    path = str(resources.files("libstempo") / 'ecc_vs_nharm.txt')
+    path = str(resources.files("libstempo") / "ecc_vs_nharm.txt")
     data = np.loadtxt(path)
 
     return interp1d(data[:, 0], data[:, 1])
@@ -1061,7 +1061,7 @@ def createfourierdesignmatrix_physicalephem(
 
     # Jupiter + Saturn orbit definitions that we pass to physical_ephem_delay
     oa = {}
-    (oa["times"], oa["jup_orbit"], oa["sat_orbit"]) = get_planet_orbital_elements(model)
+    oa["times"], oa["jup_orbit"], oa["sat_orbit"] = get_planet_orbital_elements(model)
 
     dpar = 1e-5  # may need finessing
     Fl, Phil = [], []

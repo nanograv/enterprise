@@ -8,7 +8,6 @@ test_white_signals
 Tests for white signal modules.
 """
 
-
 import unittest
 import pytest
 

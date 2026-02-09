@@ -1,6 +1,5 @@
 # pulsar.py
-"""Class containing pulsar data from timing package [tempo2/PINT].
-"""
+"""Class containing pulsar data from timing package [tempo2/PINT]."""
 
 import contextlib
 import json
@@ -72,8 +71,8 @@ class BasePulsar(object):
     """Abstract Base Class for Pulsar objects."""
 
     def _get_pdist(self):
-        path = resources.files("enterprise")/"datafiles/pulsar_distances.json"
-        with open(str(path), 'r') as file:
+        path = resources.files("enterprise") / "datafiles/pulsar_distances.json"
+        with open(str(path), "r") as file:
             pdict = json.load(file)
 
         if self.name[0] not in ["J", "B"]:
