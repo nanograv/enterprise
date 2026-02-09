@@ -348,8 +348,8 @@ def make_ecc_interpolant():
     :returns: interpolant
     """
 
-    path = resources.files("libstempo") / 'ecc_vs_nharm.txt'
-    data = np.loadtxt(str(path) + '/ecc_vs_nharm.txt')
+    path = str(resources.files("libstempo") / 'ecc_vs_nharm.txt')
+    data = np.loadtxt(path)
 
     return interp1d(data[:, 0], data[:, 1])
 
