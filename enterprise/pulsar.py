@@ -73,7 +73,7 @@ class BasePulsar(object):
 
     def _get_pdist(self):
         path = resources.files("enterprise")/"datafiles/pulsar_distances.json"
-        with open(path, 'r') as file:
+        with open(str(path), 'r') as file:
             pdict = json.load(path)
 
         if self.name[0] not in ["J", "B"]:
