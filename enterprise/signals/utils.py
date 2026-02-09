@@ -349,7 +349,7 @@ def make_ecc_interpolant():
     """
 
     path = resources.files("libstempo") / 'ecc_vs_nharm.txt'
-    data = np.loadtxt(str(fil) + '/ecc_vs_nharm.txt')
+    data = np.loadtxt(str(path) + '/ecc_vs_nharm.txt')
 
     return interp1d(data[:, 0], data[:, 1])
 
