@@ -238,7 +238,7 @@ class LogLikelihood(object):
 
         # get -0.5 * (rNr + logdet_N) piece of likelihood
         # the np.sum here is needed because each pulsar returns a 2-tuple
-        #loglike += -0.5 * np.sum([ell for ell in self.pta.get_rNr_logdet(params)])
+        # loglike += -0.5 * np.sum([ell for ell in self.pta.get_rNr_logdet(params)])
 
         # Add factors of log(2pi) for the likelihood normalization
         ntot = sum(sc._residuals.size for sc in self.pta._signalcollections)
@@ -1094,10 +1094,10 @@ def SignalCollection(metasignals):  # noqa: C901
             T = self._get_transformed_basis_Lw(params)
 
             # Do a Cholesky-QR decomposition
-            #TT = np.dot(T.T, T)
-            #R = sl.cholesky(TT, lower=False)
-            #Gt = sl.solve_triangular(R, T.T, lower=False, trans='T')
-            Q, R = sl.qr(T, mode='economic')
+            # TT = np.dot(T.T, T)
+            # R = sl.cholesky(TT, lower=False)
+            # Gt = sl.solve_triangular(R, T.T, lower=False, trans='T')
+            Q, R = sl.qr(T, mode="economic")
             return Q.T
 
         @cache_call(["white_params", "delay_params"])
@@ -1110,7 +1110,7 @@ def SignalCollection(metasignals):  # noqa: C901
             n, m = len(r2p), len(r2)
             logdet = self.get_ndiag(params)._get_logdet()
 
-            return np.sum(r2 * r2) - m, np.sum(r2p * r2p) - n, n+m, logdet
+            return np.sum(r2 * r2) - m, np.sum(r2p * r2p) - n, n + m, logdet
 
         @cache_call(["basis_params", "white_params"], limit=1)
         def _get_transformed_basis_GtLw(self, params={}):
