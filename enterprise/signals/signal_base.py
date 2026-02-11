@@ -196,13 +196,17 @@ class LogLikelihood(object):
         cholesky_sparse : bool
             Whether to use sparse Cholesky factorization.
         transform : str
-            The transform to use for the log likelihood. This transforms the LogLikelihood in two parts, where only the first part depends on the prior matrix 'B'. This is useful for single-precision computations and verifications.
+            The transform to use for the log likelihood. This transforms the LogLikelihood
+            in two parts, where only the first part depends on the prior matrix 'B'. This
+            is useful for single-precision computations and verifications.
             Valid options are "native", "Lw", "GtLw".
 
         returns:
         --------
         loglike : float or tuple of floats
-            The log likelihood of the PTA. If transform is "native", returns a single float. If transform is "Lw" or "GtLw", returns a tuple of floats. The first element is the log likelihood of the PTA that depends on the prior matrix 'B', the second element is the collected remainder.
+            The log likelihood of the PTA. If transform is "native", returns a single
+            float. If transform is "Lw" or "GtLw", returns a tuple of floats. The first
+            element depends on the prior matrix 'B', the second is the collected remainder.
         """
         self.pta = pta
         self.cholesky_sparse = cholesky_sparse
