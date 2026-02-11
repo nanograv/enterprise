@@ -1184,7 +1184,7 @@ class BlockMatrix(object):
                 bx = Xblock / self._nvec[idx][:, None]
             ZNX += np.dot(Zblock.T, bx)
         ZNX += ZNXr
-        return ZNX.squeeze() if len(ZNX) > 1 else float(ZNX)
+        return ZNX.squeeze() if len(ZNX) > 1 else ZNX.astype(float)
 
     def _solve_NX(self, X):
         """Solves :math:`N^{-1}X`, where :math:`X`
