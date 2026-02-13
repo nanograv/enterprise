@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import pickle
+from importlib import resources
 
 from pyarrow import feather
 from pyarrow import Table
@@ -16,9 +17,7 @@ import numpy as np
 from ephem import Ecliptic, Equatorial
 from astropy.time import Time
 
-import enterprise
 from enterprise.signals import utils
-
 from enterprise.pulsar_inflate import PulsarInflater
 
 logger = logging.getLogger(__name__)
@@ -72,9 +71,9 @@ class BasePulsar(object):
     """Abstract Base Class for Pulsar objects."""
 
     def _get_pdist(self):
-        dfile = enterprise.__path__[0] + "/datafiles/pulsar_distances.json"
-        with open(dfile, "r") as fl:
-            pdict = json.load(fl)
+        path = resources.files("enterprise") / "datafiles/pulsar_distances.json"
+        with open(str(path), "r") as file:
+            pdict = json.load(file)
 
         if self.name[0] not in ["J", "B"]:
             if "J" + self.name in pdict:
