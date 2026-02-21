@@ -1,6 +1,5 @@
 # pulsar.py
-"""Class containing pulsar data from timing package [tempo2/PINT].
-"""
+"""Class containing pulsar data from timing package [tempo2/PINT]."""
 
 import contextlib
 import json
@@ -647,7 +646,7 @@ class Tempo2Pulsar(BasePulsar):
     _todeflate = ["_designmatrix", "_planetssb", "_sunssb", "_flags"]
     _deflated = "pristine"
 
-    def deflate(psr):  # pragma: py-lt-38
+    def deflate(psr):  # pragma: py-lt-310
         if psr._deflated == "pristine":
             for attr in psr._todeflate:
                 if isinstance(getattr(psr, attr), np.ndarray):
@@ -655,7 +654,7 @@ class Tempo2Pulsar(BasePulsar):
 
             psr._deflated = "deflated"
 
-    def inflate(psr):  # pragma: py-lt-38
+    def inflate(psr):  # pragma: py-lt-310
         if psr._deflated == "deflated":
             for attr in psr._todeflate:
                 if isinstance(getattr(psr, attr), PulsarInflater):
@@ -663,7 +662,7 @@ class Tempo2Pulsar(BasePulsar):
 
             psr._deflated = "inflated"
 
-    def destroy(psr):  # pragma: py-lt-38
+    def destroy(psr):  # pragma: py-lt-310
         if psr._deflated == "deflated":
             for attr in psr._todeflate:
                 if isinstance(getattr(psr, attr), PulsarInflater):

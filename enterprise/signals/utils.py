@@ -1118,7 +1118,7 @@ def createfourierdesignmatrix_physicalephem(
 
     # Jupiter + Saturn orbit definitions that we pass to physical_ephem_delay
     oa = {}
-    (oa["times"], oa["jup_orbit"], oa["sat_orbit"]) = get_planet_orbital_elements(model)
+    oa["times"], oa["jup_orbit"], oa["sat_orbit"] = get_planet_orbital_elements(model)
 
     dpar = 1e-5  # may need finessing
     Fl, Phil = [], []
