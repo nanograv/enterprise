@@ -4,7 +4,6 @@ import healpy as hp
 import numpy as np
 import scipy.special as ss
 
-
 """
 Script to compute the correlation basis-functions for various anisotropic
 configurations of the GW background energy-density

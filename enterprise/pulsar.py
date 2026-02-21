@@ -1,6 +1,5 @@
 # pulsar.py
-"""Class containing pulsar data from timing package [tempo2/PINT].
-"""
+"""Class containing pulsar data from timing package [tempo2/PINT]."""
 
 import contextlib
 import json
