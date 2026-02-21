@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import pickle
+from importlib import resources
 
 from pyarrow import feather
 from pyarrow import Table
@@ -16,9 +17,7 @@ import numpy as np
 from ephem import Ecliptic, Equatorial
 from astropy.time import Time
 
-import enterprise
 from enterprise.signals import utils
-
 from enterprise.pulsar_inflate import PulsarInflater
 
 logger = logging.getLogger(__name__)
@@ -72,9 +71,9 @@ class BasePulsar(object):
     """Abstract Base Class for Pulsar objects."""
 
     def _get_pdist(self):
-        dfile = enterprise.__path__[0] + "/datafiles/pulsar_distances.json"
-        with open(dfile, "r") as fl:
-            pdict = json.load(fl)
+        path = resources.files("enterprise") / "datafiles/pulsar_distances.json"
+        with open(str(path), "r") as file:
+            pdict = json.load(file)
 
         if self.name[0] not in ["J", "B"]:
             if "J" + self.name in pdict:
@@ -135,12 +134,22 @@ class BasePulsar(object):
             self._isort = slice(None, None, None)
             self._iisort = slice(None, None, None)
 
-    def filter_data(self, start_time=None, end_time=None):
-        """Filter data to create a time-slice of overall dataset."""
-        if start_time is None and end_time is None:
-            mask = np.ones(self._toas.shape, dtype=bool)
-        else:
-            mask = np.logical_and(self._toas >= start_time * 86400, self._toas <= end_time * 86400)
+    def filter_data(self, mask=None, start_time=None, end_time=None):
+        """
+        Filters the dataset to create a time-slice based on a custom mask and/or a time range.
+
+        Parameters:
+            mask (array-like, optional): Boolean array specifying which data to keep.
+                                         If provided, this mask will be combined (logical AND)
+                                         with the time range filter. Default is None.
+            start_time (float, optional): Start time (MJD) for filtering. If None, the min time in the dataset is used.
+            end_time (float, optional): End time (MJD) for filtering. If None, the max time in the dataset is used.
+        """
+
+        start_time = start_time * 86400 if start_time is not None else np.min(self._toas)
+        end_time = end_time * 86400 if end_time is not None else np.max(self._toas)
+        mask_times = np.logical_and(self._toas >= start_time, self._toas <= end_time)
+        mask = np.logical_and(mask, mask_times) if mask is not None else mask_times
 
         self._toas = self._toas[mask]
         self._toaerrs = self._toaerrs[mask]
@@ -158,7 +167,7 @@ class BasePulsar(object):
                 self._flags[key] = self._flags[key][mask]
 
         if self._planetssb is not None:
-            self._planetssb = self.planetssb[mask, :, :]
+            self._planetssb = self._planetssb[mask, :, :]
 
         self.sort_data()
 
