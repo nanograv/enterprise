@@ -58,7 +58,7 @@ class Woodbury(object):
         return Nx - tmp
 
     def sqrtsolve(self, other):
-        # Use a rank-one update, instead of scipy.linalg.cholesky
+        # Use the closed-form rank-1 inverse-square-root update (non-Cholesky).
         other_shape = other.shape
         X = other if other.ndim == 2 else other.reshape(-1, 1)
         slc_isort, Uinds = self.get_packing()
@@ -66,35 +66,23 @@ class Woodbury(object):
         Lix = X / np.sqrt(self.N)[:, None]
         for bi, jv in enumerate(self.J):
             idx0, idx1 = Uinds[bi]
-            k = idx1 - idx0
-            Xb = np.zeros((k, X.shape[1]))
-            d = np.zeros(k)
-            for i in range(k):
-                pos = slc_isort[idx0 + i]
-                Xb[i, :] = X[pos, :]
-                d[i] = self.N[pos]
+            if idx1 <= idx0:
+                continue
+            pos = slc_isort[idx0:idx1]
+            d = self.N[pos]
+            inv_d = 1.0 / d
+            inv_sqrt_d = 1.0 / np.sqrt(d)
 
-            L = np.diag(np.sqrt(d))
-            w = np.sqrt(jv) * np.ones(k)
-            for i in range(k):
-                r = np.hypot(L[i, i], w[i])
-                c = r / L[i, i]
-                s = w[i] / L[i, i]
-                L[i, i] = r
-                if i + 1 < k:
-                    Li1 = L[i + 1 :, i]
-                    wi1 = w[i + 1 :]
-                    L[i + 1 :, i] = (Li1 + s * wi1) / c
-                    w[i + 1 :] = c * wi1 - s * L[i + 1 :, i]
+            v = jv * np.sum(inv_d)
+            if v > 0.0:
+                t = np.sqrt(1.0 + v)
+                alpha = -1.0 / (t * (t + 1.0))
+            else:
+                alpha = -0.5
 
-            Yb = Xb.copy()
-            for i in range(k):
-                Yb[i, :] /= L[i, i]
-                if i + 1 < k:
-                    Yb[i + 1 :, :] -= np.outer(L[i + 1 :, i], Yb[i, :])
-            for i in range(k):
-                pos = slc_isort[idx0 + i]
-                Lix[pos, :] = Yb[i, :]
+            vtAmb = jv * np.einsum("i,ij->j", inv_d, X[pos, :])
+            scale = alpha * vtAmb
+            Lix[pos, :] += inv_sqrt_d[:, None] * scale[None, :]
 
         return Lix.reshape(*other_shape)
 

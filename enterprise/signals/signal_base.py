@@ -1313,15 +1313,29 @@ class ShermanMorrison(object):
         return yNx
 
     def _sqrtsolve_D2(self, x):
-        """Solves :math:`N^{-1/2}x` where :math:`x` is a 2-d array."""
+        """Apply :math:`N^{-1/2}x` where :math:`x` is a 2-d array.
+
+        This uses the closed-form inverse-square-root for diagonal-plus-rank1
+        ECORR blocks, rather than a Cholesky factor solve.
+        """
 
         Lix = x / np.sqrt(self._nvec[:, None])
         for idx, jv in zip(self._idxs, self._jvec):
-            Xblock = x[idx, :]
-            Nblock = np.diag(self._nvec[idx])
-            Nblock += jv * np.ones_like(Nblock)
-            Lblock = sl.cholesky(Nblock, lower=True)
-            Lix[idx, :] = sl.solve_triangular(Lblock, Xblock, trans=0, lower=True)
+            d = self._nvec[idx]
+            inv_d = 1.0 / d
+            inv_sqrt_d = 1.0 / np.sqrt(d)
+
+            v = jv * np.sum(inv_d)
+            if v > 0.0:
+                t = np.sqrt(1.0 + v)
+                # Stable equivalent of (1/sqrt(1+v) - 1) / v
+                alpha = -1.0 / (t * (t + 1.0))
+            else:
+                alpha = -0.5
+
+            vtAmb = jv * np.einsum("i,ij->j", inv_d, x[idx, :])
+            scale = alpha * vtAmb
+            Lix[idx, :] += inv_sqrt_d[:, None] * scale[None, :]
 
         return Lix
 
