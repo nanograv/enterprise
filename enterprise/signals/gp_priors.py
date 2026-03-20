@@ -14,9 +14,7 @@ import enterprise.constants as const
 @function
 def powerlaw(f, log10_A=-16, gamma=5, components=2):
     df = np.diff(np.concatenate((np.array([0]), f[::components])))
-    return (
-        (10**log10_A) ** 2 / 12.0 / np.pi**2 * const.fyr ** (gamma - 3) * f ** (-gamma) * np.repeat(df, components)
-    )
+    return (10**log10_A) ** 2 / 12.0 / np.pi**2 * const.fyr ** (gamma - 3) * f ** (-gamma) * np.repeat(df, components)
 
 
 @function
@@ -61,8 +59,10 @@ def t_process_adapt(f, log10_A=-15, gamma=4.33, alphas_adapt=None, nfreq=None, c
             alpha_model = np.repeat(alphas_adapt, components)
         else:
             alpha_model = np.ones_like(f)
-            alpha_model[2 * int(np.rint(nfreq))] = alphas_adapt
-            alpha_model[2 * int(np.rint(nfreq)) + 1] = alphas_adapt
+            alphas_adapt = np.repeat(alphas_adapt, 2)
+
+            nfreq_idx = 2 * int(np.rint(nfreq))
+            alpha_model[nfreq_idx : nfreq_idx + 2] = alphas_adapt
 
     return powerlaw(f, log10_A=log10_A, gamma=gamma, components=components) * alpha_model
 
@@ -154,9 +154,7 @@ def powerlaw_genmodes(f, log10_A=-16, gamma=5, components=2, wgts=None):
         df = wgts**2
     else:
         df = np.diff(np.concatenate((np.array([0]), f[::components])))
-    return (
-        (10**log10_A) ** 2 / 12.0 / np.pi**2 * const.fyr ** (gamma - 3) * f ** (-gamma) * np.repeat(df, components)
-    )
+    return (10**log10_A) ** 2 / 12.0 / np.pi**2 * const.fyr ** (gamma - 3) * f ** (-gamma) * np.repeat(df, components)
 
 
 @function

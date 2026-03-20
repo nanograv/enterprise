@@ -416,7 +416,7 @@ class TestGPSignals(unittest.TestCase):
         phi_K = utils.psd2cov(tc, psd)
         phi_E = rnm1.get_phi(params)
 
-        msg = f"Prior incorrect for GP FFT signal."
+        msg = "Prior incorrect for GP FFT signal."
         assert np.allclose(phi_K, phi_E), msg
 
     def test_fft_common(self):
@@ -443,7 +443,7 @@ class TestGPSignals(unittest.TestCase):
         phi_12 = phi_full[31:, :31]
         phi_2 = phi_full[31:, 31:]
 
-        msg = f"Common mode FFT Prior not equal between pulsars."
+        msg = "Common mode FFT Prior not equal between pulsars."
         assert np.allclose(phi_1, phi_2), msg
         assert np.allclose(0.5 * phi_1, phi_12), msg
 
@@ -495,9 +495,7 @@ class TestGPSignals(unittest.TestCase):
                 F = F1 if nf1 > nf2 else F2
                 phi[: 2 * nf1] = p1
                 phi[: 2 * nf2] += p2
-                F[
-                    :,
-                ]  # noqa: E231
+                F[:,]  # noqa: E231
             else:
                 phi = np.concatenate((p1, p2))
                 F = np.hstack((F1, F2))
