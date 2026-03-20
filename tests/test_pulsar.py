@@ -349,6 +349,16 @@ class TestDuckTyping(unittest.TestCase):
         partial_toas = PartialPintToas()
         assert not _has_pint_toas_interface(partial_toas)
 
+        class NonCallablePintToas:
+            get_mjds = None
+            get_errors = None
+            get_flags = None
+            get_obss = None
+            ntoas = 1
+
+        noncallable_toas = NonCallablePintToas()
+        assert not _has_pint_toas_interface(noncallable_toas)
+
         # Test with objects that have all required attributes
         class MockPintToas:
             def get_mjds(self):
@@ -370,10 +380,15 @@ class TestDuckTyping(unittest.TestCase):
         mock_toas = MockPintToas()
         assert _has_pint_toas_interface(mock_toas)
 
+        class MockPintPSR:
+            @property
+            def value(self):
+                return "test"
+
         class MockPintModel:
             @property
             def PSR(self):
-                return "test"
+                return MockPintPSR()
 
             def get_barycentric_toas(self):
                 pass
@@ -391,8 +406,28 @@ class TestDuckTyping(unittest.TestCase):
         mock_model = MockPintModel()
         assert _has_pint_model_interface(mock_model)
 
-        class MockTempo2:
+        class MockPintModelBadPSR:
             @property
+            def PSR(self):
+                return "test"
+
+            def get_barycentric_toas(self):
+                pass
+
+            def designmatrix(self):
+                pass
+
+            def barycentric_radio_freq(self):
+                pass
+
+            @property
+            def params(self):
+                return {}
+
+        mock_model_bad_psr = MockPintModelBadPSR()
+        assert not _has_pint_model_interface(mock_model_bad_psr)
+
+        class MockTempo2:
             def toas(self):
                 return [1, 2, 3]
 
@@ -400,7 +435,6 @@ class TestDuckTyping(unittest.TestCase):
             def stoas(self):
                 return [1, 2, 3]
 
-            @property
             def residuals(self):
                 return [1, 2, 3]
 
@@ -411,21 +445,27 @@ class TestDuckTyping(unittest.TestCase):
             def designmatrix(self):
                 pass
 
-            @property
             def ssbfreqs(self):
                 return [1, 2, 3]
 
-            @property
             def telescope(self):
                 return ["GBT"]
 
-            @property
             def flags(self):
                 return {}
 
-            @property
-            def pars(self):
+            def flagvals(self, key):
+                return np.array([], dtype="U1")
+
+            def pars(self, which=None):
                 return {}
+
+            @property
+            def psrPos(self):
+                return np.zeros((3,))
+
+            def __getitem__(self, key):
+                return None
 
             @property
             def name(self):
@@ -433,3 +473,14 @@ class TestDuckTyping(unittest.TestCase):
 
         mock_tempo2 = MockTempo2()
         assert _has_tempo2_interface(mock_tempo2)
+
+        class MockTempo2BadToas(MockTempo2):
+            @property
+            def toas(self):
+                return [1, 2, 3]
+
+        class MockTempo2BadFlagvals(MockTempo2):
+            flagvals = None
+
+        assert not _has_tempo2_interface(MockTempo2BadToas())
+        assert not _has_tempo2_interface(MockTempo2BadFlagvals())

@@ -66,39 +66,43 @@ def get_maxobs(timfile):
 
 
 def _has_pint_toas_interface(obj):
-    """Check if object has PINT TOAs interface"""
+    """Check if object has the callable interface used by ``PintPulsar``."""
     return (
-        hasattr(obj, "get_mjds")
-        and hasattr(obj, "get_errors")
-        and hasattr(obj, "get_flags")
-        and hasattr(obj, "get_obss")
+        callable(getattr(obj, "get_mjds", None))
+        and callable(getattr(obj, "get_errors", None))
+        and callable(getattr(obj, "get_flags", None))
+        and callable(getattr(obj, "get_obss", None))
         and hasattr(obj, "ntoas")
     )
 
 
 def _has_pint_model_interface(obj):
-    """Check if object has PINT TimingModel interface"""
+    """Check if object has the callable interface used by ``PintPulsar``."""
+    psr = getattr(obj, "PSR", None)
     return (
-        hasattr(obj, "PSR")
-        and hasattr(obj, "get_barycentric_toas")
-        and hasattr(obj, "designmatrix")
-        and hasattr(obj, "barycentric_radio_freq")
+        hasattr(psr, "value")
+        and callable(getattr(obj, "get_barycentric_toas", None))
+        and callable(getattr(obj, "designmatrix", None))
+        and callable(getattr(obj, "barycentric_radio_freq", None))
         and hasattr(obj, "params")
     )
 
 
 def _has_tempo2_interface(obj):
-    """Check if object has Tempo2/libstempo interface"""
+    """Check if object has the interface used by ``Tempo2Pulsar``."""
     return (
-        hasattr(obj, "toas")
+        callable(getattr(obj, "toas", None))
         and hasattr(obj, "stoas")
-        and hasattr(obj, "residuals")
+        and callable(getattr(obj, "residuals", None))
         and hasattr(obj, "toaerrs")
-        and hasattr(obj, "designmatrix")
-        and hasattr(obj, "ssbfreqs")
-        and hasattr(obj, "telescope")
-        and hasattr(obj, "flags")
-        and hasattr(obj, "pars")
+        and callable(getattr(obj, "designmatrix", None))
+        and callable(getattr(obj, "ssbfreqs", None))
+        and callable(getattr(obj, "telescope", None))
+        and callable(getattr(obj, "flags", None))
+        and callable(getattr(obj, "flagvals", None))
+        and callable(getattr(obj, "pars", None))
+        and hasattr(obj, "psrPos")
+        and hasattr(obj, "__getitem__")
         and hasattr(obj, "name")
     )
 
