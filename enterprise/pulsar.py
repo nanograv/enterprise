@@ -31,9 +31,8 @@ except ImportError:
 
 try:
     import pint
-    from pint.models import TimingModel, get_model_and_toas
+    from pint.models import get_model_and_toas
     from pint.residuals import Residuals as resids
-    from pint.toa import TOAs
 except ImportError:
     logger.warning("PINT not installed. PINT or libstempo are required to use par and tim files.")  # pragma: no cover
     pint = None
@@ -64,6 +63,48 @@ def get_maxobs(timfile):
         else:
             maxobs = sum(1 for line in lines if line.rstrip("\n"))
     return maxobs
+
+
+def _has_pint_toas_interface(obj):
+    """Check if object has the callable interface used by ``PintPulsar``."""
+    return (
+        callable(getattr(obj, "get_mjds", None))
+        and callable(getattr(obj, "get_errors", None))
+        and callable(getattr(obj, "get_flags", None))
+        and callable(getattr(obj, "get_obss", None))
+        and hasattr(obj, "ntoas")
+    )
+
+
+def _has_pint_model_interface(obj):
+    """Check if object has the callable interface used by ``PintPulsar``."""
+    psr = getattr(obj, "PSR", None)
+    return (
+        hasattr(psr, "value")
+        and callable(getattr(obj, "get_barycentric_toas", None))
+        and callable(getattr(obj, "designmatrix", None))
+        and callable(getattr(obj, "barycentric_radio_freq", None))
+        and hasattr(obj, "params")
+    )
+
+
+def _has_tempo2_interface(obj):
+    """Check if object has the interface used by ``Tempo2Pulsar``."""
+    return (
+        callable(getattr(obj, "toas", None))
+        and hasattr(obj, "stoas")
+        and callable(getattr(obj, "residuals", None))
+        and hasattr(obj, "toaerrs")
+        and callable(getattr(obj, "designmatrix", None))
+        and callable(getattr(obj, "ssbfreqs", None))
+        and callable(getattr(obj, "telescope", None))
+        and callable(getattr(obj, "flags", None))
+        and callable(getattr(obj, "flagvals", None))
+        and callable(getattr(obj, "pars", None))
+        and hasattr(obj, "psrPos")
+        and hasattr(obj, "__getitem__")
+        and hasattr(obj, "name")
+    )
 
 
 class BasePulsar(object):
@@ -797,11 +838,11 @@ def Pulsar(*args, **kwargs):
         timing_package = timing_package.lower()
 
     if pint is not None:
-        toas = [x for x in args if isinstance(x, TOAs)]
-        model = [x for x in args if isinstance(x, TimingModel)]
+        toas = [x for x in args if _has_pint_toas_interface(x)]
+        model = [x for x in args if _has_pint_model_interface(x)]
 
     if t2 is not None:
-        t2pulsar = [x for x in args if isinstance(x, t2.tempopulsar)]
+        t2pulsar = [x for x in args if _has_tempo2_interface(x)]
 
     parfile = [x for x in args if isinstance(x, str) and x.split(".")[-1] == "par"]
     timfile = [x for x in args if isinstance(x, str) and x.split(".")[-1] in ["tim", "toa"]]
