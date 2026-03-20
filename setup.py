@@ -11,7 +11,7 @@ requirements = [
     "scipy>=1.2.0",
     "ephem>=3.7.6.0",
     "healpy>=1.14.0",
-    "scikit-sparse>=0.4.5",
+    "scikit-sparse>=0.4.5,<0.5",
     "pyarrow>=17.0.0",
 ]
 
