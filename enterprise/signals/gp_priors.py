@@ -132,9 +132,9 @@ def broken_powerlaw(f, log10_A, gamma, delta, log10_fb, kappa=0.1, components=2)
     Generic broken powerlaw spectrum.
     :param f: sampling frequencies
     :param A: characteristic strain amplitude [set for gamma at f=1/yr]
-    :param gamma: negative slope of PSD for f > f_break [set for comparison
+    :param gamma: negative slope of PSD for f < f_break [set for comparison
         at f=1/yr (default 13/3)]
-    :param delta: slope for frequencies < f_break
+    :param delta: slope for frequencies > f_break
     :param log10_fb: log10 transition frequency at which slope switches from
         gamma to delta
     :param kappa: smoothness of transition (Default = 0.1)
