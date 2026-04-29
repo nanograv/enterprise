@@ -2,7 +2,6 @@
 """Contains various selection functions to mask parameters by backend flags,
 time-intervals, etc."""
 
-
 import functools
 import inspect
 

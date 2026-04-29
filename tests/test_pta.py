@@ -8,7 +8,6 @@ test_pta
 Tests for common signal and PTA class modules.
 """
 
-
 # import os
 # import pickle
 import itertools

@@ -193,7 +193,7 @@ class TestDeterministicSignals(unittest.TestCase):
             d1 = e1.get_delay(params=params)
             d2 = e2.get_delay(params=params)
 
-            (jup_mjd, jup_orbel, sat_orbel) = utils.get_planet_orbital_elements("orbel")
+            jup_mjd, jup_orbel, sat_orbel = utils.get_planet_orbital_elements("orbel")
 
             d3 = utils.physical_ephem_delay(
                 self.psr.toas,
@@ -242,7 +242,7 @@ class TestDeterministicSignals(unittest.TestCase):
         d1 = e1.get_delay(params=params)
         d2 = e2.get_delay(params=params)
 
-        (jup_mjd, jup_orbel, sat_orbel) = utils.get_planet_orbital_elements("setIII")
+        jup_mjd, jup_orbel, sat_orbel = utils.get_planet_orbital_elements("setIII")
 
         d3 = utils.physical_ephem_delay(
             self.psr.toas,
