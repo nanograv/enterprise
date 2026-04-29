@@ -10,9 +10,7 @@ import numpy as np
 import scipy.linalg as sl
 import scipy.sparse as sps
 import scipy.special as ss
-from pkg_resources import Requirement, resource_filename
 from scipy.integrate import odeint
-from scipy.interpolate import interp1d
 from sksparse.cholmod import cholesky
 
 import enterprise
@@ -345,14 +343,17 @@ def make_ecc_interpolant():
     determine number of harmonics to use for a given
     eccentricity.
 
+    Based on Susobhanan (2023)
+
     :returns: interpolant
     """
 
-    pth = resource_filename(Requirement.parse("libstempo"), "libstempo/ecc_vs_nharm.txt")
+    def ecc_interp(e):
+        alpha = 18.64801851
+        beta = -14.04695398
+        return alpha * (1 - e * e) ** (-3 / 2) + beta
 
-    fil = np.loadtxt(pth)
-
-    return interp1d(fil[:, 0], fil[:, 1])
+    return ecc_interp
 
 
 def get_edot(F, mc, e):
