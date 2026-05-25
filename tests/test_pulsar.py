@@ -319,6 +319,19 @@ class TestPulsarPint(TestPulsar):
             msg += "development to add additional planets is needed."
             self.assertTrue(msg in context.exception)
 
+    def test_no_proper_motion(self):
+        model, toas = get_model_and_toas(
+            datadir + "/J0030+0451_NANOGrav_9yv1.gls.par", datadir + "/J0030+0451_NANOGrav_9yv1.tim", planets=True
+        )
+        model["PMELAT"].value = 0
+        model["PMELAT"].frozen = True
+        model["PMELONG"].value = 0
+        model["PMELONG"].frozen = True
+
+        psr = Pulsar(model, toas, planets=True, drop_pintpsr=False)
+
+        assert psr.pos_t.shape == (len(toas), 3)
+
 
 class TestDuckTyping(unittest.TestCase):
     """Test the duck-typing interface detection functions."""
