@@ -272,6 +272,17 @@ class TestLikelihood(unittest.TestCase):
         self.compute_like(npsrs=1)
         self.compute_like(npsrs=2)
 
+    def test_like_marginalizing_tm_idx_exclude(self):
+        """Test for marginalizing timing model with excluded columns."""
+        psr = self.psrs[0]
+
+        tm = gp_signals.MarginalizingTimingModel(idx_exclude=[0])
+        mn = white_signals.MeasurementNoise(efac=parameter.Constant(1.0))
+        pta = signal_base.PTA([(tm + mn)(psr)])
+
+        ll = pta.get_lnlikelihood({})
+        assert np.isfinite(ll), "Likelihood should be finite with idx_exclude timing model"
+
     def test_like_corr(self):
         """Test likelihood with spatial correlations."""
         for cholesky_sparse in [True, False]:

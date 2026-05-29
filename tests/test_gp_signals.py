@@ -646,6 +646,54 @@ class TestGPSignals(unittest.TestCase):
         # test incompatible prescription
         self.assertRaises(ValueError, gp_signals.TimingModel, use_svd=True, normed=False)
 
+    def test_marginalizing_timing_model_idx_exclude(self):
+        """Test idx_exclude behavior for marginalizing timing model signal."""
+        # default behavior should match full normalized timing-model matrix
+        ts = gp_signals.MarginalizingTimingModel()
+        tm = ts(self.psr)
+        nmat = tm.get_ndiag({})
+
+        full_expected = self.psr.Mmat.copy()
+        full_norm = np.sqrt(np.sum(full_expected**2, axis=0))
+        full_expected /= full_norm
+
+        msg = "Marginalizing timing-model matrix shape incorrect"
+        assert nmat.Mmat.shape == self.psr.Mmat.shape, msg
+
+        msg = "Marginalizing timing-model matrix incorrect for default behavior"
+        assert np.allclose(nmat.Mmat, full_expected), msg
+
+        # excluded-column behavior should match normalized matrix with columns removed
+        idx_exclude = [0, 2]
+        ts = gp_signals.MarginalizingTimingModel(idx_exclude=idx_exclude)
+        tm = ts(self.psr)
+        nmat = tm.get_ndiag({})
+
+        keep = np.array([ii for ii in range(self.psr.Mmat.shape[1]) if ii not in idx_exclude])
+        ex_expected = self.psr.Mmat[:, keep].copy()
+        ex_norm = np.sqrt(np.sum(ex_expected**2, axis=0))
+        ex_expected /= ex_norm
+        ex_expected[:, ex_norm == 0] = 0
+
+        msg = "Excluded-column marginalizing timing-model shape incorrect"
+        assert nmat.Mmat.shape == ex_expected.shape, msg
+
+        msg = "Excluded-column marginalizing timing-model matrix incorrect"
+        assert np.allclose(nmat.Mmat, ex_expected), msg
+
+        # ensure exclusion is applied before SVD basis generation
+        ts = gp_signals.MarginalizingTimingModel(use_svd=True, idx_exclude=idx_exclude)
+        tm = ts(self.psr)
+        nmat = tm.get_ndiag({})
+
+        u, _, _ = np.linalg.svd(self.psr.Mmat[:, keep], full_matrices=False)
+
+        msg = "SVD excluded-column marginalizing timing-model shape incorrect"
+        assert nmat.Mmat.shape == u.shape, msg
+
+        msg = "SVD excluded-column marginalizing timing-model matrix incorrect"
+        assert np.allclose(np.abs(nmat.Mmat), np.abs(u)), msg
+
     def test_pshift_fourier(self):
         """Test Fourier basis with prescribed phase shifts."""
 
