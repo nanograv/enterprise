@@ -1003,9 +1003,7 @@ def WidebandTimingModel(
     return WidebandTimingModel
 
 
-def MarginalizingTimingModel(
-    name="marginalizing_linear_timing_model", use_svd=False, normed=True, idx_exclude=None
-):
+def MarginalizingTimingModel(name="marginalizing_linear_timing_model", use_svd=False, normed=True, idx_exclude=None):
     """Class factory for marginalizing (fast-likelihood) linear timing model signals.
 
     Parameters mirror :func:`TimingModel`, including ``idx_exclude`` to drop selected
