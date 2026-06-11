@@ -135,11 +135,11 @@ class BasePulsar(object):
         try:
             ec = Ecliptic(elong, elat)
 
-            # check for B name
-            if "B" in self.name:
-                epoch = "1950"
-            else:
-                epoch = "2000"
+            # Assume elong and elat are given in J2000 coordinates.
+            # this isn't optimal, but is consistent with the values used in the parfiles
+            # circumvent this by including RAJ and DECJ in parfiles.
+            epoch = "2000"
+
             eq = Equatorial(ec, epoch=str(epoch))
             raj = np.double(eq.ra)
             decj = np.double(eq.dec)
