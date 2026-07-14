@@ -8,7 +8,6 @@ test_white_signals
 Tests for white signal modules.
 """
 
-
 import unittest
 import pytest
 
@@ -22,11 +21,26 @@ from tests.enterprise_test_data import datadir
 from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
 
+def pack_indices(idxs):
+    slc_isort = np.concatenate(idxs)
+
+    lengths = [len(x) for x in idxs]
+    starts = np.cumsum([0] + lengths[:-1])
+    stops = np.cumsum(lengths)
+
+    new_Uinds = np.column_stack([starts, stops])
+
+    return slc_isort, new_Uinds
+
+
 class Woodbury(object):
     def __init__(self, N, U, J):
         self.N = N
         self.U = U
         self.J = J
+
+    def get_packing(self):
+        return pack_indices([np.where(u)[0] for u in self.U.T])
 
     def solve(self, other):
         if other.ndim == 1:
@@ -42,6 +56,35 @@ class Woodbury(object):
         else:
             tmp = np.dot(self.U, sl.cho_solve(cf, UNx)) / self.N[:, None]
         return Nx - tmp
+
+    def sqrtsolve(self, other):
+        # Use the closed-form rank-1 inverse-square-root update (non-Cholesky).
+        other_shape = other.shape
+        X = other if other.ndim == 2 else other.reshape(-1, 1)
+        slc_isort, Uinds = self.get_packing()
+
+        Lix = X / np.sqrt(self.N)[:, None]
+        for bi, jv in enumerate(self.J):
+            idx0, idx1 = Uinds[bi]
+            if idx1 <= idx0:
+                continue
+            pos = slc_isort[idx0:idx1]
+            d = self.N[pos]
+            inv_d = 1.0 / d
+            inv_sqrt_d = 1.0 / np.sqrt(d)
+
+            v = jv * np.sum(inv_d)
+            if v > 0.0:
+                t = np.sqrt(1.0 + v)
+                alpha = -1.0 / (t * (t + 1.0))
+            else:
+                alpha = -0.5
+
+            vtAmb = jv * np.einsum("i,ij->j", inv_d, X[pos, :])
+            scale = alpha * vtAmb
+            Lix[pos, :] += inv_sqrt_d[:, None] * scale[None, :]
+
+        return Lix.reshape(*other_shape)
 
     def logdet(self):
         Sigma = np.diag(1 / self.J) + np.dot(self.U.T, self.U / self.N[:, None])
@@ -393,6 +436,25 @@ class TestWhiteSignals(unittest.TestCase):
         msg = "EFAC/ECORR {} 2D2 solve incorrect.".format(method)
         assert np.allclose(N.solve(T, left_array=T), np.dot(T.T, wd.solve(T)), rtol=1e-10), msg
 
+        msg = "EFAC/ECORR {} D2 sqrtsolve incorrect.".format(method)
+        if N._has_sqrtsolve:
+            assert np.allclose(N.sqrtsolve(T), wd.sqrtsolve(T), rtol=1e-10), msg
+
+        msg = "EFAC/ECORR {} 1D1 sqrtsolve incorrect.".format(method)
+        if N._has_sqrtsolve:
+            assert np.allclose(
+                N.sqrtsolve(T[:, 0], left_array=T[:, 0]), np.sum(T[:, 0] * wd.sqrtsolve(T[:, 0])), rtol=1e-10
+            ), msg
+
+        with self.assertRaises(NotImplementedError):
+            N.sqrtsolve(T, left_array=T)
+
+        with self.assertRaises(NotImplementedError):
+            N.sqrtsolve(T, left_array=T[:, 0])
+
+        with self.assertRaises(NotImplementedError):
+            N.sqrtsolve(T[:, 0], left_array=T)
+
     def _ecorr_test_ipta(self, method="sparse", shuffled=False):
         """Test of sparse/sherman-morrison ecorr signal and solve methods."""
         if shuffled:
@@ -473,6 +535,25 @@ class TestWhiteSignals(unittest.TestCase):
 
         msg = "EFAC/ECORR {} 2D2 solve incorrect.".format(method)
         assert np.allclose(N.solve(T, left_array=T), np.dot(T.T, wd.solve(T)), rtol=1e-8), msg
+
+        msg = "EFAC/ECORR {} D2 sqrtsolve incorrect.".format(method)
+        if N._has_sqrtsolve:
+            assert np.allclose(N.sqrtsolve(T), wd.sqrtsolve(T), rtol=1e-10), msg
+
+        msg = "EFAC/ECORR {} 1D1 sqrtsolve incorrect.".format(method)
+        if N._has_sqrtsolve:
+            assert np.allclose(
+                N.sqrtsolve(T[:, 0], left_array=T[:, 0]), np.sum(T[:, 0] * wd.sqrtsolve(T[:, 0])), rtol=1e-10
+            ), msg
+
+        with self.assertRaises(NotImplementedError):
+            N.sqrtsolve(T, left_array=T)
+
+        with self.assertRaises(NotImplementedError):
+            N.sqrtsolve(T, left_array=T[:, 0])
+
+        with self.assertRaises(NotImplementedError):
+            N.sqrtsolve(T[:, 0], left_array=T)
 
     def test_ecorr_sparse(self):
         """Test of sparse ecorr signal and solve methods."""

@@ -237,6 +237,7 @@ class TestLikelihood(unittest.TestCase):
             TNrs.append(np.dot(Ts[ct].T, sl.cho_solve(cfs[ct], psr.residuals)))
             TNTs.append(np.dot(Ts[ct].T, sl.cho_solve(cfs[ct], Ts[ct])))
             loglike += -0.5 * (np.dot(psr.residuals, sl.cho_solve(cfs[ct], psr.residuals)) + logdets[ct])
+            loglike += -0.5 * len(psr.residuals) * np.log(2 * np.pi)
 
         TNr = np.concatenate(TNrs)
         phi = sl.block_diag(*phis)

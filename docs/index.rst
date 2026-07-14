@@ -42,6 +42,7 @@ searches, and timing model analysis.
 
    mdc
    nano9
+   fft
 
 .. toctree::
    :maxdepth: 2

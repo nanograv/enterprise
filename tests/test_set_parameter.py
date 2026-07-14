@@ -8,7 +8,6 @@ test_set_parameter
 Tests of setting constant parameters
 """
 
-
 import unittest
 import pytest
 
