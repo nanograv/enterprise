@@ -324,7 +324,7 @@ def createfourierdesignmatrix_eph(
 
 @function
 def createfourierdesignmatrix_chromatic(
-    toas, freqs, nmodes=30, Tspan=None, logf=False, fmin=None, fmax=None, idx=4, modes=None
+    toas, freqs, nmodes=30, Tspan=None, logf=False, fmin=None, fmax=None, fref=1400, idx=4, modes=None
 ):
     """
     Construct Scattering-variation fourier design matrix.
@@ -351,7 +351,7 @@ def createfourierdesignmatrix_chromatic(
     )
 
     # compute the DM-variation vectors
-    Dm = (1400 / freqs) ** idx
+    Dm = (fref / freqs) ** idx
 
     return F * Dm[:, None], Ffreqs
 
