@@ -105,7 +105,7 @@ class Signal(object):
     def param_names(self):
         ret = []
         for p in self.params:
-            if p.size:
+            if p.size is not None:
                 for ii in range(0, p.size):
                     ret.append(p.name + "_{}".format(ii))
             else:
@@ -306,7 +306,7 @@ class PTA(object):
     def param_names(self):
         ret = []
         for p in self.params:
-            if p.size:
+            if p.size is not None:
                 for ii in range(0, p.size):
                     ret.append(p.name + "_{}".format(ii))
             else:
@@ -678,12 +678,19 @@ class PTA(object):
             return phis
 
     def map_params(self, xs):
+        xs = np.asarray(xs)
+        expected = sum(p.size if p.size is not None else 1 for p in self.params)
+        if xs.ndim != 1 or len(xs) != expected:
+            raise ValueError(f"expected a flat vector of {expected} PTA parameters, " f"received shape {xs.shape}")
         ret = {}
         ct = 0
         for p in self.params:
-            n = p.size if p.size else 1
-            ret[p.name] = xs[ct : ct + n] if n > 1 else float(xs[ct])
-            ct += n
+            if p.size is None:
+                ret[p.name] = float(xs[ct])
+                ct += 1
+            else:
+                ret[p.name] = np.asarray(xs[ct : ct + p.size])
+                ct += p.size
         return ret
 
     def get_lnprior(self, params):
@@ -837,7 +844,7 @@ def SignalCollection(metasignals):  # noqa: C901
         def param_names(self):
             ret = []
             for p in self.params:
-                if p.size:
+                if p.size is not None:
                     for ii in range(0, p.size):
                         ret.append(p.name + "_{}".format(ii))
                 else:
