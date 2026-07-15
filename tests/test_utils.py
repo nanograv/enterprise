@@ -384,7 +384,8 @@ class TestAstrometry(unittest.TestCase):
         earth_dec = np.arctan2(ssb_obs[:, 2], np.sqrt(ssb_obs[:, 0] ** 2 + ssb_obs[:, 1] ** 2))
         earth_ra = np.arctan2(ssb_obs[:, 1], ssb_obs[:, 0])
         pe = Time(self.posepoch / 86400.0, format="mjd", scale="tdb")
-        te = (self.toas / 86400.0) * u.day - pe.tdb.mjd_long * u.day
+        # Use .mjd (float64): .mjd_long is not available on all Astropy versions.
+        te = (self.toas / 86400.0) * u.day - pe.tdb.mjd * u.day
 
         geom_ra = np.cos(earth_dec) * np.cos(self.decj * u.rad) * np.sin(self.raj * u.rad - earth_ra)
         pint_ra = (ssb_obs_r * geom_ra / (ac.c * u.radian)).decompose(u.si.bases).to_value(u.s / u.rad)
@@ -440,7 +441,12 @@ class TestAstrometry(unittest.TestCase):
         bat = np.array(model.get_barycentric_toas(toas).value, dtype=float) * 86400.0
         raj = float(model.RAJ.quantity.to_value(u.rad))
         decj = float(model.DECJ.quantity.to_value(u.rad))
-        posepoch = float(model.POSEPOCH.quantity.tdb.mjd_long) * 86400.0
+        # Prefer PINT's longdouble MJD when present; fall back to Astropy .mjd.
+        pose = model.POSEPOCH.quantity
+        if hasattr(pose, "mjd_long"):
+            posepoch = float(pose.tdb.mjd_long) * 86400.0
+        else:
+            posepoch = float(pose.tdb.mjd) * 86400.0
         dm, names = utils.create_astrometry_timing_model(bat, raj, decj, posepoch)
 
         for pname in names:
