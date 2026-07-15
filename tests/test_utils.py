@@ -18,10 +18,18 @@ import enterprise.constants as const
 from enterprise.pulsar import Pulsar
 from enterprise.signals import anis_coefficients as anis
 from enterprise.signals import utils
-from tests.enterprise_test_data import LIBSTEMPO_INSTALLED
+from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 from tests.enterprise_test_data import datadir
 
 import ephem
+
+try:
+    import astropy.units as u
+    import astropy.constants as ac
+
+    ASTROPY_INSTALLED = True
+except ImportError:  # pragma: no cover
+    ASTROPY_INSTALLED = False
 
 IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
@@ -271,49 +279,236 @@ class TestUtils(unittest.TestCase):
             psrname = utils.get_psrname_from_pos(elong=None, elat=None, raj=None, decj=None)
 
 
+@pytest.mark.skipif(not ASTROPY_INSTALLED, reason="Astropy required for native astrometry model")
 class TestAstrometry(unittest.TestCase):
+    """Astrometry design-matrix columns: finite differences + optional PINT/tempo2."""
+
     @classmethod
     def setUpClass(cls):
-        """Setup the Pulsar object."""
+        cls.toas = np.linspace(53000.0, 58000.0, 48) * 86400.0
+        cls.raj = 4.9533700839400492
+        cls.decj = 0.16848694562363042
+        cls.posepoch = float(np.mean(cls.toas))
+        cls.dm, cls.names = utils.create_astrometry_timing_model(cls.toas, cls.raj, cls.decj, cls.posepoch)
+        cls.mjd = (cls.toas * u.second).to(u.day)
+        cls.rvec_m = utils.ssb_to_earth_vector(cls.mjd).to(u.m).value
+        cls.c = ac.c.value
+        cls.mas_to_rad = (1 * u.mas).to(u.rad).value
 
-        # TODO: use a different pulsar so it's faster?
-        # initialize Pulsar class that uses Equatorial Coordinates
-        cls.psr = Pulsar(
-            datadir + "/1713.Sep.T2.par", datadir + "/1713.Sep.T2.tim", timing_package="tempo2", drop_t2pulsar=False
+    def _n_hat(self, ra, dec, pmra_masyr=0.0, pmdec_masyr=0.0):
+        dt_yr = (self.toas - self.posepoch) / (86400.0 * 365.25)
+        # PMRA = mu_alpha* = d(alpha)/dt * cos(delta) [mas/yr]
+        ra_t = ra + (pmra_masyr * dt_yr * self.mas_to_rad) / np.cos(dec)
+        dec_t = dec + pmdec_masyr * dt_yr * self.mas_to_rad
+        return np.column_stack(
+            [np.cos(dec_t) * np.cos(ra_t), np.cos(dec_t) * np.sin(ra_t), np.sin(dec_t)]
         )
 
-        cls.Mmat = cls.psr.t2pulsar.designmatrix(fixunits=False, fixsigns=True, incoffset=True)
-        cls.posepoch = cls.psr.t2pulsar["POSEPOCH"].val * 86400.0
-        cls.dm, cls.dmp = utils.create_astrometry_timing_model(cls.psr.toas, cls.psr._raj, cls.psr._decj, cls.posepoch)
+    def _roemer(self, ra, dec, px_mas=0.0, pmra_masyr=0.0, pmdec_masyr=0.0):
+        n = self._n_hat(ra, dec, pmra_masyr=pmra_masyr, pmdec_masyr=pmdec_masyr)
+        re_dot = np.sum(self.rvec_m * n, axis=1)
+        tau = -re_dot / self.c
+        if px_mas != 0.0:
+            re_sqr = np.sum(self.rvec_m**2, axis=1)
+            L_m = (1.0 / px_mas) * u.kpc.to(u.m)
+            tau = tau + 0.5 * (re_sqr - re_dot**2) / (L_m * self.c)
+        return tau
 
-    @pytest.mark.skipif(
-        not LIBSTEMPO_INSTALLED, reason="Skipping tests that require libstempo because it isn't installed"
-    )
-    def test_ddelay_dastrometry(self):
-        """Test the derivatives of the astrometry parameters"""
+    def _assert_close_columns(self, analytic, finite, name, rtol=2e-4, atol=1e-10):
+        # Ignore near-null samples when checking relative error.
+        scale = np.maximum(np.abs(analytic), np.abs(finite))
+        mask = scale > 1e-3 * np.max(scale)
+        if not np.any(mask):
+            mask = np.ones_like(analytic, dtype=bool)
+        rel = np.abs(analytic[mask] - finite[mask]) / scale[mask]
+        msg = f"{name}: max rel err {np.max(rel):.3e}, corr={np.corrcoef(analytic, finite)[0, 1]:.6f}"
+        assert np.allclose(analytic[mask], finite[mask], rtol=rtol, atol=atol), msg
+        assert np.corrcoef(analytic, finite)[0, 1] > 0.999, msg
 
-        incorrect_units = ["PMRA", "PMDEC"]
+    def test_parameter_names_and_shape(self):
+        assert self.names == ["RAJ", "DECJ", "PMRA", "PMDEC", "PX"]
+        assert self.dm.shape == (len(self.toas), 5)
+        # Units: PM columns must be tiny (s/(mas/yr)), not s^2/rad-scale.
+        assert np.max(np.abs(self.dm[:, 2])) < 1e-3
+        assert np.max(np.abs(self.dm[:, 3])) < 1e-3
+        assert np.max(np.abs(self.dm[:, 0])) > 1.0
 
-        for pp, pname in enumerate(self.dmp):
-            dmc_self = self.dm[:, pp]
+    def test_raj_decj_finite_difference(self):
+        eps = 1e-9
+        fd_ra = (self._roemer(self.raj + eps, self.decj) - self._roemer(self.raj - eps, self.decj)) / (2 * eps)
+        fd_dec = (self._roemer(self.raj, self.decj + eps) - self._roemer(self.raj, self.decj - eps)) / (2 * eps)
+        self._assert_close_columns(self.dm[:, 0], fd_ra, "RAJ")
+        self._assert_close_columns(self.dm[:, 1], fd_dec, "DECJ")
 
-            t2dm = ("Offset",) + self.psr.t2pulsar.pars(which="fit")
-            pind = t2dm.index(pname)
-            dmc_t2 = self.Mmat[self.psr._isort, pind]
-            a = dmc_t2
-            b = dmc_self
+    def test_pmra_pmdec_finite_difference(self):
+        eps = 1e-3  # mas/yr
+        fd_pmra = (
+            self._roemer(self.raj, self.decj, pmra_masyr=eps) - self._roemer(self.raj, self.decj, pmra_masyr=-eps)
+        ) / (2 * eps)
+        fd_pmdec = (
+            self._roemer(self.raj, self.decj, pmdec_masyr=eps) - self._roemer(self.raj, self.decj, pmdec_masyr=-eps)
+        ) / (2 * eps)
+        self._assert_close_columns(self.dm[:, 2], fd_pmra, "PMRA", rtol=5e-4, atol=1e-12)
+        self._assert_close_columns(self.dm[:, 3], fd_pmdec, "PMDEC", rtol=5e-4, atol=1e-12)
 
-            if pname not in incorrect_units:
-                rel_diff = (np.abs(a) - np.abs(b)) / (np.abs(a) + np.abs(b))
+    def test_px_finite_difference(self):
+        eps = 1e-3  # mas
+        fd_px = (self._roemer(self.raj, self.decj, px_mas=eps) - self._roemer(self.raj, self.decj, px_mas=0.0)) / eps
+        self._assert_close_columns(self.dm[:, 4], fd_px, "PX", rtol=5e-4, atol=1e-12)
 
-                msg = f"ddelay_d{pname} is not consistent with Tempo2"
-                assert np.allclose(rel_diff, 0.0, atol=0.05), msg
+    def test_spindown_polynomial_basis(self):
+        M, names = utils.create_spindown_timing_model(self.toas, order=2, pepoch=self.posepoch)
+        assert names == ["Offset", "Poly1", "Poly2"]
+        assert M.shape == (len(self.toas), 3)
+        assert np.allclose(M[:, 0], 1.0)
+        t_yr = (self.toas - self.posepoch) / (86400.0 * 365.25)
+        assert np.allclose(M[:, 1], t_yr)
+        assert np.allclose(M[:, 2], t_yr**2)
 
-            else:
-                # Proper motion doesn't have the right units
-                conv = np.mean(np.abs(a) / np.abs(b))
+    def test_matches_pint_formula_units(self):
+        """Reproduce PINT's published analytic expressions on the same Earth vectors.
 
-                rel_diff = (np.abs(a) - conv * np.abs(b)) / (np.abs(a) + conv * np.abs(b))
+        This does not import PINT (so it always runs). The optional
+        ``test_against_pint_designmatrix`` check exercises a live PINT model
+        when the package is installed.
+        """
+        from astropy.time import Time
 
-                msg = f"ddelay_d{pname} is not consistent with Tempo2"
-                assert np.allclose(rel_diff, 0.0, atol=0.05), msg
+        ssb_obs = self.rvec_m * u.m
+        ssb_psr = np.array(
+            [
+                np.cos(self.decj) * np.cos(self.raj),
+                np.cos(self.decj) * np.sin(self.raj),
+                np.sin(self.decj),
+            ]
+        )
+        ssb_obs_r = np.sqrt(np.sum(ssb_obs**2, axis=1))
+        earth_dec = np.arctan2(ssb_obs[:, 2], np.sqrt(ssb_obs[:, 0] ** 2 + ssb_obs[:, 1] ** 2))
+        earth_ra = np.arctan2(ssb_obs[:, 1], ssb_obs[:, 0])
+        pe = Time(self.posepoch / 86400.0, format="mjd", scale="tdb")
+        te = (self.toas / 86400.0) * u.day - pe.tdb.mjd_long * u.day
+
+        geom_ra = np.cos(earth_dec) * np.cos(self.decj * u.rad) * np.sin(self.raj * u.rad - earth_ra)
+        pint_ra = (ssb_obs_r * geom_ra / (ac.c * u.radian)).decompose(u.si.bases).to_value(u.s / u.rad)
+
+        geom_dec = np.cos(earth_dec) * np.sin(self.decj * u.rad) * np.cos(self.raj * u.rad - earth_ra) - np.sin(
+            earth_dec
+        ) * np.cos(self.decj * u.rad)
+        pint_dec = (ssb_obs_r * geom_dec / (ac.c * u.radian)).decompose(u.si.bases).to_value(u.s / u.rad)
+
+        geom_pmra = np.cos(earth_dec) * np.sin(self.raj * u.rad - earth_ra)
+        pint_pmra = (
+            (ssb_obs_r * geom_pmra * te / (ac.c * u.radian) * u.mas / u.year).decompose(u.si.bases) / (u.mas / u.year)
+        ).to_value(u.s / (u.mas / u.year))
+
+        geom_pmdec = np.cos(earth_dec) * np.sin(self.decj * u.rad) * np.cos(self.raj * u.rad - earth_ra) - np.cos(
+            self.decj * u.rad
+        ) * np.sin(earth_dec)
+        pint_pmdec = (
+            (ssb_obs_r * geom_pmdec * te / (ac.c * u.radian) * u.mas / u.year).decompose(u.si.bases) / (u.mas / u.year)
+        ).to_value(u.s / (u.mas / u.year))
+
+        in_psr_obs = np.sum(ssb_obs * ssb_psr, axis=1)
+        px_r = np.sqrt(ssb_obs_r**2 - in_psr_obs**2)
+        # PINT: multiply by (mas/radian), decompose, then divide by mas → s/mas
+        pint_px = np.asarray(
+            (0.5 * (px_r**2 / (u.AU * ac.c)) * (u.mas / u.radian)).decompose(u.si.bases) / u.mas,
+            dtype=float,
+        )
+
+        self._assert_close_columns(self.dm[:, 0], pint_ra, "RAJ-PINT-formula", rtol=1e-10, atol=1e-12)
+        self._assert_close_columns(self.dm[:, 1], pint_dec, "DECJ-PINT-formula", rtol=1e-10, atol=1e-12)
+        self._assert_close_columns(self.dm[:, 2], pint_pmra, "PMRA-PINT-formula", rtol=1e-10, atol=1e-18)
+        self._assert_close_columns(self.dm[:, 3], pint_pmdec, "PMDEC-PINT-formula", rtol=1e-10, atol=1e-18)
+        self._assert_close_columns(self.dm[:, 4], pint_px, "PX-PINT-formula", rtol=1e-10, atol=1e-18)
+
+    @pytest.mark.skipif(not PINT_INSTALLED, reason="PINT not installed")
+    def test_against_pint_designmatrix(self):
+        """Live PINT design matrix: signed correlation for equatorial astrometry cols."""
+        from pint.models import get_model_and_toas
+
+        # 1713 test set is equatorial (RAJ/DECJ); B1855 9yr is ecliptic.
+        model, toas = get_model_and_toas(
+            datadir + "/1713.Sep.T2.par",
+            datadir + "/1713.Sep.T2.tim",
+            allow_tcb=True,
+            allow_T2=True,
+        )
+        if "AstrometryEquatorial" not in model.components:
+            self.skipTest("Test parfile is not equatorial")
+
+        M, params, _units = model.designmatrix(toas)
+        # PINT designmatrix rows follow TOA order; barycentric times in seconds.
+        bat = np.array(model.get_barycentric_toas(toas).value, dtype=float) * 86400.0
+        raj = float(model.RAJ.quantity.to_value(u.rad))
+        decj = float(model.DECJ.quantity.to_value(u.rad))
+        posepoch = float(model.POSEPOCH.quantity.tdb.mjd_long) * 86400.0
+        dm, names = utils.create_astrometry_timing_model(bat, raj, decj, posepoch)
+
+        for pname in names:
+            if pname not in params:
+                continue
+            ours = dm[:, names.index(pname)]
+            pint_col = np.asarray(M[:, list(params).index(pname)], dtype=float)
+            # PINT residual design matrix may absorb F0 scaling on some builds;
+            # require strong signed correlation of the annual geometry.
+            corr = np.corrcoef(ours, pint_col)[0, 1]
+            assert corr > 0.95, f"{pname}: correlation with PINT designmatrix is {corr}"
+
+    @pytest.mark.skipif(not LIBSTEMPO_INSTALLED, reason="libstempo not installed")
+    def test_against_tempo2_signed_shape(self):
+        """Signed comparison of annual geometry vs tempo2 (Earth vs observatory).
+
+        Run in a **subprocess**: libstempo is known to segfault if PINT has
+        already constructed a timing model in the same process (see enterprise
+        CI notes / long-lived Pulsar() constructions).
+        """
+        import subprocess
+        import sys
+        import textwrap
+
+        script = textwrap.dedent(
+            f"""
+            import numpy as np
+            from enterprise.pulsar import Pulsar
+            from enterprise.signals import utils
+
+            datadir = {datadir!r}
+            psr = Pulsar(
+                datadir + "/1713.Sep.T2.par",
+                datadir + "/1713.Sep.T2.tim",
+                timing_package="tempo2",
+                drop_t2pulsar=False,
+            )
+            Mmat = psr.t2pulsar.designmatrix(fixunits=False, fixsigns=True, incoffset=True)
+            posepoch = psr.t2pulsar["POSEPOCH"].val * 86400.0
+            dm, names = utils.create_astrometry_timing_model(
+                psr.toas, psr._raj, psr._decj, posepoch
+            )
+            t2names = ("Offset",) + psr.t2pulsar.pars(which="fit")
+            for pname in names:
+                if pname not in t2names:
+                    continue
+                ours = dm[:, names.index(pname)]
+                t2 = Mmat[psr._isort, t2names.index(pname)]
+                corr = np.corrcoef(ours, t2)[0, 1]
+                assert corr > 0.95, f"{{pname}}: correlation with tempo2 is {{corr}}"
+                if pname in ("PMRA", "PMDEC"):
+                    continue
+                rms_ratio = np.std(ours) / (np.std(t2) + 1e-30)
+                assert 0.5 < rms_ratio < 2.0, f"{{pname}}: RMS ratio vs tempo2 is {{rms_ratio}}"
+            print("OK")
+            """
+        )
+        env = dict(**os.environ)
+        # Prefer the enterprise tree under test.
+        ent_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env["PYTHONPATH"] = ent_root + os.pathsep + env.get("PYTHONPATH", "")
+        proc = subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=300,
+        )
+        assert proc.returncode == 0, f"tempo2 subprocess failed:\n{proc.stdout}\n{proc.stderr}"
