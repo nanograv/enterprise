@@ -83,6 +83,14 @@ def BasisGP(
                     self._params[cpar.name] = cpar
 
         @property
+        def prior_params(self):
+            """Get any varying prior parameters."""
+            ret = []
+            for prior in self._prior.values():
+                ret.extend([pp.name for pp in prior.params])
+            return ret
+
+        @property
         def basis_params(self):
             """Get any varying basis parameters."""
             ret = []
@@ -113,6 +121,12 @@ def BasisGP(
                 self._basis[mask, nctot : nn + nctot] = Fmat
                 self._slices.update({key: slice(nctot, nn + nctot)})
                 nctot += nn
+
+        @signal_base.cache_call("prior_params")
+        def _construct_prior(self, params):
+            for key, slc in self._slices.items():
+                phislc = self._prior[key](self._labels[key], params=params)
+                self._phi = self._phi.set(phislc, slc)
 
         # this class does different things (and gets different method
         # definitions) if the user wants it to model GP coefficients
@@ -173,10 +187,8 @@ def BasisGP(
 
             def get_phi(self, params):
                 self._construct_basis(params)
+                self._construct_prior(params)
 
-                for key, slc in self._slices.items():
-                    phislc = self._prior[key](self._labels[key], params=params)
-                    self._phi = self._phi.set(phislc, slc)
                 return self._phi
 
             def get_phiinv(self, params):
@@ -214,6 +226,87 @@ def FourierBasisGP(
         signal_id = name
 
     return FourierBasisGP
+
+
+def FFTBasisGP(
+    spectrum,
+    basis=None,
+    coefficients=False,
+    combine=True,
+    components=20,
+    nnodes=None,
+    selection=Selection(selections.no_selection),
+    oversample=3,
+    fmax_factor=1,
+    cutoff=None,
+    cutbins=1,
+    Tspan=None,
+    start_time=None,
+    interpolation_order=1,
+    name="red_noise",
+):
+    """Function to return a BasisGP class with a coarse time basis."""
+
+    if nnodes is None:
+        nnodes = 2 * components + 1
+
+    elif nnodes is not None and nnodes % 2 == 0:
+        raise ValueError("Knots needs to be an odd number")
+
+    if cutoff is not None:
+        # :param cutoff: frequency 1 / (cutoff * T) at which to do
+        #                low-frequency cut-off of the PSD
+        cutbins = int(np.ceil(oversample / cutoff))
+
+    fmax_factor = int(fmax_factor) if fmax_factor >= 1 else 1
+
+    if basis is None:
+        basis = utils.create_fft_time_basis(
+            nnodes=nnodes, Tspan=Tspan, start_time=start_time, order=interpolation_order
+        )
+
+    BaseClass = BasisGP(spectrum, basis, coefficients=coefficients, combine=combine, selection=selection, name=name)
+
+    class FFTBasisGP(BaseClass):
+        signal_type = "basis"
+        signal_name = "red noise"
+        signal_id = name
+
+        @signal_base.cache_call("prior_params")
+        def _construct_prior(self, params):
+            for key, slc in self._slices.items():
+                t_nodes = self._labels[key]
+
+                freqs = utils.nodes_to_freqs(t_nodes, oversample=oversample, fmax_factor=fmax_factor)
+
+                # Hack, because Enterprise adds in f=0 and then calculates df,
+                # meaning we cannot simply start freqs from 0. Thus, we use
+                # a modified frequency spacing, such that:
+                # [0, f1, 0, f1, f2, f3] => [df, -df, df, df, df]
+                if cutbins == 0:
+                    freqs_prior = np.concatenate([[freqs[1]], freqs])
+                    psd_prior = self._prior[key](freqs_prior, params=params, components=1)
+                    psd = np.concatenate([[-psd_prior[1]], psd_prior[2:]])
+
+                else:
+                    psd_prior = self._prior[key](freqs[1:], params=params, components=1)
+                    psd = np.concatenate([np.zeros(cutbins), psd_prior[cutbins - 1 :]])
+
+                phislc = utils.psd2cov(t_nodes, psd, fmax_factor=fmax_factor)
+                self._phi = self._phi.set(phislc, slc)
+
+        if coefficients:
+            raise NotImplementedError("Coefficients not supported for FFTBasisGP")
+
+        else:
+
+            def get_phi(self, params):
+                self._construct_basis(params)
+                self._construct_prior(params)
+
+                return self._phi
+
+    return FFTBasisGP
 
 
 def get_timing_model_basis(use_svd=False, normed=True, idx_exclude=None):
@@ -335,6 +428,11 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False,
                 self._params[cpar.name] = cpar
 
         @property
+        def prior_params(self):
+            """Get any varying prior parameters."""
+            return [pp.name for pp in self._prior.params]
+
+        @property
         def basis_params(self):
             """Get any varying basis parameters."""
             return [pp.name for pp in self._bases.params]
@@ -345,6 +443,10 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False,
         @signal_base.cache_call("basis_params", limit=1)
         def _construct_basis(self, params={}):
             self._basis, self._labels = self._bases(params=params)
+
+        @signal_base.cache_call("prior_params")
+        def _construct_prior(self, params):
+            return BasisCommonGP._prior(self._labels, params=params)
 
         if coefficients:
 
@@ -395,8 +497,7 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False,
 
             def get_phi(self, params):
                 self._construct_basis(params)
-
-                prior = BasisCommonGP._prior(self._labels, params=params)
+                prior = self._construct_prior(params)
                 orf = BasisCommonGP._orf(self._psrpos, self._psrpos, params=params)
 
                 return prior * orf
@@ -426,7 +527,6 @@ def FourierBasisCommonGP(
     pshift=False,
     pseed=None,
 ):
-
     if coefficients and Tspan is None:
         raise ValueError(
             "With coefficients=True, FourierBasisCommonGP " + "requires that you specify Tspan explicitly."
@@ -454,12 +554,127 @@ def FourierBasisCommonGP(
         # since this function has side-effects, it can only be cached
         # with limit=1, so it will run again if called with params different
         # than the last time
-        @signal_base.cache_call("basis_params", 1)
+        @signal_base.cache_call("basis_params", limit=1)
         def _construct_basis(self, params={}):
             span = Tspan if Tspan is not None else max(FourierBasisCommonGP._Tmax) - min(FourierBasisCommonGP._Tmin)
             self._basis, self._labels = self._bases(params=params, Tspan=span)
 
     return FourierBasisCommonGP
+
+
+def FFTBasisCommonGP(
+    spectrum,
+    orf,
+    coefficients=False,
+    combine=True,
+    components=20,
+    nnodes=None,
+    Tspan=None,
+    start_time=None,
+    cutoff=None,
+    cutbins=1,
+    oversample=3,
+    fmax_factor=1,
+    interpolation_order=1,
+    name="common_fft",
+):
+    if coefficients and (Tspan is None or start_time is None):
+        raise ValueError(
+            "With coefficients=True, FFTBasisCommonGP " + "requires that you specify Tspan/start_time explicitly."
+        )
+
+    if nnodes is None:
+        nnodes = 2 * components + 1
+
+    elif nnodes is not None and nnodes % 2 == 0:
+        raise ValueError("Knots needs to be an odd number")
+
+    if cutoff is not None:
+        # :param cutoff: frequency 1 / (cutoff * T) at which to do
+        #                low-frequency cut-off of the PSD
+        cutbins = int(np.ceil(oversample / cutoff))
+
+    fmax_factor = int(fmax_factor) if fmax_factor >= 1 else 1
+
+    basis = utils.create_fft_time_basis(nnodes=nnodes, Tspan=Tspan, start_time=start_time, order=interpolation_order)
+    BaseClass = BasisCommonGP(spectrum, basis, orf, coefficients=coefficients, combine=combine, name=name)
+
+    class FFTBasisCommonGP(BaseClass):
+        signal_type = "common basis"
+        signal_name = "common red noise"
+        signal_id = name
+
+        _Tmin, _Tmax = [], []
+
+        def __init__(self, psr):
+            super(FFTBasisCommonGP, self).__init__(psr)
+
+            if start_time is None:
+                FFTBasisCommonGP._Tmin.append(psr.toas.min())
+
+            if Tspan is None:
+                FFTBasisCommonGP._Tmax.append(psr.toas.max())
+
+        # since this function has side-effects, it can only be cached
+        # with limit=1, so it will run again if called with params different
+        # than the last time
+        @signal_base.cache_call("basis_params", limit=1)
+        def _construct_basis(self, params={}):
+            start = start_time if start_time is not None else min(FFTBasisCommonGP._Tmin)
+            span = Tspan if Tspan is not None else max(FFTBasisCommonGP._Tmax) - start
+            self._basis, self._labels = self._bases(params=params, Tspan=span, start_time=start)
+
+            self._t_nodes = self._labels
+            freqs = utils.nodes_to_freqs(self._t_nodes, oversample=oversample, fmax_factor=fmax_factor)
+            self._freqs = freqs
+
+        @signal_base.cache_call("prior_params")
+        def _construct_prior(self, params):
+            """
+            Compute and cache the time-domain covariance ('phi') for *this* signal's basis.
+            """
+
+            # Hack, because Enterprise adds in f=0 and then calculates df,
+            # meaning we cannot simply start freqs from 0. Thus, we use
+            # a modified frequency spacing, such that:
+            # [0, f1, 0, f1, f2, f3] => [df, -df, df, df, df]
+            if cutbins == 0:
+                freqs_prior = np.concatenate([[self._freqs[1]], self._freqs])
+                psd_prior = FFTBasisCommonGP._prior(freqs_prior, params=params, components=1)
+                psd = np.concatenate([[-psd_prior[1]], psd_prior[2:]])
+
+            else:
+                psd_prior = FFTBasisCommonGP._prior(self._freqs[1:], params=params, components=1)
+                psd = np.concatenate([np.zeros(cutbins), psd_prior[cutbins - 1 :]])
+
+            return utils.psd2cov(self._t_nodes, psd)
+
+        if coefficients:
+            raise NotImplementedError("Coefficients not supported for FFTBasisCommonGP")
+
+        else:
+
+            def get_phi(self, params):
+                """Over-load constructing Phi to deal with the FFT"""
+                self._construct_basis(params)
+                phi = self._construct_prior(params)
+
+                orf = FFTBasisCommonGP._orf(self._psrpos, self._psrpos, params=params)
+
+                return orf * phi
+
+            @classmethod
+            def get_phicross(cls, signal1, signal2, params):
+                """Use Phi from signal1, ORF from signal1 vs signal2"""
+
+                phi1 = signal1._construct_prior(params)
+                # phi2 = signal2._construct_prior(params)
+
+                orf = FFTBasisCommonGP._orf(signal1._psrpos, signal2._psrpos, params=params)
+
+                return phi1 * orf
+
+    return FFTBasisCommonGP
 
 
 # for simplicity, we currently do not handle Tspan automatically
@@ -823,6 +1038,7 @@ class MarginalizingNmat(object):
     def __init__(self, Mmat, Nmat=0):
         self.Mmat, self.Nmat = Mmat, Nmat
         self.Mprior = Mmat.shape[1] * np.log(1e40)
+        self._has_sqrtsolve = False
 
     def __add__(self, other):
         if isinstance(other, MarginalizingNmat):
@@ -885,3 +1101,20 @@ class MarginalizingNmat(object):
             return LNT - np.tensordot(self.MNF(L), self.MNMMNF(T), (0, 0))
         else:
             raise ValueError("Incorrect arguments given to MarginalizingNmat.solve.")
+
+    def sqrtsolve(self, other, left_array=None):
+        if other.ndim == 1:
+            raise NotImplementedError("MarginalizingNmat does not implement _sqrtsolve_xD1")
+        elif other.ndim == 2:
+            if left_array is None:
+                raise NotImplementedError(
+                    "MarginalizingNmat does not implement _sqrtsolve_D2.\n" "Perhaps use 'TimingModel'?"
+                )
+            elif left_array is not None and left_array.ndim == 2:
+                raise NotImplementedError("MarginalizingNmat does not implement _sqrtsolve_2D2")
+            elif left_array is not None and left_array.ndim == 1:
+                raise NotImplementedError("MarginalizingNmat does not implement _sqrtsolve_1D2")
+            else:
+                raise TypeError
+        else:
+            raise TypeError

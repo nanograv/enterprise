@@ -8,7 +8,6 @@ test_hierarchical_parameter
 Tests for hierarchical parameter functionality
 """
 
-
 import unittest
 
 import numpy as np
