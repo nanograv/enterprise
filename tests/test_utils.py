@@ -300,9 +300,7 @@ class TestAstrometry(unittest.TestCase):
         # PMRA = mu_alpha* = d(alpha)/dt * cos(delta) [mas/yr]
         ra_t = ra + (pmra_masyr * dt_yr * self.mas_to_rad) / np.cos(dec)
         dec_t = dec + pmdec_masyr * dt_yr * self.mas_to_rad
-        return np.column_stack(
-            [np.cos(dec_t) * np.cos(ra_t), np.cos(dec_t) * np.sin(ra_t), np.sin(dec_t)]
-        )
+        return np.column_stack([np.cos(dec_t) * np.cos(ra_t), np.cos(dec_t) * np.sin(ra_t), np.sin(dec_t)])
 
     def _roemer(self, ra, dec, px_mas=0.0, pmra_masyr=0.0, pmdec_masyr=0.0):
         n = self._n_hat(ra, dec, pmra_masyr=pmra_masyr, pmdec_masyr=pmdec_masyr)
