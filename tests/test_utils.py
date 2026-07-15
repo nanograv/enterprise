@@ -465,8 +465,7 @@ class TestAstrometry(unittest.TestCase):
         import sys
         import textwrap
 
-        script = textwrap.dedent(
-            f"""
+        script = textwrap.dedent(f"""
             import numpy as np
             from enterprise.pulsar import Pulsar
             from enterprise.signals import utils
@@ -496,8 +495,7 @@ class TestAstrometry(unittest.TestCase):
                 rms_ratio = np.std(ours) / (np.std(t2) + 1e-30)
                 assert 0.5 < rms_ratio < 2.0, f"{{pname}}: RMS ratio vs tempo2 is {{rms_ratio}}"
             print("OK")
-            """
-        )
+            """)
         env = dict(**os.environ)
         # Prefer the enterprise tree under test.
         ent_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
