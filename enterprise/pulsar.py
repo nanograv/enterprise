@@ -13,7 +13,7 @@ from pyarrow import Table
 from io import StringIO
 
 import numpy as np
-from ephem import Ecliptic, Equatorial
+from ephem import Ecliptic, Equatorial, J2000
 from astropy.time import Time
 
 from enterprise.signals import utils
@@ -196,6 +196,9 @@ class BasePulsar(object):
         self._residuals = self._residuals[mask]
         self._ssbfreqs = self._ssbfreqs[mask]
 
+        if getattr(self, "_stoas", None) is not None:
+            self._stoas = self._stoas[mask]
+
         self._designmatrix = self._designmatrix[mask, :]
         dmx_mask = np.sum(self._designmatrix, axis=0) != 0.0
         self._designmatrix = self._designmatrix[:, dmx_mask]
@@ -208,6 +211,16 @@ class BasePulsar(object):
 
         if self._planetssb is not None:
             self._planetssb = self._planetssb[mask, :, :]
+
+        if getattr(self, "_sunssb", None) is not None:
+            self._sunssb = self._sunssb[mask, :]
+
+        if getattr(self, "_pos_t", None) is not None:
+            self._pos_t = self._pos_t[mask, :]
+
+        tel = getattr(self, "_telescope", None)
+        if tel is not None and not isinstance(tel, str):
+            self._telescope = tel[mask]
 
         self.sort_data()
 
@@ -296,7 +309,10 @@ class BasePulsar(object):
     def flags(self):
         """Return a dictionary of tim-file flags."""
 
-        flagnames = self._flags.dtype.names if isinstance(self._flags, np.ndarray) else self._flags.keys()
+        if isinstance(self._flags, np.ndarray):
+            flagnames = self._flags.dtype.names or ()
+        else:
+            flagnames = self._flags.keys()
 
         return {flag: self._flags[flag][self._isort] for flag in flagnames}
 
@@ -319,7 +335,13 @@ class BasePulsar(object):
         """
 
         # collect flag names
-        flagnames = self._flags.dtype.names if isinstance(self._flags, np.ndarray) else list(self._flags.keys())
+        if isinstance(self._flags, np.ndarray):
+            flagnames = list(self._flags.dtype.names or ())
+        else:
+            flagnames = list(self._flags.keys())
+
+        if not flagnames:
+            return np.zeros(len(self._toas), dtype="U1")
 
         # allocate array with widest dtype
         ret = np.zeros(len(self._toas), dtype=max([self._flags[name].dtype for name in flagnames]))
@@ -712,6 +734,198 @@ class Tempo2Pulsar(BasePulsar):
             psr._deflated = "destroyed"
 
 
+class MockPulsar(BasePulsar):
+    """Enterprise pulsar built from arrays (no PINT/tempo2).
+
+    Provides a ``BasePulsar``-compatible object for mock / injection studies so
+    standard Enterprise signals (white noise, TimingModel, Fourier red noise,
+    common-process GPs, …) can run without a timing package.
+
+    The design matrix is a polynomial spindown basis plus optional analytic
+    astrometry columns (PINT-compatible RAJ/DECJ/PMRA/PMDEC/PX derivatives).
+    It is intended for **TimingModel marginalization**, not full TOA modeling:
+    Earth barycenter only, builtin ephemeris, no Shapiro/binary/DMX, static
+    ``pos_t``.
+
+    Parameters
+    ----------
+    obs_times_mjd : array_like
+        Observation times (MJD).
+    name : str
+        Pulsar name (used for noise-dict keys and distance lookup). Required.
+        To invent a J-name from coordinates, call
+        :func:`enterprise.signals.utils.get_psrname_from_pos` yourself.
+    elong, elat : float, optional
+        Ecliptic longitude / latitude in **degrees**. Used with ``raj``/``decj``
+        as an alternative sky position.
+    raj, decj : float, optional
+        Right ascension / declination in **radians**. Required for astrometry
+        (or provide ``elong``/``elat``).
+    freqs_mhz : float or array_like, optional
+        Radio frequencies in **MHz** (Enterprise convention). Default 1440.
+    residuals : array_like, optional
+        Timing residuals in seconds. Default zeros.
+    toaerrs : float or array_like, optional
+        TOA uncertainties in seconds. Default ``1e-6``.
+    sort : bool, optional
+        Sort by time when accessing data (default True).
+    flags : dict, optional
+        Flag name → length-N array.
+    telescope : str or array_like, optional
+        Observatory code(s). Broadcast to all TOAs if a string.
+    spindown_order : int, optional
+        Polynomial order for the spindown design-matrix block (default 2).
+    inc_astrometry : bool, optional
+        Include RAJ/DECJ/PMRA/PMDEC/PX columns (requires Astropy). Default True.
+    posepoch_mjd, pepoch_mjd : float, optional
+        Position / polynomial reference epochs (MJD). Default: mean TOA.
+    dm : float, optional
+        Dispersion measure value stored on the object (default 0).
+    distance_kpc : float, optional
+        Override pulsar distance (kpc). If omitted, look up ``name`` in the
+        Enterprise distance table (with the usual 1 kpc fallback).
+    distance_kpc_err : float, optional
+        Distance uncertainty when ``distance_kpc`` is set (default 20%).
+    """
+
+    _noastropy_warning_issued = False  # Class variable
+
+    def __init__(
+        self,
+        obs_times_mjd,
+        name,
+        elong=None,
+        elat=None,
+        raj=None,
+        decj=None,
+        freqs_mhz=1440.0,
+        ssbfreqs=None,
+        residuals=None,
+        toaerrs=1e-6,
+        sort=True,
+        flags=None,
+        telescope="GBT",
+        spindown_order=2,
+        inc_astrometry=True,
+        posepoch_mjd=None,
+        pepoch_mjd=None,
+        dm=0.0,
+        distance_kpc=None,
+        distance_kpc_err=None,
+    ):
+        if name is None or name == "":
+            raise ValueError("MockPulsar requires an explicit name= (use utils.get_psrname_from_pos to invent one).")
+
+        if inc_astrometry and not hasattr(const, "c"):  # pragma: no cover
+            # We requested astrometry parameters, but there's no astropy
+            if not MockPulsar._noastropy_warning_issued:
+                msg = "WARNING: Astropy not installed but user requested "
+                msg += "astrometry timing model in MockPulsar. "
+                msg += "Switching off astrometry in all instances of MockPulsar."
+                logger.warning(msg)
+
+                MockPulsar._noastropy_warning_issued = True
+
+            inc_astrometry = False
+
+        self.name = str(name)
+
+        if elong is not None and elat is not None:
+            ec = Ecliptic(elong * np.pi / 180.0, elat * np.pi / 180.0)
+            eq = Equatorial(ec, epoch=J2000)
+            raj, decj = np.double(eq.ra), np.double(eq.dec)
+        elif raj is None or decj is None:
+            raise ValueError("MockPulsar requires sky position: pass raj/decj (rad) or elong/elat (deg).")
+
+        self._raj = float(raj)
+        self._decj = float(decj)
+
+        self._sort = sort
+        self.planets = False
+
+        obs_times_mjd = np.asarray(obs_times_mjd, dtype=float)
+        ntoa = len(obs_times_mjd)
+        self._toas = obs_times_mjd * 86400.0
+        self._stoas = obs_times_mjd * 86400.0
+
+        if residuals is None:
+            self._residuals = np.zeros(ntoa, dtype=float)
+        else:
+            self._residuals = np.asarray(residuals, dtype=float)
+            if self._residuals.shape != (ntoa,):
+                raise ValueError("residuals must have shape (N_TOA,)")
+
+        self._toaerrs = np.broadcast_to(np.asarray(toaerrs, dtype=float), ntoa).astype(float).copy()
+
+        if posepoch_mjd is None:
+            posepoch_mjd = float(np.mean(obs_times_mjd))
+        if pepoch_mjd is None:
+            pepoch_mjd = posepoch_mjd
+        self._posepoch = float(posepoch_mjd) * 86400.0
+        self._pepoch = float(pepoch_mjd) * 86400.0
+
+        if inc_astrometry:
+            self._designmatrix, self.fitpars = utils.create_astrometry_spin_timing_model(
+                self._toas,
+                self._raj,
+                self._decj,
+                self._posepoch,
+                spindown_order=spindown_order,
+                pepoch=self._pepoch,
+            )
+        else:
+            self._designmatrix, self.fitpars = utils.create_spindown_timing_model(
+                self._toas, order=spindown_order, pepoch=self._pepoch
+            )
+
+        # freqs_mhz is the Enterprise-facing name; ssbfreqs kept as deprecated alias.
+        if ssbfreqs is not None:
+            logger.warning("MockPulsar(ssbfreqs=...) is deprecated; pass freqs_mhz= in MHz.")
+            freqs_mhz = ssbfreqs
+        self._ssbfreqs = np.broadcast_to(np.asarray(freqs_mhz, dtype=float), ntoa).astype(float).copy()
+
+        if isinstance(telescope, str):
+            self._telescope = np.full(ntoa, telescope, dtype="U32")
+        else:
+            self._telescope = np.asarray(telescope)
+            if self._telescope.shape != (ntoa,):
+                raise ValueError("telescope array must have shape (N_TOA,)")
+
+        # Fitted columns only; nothing is "set"/fixed for a pure mock design matrix.
+        self.setpars = []
+
+        flags = {} if flags is None else flags
+        self._flags = {key: np.asarray(val) for key, val in flags.items()}
+        for key, val in self._flags.items():
+            if val.shape != (ntoa,):
+                raise ValueError(f"flag '{key}' must have shape (N_TOA,)")
+
+        self._dm = float(dm)
+        self._dmx = {}
+
+        if distance_kpc is not None:
+            err = 0.2 * float(distance_kpc) if distance_kpc_err is None else float(distance_kpc_err)
+            self._pdist = (float(distance_kpc), err)
+        else:
+            self._pdist = self._get_pdist()
+
+        self._pos = self._get_pos()
+        # Zero planet/sun vectors: property access is safe; physical-ephem signals
+        # that need real ephemerides should not use MockPulsar without filling these.
+        self._planetssb = np.zeros((ntoa, 9, 6), dtype=float)
+        self._sunssb = np.zeros((ntoa, 6), dtype=float)
+
+        self._pos_t = np.tile(self._pos, (ntoa, 1))
+
+        self.sort_data()
+
+    def set_residuals(self, residuals):
+        residuals = np.asarray(residuals, dtype=float)
+        if residuals.shape != self._residuals.shape:
+            raise ValueError("residuals must match the number of TOAs")
+        self._residuals = residuals
+
+
 class FeatherPulsar:
     columns = ["toas", "stoas", "toaerrs", "residuals", "freqs", "backend_flags", "telescope"]
     vector_columns = ["Mmat", "sunssb", "pos_t"]
@@ -899,10 +1113,12 @@ def Pulsar(*args, **kwargs):
                 model, toas = get_model_and_toas(
                     relparfile, reltimfile, ephem=ephem, bipm_version=bipm_version, planets=planets
                 )
-                os.chdir(cwd)
                 return PintPulsar(toas, model, sort=sort, drop_pintpsr=drop_pintpsr, planets=planets)
             else:
                 raise ValueError(f"Unknown timing package {timing_package}")
         finally:
+            # Always restore cwd after INCLUDE-relative tim loading. Do not return
+            # from finally — that would override a successful Tempo2Pulsar return.
             os.chdir(cwd)
-    raise ValueError("Pulsar (par/tim) not specified in {args} or {kwargs}")
+
+    raise ValueError("Unknown arguments {}".format(args))

@@ -18,9 +18,11 @@ import pytest
 
 import numpy as np
 
-from enterprise.pulsar import Pulsar
+from enterprise.pulsar import Pulsar, MockPulsar
 from tests.enterprise_test_data import datadir
 from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
+
+import ephem
 
 if PINT_INSTALLED:
     import pint.models.timing_model
@@ -318,6 +320,141 @@ class TestPulsarPint(TestPulsar):
             msg += "`planet` flag is not True in `toas` or further Pint "
             msg += "development to add additional planets is needed."
             self.assertTrue(msg in context.exception)
+
+
+class TestPulsarMock(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Setup MockPulsar objects."""
+        cls.ntoa = 4005
+        cls.toas = np.linspace(53000.0, 58000.0, cls.ntoa)
+        cls.flags = {"f": np.array(["nosystem"] * cls.ntoa), "fe": np.array(["nofrontend"] * cls.ntoa)}
+        cls.decj, cls.raj = (0.16848694562363042, 4.9533700839400492)
+        eq = ephem.Equatorial(cls.raj, cls.decj, epoch=ephem.J2000)
+        ec = ephem.Ecliptic(eq)
+        cls.elong, cls.elat = ec.lon * 180 / np.pi, ec.lat * 180 / np.pi
+        cls.name = "J1855+0939"
+
+        cls.psr = MockPulsar(
+            obs_times_mjd=cls.toas,
+            name=cls.name,
+            elong=cls.elong,
+            elat=cls.elat,
+            freqs_mhz=1440.0,
+            residuals=np.zeros_like(cls.toas),
+            toaerrs=1e-6,
+            sort=True,
+            flags=cls.flags,
+            telescope="GBT",
+            spindown_order=2,
+            inc_astrometry=True,
+            posepoch_mjd=55500.0,
+            pepoch_mjd=55500.0,
+            dm=13.3,
+            distance_kpc=1.2,
+        )
+
+        cls.psr_spin = MockPulsar(
+            obs_times_mjd=cls.toas,
+            name=cls.name,
+            raj=cls.raj,
+            decj=cls.decj,
+            freqs_mhz=1440.0 * np.ones_like(cls.toas),
+            residuals=np.zeros_like(cls.toas),
+            toaerrs=1e-6 * np.ones_like(cls.toas),
+            sort=True,
+            flags=cls.flags,
+            telescope="GBT",
+            spindown_order=2,
+            inc_astrometry=False,
+        )
+        cls.psr_spin.set_residuals(np.ones_like(cls.toas))
+
+    def test_design_matrix(self):
+        assert self.psr.Mmat.shape == (self.ntoa, 8)
+        assert self.psr.fitpars == ["Offset", "Poly1", "Poly2", "RAJ", "DECJ", "PMRA", "PMDEC", "PX"]
+        assert self.psr_spin.Mmat.shape == (self.ntoa, 3)
+        assert self.psr_spin.fitpars == ["Offset", "Poly1", "Poly2"]
+        assert self.psr.setpars == []
+
+    def test_interface_attributes(self):
+        assert self.psr.name == self.name
+        assert self.psr.telescope.shape == (self.ntoa,)
+        assert np.all(self.psr.telescope == "GBT")
+        assert self.psr.dm == 13.3
+        assert self.psr.dmx == {}
+        assert self.psr.planetssb.shape == (self.ntoa, 9, 6)
+        assert self.psr.sunssb.shape == (self.ntoa, 6)
+        assert self.psr.pos_t.shape == (self.ntoa, 3)
+        assert self.psr.pdist == (1.2, 0.24)
+        assert np.allclose(self.psr.freqs, 1440.0)
+        assert set(self.psr.flags.keys()) == {"f", "fe"}
+        assert len(self.psr.backend_flags) == self.ntoa
+
+    def test_set_residuals(self):
+        assert np.all(self.psr_spin.residuals == np.ones(self.ntoa))
+
+    def test_requires_name_and_position(self):
+        with self.assertRaises(ValueError):
+            MockPulsar(obs_times_mjd=self.toas[:10], name="", raj=self.raj, decj=self.decj)
+        with self.assertRaises(ValueError):
+            MockPulsar(obs_times_mjd=self.toas[:10], name="J0000+0000")
+
+    def test_filter_data(self):
+        psr = MockPulsar(
+            obs_times_mjd=self.toas,
+            name=self.name,
+            raj=self.raj,
+            decj=self.decj,
+            freqs_mhz=1440.0,
+            flags=self.flags,
+            telescope="GBT",
+            inc_astrometry=False,
+        )
+        psr.filter_data(start_time=54000.0, end_time=56000.0)
+        assert len(psr.toas) < self.ntoa
+        assert psr.Mmat.shape[0] == len(psr.toas)
+        assert psr.telescope.shape == (len(psr.toas),)
+        assert psr.planetssb.shape[0] == len(psr.toas)
+        assert psr.sunssb.shape[0] == len(psr.toas)
+        assert psr.pos_t.shape[0] == len(psr.toas)
+
+    def test_to_pickle(self):
+        outdir = "test_mock_pickle_tmp"
+        try:
+            self.psr.to_pickle(outdir)
+            path = os.path.join(outdir, self.name + ".pkl")
+            with open(path, "rb") as f:
+                loaded = pickle.load(f)
+            assert loaded.name == self.psr.name
+            assert np.allclose(loaded.residuals, self.psr.residuals)
+            assert loaded.Mmat.shape == self.psr.Mmat.shape
+        finally:
+            if os.path.exists(outdir):
+                shutil.rmtree(outdir)
+
+    def test_timing_model_and_red_noise(self):
+        """MockPulsar works with TimingModel + Fourier red noise likelihood."""
+        from enterprise.signals import parameter, white_signals, gp_signals, utils
+        from enterprise.signals.signal_base import PTA
+
+        efac = parameter.Constant(1.0)
+        ef = white_signals.MeasurementNoise(efac=efac)
+        tm = gp_signals.TimingModel()
+        log10_A = parameter.Constant(-15.0)
+        gamma = parameter.Constant(13.0 / 3.0)
+        pl = utils.powerlaw(log10_A=log10_A, gamma=gamma)
+        rn = gp_signals.FourierBasisGP(pl, components=10)
+        model = ef + tm + rn
+        pta = PTA([model(self.psr_spin)])
+        lnlike = pta.get_lnlikelihood({})
+        assert np.isfinite(lnlike)
+
+    def test_auto_name_helper(self):
+        from enterprise.signals import utils as ent_utils
+
+        auto = ent_utils.get_psrname_from_pos(raj=self.raj, decj=self.decj)
+        assert auto.startswith("J")
 
 
 class TestDuckTyping(unittest.TestCase):
