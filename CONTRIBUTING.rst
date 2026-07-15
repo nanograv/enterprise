@@ -139,6 +139,11 @@ Get the enterprise source code and get to work!
 
 8. Submit a pull request through the GitHub website.
 
+For Maintainers
+~~~~~~~~~~~~~~~
+
+- `Release Process <RELEASE.md>`_ - How to create new releases
+
 Pull Request Guidelines
 -----------------------
 
