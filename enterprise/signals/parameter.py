@@ -40,6 +40,15 @@ class Parameter(object):
     # instances will need to define _size, _prior (of _logprior, but not both),
     # and _typename thus this class is technically abstract
 
+    _prior_draw_mode = "component"
+
+    @property
+    def prior_draw_mode(self):
+        """Whether a prior-draw proposal may replace vector components
+        independently (``"component"``, the default) or must replace the
+        whole vector together (``"joint"``, for a correlated prior)."""
+        return self._prior_draw_mode
+
     def __init__(self, name):
         self.name = name
 
@@ -155,7 +164,7 @@ def GPCoefficients(logprior, size):
     return GPCoefficients
 
 
-def UserParameter(prior=None, logprior=None, sampler=None, ppf=None, size=None):
+def UserParameter(prior=None, logprior=None, sampler=None, ppf=None, size=None, *, prior_draw_mode="component"):
     """Class factory for UserParameter, implementing Enterprise parameters
     with arbitrary priors. The prior is specified by way of an Enterprise
     ``Function`` of the form ``prior(value, [par1, par2])``. Optionally,
@@ -168,8 +177,15 @@ def UserParameter(prior=None, logprior=None, sampler=None, ppf=None, size=None):
                     to prior
     :param ppf:     percentage point function (inverse cdf), for this parameter
     :param size:    length for vector parameter
+    :param prior_draw_mode:
+        ``"component"`` (default) if vector components may be redrawn from
+        the prior independently, or ``"joint"`` if the prior is correlated
+        and a prior-draw proposal must replace the whole vector together.
+        Has no effect on scalar parameters.
     :return:        ``UserParameter`` class
     """
+    if prior_draw_mode not in {"component", "joint"}:
+        raise ValueError("prior_draw_mode must be one of {'component', 'joint'}")
 
     class UserParameter(Parameter):
         _size = size
@@ -180,6 +196,7 @@ def UserParameter(prior=None, logprior=None, sampler=None, ppf=None, size=None):
         if ppf is not None:
             _ppf = ppf
         _sampler = None if sampler is None else staticmethod(sampler)
+        _prior_draw_mode = prior_draw_mode
         _typename = "UserParameter"
 
     return UserParameter

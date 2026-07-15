@@ -403,3 +403,169 @@ class TestPulsarMock(unittest.TestCase):
 
         msg = "Residuals from set_residuals incorrect"
         assert np.all(self.psr_spin.residuals == np.ones(4005)), msg
+
+
+class TestDuckTyping(unittest.TestCase):
+    """Test the duck-typing interface detection functions."""
+
+    def test_duck_typing_functions(self):
+        """Test the duck-typing interface detection functions."""
+        from enterprise.pulsar import _has_pint_toas_interface, _has_pint_model_interface, _has_tempo2_interface
+
+        # Test with objects that have none of the required attributes
+        class EmptyObj:
+            pass
+
+        empty = EmptyObj()
+        assert not _has_pint_toas_interface(empty)
+        assert not _has_pint_model_interface(empty)
+        assert not _has_tempo2_interface(empty)
+
+        # Test with objects that have some but not all required attributes
+        class PartialPintToas:
+            def get_mjds(self):
+                pass
+
+            def get_errors(self):
+                pass
+
+            # Missing get_flags, get_obss, ntoas
+
+        partial_toas = PartialPintToas()
+        assert not _has_pint_toas_interface(partial_toas)
+
+        class NonCallablePintToas:
+            get_mjds = None
+            get_errors = None
+            get_flags = None
+            get_obss = None
+            ntoas = 1
+
+        noncallable_toas = NonCallablePintToas()
+        assert not _has_pint_toas_interface(noncallable_toas)
+
+        # Test with objects that have all required attributes
+        class MockPintToas:
+            def get_mjds(self):
+                pass
+
+            def get_errors(self):
+                pass
+
+            def get_flags(self):
+                pass
+
+            def get_obss(self):
+                pass
+
+            @property
+            def ntoas(self):
+                return 1
+
+        mock_toas = MockPintToas()
+        assert _has_pint_toas_interface(mock_toas)
+
+        class MockPintPSR:
+            @property
+            def value(self):
+                return "test"
+
+        class MockPintModel:
+            @property
+            def PSR(self):
+                return MockPintPSR()
+
+            def get_barycentric_toas(self):
+                pass
+
+            def designmatrix(self):
+                pass
+
+            def barycentric_radio_freq(self):
+                pass
+
+            @property
+            def params(self):
+                return {}
+
+        mock_model = MockPintModel()
+        assert _has_pint_model_interface(mock_model)
+
+        class MockPintModelBadPSR:
+            @property
+            def PSR(self):
+                return "test"
+
+            def get_barycentric_toas(self):
+                pass
+
+            def designmatrix(self):
+                pass
+
+            def barycentric_radio_freq(self):
+                pass
+
+            @property
+            def params(self):
+                return {}
+
+        mock_model_bad_psr = MockPintModelBadPSR()
+        assert not _has_pint_model_interface(mock_model_bad_psr)
+
+        class MockTempo2:
+            def toas(self):
+                return [1, 2, 3]
+
+            @property
+            def stoas(self):
+                return [1, 2, 3]
+
+            def residuals(self):
+                return [1, 2, 3]
+
+            @property
+            def toaerrs(self):
+                return [1, 2, 3]
+
+            def designmatrix(self):
+                pass
+
+            def ssbfreqs(self):
+                return [1, 2, 3]
+
+            def telescope(self):
+                return ["GBT"]
+
+            def flags(self):
+                return {}
+
+            def flagvals(self, key):
+                return np.array([], dtype="U1")
+
+            def pars(self, which=None):
+                return {}
+
+            @property
+            def psrPos(self):
+                return np.zeros((3,))
+
+            def __getitem__(self, key):
+                return None
+
+            @property
+            def name(self):
+                return "test"
+
+        mock_tempo2 = MockTempo2()
+        assert _has_tempo2_interface(mock_tempo2)
+
+        class MockTempo2BadToas(MockTempo2):
+            @property
+            def toas(self):
+                return [1, 2, 3]
+
+        class MockTempo2BadFlagvals(MockTempo2):
+            flagvals = None
+
+        assert not _has_tempo2_interface(MockTempo2BadToas())
+        assert not _has_tempo2_interface(MockTempo2BadFlagvals())

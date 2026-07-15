@@ -3,6 +3,7 @@
 Defines the signal base classes and metaclasses. All signals will then be
 derived from these base classes.
 """
+
 import collections
 
 try:
@@ -104,7 +105,7 @@ class Signal(object):
     def param_names(self):
         ret = []
         for p in self.params:
-            if p.size:
+            if p.size is not None:
                 for ii in range(0, p.size):
                     ret.append(p.name + "_{}".format(ii))
             else:
@@ -305,7 +306,7 @@ class PTA(object):
     def param_names(self):
         ret = []
         for p in self.params:
-            if p.size:
+            if p.size is not None:
                 for ii in range(0, p.size):
                     ret.append(p.name + "_{}".format(ii))
             else:
@@ -677,12 +678,19 @@ class PTA(object):
             return phis
 
     def map_params(self, xs):
+        xs = np.asarray(xs)
+        expected = sum(p.size if p.size is not None else 1 for p in self.params)
+        if xs.ndim != 1 or len(xs) != expected:
+            raise ValueError(f"expected a flat vector of {expected} PTA parameters, " f"received shape {xs.shape}")
         ret = {}
         ct = 0
         for p in self.params:
-            n = p.size if p.size else 1
-            ret[p.name] = xs[ct : ct + n] if n > 1 else float(xs[ct])
-            ct += n
+            if p.size is None:
+                ret[p.name] = float(xs[ct])
+                ct += 1
+            else:
+                ret[p.name] = np.asarray(xs[ct : ct + p.size])
+                ct += p.size
         return ret
 
     def get_lnprior(self, params):
@@ -803,6 +811,7 @@ def SignalCollection(metasignals):  # noqa: C901
             self.white_params = []
             self.basis_params = []
             self.delay_params = []
+            self.prior_params = []
             for signal in self._signals:
                 if signal.signal_type == "white noise":
                     self.white_params.extend(signal.ndiag_params)
@@ -811,6 +820,7 @@ def SignalCollection(metasignals):  # noqa: C901
                     # for common GPs, which do not have coefficients yet
                     self.delay_params.extend(getattr(signal, "delay_params", []))
                     self.basis_params.extend(signal.basis_params)
+                    self.prior_params.extend(getattr(signal, "prior_params", []))
                 elif signal.signal_type in ["deterministic"]:
                     self.delay_params.extend(signal.delay_params)
                 else:
@@ -834,7 +844,7 @@ def SignalCollection(metasignals):  # noqa: C901
         def param_names(self):
             ret = []
             for p in self.params:
-                if p.size:
+                if p.size is not None:
                     for ii in range(0, p.size):
                         ret.append(p.name + "_{}".format(ii))
                 else:
@@ -1080,6 +1090,10 @@ class csc_matrix_alt(sps.csc_matrix):
     ``solve`` methods.
     """
 
+    def __init__(self, arg1, shape=None, dtype=None, copy=False):
+        super(csc_matrix_alt, self).__init__(arg1, shape=shape, dtype=dtype, copy=copy)
+        self._has_sqrtsolve = False
+
     def _add_diag(self, other):
         other_diag = sps.dia_matrix((other, np.array([0])), shape=(other.shape[0], other.shape[0]))
         return self._binopt(other_diag, "_plus_")
@@ -1106,6 +1120,10 @@ class csc_matrix_alt(sps.csc_matrix):
         ret = (mult, cf.logdet()) if logdet else mult
         return ret
 
+    def sqrtsolve(self, other, left_array=None):
+
+        raise NotImplementedError("csc_matrix_alt does not implement sqrtsolve")
+
 
 class ndarray_alt(np.ndarray):
     """Sub-class of ``np.ndarray`` with custom ``solve`` method."""
@@ -1115,6 +1133,7 @@ class ndarray_alt(np.ndarray):
             raise NotImplementedError("ndarray_alt does not support non-diagonal arrays")
 
         obj = np.asarray(inputarr).view(cls)
+        obj._has_sqrtsolve = True
 
         return obj
 
@@ -1136,6 +1155,16 @@ class ndarray_alt(np.ndarray):
         ret = (mult, float(np.sum(np.log(self)))) if logdet else mult
         return ret
 
+    def sqrtsolve(self, other, left_array=None):
+        if other.ndim == 1:
+            mult = np.array(other / np.sqrt(self))
+        elif other.ndim == 2:
+            mult = np.array(other / np.sqrt(self[:, None]))
+        if left_array is not None:
+            mult = np.dot(left_array.T, mult)
+
+        return mult
+
 
 class BlockMatrix(object):
     def __init__(self, blocks, slices, nvec=0):
@@ -1143,6 +1172,7 @@ class BlockMatrix(object):
         self._slices = slices
         self._idxs = [indices_from_slice(slc) for slc in slices]
         self._nvec = nvec
+        self._has_sqrtsolve = False
 
         if np.any(nvec != 0):
             s1 = set(np.arange(len(nvec)))
@@ -1187,7 +1217,7 @@ class BlockMatrix(object):
                 bx = Xblock / self._nvec[idx][:, None]
             ZNX += np.dot(Zblock.T, bx)
         ZNX += ZNXr
-        return ZNX.squeeze() if len(ZNX) > 1 else float(ZNX)
+        return ZNX.squeeze() if len(ZNX) > 1 else ZNX.astype(float)
 
     def _solve_NX(self, X):
         """Solves :math:`N^{-1}X`, where :math:`X`
@@ -1235,6 +1265,10 @@ class BlockMatrix(object):
 
         return (ret, self._get_logdet()) if logdet else ret
 
+    def sqrtsolve(self, other, left_array=None):
+
+        raise NotImplementedError("BlockMatrix does not implement sqrtsolve")
+
 
 class ShermanMorrison(object):
     """Custom container class for Sherman-morrison array inversion."""
@@ -1244,6 +1278,7 @@ class ShermanMorrison(object):
         self._slices = slices
         self._idxs = [indices_from_slice(slc) for slc in slices]
         self._nvec = nvec
+        self._has_sqrtsolve = True
 
     def __add__(self, other):
         nvec = self._nvec + other
@@ -1283,6 +1318,33 @@ class ShermanMorrison(object):
                 beta = 1.0 / (np.einsum("i->", niblock) + 1.0 / jv)
                 yNx -= beta * np.dot(niblock, xblock) * np.dot(niblock, yblock)
         return yNx
+
+    def _sqrtsolve_D2(self, x):
+        """Apply :math:`N^{-1/2}x` where :math:`x` is a 2-d array.
+
+        This uses the closed-form inverse-square-root for diagonal-plus-rank1
+        ECORR blocks, rather than a Cholesky factor solve.
+        """
+
+        Lix = x / np.sqrt(self._nvec[:, None])
+        for idx, jv in zip(self._idxs, self._jvec):
+            d = self._nvec[idx]
+            inv_d = 1.0 / d
+            inv_sqrt_d = 1.0 / np.sqrt(d)
+
+            v = jv * np.sum(inv_d)
+            if v > 0.0:
+                t = np.sqrt(1.0 + v)
+                # Stable equivalent of (1/sqrt(1+v) - 1) / v
+                alpha = -1.0 / (t * (t + 1.0))
+            else:
+                alpha = -0.5
+
+            vtAmb = jv * np.einsum("i,ij->j", inv_d, x[idx, :])
+            scale = alpha * vtAmb
+            Lix[idx, :] += inv_sqrt_d[:, None] * scale[None, :]
+
+        return Lix
 
     def _solve_2D2(self, X, Z):
         """Solves :math:`Z^T N^{-1}X`, where :math:`X`
@@ -1336,3 +1398,27 @@ class ShermanMorrison(object):
             raise TypeError
 
         return (ret, self._get_logdet()) if logdet else ret
+
+    def sqrtsolve(self, other, left_array=None):
+        if other.ndim == 1:
+            shape = other.shape
+            ret = self._sqrtsolve_D2(other.reshape(-1, 1)).reshape(*shape)
+
+            if left_array is not None and left_array.ndim == 1:
+                ret = np.sum(left_array * ret)
+            elif left_array is not None:
+                raise NotImplementedError("ShermanMorrison does not implement _sqrtsolve_2D1")
+
+        elif other.ndim == 2:
+            if left_array is None:
+                ret = self._sqrtsolve_D2(other)
+            elif left_array is not None and left_array.ndim == 2:
+                raise NotImplementedError("ShermanMorrison does not implement _sqrtsolve_2D2")
+            elif left_array is not None and left_array.ndim == 1:
+                raise NotImplementedError("ShermanMorrison does not implement _sqrtsolve_1D2")
+            else:
+                raise TypeError
+        else:
+            raise TypeError
+
+        return ret

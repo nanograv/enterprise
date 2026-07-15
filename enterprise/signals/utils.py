@@ -10,7 +10,7 @@ import numpy as np
 import scipy.linalg as sl
 import scipy.sparse as sps
 import scipy.special as ss
-from pkg_resources import Requirement, resource_filename
+from importlib import resources
 from scipy.integrate import odeint
 from scipy.interpolate import interp1d
 from sksparse.cholmod import cholesky
@@ -21,12 +21,15 @@ from enterprise import constants as const
 from enterprise import signals as sigs  # noqa: F401
 from enterprise.signals.gp_bases import (  # noqa: F401
     createfourierdesignmatrix_red,
+    create_fft_time_basis,
     createfourierdesignmatrix_dm,
+    create_fft_time_basis_dm,
     createfourierdesignmatrix_dm_tn,
     createfourierdesignmatrix_env,
     createfourierdesignmatrix_ephem,
     createfourierdesignmatrix_eph,
     createfourierdesignmatrix_chromatic,
+    create_fft_time_basis_chromatic,
     createfourierdesignmatrix_general,
 )
 from enterprise.signals.gp_priors import powerlaw, turnover  # noqa: F401
@@ -667,11 +670,10 @@ def make_ecc_interpolant():
     :returns: interpolant
     """
 
-    pth = resource_filename(Requirement.parse("libstempo"), "libstempo/ecc_vs_nharm.txt")
+    path = str(resources.files("libstempo") / "ecc_vs_nharm.txt")
+    data = np.loadtxt(path)
 
-    fil = np.loadtxt(pth)
-
-    return interp1d(fil[:, 0], fil[:, 1])
+    return interp1d(data[:, 0], data[:, 1])
 
 
 def get_edot(F, mc, e):
@@ -1158,6 +1160,60 @@ def linear_interp_basis(toas, dt=30 * 86400):
     return M[:, idx], x[idx]
 
 
+def psd2cov(t_nodes, psd, fmax_factor=1):
+    """
+    Convert a power spectral density function, defined by (freqs, psd), to a covariance matrix.
+
+    :param t_nodes: Timestamps of the coarse time grid.
+    :param psd: PSD values evaluated at frequencies from nodes_to_freqs
+                (assumes *delta_f in psd, so units of [s^2]).
+    :param fmax_factor: Integer factor to scale up fmax.
+
+    :return covmat: Covariance matrix at the coarse time grid.
+    """
+
+    def toeplitz(c):
+        c = np.asarray(c)
+        n = len(c)
+        i = np.arange(n).reshape(-1, 1)
+        j = np.arange(n).reshape(1, -1)
+        return c[np.abs(i - j)]
+
+    # Create the full symmetric PSD (excluding duplicate Nyquist term)
+    fullpsd = np.concatenate([psd, psd[-2:0:-1]])
+
+    # Compute the inverse FFT
+    Cfreq = np.fft.ifft(fullpsd, norm="backward")
+    Ctau = Cfreq.real * len(fullpsd) / 2
+
+    # With fmax_factor > 1, the IFFT time grid is finer by that factor.
+    # Slice out every fmax_factor-th sample to match the coarse grid.
+    return toeplitz(Ctau[::fmax_factor][: len(t_nodes)])
+
+
+def nodes_to_freqs(t_nodes, oversample=3, fmax_factor=1):
+    """
+    Convert nodes of coarse time grid to frequencies
+
+    :param t_nodes: Timestamps of the coarse time grid
+    :param oversample: amount by which to over-sample the frequency grid
+    :param fmax_factor: Integer factor to scale the maximum frequency.
+
+    :return freqs: Frequencies, regularly sampled with
+                   delta-f = 1/(oversample*T), fmax=1/(2*delta_t_nodes)
+    """
+    nmodes = len(t_nodes)
+    Tspan = np.max(t_nodes) - np.min(t_nodes)
+
+    if nmodes % 2 == 0:
+        raise ValueError("len(t_nodes) must be odd.")
+
+    n_freqs = int((nmodes - 1) / 2 * oversample * fmax_factor + 1)
+    fmax = (nmodes - 1) / (2 * Tspan)
+
+    return np.linspace(0, fmax * fmax_factor, n_freqs)
+
+
 # overlap reduction functions
 
 
@@ -1381,7 +1437,7 @@ def createfourierdesignmatrix_physicalephem(
 
     # Jupiter + Saturn orbit definitions that we pass to physical_ephem_delay
     oa = {}
-    (oa["times"], oa["jup_orbit"], oa["sat_orbit"]) = get_planet_orbital_elements(model)
+    oa["times"], oa["jup_orbit"], oa["sat_orbit"] = get_planet_orbital_elements(model)
 
     dpar = 1e-5  # may need finessing
     Fl, Phil = [], []

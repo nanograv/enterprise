@@ -13,6 +13,7 @@ import unittest
 import numpy as np
 import scipy.stats
 
+from enterprise.signals import signal_base
 from enterprise.signals.parameter import Parameter, UserParameter, Function
 from enterprise.signals.parameter import UniformPrior, UniformSampler, Uniform, UniformPPF
 from enterprise.signals.parameter import NormalPrior, NormalSampler, Normal, NormalPPF
@@ -154,9 +155,7 @@ class TestParameter(unittest.TestCase):
 
         msg1c = "Scalar PPF does not match"
         x = 0.5
-        assert np.allclose(
-            LinearExpPPF(x, p_min, p_max), np.log10(10**p_min + x * (10**p_max - 10**p_min))
-        ), msg1c
+        assert np.allclose(LinearExpPPF(x, p_min, p_max), np.log10(10**p_min + x * (10**p_max - 10**p_min))), msg1c
 
         # As parameter dictionary or value for Uniform instantiated object
         lepar = LinearExp(pmin=p_min, pmax=p_max)("testpar")
@@ -178,9 +177,7 @@ class TestParameter(unittest.TestCase):
 
         x = np.array([0.5, 0.75])
         msg2c = "Vector-argument PPF does not match"
-        assert np.allclose(
-            LinearExpPPF(x, p_min, p_max), np.log10(10**p_min + x * (10**p_max - 10**p_min))
-        ), msg2c
+        assert np.allclose(LinearExpPPF(x, p_min, p_max), np.log10(10**p_min + x * (10**p_max - 10**p_min))), msg2c
 
         # vector bounds
         p_min, p_max = np.array([0, 1]), np.array([2, 3])
@@ -195,9 +192,7 @@ class TestParameter(unittest.TestCase):
         x = np.array([0.5, 0.75])
         p_min, p_max = np.array([0, 1]), np.array([2, 3])
         msg3c = "Vector-argument PPF+bounds does not match"
-        assert np.allclose(
-            LinearExpPPF(x, p_min, p_max), np.log10(10**p_min + x * (10**p_max - 10**p_min))
-        ), msg3c
+        assert np.allclose(LinearExpPPF(x, p_min, p_max), np.log10(10**p_min + x * (10**p_max - 10**p_min))), msg3c
 
     def test_normal(self):
         """Test Normal parameter prior and sampler for various combinations of scalar and vector arguments."""
@@ -317,3 +312,61 @@ class TestParameter(unittest.TestCase):
         paramA = TruncNormal(mu, sigma, pmin, pmax)("A")
         xs = np.array([-3.5, 3.5])
         assert np.all(paramA.get_pdf(xs, mu=mu.sample()) == zeros), msg4
+
+
+class TestPriorDrawMode(unittest.TestCase):
+    def test_default_prior_draw_mode_is_component(self):
+        """Every existing Parameter factory defaults to component-wise prior draws."""
+        for factory in (Uniform(0, 1), Normal(0, 1), TruncNormal(0, 1, -2, 2), LinearExp(1, 3)):
+            par = factory("testpar")
+            assert par.prior_draw_mode == "component"
+
+    def test_userparameter_joint_prior_draw_mode(self):
+        joint_par = UserParameter(
+            prior=Function(UniformPrior, pmin=0, pmax=1),
+            sampler=staticmethod(UniformSampler),
+            size=3,
+            prior_draw_mode="joint",
+        )("testvec")
+        assert joint_par.prior_draw_mode == "joint"
+
+    def test_userparameter_default_prior_draw_mode_is_component(self):
+        default_par = UserParameter(prior=Function(UniformPrior, pmin=0, pmax=1))("testpar")
+        assert default_par.prior_draw_mode == "component"
+
+    def test_userparameter_rejects_invalid_prior_draw_mode(self):
+        with self.assertRaises(ValueError):
+            UserParameter(prior=Function(UniformPrior, pmin=0, pmax=1), prior_draw_mode="bogus")
+
+
+class _FakePTAParams:
+    """Minimal duck-typed stand-in for PTA, exposing only `.params`."""
+
+    def __init__(self, params):
+        self.params = params
+
+
+class TestMapParamsVectorShape(unittest.TestCase):
+    def test_map_params_preserves_size_one_as_array(self):
+        scalar = Uniform(0, 1)("scalar")
+        vec1 = UserParameter(prior=Function(UniformPrior, pmin=0, pmax=1), size=1)("vec1")
+        fake_pta = _FakePTAParams([scalar, vec1])
+
+        mapped = signal_base.PTA.map_params(fake_pta, np.array([0.5, 0.25]))
+
+        assert isinstance(mapped["scalar"], float)
+        assert isinstance(mapped["vec1"], np.ndarray)
+        assert mapped["vec1"].shape == (1,)
+
+    def test_map_params_rejects_wrong_length(self):
+        scalar = Uniform(0, 1)("scalar")
+        fake_pta = _FakePTAParams([scalar])
+
+        with self.assertRaises(ValueError):
+            signal_base.PTA.map_params(fake_pta, np.array([0.5, 0.25]))
+
+    def test_param_names_indexes_size_one_vector(self):
+        vec1 = UserParameter(prior=Function(UniformPrior, pmin=0, pmax=1), size=1)("vec1")
+        fake_pta = _FakePTAParams([vec1])
+
+        assert signal_base.PTA.param_names.fget(fake_pta) == ["vec1_0"]
