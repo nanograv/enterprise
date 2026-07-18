@@ -36,6 +36,15 @@ _py_version = version.split(" ")[0]
 # logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+_LIKELIHOOD_TRANSFORMS = ("native", "Lw", "GtLw")
+
+
+def _validate_likelihood_transform(transform):
+    if transform not in _LIKELIHOOD_TRANSFORMS:
+        msg = "Unknown transform '{}'. Valid options are {}."
+        raise ValueError(msg.format(transform, _LIKELIHOOD_TRANSFORMS))
+    return transform
+
 
 def _simplememobyid_keycheck(key, arg):
     if isinstance(key, Sequence):
@@ -179,9 +188,30 @@ def LogLikelihoodDenseCholesky(pta):
 
 
 class LogLikelihood(object):
-    def __init__(self, pta, cholesky_sparse=True):
+    def __init__(self, pta, cholesky_sparse=True, transform="native"):
+        """
+        Parameters:
+        -----------
+        pta : PTA object
+            The PTA object to compute the log likelihood for.
+        cholesky_sparse : bool
+            Whether to use sparse Cholesky factorization.
+        transform : str
+            The transform to use for the log likelihood. This transforms the LogLikelihood
+            in two parts, where only the first part depends on the prior matrix 'B'. This
+            is useful for single-precision computations and verifications.
+            Valid options are "native", "Lw", "GtLw".
+
+        returns:
+        --------
+        loglike : float or tuple of floats
+            The log likelihood of the PTA. If transform is "native", returns a single
+            float. If transform is "Lw" or "GtLw", returns a tuple of floats. The first
+            element depends on the prior matrix 'B', the second is the collected remainder.
+        """
         self.pta = pta
         self.cholesky_sparse = cholesky_sparse
+        self.transform = transform
 
     @simplememobyid
     def _block_TNT(self, TNTs):
@@ -206,13 +236,18 @@ class LogLikelihood(object):
         TNTs = self.pta.get_TNT(params)
         phiinvs = self.pta.get_phiinv(params, logdet=True, method=phiinv_method)
 
+        loglike, loglike_remainder = 0.0, 0.0
+        rNrvals = self.pta.get_transformed_rNr_logdet(params, transform=self.transform)
+        loglike -= 0.5 * sum(v[0] for v in rNrvals)
+        loglike_remainder -= 0.5 * sum(sum(v[1:]) for v in rNrvals)
+
         # get -0.5 * (rNr + logdet_N) piece of likelihood
         # the np.sum here is needed because each pulsar returns a 2-tuple
-        loglike += -0.5 * np.sum([ell for ell in self.pta.get_rNr_logdet(params)])
+        # loglike += -0.5 * np.sum([ell for ell in self.pta.get_rNr_logdet(params)])
 
         # Add factors of log(2pi) for the likelihood normalization
         ntot = sum(sc._residuals.size for sc in self.pta._signalcollections)
-        loglike -= 0.5 * ntot * np.log(2 * np.pi)
+        loglike_remainder -= 0.5 * ntot * np.log(2 * np.pi)
 
         # get extra prior/likelihoods
         loglike += sum(self.pta.get_logsignalprior(params))
@@ -266,7 +301,10 @@ class LogLikelihood(object):
 
                 loglike += 0.5 * (np.dot(TNr, expval) - logdet_sigma - logdet_phi)
 
-        return loglike
+        if self.transform == "native":
+            return loglike + loglike_remainder
+        else:
+            return loglike, loglike_remainder
 
 
 class PTA(object):
@@ -355,6 +393,12 @@ class PTA(object):
     def get_rNr_logdet(self, params):
         return [signalcollection.get_rNr_logdet(params) for signalcollection in self._signalcollections]
 
+    def get_transformed_rNr_logdet(self, params, transform="native"):
+        return [
+            signalcollection.get_transformed_rNr_logdet(params, transform=transform)
+            for signalcollection in self._signalcollections
+        ]
+
     def get_residuals(self):
         return [signalcollection._residuals for signalcollection in self._signalcollections]
 
@@ -373,6 +417,18 @@ class PTA(object):
 
     def get_basis(self, params={}):
         return [signalcollection.get_basis(params) for signalcollection in self._signalcollections]
+
+    def get_transformed_basis(self, params={}, transform="native"):
+        return [
+            signalcollection.get_transformed_basis(params, transform=transform)
+            for signalcollection in self._signalcollections
+        ]
+
+    def get_transformed_detres(self, params={}, transform="native"):
+        return [
+            signalcollection.get_transformed_detres(params, transform=transform)
+            for signalcollection in self._signalcollections
+        ]
 
     @property
     def _lnlikelihood(self):
@@ -1012,6 +1068,85 @@ def SignalCollection(metasignals):  # noqa: C901
             Nvec = self.get_ndiag(params)
             res = self.get_detres(params)
             return Nvec.solve(res, left_array=res, logdet=True)
+
+        @cache_call(["basis_params", "white_params", "delay_params"])
+        def _get_transformed_TNr_native(self, params):
+            return self.get_TNr(params)
+
+        @cache_call(["white_params", "delay_params"])
+        def _get_transformed_rNr_logdet_native(self, params):
+            return self.get_rNr_logdet(params)
+
+        @cache_call(["basis_params", "white_params"], limit=1)
+        def _get_transformed_basis_native(self, params={}):
+            return self.get_basis(params)
+
+        @cache_call(["delay_params", "white_params"])
+        def _get_transformed_detres_native(self, params={}):
+            return self.get_detres(params)
+
+        @cache_call(["white_params", "delay_params"])
+        def _get_transformed_rNr_logdet_Lw(self, params):
+            return self.get_rNr_logdet(params)
+
+        @cache_call(["basis_params", "white_params"], limit=1)
+        def _get_transformed_basis_Lw(self, params={}):
+            T = self.get_basis(params)
+            N = self.get_ndiag(params)
+            return N.sqrtsolve(T)
+
+        @cache_call(["delay_params", "white_params"])
+        def _get_transformed_detres_Lw(self, params={}):
+            r = self.get_detres(params)
+            N = self.get_ndiag(params)
+            return N.sqrtsolve(r)
+
+        @cache_call(["basis_params", "white_params"])
+        def _get_compression_matrix(self, params):
+            T = self._get_transformed_basis_Lw(params)
+
+            # Do a Cholesky-QR decomposition
+            # TT = np.dot(T.T, T)
+            # R = sl.cholesky(TT, lower=False)
+            # Gt = sl.solve_triangular(R, T.T, lower=False, trans='T')
+            Q, R = sl.qr(T, mode="economic")
+            return Q.T
+
+        @cache_call(["white_params", "delay_params"])
+        def _get_transformed_rNr_logdet_GtLw(self, params):
+            r2 = self._get_transformed_detres_GtLw(params)
+            r1 = self._get_transformed_detres_Lw(params)
+            G = self._get_compression_matrix(params).T
+            Gr2 = np.dot(G, r2)
+            r2p = r1 - Gr2
+            n, m = len(r2p), len(r2)
+            logdet = self.get_ndiag(params)._get_logdet()
+
+            return np.sum(r2 * r2) - m, np.sum(r2p * r2p) - n, n + m, logdet
+
+        @cache_call(["basis_params", "white_params"], limit=1)
+        def _get_transformed_basis_GtLw(self, params={}):
+            T = self._get_transformed_basis_Lw(params)
+            G = self._get_compression_matrix(params).T
+            return np.dot(G.T, T)
+
+        @cache_call(["delay_params", "white_params"])
+        def _get_transformed_detres_GtLw(self, params={}):
+            r1 = self._get_transformed_detres_Lw(params)
+            G = self._get_compression_matrix(params).T
+            return np.dot(G.T, r1)
+
+        def get_transformed_rNr_logdet(self, params, transform="native"):
+            transform = _validate_likelihood_transform(transform)
+            return getattr(self, "_get_transformed_rNr_logdet_{}".format(transform))(params)
+
+        def get_transformed_basis(self, params={}, transform="native"):
+            transform = _validate_likelihood_transform(transform)
+            return getattr(self, "_get_transformed_basis_{}".format(transform))(params)
+
+        def get_transformed_detres(self, params={}, transform="native"):
+            transform = _validate_likelihood_transform(transform)
+            return getattr(self, "_get_transformed_detres_{}".format(transform))(params)
 
         # TO DO: cache how?
         def get_logsignalprior(self, params):
