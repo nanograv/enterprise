@@ -376,7 +376,7 @@ class BasePulsar(object):
     @property
     def pos_t(self):
         """Return unit vector from SSB to pulsar as function of time."""
-        return self._pos_t[self._isort, :]
+        return self._pos_t[self._isort, :] if len(self._pos_t.shape) == 2 else np.tile(self._pos_t, (len(self.toas), 1))
 
     @property
     def planetssb(self):
