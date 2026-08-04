@@ -1352,15 +1352,20 @@ class ShermanMorrison(object):
         """
 
         ZNX = np.dot(Z.T / self._nvec, X)
-        for idx, jv in zip(self._idxs, self._jvec):
+        n_epochs = len(self._idxs)
+        zn_all = np.zeros((n_epochs, Z.shape[1]))
+        xn_all = np.zeros((n_epochs, X.shape[1]))
+        beta_all = np.zeros(n_epochs)
+
+        for i, (idx, jv) in enumerate(zip(self._idxs, self._jvec)):
             if len(idx) > 1:
-                Zblock = Z[idx, :]
-                Xblock = X[idx, :]
-                niblock = 1 / self._nvec[idx]
-                beta = 1.0 / (np.einsum("i->", niblock) + 1.0 / jv)
-                zn = np.dot(niblock, Zblock)
-                xn = np.dot(niblock, Xblock)
-                ZNX -= beta * np.outer(zn.T, xn)
+                niblock = 1.0 / self._nvec[idx]
+                beta_all[i] = 1.0 / (np.einsum("i->", niblock) + 1.0 / jv)
+                zn_all[i] = np.dot(niblock, Z[idx, :])
+                xn_all[i] = np.dot(niblock, X[idx, :])
+
+        sqrt_beta = np.sqrt(beta_all)[:, None]  # (n_epochs, 1)
+        ZNX -= np.dot((sqrt_beta * zn_all).T, sqrt_beta * xn_all)
         return ZNX
 
     def _get_logdet(self):
