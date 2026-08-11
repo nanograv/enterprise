@@ -269,6 +269,269 @@ class LogLikelihood(object):
         return loglike
 
 
+class _HouseholderUnavailable(NotImplementedError):
+    """Raised when the Schur likelihood cannot be evaluated."""
+
+
+class SchurLogLikelihood(LogLikelihood):
+    """Log-likelihood using a Schur complement decomposition.
+
+    Basis coefficients for individual pulsars are eliminated before the
+    matrix for common signals is factorized. Unsupported models are evaluated
+    with :class:`LogLikelihood`.
+    """
+
+    @staticmethod
+    def _validate_split(signalcollection, params, common_idx, pulsar_idx):
+        """Check for dense priors that mix common and individual columns."""
+
+        common = set(common_idx)
+        pulsar = set(pulsar_idx)
+        if not common or not pulsar:
+            return
+
+        for signal, columns in signalcollection._idx.items():
+            columns = set(columns)
+            if columns & common and columns & pulsar:
+                phi = signal.get_phi(params)
+                if phi is not None and np.ndim(phi) == 2:
+                    raise _HouseholderUnavailable(
+                        "Dense prior for signal {!r} in pulsar {!r} includes "
+                        "both common and individual basis columns.".format(signal.signal_id, signalcollection.psrname)
+                    )
+
+    @staticmethod
+    def _sqrtsolve(noise, array):
+        """Apply a square-root solve for the white-noise covariance."""
+
+        if not getattr(noise, "_has_sqrtsolve", hasattr(noise, "sqrtsolve")):
+            raise NotImplementedError("{} does not implement sqrtsolve.".format(noise.__class__.__name__))
+        try:
+            return noise.sqrtsolve(array)
+        except NotImplementedError as error:
+            raise NotImplementedError("{} does not implement sqrtsolve.".format(noise.__class__.__name__)) from error
+
+    @classmethod
+    def _get_data(cls, signalcollection, params, common_idx, pulsar_idx):
+        """Return the whitened residual, basis, and QR factors for one pulsar."""
+
+        try:
+            noise = signalcollection.get_ndiag(params)
+            residual = cls._sqrtsolve(noise, signalcollection.get_detres(params))
+
+            local_basis = signalcollection.get_basis_pulsar_only(params, pulsar_idx)
+            if local_basis is not None:
+                local_basis = cls._sqrtsolve(noise, local_basis)
+
+            common_basis = signalcollection.get_basis_common(params, common_idx)
+            if common_basis is None:
+                qr_raw = tau = R = None
+            else:
+                common_basis = cls._sqrtsolve(noise, common_basis)
+                (qr_raw, tau), R = sl.qr(common_basis, mode="raw", check_finite=False)
+        except NotImplementedError as error:
+            raise _HouseholderUnavailable(str(error)) from error
+        return residual, local_basis, qr_raw, tau, R
+
+    @staticmethod
+    def _build_local_prior_root(phiinv, size):
+        if phiinv is None:
+            return np.zeros((size, size))
+        if np.ndim(phiinv) == 1:
+            return np.diag(np.sqrt(np.maximum(np.asarray(phiinv), 0.0)))
+        return sl.cholesky(np.asarray(phiinv), lower=False, check_finite=False)
+
+    @staticmethod
+    def _apply_qt_householder(qr_raw, tau, array):
+        """Apply the transpose of Q from a raw QR decomposition."""
+
+        matrix = array[:, np.newaxis] if array.ndim == 1 else array
+        ormqr = sl.lapack.get_lapack_funcs("ormqr", (qr_raw, matrix))
+        transformed, work, info = ormqr("L", "T", qr_raw, tau, matrix, lwork=-1, overwrite_c=0)
+        if info != 0:  # pragma: no cover
+            raise np.linalg.LinAlgError("LAPACK ormqr workspace query failed (info={}).".format(info))
+        transformed, _, info = ormqr(
+            "L",
+            "T",
+            qr_raw,
+            tau,
+            matrix,
+            lwork=int(work[0].real),
+            overwrite_c=0,
+        )
+        if info != 0:  # pragma: no cover
+            raise np.linalg.LinAlgError("LAPACK ormqr failed (info={}).".format(info))
+        return transformed[:, 0] if array.ndim == 1 else transformed
+
+    @staticmethod
+    def _solve_augmented_rrqr(matrix, data, common_local=None, rtol=1e-12):
+        """Solve the augmented system using QR with column pivoting."""
+
+        Q, R, pivots = sl.qr(matrix, mode="economic", pivoting=True, check_finite=False)
+        transformed = np.dot(Q.T, data)
+        diagonal = np.abs(np.diag(R))
+        rank = int(np.sum(diagonal > float(diagonal[0]) * float(rtol))) if diagonal.size else 0
+
+        permuted = np.zeros(R.shape[1])
+        logdet = 0.0
+        leading = None
+        if rank:
+            leading = R[:rank, :rank]
+            permuted[:rank] = sl.solve_triangular(leading, transformed[:rank], check_finite=False)
+            logdet = 2.0 * np.sum(np.log(diagonal[:rank]))
+
+        solution = np.zeros(R.shape[1])
+        solution[pivots] = permuted
+        residual = data - np.dot(matrix, solution)
+        quadratic = np.dot(residual, residual)
+
+        delta = None
+        if common_local is not None:
+            if not rank:
+                delta = np.zeros((common_local.shape[0], common_local.shape[0]))
+            else:
+                permuted_common = common_local.T[pivots, :]
+                solved = sl.solve_triangular(
+                    leading,
+                    permuted_common[:rank, :],
+                    trans="T",
+                    check_finite=False,
+                )
+                delta = np.dot(solved.T, solved)
+                delta = 0.5 * (delta + delta.T)
+        return solution, quadratic, float(logdet), delta
+
+    def _householder_likelihood(self, params):
+        signalcollections = self.pta._signalcollections
+        basis_splits = {
+            signalcollection: self.pta._get_basis_split(signalcollection) for signalcollection in signalcollections
+        }
+        for signalcollection in signalcollections:
+            common_idx, pulsar_idx = basis_splits[signalcollection]
+            self._validate_split(signalcollection, params, common_idx, pulsar_idx)
+
+        common_phi = self.pta.get_phi_common(params)
+        if common_phi is None:
+            raise _HouseholderUnavailable("The model has no common basis columns.")
+
+        common_offsets, offset = {}, 0
+        for signalcollection in signalcollections:
+            size = basis_splits[signalcollection][0].size
+            if size:
+                common_offsets[signalcollection] = slice(offset, offset + size)
+                offset += size
+
+        priors = []
+        for signalcollection in signalcollections:
+            pulsar_idx = basis_splits[signalcollection][1]
+            phiinv, logdet = signalcollection.get_phiinv_pulsar_only(params, pulsar_idx, logdet=True)
+            priors.append((phiinv, float(logdet)))
+        logdet_white = sum(sum(value[1:]) for value in self.pta.get_rNr_logdet(params))
+
+        # whiten the residuals and eliminate coefficients for individual pulsars
+        z_values, R_values, deltas, block_collections = [], [], [], []
+        local_quadratic = local_logdet = local_phi_logdet = 0.0
+        for signalcollection, (local_phiinv, local_phi_logdet_i) in zip(signalcollections, priors):
+            common_idx, pulsar_idx = basis_splits[signalcollection]
+            residual, local_basis, qr_raw, tau, R = self._get_data(signalcollection, params, common_idx, pulsar_idx)
+
+            if qr_raw is None:
+                if local_basis is None:
+                    local_quadratic += np.dot(residual, residual)
+                    continue
+                root = self._build_local_prior_root(local_phiinv, local_basis.shape[1])
+                matrix = np.vstack([local_basis, root])
+                data = np.concatenate([residual, np.zeros(local_basis.shape[1])])
+                _, quadratic, logdet, _ = self._solve_augmented_rrqr(matrix, data)
+                local_quadratic += quadratic
+                local_logdet += logdet
+                local_phi_logdet += local_phi_logdet_i
+                continue
+
+            common_size = R.shape[0]
+            transformed_residual = self._apply_qt_householder(qr_raw, tau, residual)
+            residual_common = transformed_residual[:common_size]
+            residual_local = transformed_residual[common_size:]
+
+            if local_basis is None:
+                z_value = residual_common.copy()
+                delta = np.zeros((common_size, common_size))
+                local_quadratic += np.dot(residual_local, residual_local)
+            else:
+                transformed_local = self._apply_qt_householder(qr_raw, tau, local_basis)
+                common_local = transformed_local[:common_size, :]
+                local_local = transformed_local[common_size:, :]
+                root = self._build_local_prior_root(local_phiinv, local_local.shape[1])
+                matrix = np.vstack([local_local, root])
+                data = np.concatenate([residual_local, np.zeros(local_local.shape[1])])
+                solution, quadratic, logdet, delta = self._solve_augmented_rrqr(matrix, data, common_local=common_local)
+                z_value = residual_common - np.dot(common_local, solution)
+                local_quadratic += quadratic
+                local_logdet += logdet
+                local_phi_logdet += local_phi_logdet_i
+
+            z_values.append(z_value)
+            R_values.append(R)
+            deltas.append(delta)
+            block_collections.append(signalcollection)
+
+        # assemble the matrix for common signals
+        common_dimension = sum(R.shape[0] for R in R_values)
+        if not common_dimension:
+            raise _HouseholderUnavailable("The model has no factorizable common basis.")
+
+        sigma = np.eye(common_dimension)
+        schur_offsets, offset = [], 0
+        for R, delta in zip(R_values, deltas):
+            block = slice(offset, offset + R.shape[0])
+            schur_offsets.append(block)
+            sigma[block, block] += delta
+            offset = block.stop
+
+        for index1, (collection1, R1, block1) in enumerate(zip(block_collections, R_values, schur_offsets)):
+            phi_block1 = common_offsets[collection1]
+            for index2 in range(index1, len(block_collections)):
+                collection2 = block_collections[index2]
+                R2, block2 = R_values[index2], schur_offsets[index2]
+                phi_block2 = common_offsets[collection2]
+                phi = common_phi[phi_block1, phi_block2]
+                block = np.dot(np.dot(R1, phi), R2.T)
+                sigma[block1, block2] += block
+                if index1 != index2:
+                    sigma[block2, block1] += block.T
+
+        # factor the remaining matrix and combine the likelihood terms
+        factor = sl.cho_factor(sigma, lower=True, check_finite=False)
+        z = np.concatenate(z_values)
+        common_quadratic = np.dot(z, sl.cho_solve(factor, z, check_finite=False))
+        common_logdet = 2.0 * np.sum(np.log(np.diag(factor[0])))
+
+        total_toas = sum(signalcollection._residuals.size for signalcollection in signalcollections)
+        loglike = -0.5 * (
+            local_quadratic
+            + common_quadratic
+            + common_logdet
+            + local_logdet
+            + local_phi_logdet
+            + logdet_white
+            + total_toas * np.log(2 * np.pi)
+        )
+        loglike += sum(self.pta.get_logsignalprior(params))
+        return float(loglike)
+
+    def __call__(self, xs, phiinv_method="cliques"):
+        params = xs if isinstance(xs, dict) else self.pta.map_params(xs)
+        if not self.pta._commonsignals:
+            return super(SchurLogLikelihood, self).__call__(params, phiinv_method=phiinv_method)
+
+        try:
+            return self._householder_likelihood(params)
+        except _HouseholderUnavailable:
+            return super(SchurLogLikelihood, self).__call__(params, phiinv_method=phiinv_method)
+        except sl.LinAlgError:
+            return -np.inf
+
+
 class PTA(object):
     def __init__(self, init, lnlikelihood=LogLikelihood):
         if isinstance(init, Sequence):
@@ -406,6 +669,17 @@ class PTA(object):
             self._cs = {csclass: csdict for csclass, csdict in commonsignals.items() if len(csdict) > 1}
 
         return self._cs
+
+    def _get_basis_split(self, signalcollection):
+        """Return common and individual basis indices for one pulsar model."""
+
+        common_signals = frozenset(
+            signal
+            for signals in self._commonsignals.values()
+            for signal, collection in signals.items()
+            if collection is signalcollection
+        )
+        return signalcollection._compute_basis_split(common_signals)
 
     # return a dictionary (indexed by SignalCollection) of Python slices
     # corresponding to the span of each pulsar within a Phi matrix
@@ -677,6 +951,49 @@ class PTA(object):
         else:
             return phis
 
+    def get_phi_common(self, params):
+        """Return the covariance for basis columns of common signals."""
+
+        if not self._commonsignals:
+            return None
+
+        common_indices = {
+            signalcollection: self._get_basis_split(signalcollection)[0] for signalcollection in self._signalcollections
+        }
+        slices, positions, offset = {}, {}, 0
+        for signalcollection in self._signalcollections:
+            common_idx = common_indices[signalcollection]
+            if common_idx.size:
+                slices[signalcollection] = slice(offset, offset + common_idx.size)
+                positions[signalcollection] = {int(column): index for index, column in enumerate(common_idx)}
+                offset += common_idx.size
+
+        if not offset:
+            return None
+
+        phi_common = np.zeros((offset, offset))
+        for signalcollection, block in slices.items():
+            common_idx = common_indices[signalcollection]
+            phi = np.asarray(signalcollection.get_phi_common(params, common_idx))
+            phi_common[block, block] = np.diag(phi) if phi.ndim == 1 else phi
+
+        for common_class, common_signals in self._commonsignals.items():
+            for (signal1, collection1), (signal2, collection2) in itertools.combinations(common_signals.items(), 2):
+                rows = slices[collection1].start + np.asarray(
+                    [positions[collection1][int(column)] for column in collection1._idx[signal1]],
+                    dtype=int,
+                )
+                columns = slices[collection2].start + np.asarray(
+                    [positions[collection2][int(column)] for column in collection2._idx[signal2]],
+                    dtype=int,
+                )
+                cross = np.asarray(common_class.get_phicross(signal1, signal2, params))
+                cross = np.diag(cross) if cross.ndim == 1 else cross
+                phi_common[np.ix_(rows, columns)] += cross
+                phi_common[np.ix_(columns, rows)] += cross.T
+
+        return phi_common
+
     def map_params(self, xs):
         xs = np.asarray(xs)
         expected = sum(p.size if p.size is not None else 1 for p in self.params)
@@ -944,6 +1261,24 @@ def SignalCollection(metasignals):  # noqa: C901
             else:
                 raise AttributeError("{} object has no attribute {}".format(self.__class__, par))
 
+        def _compute_basis_split(self, common_signals):
+            """Split the basis into columns of common signals and all other columns."""
+
+            common, seen = [], set()
+            for signal in self._signals:
+                if signal in common_signals and signal in self._idx:
+                    for column in self._idx[signal]:
+                        column = int(column)
+                        if column not in seen:
+                            seen.add(column)
+                            common.append(column)
+
+            all_columns = {
+                int(column) for signal in self._signals if signal in self._idx for column in self._idx[signal]
+            }
+            pulsar = sorted(all_columns.difference(seen))
+            return np.asarray(common, dtype=int), np.asarray(pulsar, dtype=int)
+
         @cache_call("white_params")
         def get_ndiag(self, params):
             ndiags = [signal.get_ndiag(params) for signal in self._signals]
@@ -989,6 +1324,40 @@ def SignalCollection(metasignals):  # noqa: C901
                     phi = phi.add(signal.get_phi(params), self._idx[signal])
 
             return phi
+
+        def get_basis_common(self, params, common_idx):
+            """Return basis columns associated with common signals."""
+
+            basis = self.get_basis(params)
+            return basis[:, common_idx] if basis is not None and common_idx.size else None
+
+        def get_basis_pulsar_only(self, params, pulsar_idx):
+            """Return basis columns not associated with common signals."""
+
+            basis = self.get_basis(params)
+            return basis[:, pulsar_idx] if basis is not None and pulsar_idx.size else None
+
+        def get_phi_common(self, params, common_idx):
+            """Return the covariance for basis columns of common signals."""
+
+            phi = self.get_phi(params)
+            if phi is None or not common_idx.size:
+                return None
+            if phi.ndim == 1:
+                return KernelMatrix(np.array(phi[common_idx]))
+            return KernelMatrix(np.array(phi[np.ix_(common_idx, common_idx)]))
+
+        def get_phiinv_pulsar_only(self, params, pulsar_idx, logdet=False):
+            """Return the inverse covariance for columns not associated with common signals."""
+
+            phi = self.get_phi(params)
+            if phi is None or not pulsar_idx.size:
+                return (None, 0.0) if logdet else None
+            if phi.ndim == 1:
+                phi = KernelMatrix(np.array(phi[pulsar_idx]))
+            else:
+                phi = KernelMatrix(np.array(phi[np.ix_(pulsar_idx, pulsar_idx)]))
+            return phi.inv(logdet)
 
         @cache_call(["basis_params", "white_params", "delay_params"])
         def get_TNr(self, params):

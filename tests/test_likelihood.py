@@ -9,13 +9,21 @@ Tests of likelihood module
 """
 
 import unittest
+from unittest import mock
 import pytest
 
 import numpy as np
 import scipy.linalg as sl
 
 from enterprise.pulsar import Pulsar
-from enterprise.signals import gp_signals, parameter, selections, signal_base, utils, white_signals
+from enterprise.signals import (
+    gp_signals,
+    parameter,
+    selections,
+    signal_base,
+    utils,
+    white_signals,
+)
 from enterprise.signals.selections import Selection
 from tests.enterprise_test_data import datadir
 from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
@@ -80,7 +88,9 @@ class TestLikelihood(unittest.TestCase):
             Pulsar(datadir + "/J1909-3744_NANOGrav_9yv1.t2.feather"),
         ]
 
-    def compute_like(self, npsrs=1, inc_corr=False, inc_kernel=False, cholesky_sparse=True, marginalizing_tm=False):
+    def compute_like(
+        self, npsrs=1, inc_corr=False, inc_kernel=False, cholesky_sparse=True, marginalizing_tm=False, schur=False
+    ):
         # get parameters from PAL2 style noise files
         params = get_noise_from_pal2(datadir + "/B1855+09_noise.txt")
         params2 = get_noise_from_pal2(datadir + "/J1909-3744_noise.txt")
@@ -267,6 +277,33 @@ class TestLikelihood(unittest.TestCase):
             )
             assert np.allclose(eloglike, loglike), msg
 
+        if schur:
+            schur_pta = signal_base.PTA(models, lnlikelihood=signal_base.SchurLogLikelihood)
+            methods = ["partition", "sparse", "cliques"]
+            for method in methods:
+                if inc_corr and marginalizing_tm:
+                    with mock.patch.object(signal_base.LogLikelihood, "__call__", return_value=loglike) as fallback:
+                        schur_loglike = schur_pta.get_lnlikelihood(params, phiinv_method=method)
+                    fallback.assert_called_once()
+                elif inc_corr:
+                    with mock.patch.object(
+                        signal_base.LogLikelihood,
+                        "__call__",
+                        side_effect=AssertionError("SchurLogLikelihood unexpectedly used LogLikelihood."),
+                    ):
+                        schur_loglike = schur_pta.get_lnlikelihood(params, phiinv_method=method)
+                else:
+                    schur_loglike = schur_pta.get_lnlikelihood(params, phiinv_method=method)
+                if inc_corr:
+                    assert np.isscalar(schur_loglike)
+                assert np.allclose(schur_loglike, loglike)
+            xs = (
+                np.hstack([np.atleast_1d(params[p.name]) for p in schur_pta.params])
+                if schur_pta.params
+                else np.empty(0)
+            )
+            assert np.allclose(schur_pta.get_lnlikelihood(xs), loglike)
+
     def test_like_nocorr(self):
         """Test likelihood with no spatial correlations."""
         self.compute_like(npsrs=1)
@@ -290,6 +327,90 @@ class TestLikelihood(unittest.TestCase):
                 self.compute_like(
                     npsrs=2, inc_corr=True, cholesky_sparse=cholesky_sparse, marginalizing_tm=marginalizing_tm
                 )
+
+    def test_like_corr_schur(self):
+        """Test the Schur likelihood with spatial correlations."""
+
+        self.compute_like(npsrs=2, inc_corr=True, inc_kernel=True, schur=True)
+        self.compute_like(npsrs=2, inc_corr=True, inc_kernel=True, marginalizing_tm=True, schur=True)
+        self.compute_like(npsrs=2, marginalizing_tm=True, schur=True)
+
+    def test_like_corr_schur_with_white_noise_only_pulsar(self):
+        """Test a correlated model with one pulsar that has no basis."""
+
+        psr3 = Pulsar(datadir + "/B1937+21_NANOGrav_9yv1.t2.feather")
+        Tspan = max(p.toas.max() for p in self.psrs) - min(p.toas.min() for p in self.psrs)
+        mn = white_signals.MeasurementNoise(efac=parameter.Constant(1.0))
+        eq = white_signals.TNEquadNoise(log10_tnequad=parameter.Constant(-20.0))
+        pl = utils.powerlaw(log10_A=parameter.Constant(-15.0), gamma=parameter.Constant(4.33))
+        crn = gp_signals.FourierBasisCommonGP(pl, utils.hd_orf(), components=2, name="GW", Tspan=Tspan)
+
+        correlated = [(mn + eq + crn)(psr) for psr in self.psrs]
+        white_only = (mn + eq)(psr3)
+        corr_pta = signal_base.PTA(correlated, lnlikelihood=signal_base.SchurLogLikelihood)
+        white_pta = signal_base.PTA([white_only])
+        full_pta = signal_base.PTA(correlated + [white_only], lnlikelihood=signal_base.SchurLogLikelihood)
+
+        expected = corr_pta.get_lnlikelihood({}) + white_pta.get_lnlikelihood({})
+        np.testing.assert_allclose(full_pta.get_lnlikelihood({}), expected, rtol=1e-12, atol=1e-7)
+
+    def test_like_schur_multiple_common_signals(self):
+        """Test the Schur likelihood with multiple common signals."""
+
+        Tspan = max(p.toas.max() for p in self.psrs) - min(p.toas.min() for p in self.psrs)
+        timing = gp_signals.TimingModel()
+        white = white_signals.MeasurementNoise(efac=parameter.Constant(1.0))
+        hd_spectrum = utils.powerlaw(log10_A=parameter.Constant(-15.0), gamma=parameter.Constant(4.33))
+        monopole_spectrum = utils.powerlaw(log10_A=parameter.Constant(-16.0), gamma=parameter.Constant(3.0))
+        hd = gp_signals.FourierBasisCommonGP(hd_spectrum, utils.hd_orf(), components=2, Tspan=Tspan, name="gw")
+        monopole = gp_signals.FourierBasisCommonGP(
+            monopole_spectrum,
+            utils.monopole_orf(),
+            components=3,
+            Tspan=Tspan,
+            name="monopole",
+        )
+        models = [(timing + white + hd + monopole)(psr) for psr in self.psrs]
+
+        hd_only_model = (timing + white + hd)(self.psrs[1])
+        first_pta = signal_base.PTA(
+            [models[0], hd_only_model],
+            lnlikelihood=signal_base.SchurLogLikelihood,
+        )
+        first_pta.get_lnlikelihood({})
+
+        standard = signal_base.PTA(models)
+        schur = signal_base.PTA(models, lnlikelihood=signal_base.SchurLogLikelihood)
+        assert len(schur._commonsignals) == 2
+        expected = standard.get_lnlikelihood({})
+        with mock.patch.object(
+            signal_base.LogLikelihood,
+            "__call__",
+            side_effect=AssertionError("SchurLogLikelihood unexpectedly used LogLikelihood."),
+        ):
+            actual = schur.get_lnlikelihood({})
+        np.testing.assert_allclose(actual, expected)
+
+    def test_like_schur_unsupported_white_noise_falls_back(self):
+        """Test fallback for white noise without a square-root solve."""
+
+        Tspan = max(p.toas.max() for p in self.psrs) - min(p.toas.min() for p in self.psrs)
+        timing = gp_signals.TimingModel()
+        white = white_signals.MeasurementNoise(efac=parameter.Constant(1.0))
+        ecorr = white_signals.EcorrKernelNoise(log10_ecorr=parameter.Constant(-8.0), method="sparse")
+        spectrum = utils.powerlaw(log10_A=parameter.Constant(-15.0), gamma=parameter.Constant(4.33))
+        common = gp_signals.FourierBasisCommonGP(spectrum, utils.hd_orf(), components=2, Tspan=Tspan, name="gw")
+        models = [(timing + white + ecorr + common)(psr) for psr in self.psrs]
+
+        standard = signal_base.PTA(models)
+        schur = signal_base.PTA(models, lnlikelihood=signal_base.SchurLogLikelihood)
+        expected = standard.get_lnlikelihood({})
+        actual = schur.get_lnlikelihood({})
+        np.testing.assert_allclose(actual, expected)
+
+        with mock.patch.object(signal_base.LogLikelihood, "__call__", return_value=expected) as fallback:
+            schur.get_lnlikelihood({})
+        fallback.assert_called_once()
 
     def test_like_nocorr_kernel(self):
         """Test likelihood with no spatial correlations and kernel."""
