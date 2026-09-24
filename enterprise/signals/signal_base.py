@@ -269,6 +269,99 @@ class LogLikelihood(object):
         return loglike
 
 
+class SchurLogLikelihood(LogLikelihood):
+    """Log-likelihood using a Schur complement in coefficient space.
+
+    Independent pulsar blocks are eliminated before the common block is
+    factorized. The calculation reuses the standard TNT and TNr products.
+    """
+
+    @staticmethod
+    def _get_block(matrix, rows, columns):
+        block = matrix[np.ix_(rows, columns)]
+        return block.toarray() if sps.issparse(block) else block
+
+    @staticmethod
+    def _solve(matrix, rhs):
+        """Solve a positive-definite system and return its log determinant."""
+
+        diagonal = np.diag(matrix)
+        if np.any(diagonal <= 0) or not np.all(np.isfinite(diagonal)):
+            raise sl.LinAlgError("Invalid diagonal in the Schur system.")
+        scale = np.sqrt(diagonal)
+        # Rescale coefficient axes without removing any directions.
+        factor = sl.cho_factor(matrix / scale[:, None] / scale[None, :], lower=True, check_finite=False)
+        solution = sl.cho_solve(factor, rhs / scale[:, None], check_finite=False) / scale[:, None]
+        logdet = 2 * (np.log(np.diag(factor[0])).sum() + np.log(scale).sum())
+        return solution, logdet
+
+    def _schur(self, TNrs, TNTs, phiinv, splits):
+        """Eliminate the individual coefficients without assembling Sigma."""
+
+        common_indices, offset = [], 0
+        for TNr, (common, _) in zip(TNrs, splits):
+            common_indices.extend(offset + common)
+            offset += 0 if TNr is None else len(TNr)
+        common_indices = np.asarray(common_indices, dtype=int)
+
+        schur = self._get_block(phiinv, common_indices, common_indices).copy()
+        rhs = np.concatenate([TNr[common] for TNr, (common, _) in zip(TNrs, splits) if TNr is not None])
+        quadratic = logdet = 0.0
+        offset = common_offset = 0
+
+        for TNr, TNT, (common, local) in zip(TNrs, TNTs, splits):
+            if TNr is None:
+                continue
+            block = slice(common_offset, common_offset + len(common))
+            schur[block, block] += TNT[np.ix_(common, common)]
+
+            if local.size:
+                indices = offset + local
+                A = TNT[np.ix_(local, local)] + self._get_block(phiinv, indices, indices)
+                B = TNT[np.ix_(local, common)]
+                solved, logdet_A = self._solve(A, np.column_stack((TNr[local], B)))
+                quadratic += np.dot(TNr[local], solved[:, 0])
+                logdet += logdet_A
+                # S = D - B.T A^-1 B; z = d_common - B.T A^-1 d_local.
+                schur[block, block] -= np.dot(B.T, solved[:, 1:])
+                rhs[block] -= np.dot(B.T, solved[:, 0])
+
+            offset += len(TNr)
+            common_offset = block.stop
+
+        solution, logdet_schur = self._solve(schur, rhs[:, None])
+        quadratic += np.dot(rhs, solution[:, 0])
+        return quadratic, logdet + logdet_schur
+
+    def __call__(self, xs, phiinv_method="cliques"):
+        params = xs if isinstance(xs, dict) else self.pta.map_params(xs)
+        if not self.pta._commonsignals:
+            return super(SchurLogLikelihood, self).__call__(params, phiinv_method=phiinv_method)
+
+        TNrs = self.pta.get_TNr(params)
+        TNTs = self.pta.get_TNT(params)
+        splits = [self.pta._get_basis_split(sc) for sc in self.pta._signalcollections]
+        for sc, (common, local) in zip(self.pta._signalcollections, splits):
+            if common.size and local.size:
+                phi = sc.get_phi(params)
+                if phi.ndim == 2 and np.any(phi[np.ix_(local, common)]):
+                    # Mixing the prior blocks can couple local coefficients across pulsars.
+                    return super(SchurLogLikelihood, self).__call__(params, phiinv_method=phiinv_method)
+
+        phiinv, logdet_phi = self.pta.get_phiinv(params, logdet=True, method=phiinv_method)
+        try:
+            quadratic, logdet_sigma = self._schur(TNrs, TNTs, phiinv, splits)
+        except sl.LinAlgError:
+            # A different elimination order can be needed for ill-conditioned models.
+            return super(SchurLogLikelihood, self).__call__(params, phiinv_method=phiinv_method)
+
+        loglike = -0.5 * sum(np.sum(value) for terms in self.pta.get_rNr_logdet(params) for value in terms)
+        ntot = sum(sc._residuals.size for sc in self.pta._signalcollections)
+        loglike -= 0.5 * ntot * np.log(2 * np.pi)
+        loglike += sum(self.pta.get_logsignalprior(params))
+        return loglike + 0.5 * (quadratic - logdet_sigma - logdet_phi)
+
+
 class PTA(object):
     def __init__(self, init, lnlikelihood=LogLikelihood):
         if isinstance(init, Sequence):
@@ -406,6 +499,17 @@ class PTA(object):
             self._cs = {csclass: csdict for csclass, csdict in commonsignals.items() if len(csdict) > 1}
 
         return self._cs
+
+    def _get_basis_split(self, signalcollection):
+        """Return common and individual basis indices for one pulsar model."""
+
+        common_signals = frozenset(
+            signal
+            for signals in self._commonsignals.values()
+            for signal, collection in signals.items()
+            if collection is signalcollection
+        )
+        return signalcollection._compute_basis_split(common_signals)
 
     # return a dictionary (indexed by SignalCollection) of Python slices
     # corresponding to the span of each pulsar within a Phi matrix
@@ -943,6 +1047,24 @@ def SignalCollection(metasignals):  # noqa: C901
                 return getattr(self, par)
             else:
                 raise AttributeError("{} object has no attribute {}".format(self.__class__, par))
+
+        def _compute_basis_split(self, common_signals):
+            """Split the basis into columns of common signals and all other columns."""
+
+            common, seen = [], set()
+            for signal in self._signals:
+                if signal in common_signals and signal in self._idx:
+                    for column in self._idx[signal]:
+                        column = int(column)
+                        if column not in seen:
+                            seen.add(column)
+                            common.append(column)
+
+            all_columns = {
+                int(column) for signal in self._signals if signal in self._idx for column in self._idx[signal]
+            }
+            pulsar = sorted(all_columns.difference(seen))
+            return np.asarray(common, dtype=int), np.asarray(pulsar, dtype=int)
 
         @cache_call("white_params")
         def get_ndiag(self, params):

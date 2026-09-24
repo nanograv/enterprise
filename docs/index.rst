@@ -34,6 +34,7 @@ searches, and timing model analysis.
    installation
    contributing
    data
+   schur_likelihood
    mockpulsar
    Overview <https://jellis18.github.io/enterprise_tutorial_talk/>
 
