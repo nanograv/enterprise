@@ -680,6 +680,63 @@ class TestGPSignals(unittest.TestCase):
         msg = "Fourier bases incorrect (phase-shift-5 call vs no phase shift)"
         assert not np.all(b1 == b2), msg
 
+    def test_fourier_red_noise_phi_call_history(self):
+        """Test that the Fourier GP prior does not depend on earlier calls."""
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18, -12), gamma=parameter.Uniform(1, 7))
+        rn = gp_signals.FourierBasisGP(spectrum=pl, components=30)
+        rnm = rn(self.psr)
+
+        _, f2 = utils.createfourierdesignmatrix_red(self.psr.toas, nmodes=30)
+        params1 = {"B1855+09_red_noise_log10_A": -14.5, "B1855+09_red_noise_gamma": 4.33}
+        params2 = {"B1855+09_red_noise_log10_A": -13.0, "B1855+09_red_noise_gamma": 3.0}
+
+        # revisit params1 after params2, as an MCMC does after a rejected jump
+        for params in [params1, params2, params1]:
+            phi = utils.powerlaw(
+                f2, log10_A=params["B1855+09_red_noise_log10_A"], gamma=params["B1855+09_red_noise_gamma"]
+            )
+            msg = "Spectrum incorrect for GP Fourier signal after a change of prior parameters."
+            assert np.allclose(rnm.get_phi(params), phi, rtol=1e-10, atol=0), msg
+
+    def test_fourier_red_noise_phi_pseed_change(self):
+        """Test that changing only the phase-shift seed leaves the Fourier GP prior intact."""
+        Tspan = self.psr.toas.max() - self.psr.toas.min()
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18, -12), gamma=parameter.Uniform(1, 7))
+        rn = gp_signals.FourierBasisGP(pl, components=5, Tspan=Tspan, pseed=parameter.Uniform(0, 32768))
+        rnm = rn(self.psr)
+
+        log10_A, gamma = -14.5, 4.33
+        _, f2 = utils.createfourierdesignmatrix_red(self.psr.toas, nmodes=5, Tspan=Tspan)
+        phi = utils.powerlaw(f2, log10_A=log10_A, gamma=gamma)
+
+        # only the basis parameter (pseed) changes between calls
+        for pseed in [1, 2]:
+            params = {
+                "B1855+09_red_noise_log10_A": log10_A,
+                "B1855+09_red_noise_gamma": gamma,
+                "B1855+09_red_noise_pseed": pseed,
+            }
+            msg = "Spectrum incorrect for GP Fourier signal after a change of pseed."
+            assert np.allclose(rnm.get_phi(params), phi, rtol=1e-10, atol=0), msg
+
+    def test_fft_red_noise_phi_call_history(self):
+        """Test that the FFT GP prior does not depend on earlier calls."""
+        mpsd = psd_matern32(
+            length_scale=parameter.Uniform(365 * 86400.0, 3650 * 86400.0), log10_sigma_sqr=parameter.Uniform(-17, -9)
+        )
+        rn = gp_signals.FFTBasisGP(spectrum=mpsd, components=15, oversample=3, cutbins=0)
+        rnm = rn(self.psr)
+
+        params1 = {"B1855+09_red_noise_length_scale": 1.5 * 365 * 86400.0, "B1855+09_red_noise_log10_sigma_sqr": -14.0}
+        params2 = {"B1855+09_red_noise_length_scale": 3.0 * 365 * 86400.0, "B1855+09_red_noise_log10_sigma_sqr": -12.0}
+
+        # revisit params1 after params2, as an MCMC does after a rejected jump;
+        # compare against a freshly built signal, which has no call history
+        for params in [params1, params2, params1]:
+            phi_fresh = rn(self.psr).get_phi(params)
+            msg = "Prior incorrect for GP FFT signal after a change of prior parameters."
+            assert np.allclose(rnm.get_phi(params), phi_fresh, rtol=1e-10, atol=0), msg
+
     def test_gp_parameter(self):
         """Test GP basis model with parameterized basis."""
 

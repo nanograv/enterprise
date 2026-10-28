@@ -365,6 +365,26 @@ class TestLikelihood(unittest.TestCase):
         msg = "Likelihood mismatch between sparse Cholesky full & inplace"
         assert np.allclose(l1, l2), msg
 
+    def test_like_call_history(self):
+        """Test that the likelihood does not depend on earlier calls"""
+
+        ef = white_signals.MeasurementNoise(efac=parameter.Constant(1.0))
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18, -12), gamma=parameter.Uniform(1, 7))
+        rn = gp_signals.FourierBasisGP(pl, components=20)
+        m = gp_signals.TimingModel() + ef + rn
+
+        pta = signal_base.PTA([m(self.psrs[0])])
+        params1 = {"B1855+09_red_noise_log10_A": -14.5, "B1855+09_red_noise_gamma": 4.33}
+        params2 = {"B1855+09_red_noise_log10_A": -13.0, "B1855+09_red_noise_gamma": 3.0}
+
+        # revisit params1 after params2, as an MCMC does after a rejected jump
+        l1 = pta.get_lnlikelihood(params1)
+        _ = pta.get_lnlikelihood(params2)
+        l3 = pta.get_lnlikelihood(params1)
+
+        msg = "Likelihood changed when re-evaluated at the same parameters"
+        assert np.allclose(l1, l3), msg
+
 
 @pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
 class TestLikelihoodPint(TestLikelihood):
