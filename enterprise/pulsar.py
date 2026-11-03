@@ -56,7 +56,7 @@ def get_maxobs(timfile):
     maxobs = 0
     with open(timfile) as tfile:
         flines = tfile.readlines()
-        lines = [ln for ln in flines if not ln.startswith("C")]
+        lines = [ln for ln in flines if not ln.startswith(("C", "#"))]
         if any(["INCLUDE" in ln for ln in lines]):
             for line in [ln for ln in lines if "INCLUDE" in ln]:
                 maxobs += get_maxobs(line.split()[-1])
