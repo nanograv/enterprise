@@ -18,7 +18,7 @@ import pytest
 
 import numpy as np
 
-from enterprise.pulsar import Pulsar, MockPulsar
+from enterprise.pulsar import Pulsar, MockPulsar, get_maxobs
 from tests.enterprise_test_data import datadir
 from tests.enterprise_test_data import LIBSTEMPO_INSTALLED, PINT_INSTALLED
 
@@ -455,6 +455,18 @@ class TestPulsarMock(unittest.TestCase):
 
         auto = ent_utils.get_psrname_from_pos(raj=self.raj, decj=self.decj)
         assert auto.startswith("J")
+
+
+def test_get_maxobs_skips_commented_include(tmp_path):
+    """Lines starting with # are comments, so their paths are never opened."""
+
+    included = tmp_path / "included.tim"
+    included.write_text("FORMAT 1\nfake 1400.0 55000.0 1.0 @\nfake 1400.0 55001.0 1.0 @\n")
+
+    base = tmp_path / "base.tim"
+    base.write_text(f"#INCLUDE {tmp_path}/does_not_exist.tim\nINCLUDE {included}\n")
+
+    assert get_maxobs(str(base)) == 3
 
 
 class TestDuckTyping(unittest.TestCase):
