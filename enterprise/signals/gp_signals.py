@@ -110,9 +110,6 @@ def BasisGP(
             nc = sum(F.shape[1] for F in basis.values())
             self._basis = np.zeros((len(self._masks[0]), nc))
 
-            # TODO: should this be defined here? it will cache phi
-            self._phi = KernelMatrix(nc)
-
             self._slices = {}
             nctot = 0
             for key, mask in zip(self._keys, self._masks):
@@ -122,11 +119,19 @@ def BasisGP(
                 self._slices.update({key: slice(nctot, nn + nctot)})
                 nctot += nn
 
-        @signal_base.cache_call("prior_params")
+        # this function returns phi instead of storing it, so it can be cached
+        # with the default limit; the cache key includes basis_params because
+        # the labels and slices that phi is built from depend on them
+        @signal_base.cache_call(["basis_params", "prior_params"])
         def _construct_prior(self, params):
+            self._construct_basis(params)
+
+            phi = KernelMatrix(self._basis.shape[1])
             for key, slc in self._slices.items():
                 phislc = self._prior[key](self._labels[key], params=params)
-                self._phi = self._phi.set(phislc, slc)
+                phi = phi.set(phislc, slc)
+
+            return phi
 
         # this class does different things (and gets different method
         # definitions) if the user wants it to model GP coefficients
@@ -187,9 +192,8 @@ def BasisGP(
 
             def get_phi(self, params):
                 self._construct_basis(params)
-                self._construct_prior(params)
 
-                return self._phi
+                return self._construct_prior(params)
 
             def get_phiinv(self, params):
                 return self.get_phi(params).inv()
@@ -272,8 +276,11 @@ def FFTBasisGP(
         signal_name = "red noise"
         signal_id = name
 
-        @signal_base.cache_call("prior_params")
+        @signal_base.cache_call(["basis_params", "prior_params"])
         def _construct_prior(self, params):
+            self._construct_basis(params)
+
+            phi = KernelMatrix(self._basis.shape[1])
             for key, slc in self._slices.items():
                 t_nodes = self._labels[key]
 
@@ -293,7 +300,9 @@ def FFTBasisGP(
                     psd = np.concatenate([np.zeros(cutbins), psd_prior[cutbins - 1 :]])
 
                 phislc = utils.psd2cov(t_nodes, psd, fmax_factor=fmax_factor)
-                self._phi = self._phi.set(phislc, slc)
+                phi = phi.set(phislc, slc)
+
+            return phi
 
         if coefficients:
             raise NotImplementedError("Coefficients not supported for FFTBasisGP")
@@ -302,9 +311,8 @@ def FFTBasisGP(
 
             def get_phi(self, params):
                 self._construct_basis(params)
-                self._construct_prior(params)
 
-                return self._phi
+                return self._construct_prior(params)
 
     return FFTBasisGP
 
@@ -444,8 +452,11 @@ def BasisCommonGP(priorFunction, basisFunction, orfFunction, coefficients=False,
         def _construct_basis(self, params={}):
             self._basis, self._labels = self._bases(params=params)
 
-        @signal_base.cache_call("prior_params")
+        # the cache key includes basis_params because the labels depend on them
+        @signal_base.cache_call(["basis_params", "prior_params"])
         def _construct_prior(self, params):
+            self._construct_basis(params)
+
             return BasisCommonGP._prior(self._labels, params=params)
 
         if coefficients:
@@ -628,11 +639,12 @@ def FFTBasisCommonGP(
             freqs = utils.nodes_to_freqs(self._t_nodes, oversample=oversample, fmax_factor=fmax_factor)
             self._freqs = freqs
 
-        @signal_base.cache_call("prior_params")
+        @signal_base.cache_call(["basis_params", "prior_params"])
         def _construct_prior(self, params):
             """
             Compute and cache the time-domain covariance ('phi') for *this* signal's basis.
             """
+            self._construct_basis(params)
 
             # Hack, because Enterprise adds in f=0 and then calculates df,
             # meaning we cannot simply start freqs from 0. Thus, we use
