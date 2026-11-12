@@ -416,6 +416,45 @@ class TestGPCoefficients(unittest.TestCase):
         msg = "Conditional GP draws for a common GP do not have covariance Sigma^-1"
         assert np.allclose(M.T @ Sigma @ M, np.eye(n), rtol=0, atol=1e-6), msg
 
+    def test_get_coefficients_common_sparse_draws(self):
+        """utils.get_coefficients(..., common_sparse=True) must draw coefficients
+        with covariance Sigma^-1, which requires undoing the fill-reducing
+        permutation of the sparse Cholesky factor. Same check as in
+        test_conditional_gp_common_draws."""
+
+        ef = white_signals.MeasurementNoise(efac=parameter.Constant(1.0))
+        tm = gp_signals.TimingModel(use_svd=True)
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18, -12), gamma=parameter.Uniform(1, 7))
+        crn = gp_signals.FourierBasisCommonGP(spectrum=pl, orf=utils.hd_orf(), components=10, combine=False)
+
+        model = ef + tm + crn
+        pta = signal_base.PTA([model(self.psr), model(self.psr2)])
+
+        p0 = {"common_fourier_gamma": 4.33, "common_fourier_log10_A": -14.5}
+
+        phiinv = pta.get_phiinv(p0, logdet=False, method="cliques")
+        Sigma = (sps.block_diag(pta.get_TNT(p0), "csc") + sps.csc_matrix(phiinv)).toarray()
+        n = Sigma.shape[0]
+
+        # the check says nothing about the permutation unless CHOLMOD reorders
+        assert not np.array_equal(cho_factor(sps.csc_matrix(Sigma)).perm, np.arange(n))
+
+        def coefficients(pardict):
+            # get_coefficients returns the input parameters along with the coefficients
+            return np.concatenate([v for k, v in pardict.items() if k.endswith("_coefficients")])
+
+        mean = coefficients(utils.get_coefficients(pta, p0, variance=False, common_sparse=True))
+        assert mean.shape == (n,)
+
+        unit_vectors = iter(np.eye(n))
+        with mock.patch("numpy.random.randn", side_effect=lambda size: next(unit_vectors)):
+            draws = utils.get_coefficients(pta, p0, n=n, common_sparse=True)
+
+        M = np.array([coefficients(d) for d in draws]).T - mean[:, None]
+
+        msg = "Sparse get_coefficients draws for a common GP do not have covariance Sigma^-1"
+        assert np.allclose(M.T @ Sigma @ M, np.eye(n), rtol=0, atol=1e-6), msg
+
 
 @pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
 class TestGPCoefficientsPint(TestGPCoefficients):
