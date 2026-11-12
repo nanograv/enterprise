@@ -10,7 +10,7 @@ import logging
 
 import numpy as np
 import scipy.sparse as sps
-from sksparse.cholmod import cholesky
+from sksparse.cholmod import cho_factor
 
 from enterprise.signals import parameter, selections, signal_base, utils
 from enterprise.signals.parameter import function
@@ -1070,7 +1070,7 @@ class MarginalizingNmat(object):
     @functools.lru_cache()
     def cf(self):
         MNM = sps.csc_matrix(self.Nmat.solve(self.Mmat, left_array=self.Mmat))
-        return cholesky(MNM)
+        return cho_factor(MNM)
 
     @signal_base.simplememobyid
     def MNr(self, res):
@@ -1082,7 +1082,7 @@ class MarginalizingNmat(object):
 
     @signal_base.simplememobyid
     def MNMMNF(self, T):
-        return self.cf(self.MNF(T))
+        return self.cf.solve(self.MNF(T))
 
     # we're ignoring logdet = True for two-dimensional cases, but OK
     def solve(self, right, left_array=None, logdet=False):
@@ -1092,7 +1092,7 @@ class MarginalizingNmat(object):
             rNr, logdet_N = self.Nmat.solve(res, left_array=res, logdet=True)
 
             MNr = self.MNr(res)
-            ret = rNr - np.dot(MNr, self.cf(MNr))
+            ret = rNr - np.dot(MNr, self.cf.solve(MNr))
             return (ret, logdet_N + self.cf.logdet() + self.Mprior) if logdet else ret
         elif right.ndim == 1 and left_array is not None and left_array.ndim == 2:
             res, T = right, left_array
