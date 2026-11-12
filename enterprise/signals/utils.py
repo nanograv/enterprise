@@ -158,7 +158,8 @@ def get_coefficients(pta, params, n=1, phiinv_method="cliques", variance=True, c
 
             ch = cho_factor(Sigma)
             mn = ch.solve(TNr)
-            Li = sps.linalg.inv(ch.L).toarray().T
+            # Sigma = P^T L L^T P, so P^T L^-T x has variance Sigma^-1
+            Li = sps.linalg.inv(ch.L).toarray().T[np.argsort(ch.perm)]
         else:
             Sigma = sl.block_diag(*TNTs) + phiinvs
             TNr = np.concatenate(TNrs)
