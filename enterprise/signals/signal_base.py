@@ -13,12 +13,13 @@ except:
 
 import itertools
 import logging
+import warnings
 
 import numpy as np
 import scipy.linalg as sl
 import scipy.sparse as sps
 import six
-from sksparse.cholmod import cholesky, CholmodError
+from sksparse.cholmod import cho_factor, CholmodError, CholmodWarning
 
 # these are defined in parameter.py, but currently imported
 # in various places from signal_base.py
@@ -35,6 +36,11 @@ _py_version = version.split(" ")[0]
 
 # logging.basicConfig(format="%(levelname)s: %(name)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# sksparse>=0.5 warns on every solve when (min(diag L) / max(diag L))**2 < N * eps.
+# PTA covariances (priors spanning tens of decades) always trip this, so silence it
+# for solves called from enterprise; it would otherwise fire on every likelihood call
+warnings.filterwarnings("ignore", message="Matrix is nearly singular", category=CholmodWarning, module=r"enterprise\.")
 
 
 def _simplememobyid_keycheck(key, arg):
@@ -230,14 +236,18 @@ class LogLikelihood(object):
 
                     if hasattr(self, "cf_sp"):
                         # Have analytical decomposition already. Just do update
-                        self.cf_sp.cholesky_inplace(Sigma_sp)
+                        self.cf_sp.factorize(Sigma_sp)
                     else:
                         # Do analytical and numerical Sparse Cholesky
-                        self.cf_sp = cholesky(Sigma_sp)
+                        self.cf_sp = cho_factor(Sigma_sp)
 
-                    expval = self.cf_sp(TNr)
+                    expval = self.cf_sp.solve(TNr)
                     logdet_sigma = self.cf_sp.logdet()
-                except CholmodError:  # pragma: no cover
+                except CholmodError:
+                    # sksparse refactorizes a matrix outside the analysed sparsity pattern
+                    # with its slower simplicial algorithm, and the factor then stays in
+                    # that form. Drop it so that the next call starts from a fresh analysis
+                    self.__dict__.pop("cf_sp", None)
                     return -np.inf
             else:
                 try:
@@ -436,12 +446,15 @@ class PTA(object):
             return [None if phivec is None else phivec.inv(logdet) for phivec in phi]
         else:
             phisparse = sps.csc_matrix(phi)
-            cf = cholesky(phisparse)
+            cf = cho_factor(phisparse)
+
+            # CholeskyFactor.inv() returns a csc_array; keep returning csc_matrix
+            phiinv = sps.csc_matrix(cf.inv())
 
             if logdet:
-                return (cf.inv(), cf.logdet())
+                return (phiinv, cf.logdet())
             else:
-                return cf.inv()
+                return phiinv
 
     def get_phiinv_byfreq_partition(self, params, logdet=False):
         phivecs = [signalcollection.get_phi(params) for signalcollection in self._signalcollections]
@@ -1106,8 +1119,11 @@ class csc_matrix_alt(sps.csc_matrix):
             raise TypeError
 
     def solve(self, other, left_array=None, logdet=False):
-        cf = cholesky(self)
-        mult = cf(other)
+        cf = cho_factor(self)
+        # sksparse>=0.5 cannot solve with a read-only right-hand side (e.g. FeatherPulsar arrays)
+        if isinstance(other, np.ndarray) and not other.flags.writeable:
+            other = other.copy()
+        mult = cf.solve(other)
         if left_array is not None:
             mult = np.dot(left_array.T, mult)
         ret = (mult, cf.logdet()) if logdet else mult

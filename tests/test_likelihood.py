@@ -9,6 +9,8 @@ Tests of likelihood module
 """
 
 import unittest
+from unittest import mock
+
 import pytest
 
 import numpy as np
@@ -364,6 +366,43 @@ class TestLikelihood(unittest.TestCase):
 
         msg = "Likelihood mismatch between sparse Cholesky full & inplace"
         assert np.allclose(l1, l2), msg
+
+    def test_like_sparse_recovery(self):
+        """Test that the cached sparse Cholesky factor recovers from a failed factorization"""
+
+        tmin = [p.toas.min() for p in self.psrs]
+        tmax = [p.toas.max() for p in self.psrs]
+        Tspan = np.max(tmax) - np.min(tmin)
+
+        ef = white_signals.MeasurementNoise(parameter.Constant(1.0))
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18, -12), gamma=parameter.Uniform(1, 7))
+        crn = gp_signals.FourierBasisCommonGP(pl, utils.hd_orf(), components=20, name="GW", Tspan=Tspan)
+        m = gp_signals.TimingModel() + ef + crn
+
+        pta = signal_base.PTA([m(p) for p in self.psrs])
+        params1 = {"GW_log10_A": -14.5, "GW_gamma": 4.33}
+        params2 = {"GW_log10_A": -13.5, "GW_gamma": 3.0}
+
+        like = signal_base.LogLikelihood(pta)
+        l1 = like(params1)
+
+        # a matrix that is not positive definite and is denser than the one the factor was analysed for
+        phiinv, _ = pta.get_phiinv(params1, logdet=True)
+        bad_phiinv = phiinv - 1e3 * np.abs(phiinv).max()
+        with mock.patch.object(pta, "get_phiinv", return_value=(bad_phiinv, 0.0)):
+            msg = "Likelihood is not -inf for a matrix that is not positive definite"
+            assert like(params2) == -np.inf, msg
+
+        fresh = signal_base.LogLikelihood(pta)
+
+        msg = "Likelihood mismatch after a failed sparse Cholesky factorization"
+        assert np.allclose(like(params2), fresh(params2)), msg
+        assert np.allclose(like(params1), l1), msg
+
+        # sksparse falls back to its slower simplicial algorithm for a matrix outside
+        # the analysed pattern; the cached factor must not stay in that form
+        msg = "Cached sparse Cholesky factor changed form after a failed factorization"
+        assert like.cf_sp.is_super == fresh.cf_sp.is_super, msg
 
     def test_like_call_history(self):
         """Test that the likelihood does not depend on earlier calls"""

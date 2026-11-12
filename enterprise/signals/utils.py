@@ -13,7 +13,7 @@ import scipy.special as ss
 from importlib import resources
 from scipy.integrate import odeint
 from scipy.interpolate import interp1d
-from sksparse.cholmod import cholesky
+from sksparse.cholmod import cho_factor
 
 import enterprise
 from enterprise import constants as const
@@ -61,8 +61,8 @@ class ConditionalGP:
             TNr = np.concatenate(TNrs)
             Sigma = sps.block_diag(TNTs, "csc") + sps.csc_matrix(phiinvs)
 
-            ch = cholesky(Sigma)
-            mn = ch(TNr)
+            ch = cho_factor(Sigma)
+            mn = ch.solve(TNr)
 
             return ch, mn
         else:
@@ -86,7 +86,9 @@ class ConditionalGP:
             if self.pta._commonsignals:
                 b = mn
                 if variance:
-                    b = b + ch.apply_Pt(ch.solve_Lt(np.random.randn(mn.shape[0]), use_LDLt_decomposition=False))
+                    # Sigma = P^T L L^T P, so P^T L^-T x has variance Sigma^-1
+                    y = ch.solve(np.random.randn(mn.shape[0]), system="Lt")
+                    b = b + y[np.argsort(ch.perm)]
             else:
                 b = np.concatenate(mn)
                 if variance:
@@ -154,9 +156,9 @@ def get_coefficients(pta, params, n=1, phiinv_method="cliques", variance=True, c
             Sigma = sps.block_diag(TNTs, "csc") + sps.csc_matrix(phiinvs)
             TNr = np.concatenate(TNrs)
 
-            ch = cholesky(Sigma)
-            mn = ch(TNr)
-            Li = sps.linalg.inv(ch.L()).toarray().T
+            ch = cho_factor(Sigma)
+            mn = ch.solve(TNr)
+            Li = sps.linalg.inv(ch.L).toarray().T
         else:
             Sigma = sl.block_diag(*TNTs) + phiinvs
             TNr = np.concatenate(TNrs)

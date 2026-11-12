@@ -22,7 +22,7 @@ analysis, gravitational-wave searches, and timing model analysis.
 
 To install via `pip`, some non-python dependencies are required. See the
 [libstempo](https://github.com/vallis/libstempo#pip-install) and
-[scikit-sparse](https://github.com/scikit-sparse/scikit-sparse#with-pip)
+[scikit-sparse](https://github.com/scikit-sparse/scikit-sparse#installation)
 documentation for more info on how to install these dependencies. Once
 these are installed, you can do
 

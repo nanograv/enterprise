@@ -10,11 +10,13 @@ Tests for GP signals used with deterministic coefficients.
 
 import logging
 import unittest
+from unittest import mock
+
 import pytest
 
 import numpy as np
 import scipy.sparse as sps
-from sksparse.cholmod import cholesky
+from sksparse.cholmod import cho_factor
 
 from enterprise.pulsar import Pulsar
 from enterprise.signals import (
@@ -312,8 +314,8 @@ class TestGPCoefficients(unittest.TestCase):
         TNr = np.concatenate(TNrs)
         Sigma = sps.block_diag(TNTs, "csc") + sps.block_diag([np.diag(phiinvs[0]), np.diag(phiinvs[1])])
 
-        ch = cholesky(Sigma)
-        mn = ch(TNr)
+        ch = cho_factor(Sigma)
+        mn = ch.solve(TNr)
         iSigma = sps.linalg.inv(Sigma)
 
         # check mean values
@@ -371,12 +373,48 @@ class TestGPCoefficients(unittest.TestCase):
         TNr = np.concatenate(TNrs)
         Sigma = sps.block_diag(TNTs, "csc") + sps.csc_matrix(phiinvs)
 
-        ch = cholesky(Sigma)
-        mn = ch(TNr)
+        ch = cho_factor(Sigma)
+        mn = ch.solve(TNr)
 
         msg = "Conditional GP coefficient value does not match for common GP"
         for c_name, v in cmean.items():
             assert np.allclose(mn[idx[c_name]], v)
+
+    def test_conditional_gp_common_draws(self):
+        """Coefficient draws for a correlated common process must have covariance
+        Sigma^-1. Feeding unit vectors in place of the normal deviates makes
+        (draw_k - mean) the k-th column of the map M that is applied to them, and
+        M^T Sigma M = I holds only if the Cholesky factor, its triangle and the
+        fill-reducing permutation are all applied correctly."""
+
+        ef = white_signals.MeasurementNoise(efac=parameter.Constant(1.0))
+        tm = gp_signals.TimingModel(use_svd=True)
+        pl = utils.powerlaw(log10_A=parameter.Uniform(-18, -12), gamma=parameter.Uniform(1, 7))
+        crn = gp_signals.FourierBasisCommonGP(spectrum=pl, orf=utils.hd_orf(), components=10, combine=False)
+
+        model = ef + tm + crn
+        pta = signal_base.PTA([model(self.psr), model(self.psr2)])
+
+        p0 = {"common_fourier_gamma": 4.33, "common_fourier_log10_A": -14.5}
+
+        phiinv = pta.get_phiinv(p0, logdet=False, method="cliques")
+        Sigma = (sps.block_diag(pta.get_TNT(p0), "csc") + sps.csc_matrix(phiinv)).toarray()
+        n = Sigma.shape[0]
+
+        # the check says nothing about the permutation unless CHOLMOD reorders
+        assert not np.array_equal(cho_factor(sps.csc_matrix(Sigma)).perm, np.arange(n))
+
+        c = utils.ConditionalGP(pta)
+        mean = np.concatenate(list(c.get_mean_coefficients(p0).values()))
+
+        unit_vectors = iter(np.eye(n))
+        with mock.patch("numpy.random.randn", side_effect=lambda size: next(unit_vectors)):
+            draws = c.sample_coefficients(p0, n=n)
+
+        M = np.array([np.concatenate(list(d.values())) for d in draws]).T - mean[:, None]
+
+        msg = "Conditional GP draws for a common GP do not have covariance Sigma^-1"
+        assert np.allclose(M.T @ Sigma @ M, np.eye(n), rtol=0, atol=1e-6), msg
 
 
 @pytest.mark.skipif(not PINT_INSTALLED, reason="Skipping tests that require PINT because it isn't installed")
